@@ -1,0 +1,1 @@
+{ "name": "{{SERVICE_NAME}}" }

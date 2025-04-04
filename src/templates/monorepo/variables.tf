@@ -1,0 +1,1 @@
+variable "example_var" {}
