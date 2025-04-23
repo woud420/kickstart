@@ -31,6 +31,7 @@ def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powers
 def create(
     type: str = typer.Argument(None),
     name: str = typer.Argument(None),
+    root: str = typer.Option(..., "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)")
@@ -44,20 +45,21 @@ def create(
         typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
         type = Prompt.ask("What do you want to create?", choices=["service", "frontend", "lib", "cli", "mono"])
         name = Prompt.ask("Project name?")
+        root = Prompt.ask("Where should the project be created?")
         lang = Prompt.ask("Language", default=config.get("default_language", "python"))
         gh = Confirm.ask("Create GitHub repo?", default=False)
         if type in ["mono", "service"]:
             helm = Confirm.ask("Use Helm scaffolding?", default=False)
 
     if type == "service":
-        create_service(name, lang, gh, config, helm=helm)
+        create_service(name, lang, gh, config, helm=helm, root=root)
     elif type == "frontend":
-        create_frontend(name, config)
+        create_frontend(name, config, root=root)
     elif type == "lib":
-        create_lib(name, lang, config)
+        create_lib(name, lang, config, root=root)
     elif type == "cli":
-        create_cli(name, lang, config)
+        create_cli(name, lang, config, root=root)
     elif type == "mono":
-        create_monorepo(name, config, helm=helm)
+        create_monorepo(name, config, helm=helm, root=root)
     else:
         print(f"[bold red]❌ Type '{type}' not supported.")

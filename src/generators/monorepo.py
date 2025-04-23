@@ -4,10 +4,10 @@ from src.utils.logger import success, warn
 
 TEMPLATE_ROOT = Path(__file__).parent.parent / "templates" / "monorepo"
 
-def create_monorepo(name: str, config: dict, helm: bool = False):
-    project = Path(name)
+def create_monorepo(name: str, config: dict, helm: bool = False, root: str = None):
+    project = Path(root) / name if root else Path(name)
     if project.exists():
-        warn(f"Directory '{name}' already exists.")
+        warn(f"Directory '{project}' already exists.")
         return
 
     (project / "infra" / "docker").mkdir(parents=True)
@@ -42,5 +42,5 @@ def create_monorepo(name: str, config: dict, helm: bool = False):
     write_file(project / "Makefile", TEMPLATE_ROOT / "Makefile.tpl", monorepo_name=name)
     write_file(project / "README.md", TEMPLATE_ROOT / "README.md.tpl", monorepo_name=name)
 
-    success(f"Monorepo '{name}' scaffolded with {'Helm' if helm else 'Kustomize'} support.")
+    success(f"Monorepo '{name}' scaffolded with {'Helm' if helm else 'Kustomize'} support in '{project}'.")
 

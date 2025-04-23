@@ -4,10 +4,10 @@ from src.utils.logger import success, warn
 
 TEMPLATE_ROOT = Path(__file__).parent.parent / "templates"
 
-def create_lib(name: str, lang: str, config: dict):
-    project = Path(name)
+def create_lib(name: str, lang: str, config: dict, root: str = None):
+    project = Path(root) / name if root else Path(name)
     if project.exists():
-        warn(f"Directory '{name}' already exists.")
+        warn(f"Directory '{project}' already exists.")
         return
 
     (project / "src").mkdir(parents=True)
@@ -25,12 +25,12 @@ def create_lib(name: str, lang: str, config: dict):
     elif lang == "rust":
         write_file(project / "Cargo.toml", templates / "Cargo.toml.tpl", service_name=name)
 
-    success(f"{lang.title()} library '{name}' created successfully!")
+    success(f"{lang.title()} library '{name}' created successfully in '{project}'!")
 
-def create_cli(name: str, lang: str, config: dict):
-    project = Path(name)
+def create_cli(name: str, lang: str, config: dict, root: str = None):
+    project = Path(root) / name if root else Path(name)
     if project.exists():
-        warn(f"Directory '{name}' already exists.")
+        warn(f"Directory '{project}' already exists.")
         return
 
     (project / "src").mkdir(parents=True)
@@ -50,5 +50,5 @@ def create_cli(name: str, lang: str, config: dict):
         write_file(project / "Cargo.toml", templates / "Cargo.cli.toml.tpl", service_name=name)
         write_file(project / "src/main.rs", 'fn main() {\n    println!("Hello from CLI!");\n}\n')
 
-    success(f"{lang.title()} CLI '{name}' created successfully!")
+    success(f"{lang.title()} CLI '{name}' created successfully in '{project}'!")
 

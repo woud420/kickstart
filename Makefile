@@ -1,8 +1,10 @@
 VENV := .venv
 PYTHON := $(VENV)/bin/python
-POETRY := poetry
+POETRY := $(VENV)/bin/poetry
+PIP := $(VENV)/bin/pip
+PYTEST := $(VENV)/bin/pytest
 
-.PHONY: help setup install build run tests clean package shell
+.PHONY: help setup install build run tests clean package shell venv
 
 help:
 	@echo "Usage:"
@@ -15,27 +17,36 @@ help:
 	@echo "  make shell      - Drop into Poetry shell"
 	@echo "  make clean      - Remove venv and build artifacts"
 
-setup install:
-	@echo "🐍 Creating venv + installing deps..."
+venv: $(VENV)/bin/activate
+
+$(VENV)/bin/activate:
+	@echo "🐍 Creating virtual environment..."
+	@which python3 > /dev/null || (echo "Error: python3 not found. Please install Python 3." && exit 1)
+	@python3 -m venv $(VENV)
+	@$(PIP) install poetry
+
+setup install: venv
+	@echo "📦 Installing dependencies..."
 	@$(POETRY) install
+	@$(PIP) install pytest
 
-build:
-	@echo "📦 Building kickstart binary with shiv..."
-	@$(VENV)/bin/pip install -q shiv || true
-	@shiv -c kickstart -o kickstart -e src.cli.main:app --compressed .
+build: venv
+	@echo "📦 Building kickstart binary..."
+	@$(POETRY) install
+	@ln -sf $$($(POETRY) env info --path)/bin/kickstart kickstart
 
-run:
+run: venv
 	@echo "🚀 Running kickstart..."
 	@$(POETRY) run kickstart
 
-tests:
+tests: venv setup build
 	@echo "🧪 Running tests..."
-	@$(POETRY) run pytest
+	@PATH="$$(pwd):$$PATH" $(PYTEST) tests/
 
-package:
+package: venv
 	@$(POETRY) build
 
-shell:
+shell: venv
 	@$(POETRY) shell
 
 clean:

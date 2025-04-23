@@ -4,10 +4,10 @@ from src.utils.logger import info, success, warn
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
-def create_service(name: str, lang: str, gh: bool, config: dict, helm: bool = False):
-    project = Path(name)
+def create_service(name: str, lang: str, gh: bool, config: dict, helm: bool = False, root: str = None):
+    project = Path(root) / name if root else Path(name)
     if project.exists():
-        warn(f"Directory '{name}' already exists.")
+        warn(f"Directory '{project}' already exists.")
         return
 
     (project / "src").mkdir(parents=True)
@@ -40,5 +40,5 @@ def create_service(name: str, lang: str, gh: bool, config: dict, helm: bool = Fa
         write_file(helm_path / "templates/deployment.yaml", TEMPLATE_DIR / "monorepo/helm/deployment.yaml", service_name=name)
         info("Helm chart scaffolded")
 
-    success(f"{lang.title()} service '{name}' created successfully!")
+    success(f"{lang.title()} service '{name}' created successfully in '{project}'!")
 

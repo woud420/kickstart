@@ -3,24 +3,25 @@ from pathlib import Path
 import tempfile
 import shutil
 
-def test_create_python_service():
+def test_create_frontend():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         kickstart_bin = shutil.which("kickstart")
         assert kickstart_bin is not None, "kickstart binary not found in PATH"
 
         subprocess.run(
-            [kickstart_bin, "create", "service", "hello-api", "--lang", "python", "--root", str(tmp)],
+            [kickstart_bin, "create", "frontend", "my-app", "--root", str(tmp)],
             cwd=tmp,
             check=True
         )
 
-        svc = tmp / "hello-api"
-        assert (svc / "src").exists()
-        assert (svc / "Dockerfile").exists()
-        assert (svc / "README.md").read_text().startswith("# hello-api")
+        app = tmp / "my-app"
+        assert (app / "src").exists()
+        assert (app / "public").exists()
+        assert (app / "package.json").exists()
+        assert (app / "README.md").read_text().startswith("# my-app")
 
-def test_create_python_service_with_root():
+def test_create_frontend_with_root():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         kickstart_bin = shutil.which("kickstart")
@@ -31,13 +32,13 @@ def test_create_python_service_with_root():
         custom_root.mkdir()
 
         subprocess.run(
-            [kickstart_bin, "create", "service", "hello-api", "--lang", "python", "--root", str(custom_root)],
+            [kickstart_bin, "create", "frontend", "my-app", "--root", str(custom_root)],
             cwd=tmp,
             check=True
         )
 
-        svc = custom_root / "hello-api"
-        assert (svc / "src").exists()
-        assert (svc / "Dockerfile").exists()
-        assert (svc / "README.md").read_text().startswith("# hello-api")
-
+        app = custom_root / "my-app"
+        assert (app / "src").exists()
+        assert (app / "public").exists()
+        assert (app / "package.json").exists()
+        assert (app / "README.md").read_text().startswith("# my-app") 

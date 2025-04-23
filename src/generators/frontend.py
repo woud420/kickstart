@@ -4,10 +4,10 @@ from src.utils.logger import success, warn
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "react"
 
-def create_frontend(name: str, config: dict):
-    project = Path(name)
+def create_frontend(name: str, config: dict, root: str = None):
+    project = Path(root) / name if root else Path(name)
     if project.exists():
-        warn(f"Directory '{name}' already exists.")
+        warn(f"Directory '{project}' already exists.")
         return
 
     (project / "src").mkdir(parents=True)
@@ -22,5 +22,5 @@ def create_frontend(name: str, config: dict):
     write_file(project / "package.json", TEMPLATE_DIR / "package.json.tpl", service_name=name)
     write_file(project / "architecture/README.md", f"# {name} Frontend Docs\n")
 
-    success(f"Frontend app '{name}' created successfully!")
+    success(f"Frontend app '{name}' created successfully in '{project}'!")
 
