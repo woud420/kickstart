@@ -7,7 +7,7 @@ def write_file(path: Path, template: Path | str, **vars):
         content = template
 
     for key, value in vars.items():
-        content = content.replace(f"{{{{{key.upper()}}}}}", value)
+        content = content.replace(f"{{{{{key.upper()}}}}}", str(value))
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content)
