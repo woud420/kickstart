@@ -2,7 +2,6 @@ import sys
 import shutil
 import requests
 from pathlib import Path
-from rich import print
 from src import __version__
 
 REPO = "woud420/kickstart"
@@ -21,7 +20,7 @@ def check_for_update():
                             if asset["name"] == "kickstart")
 
         if latest == __version__:
-            print("[green]✅ You’re already up to date.")
+            print("[green]✅ You're already up to date.")
             return
 
         print(f"[yellow]⬆ New version available: {latest} — downloading...")

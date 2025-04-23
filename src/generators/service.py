@@ -1,10 +1,7 @@
 from pathlib import Path
 from typing import Optional
 from src.generators.base import BaseGenerator
-from src.utils.fs import write_file
-from src.utils.logger import info, success, warn
-
-TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+from src.utils.logger import success, warn
 
 class ServiceGenerator(BaseGenerator):
     def __init__(self, name: str, lang: str, gh: bool, config: dict, helm: bool = False, root: Optional[str] = None):
@@ -65,7 +62,7 @@ class ServiceGenerator(BaseGenerator):
         }.items():
             self.write_template(f"helm/{self.name}/{file}", template)
 
-        info("Helm chart scaffolded")
+        success("Helm chart scaffolded")
 
 def create_service(name: str, lang: str, gh: bool, config: dict, helm: bool = False, root: str = None):
     """Factory function for backward compatibility"""

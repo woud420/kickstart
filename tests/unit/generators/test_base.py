@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from src.generators.base import BaseGenerator
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 @pytest.fixture
 def base_generator():
