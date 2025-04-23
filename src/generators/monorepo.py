@@ -1,46 +1,72 @@
 from pathlib import Path
-from src.utils.fs import write_file
-from src.utils.logger import success, warn
+from typing import Optional
+from src.generators.base import BaseGenerator
 
-TEMPLATE_ROOT = Path(__file__).parent.parent / "templates" / "monorepo"
+class MonorepoGenerator(BaseGenerator):
+    def __init__(self, name: str, config: dict, helm: bool = False, root: Optional[str] = None):
+        super().__init__(name, config, root)
+        self.helm = helm
+        self.template_dir = self.template_dir / "monorepo"
+
+    def create(self) -> None:
+        if not self.create_project():
+            return
+
+        # Create infrastructure directories
+        self.create_directories([
+            "infra/docker",
+            "infra/terraform/modules/example_module",
+            *[f"infra/terraform/env/{env}" for env in ["dev", "staging", "prod"]],
+            ".github/workflows",
+            "architecture"
+        ])
+
+        # Create and configure deployment infrastructure
+        if self.helm:
+            self._create_helm_structure()
+        else:
+            self._create_kustomize_structure()
+
+        # Write Docker and Terraform files
+        self.write_template("infra/docker/docker-compose.yml", "docker-compose.yml")
+        
+        # Write Terraform files for each environment
+        for env in ["dev", "staging", "prod"]:
+            self.write_template(f"infra/terraform/env/{env}/main.tf", "terraform_env_main.tf")
+            self.write_template(f"infra/terraform/env/{env}/variables.tf", "variables.tf")
+
+        # Write GitHub workflow files
+        for wf in ["build.yml", "test.yml", "deploy.yml"]:
+            self.write_template(f".github/workflows/{wf}", wf)
+
+        # Write documentation and configuration
+        self.write_content("architecture/README.md", f"# {self.name} Deployment Infra Docs\n")
+        self.write_template("Makefile", "Makefile.tpl", monorepo_name=self.name)
+        self.write_template("README.md", "README.md.tpl", monorepo_name=self.name)
+
+        self.log_success(f"Monorepo '{self.name}' scaffolded with {'Helm' if self.helm else 'Kustomize'} support in '{self.project}'.")
+
+    def _create_helm_structure(self) -> None:
+        """Create Helm chart structure and files."""
+        self.create_directories(["infra/helm/example-service/templates"])
+        
+        self.write_template("infra/helm/example-service/Chart.yaml", "helm/Chart.yaml")
+        self.write_template("infra/helm/example-service/values.yaml", "helm/values.yaml")
+        self.write_template("infra/helm/example-service/templates/deployment.yaml", "helm/deployment.yaml")
+
+    def _create_kustomize_structure(self) -> None:
+        """Create Kustomize structure and files."""
+        self.create_directories([
+            "infra/k8s/base",
+            *[f"infra/k8s/overlays/{env}" for env in ["dev", "staging", "prod"]]
+        ])
+
+        self.write_template("infra/k8s/base/kustomization.yaml", "kustomize/kustomization.yaml")
+        self.write_template("infra/k8s/base/deployment.yaml", "kustomize/deployment.yaml")
+        self.write_template("infra/k8s/base/service.yaml", "kustomize/service.yaml")
 
 def create_monorepo(name: str, config: dict, helm: bool = False, root: str = None):
-    project = Path(root) / name if root else Path(name)
-    if project.exists():
-        warn(f"Directory '{project}' already exists.")
-        return
-
-    (project / "infra" / "docker").mkdir(parents=True)
-    (project / "infra" / "terraform" / "modules" / "example_module").mkdir(parents=True)
-    for env in ["dev", "staging", "prod"]:
-        (project / f"infra/terraform/env/{env}").mkdir(parents=True)
-
-    if helm:
-        (project / "infra" / "helm" / "example-service" / "templates").mkdir(parents=True)
-        write_file(project / "infra/helm/example-service/Chart.yaml", TEMPLATE_ROOT / "helm/Chart.yaml")
-        write_file(project / "infra/helm/example-service/values.yaml", TEMPLATE_ROOT / "helm/values.yaml")
-        write_file(project / "infra/helm/example-service/templates/deployment.yaml", TEMPLATE_ROOT / "helm/deployment.yaml")
-    else:
-        (project / "infra/k8s/base").mkdir(parents=True)
-        for env in ["dev", "staging", "prod"]:
-            (project / f"infra/k8s/overlays/{env}").mkdir(parents=True)
-        write_file(project / "infra/k8s/base/kustomization.yaml", TEMPLATE_ROOT / "kustomize/kustomization.yaml")
-        write_file(project / "infra/k8s/base/deployment.yaml", TEMPLATE_ROOT / "kustomize/deployment.yaml")
-        write_file(project / "infra/k8s/base/service.yaml", TEMPLATE_ROOT / "kustomize/service.yaml")
-
-    write_file(project / "infra/docker/docker-compose.yml", TEMPLATE_ROOT / "docker-compose.yml")
-    for env in ["dev", "staging", "prod"]:
-        write_file(project / f"infra/terraform/env/{env}/main.tf", TEMPLATE_ROOT / "terraform_env_main.tf")
-        write_file(project / f"infra/terraform/env/{env}/variables.tf", TEMPLATE_ROOT / "variables.tf")
-
-    (project / ".github" / "workflows").mkdir(parents=True)
-    for wf in ["build.yml", "test.yml", "deploy.yml"]:
-        write_file(project / f".github/workflows/{wf}", TEMPLATE_ROOT / wf)
-
-    (project / "architecture").mkdir()
-    write_file(project / "architecture/README.md", f"# {name} Deployment Infra Docs\n")
-    write_file(project / "Makefile", TEMPLATE_ROOT / "Makefile.tpl", monorepo_name=name)
-    write_file(project / "README.md", TEMPLATE_ROOT / "README.md.tpl", monorepo_name=name)
-
-    success(f"Monorepo '{name}' scaffolded with {'Helm' if helm else 'Kustomize'} support in '{project}'.")
+    """Factory function for backward compatibility"""
+    generator = MonorepoGenerator(name, config, helm, root)
+    generator.create()
 

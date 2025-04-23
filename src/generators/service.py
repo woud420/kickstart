@@ -1,44 +1,74 @@
 from pathlib import Path
+from typing import Optional
+from src.generators.base import BaseGenerator
 from src.utils.fs import write_file
 from src.utils.logger import info, success, warn
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
-def create_service(name: str, lang: str, gh: bool, config: dict, helm: bool = False, root: str = None):
-    project = Path(root) / name if root else Path(name)
-    if project.exists():
-        warn(f"Directory '{project}' already exists.")
-        return
+class ServiceGenerator(BaseGenerator):
+    def __init__(self, name: str, lang: str, gh: bool, config: dict, helm: bool = False, root: Optional[str] = None):
+        super().__init__(name, config, root)
+        self.lang = lang
+        self.gh = gh
+        self.helm = helm
+        self.lang_template_dir = self.template_dir / lang
 
-    (project / "src").mkdir(parents=True)
-    (project / "tests" / "unit").mkdir(parents=True)
-    (project / "tests" / "integration").mkdir(parents=True)
-    (project / "architecture").mkdir(parents=True)
+    def create(self) -> None:
+        if not self.create_project():
+            return
 
-    templates = TEMPLATE_DIR / lang
-    if not templates.exists():
-        warn(f"No templates for language: {lang}")
-        return
+        if not self.lang_template_dir.exists():
+            warn(f"No templates for language: {self.lang}")
+            return
 
-    write_file(project / "README.md", templates / "README.md.tpl", service_name=name)
-    write_file(project / ".gitignore", templates / "gitignore.tpl")
-    write_file(project / "Dockerfile", templates / "Dockerfile.tpl")
-    write_file(project / "Makefile", templates / "Makefile.tpl", service_name=name)
-    write_file(project / "architecture" / "README.md", f"# {name} Architecture Notes\n")
-    write_file(project / ".env.example", "EXAMPLE_ENV_VAR=value\n")
+        # Create project structure
+        self.create_directories([
+            "src",
+            "tests/unit",
+            "tests/integration",
+            "architecture"
+        ])
 
-    if lang == "python":
-        write_file(project / "requirements.txt", templates / "requirements.txt.tpl")
-    elif lang == "rust":
-        write_file(project / "Cargo.toml", templates / "Cargo.toml.tpl", service_name=name)
+        # Write common template files
+        self.write_template("README.md", f"{self.lang}/README.md.tpl")
+        self.write_template(".gitignore", f"{self.lang}/gitignore.tpl")
+        self.write_template("Dockerfile", f"{self.lang}/Dockerfile.tpl")
+        self.write_template("Makefile", f"{self.lang}/Makefile.tpl")
+        
+        # Write direct content
+        self.write_content("architecture/README.md", f"# {self.name} Architecture Notes\n")
+        self.write_content(".env.example", "EXAMPLE_ENV_VAR=value\n")
 
-    if helm:
-        helm_path = project / "helm" / name
-        (helm_path / "templates").mkdir(parents=True)
-        write_file(helm_path / "Chart.yaml", TEMPLATE_DIR / "monorepo/helm/Chart.yaml", service_name=name)
-        write_file(helm_path / "values.yaml", TEMPLATE_DIR / "monorepo/helm/values.yaml", service_name=name)
-        write_file(helm_path / "templates/deployment.yaml", TEMPLATE_DIR / "monorepo/helm/deployment.yaml", service_name=name)
+        # Language-specific files
+        if self.lang == "python":
+            self.write_template("requirements.txt", "python/requirements.txt.tpl")
+        elif self.lang == "rust":
+            self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
+
+        # Helm chart if requested
+        if self.helm:
+            self._create_helm_chart()
+
+        self.log_success(f"{self.lang.title()} service '{self.name}' created successfully in '{self.project}'!")
+
+    def _create_helm_chart(self) -> None:
+        """Create Helm chart structure and files."""
+        helm_path = self.project / "helm" / self.name
+        self.create_directories([str(helm_path / "templates")])
+
+        # Write Helm chart files
+        for file, template in {
+            "Chart.yaml": "monorepo/helm/Chart.yaml",
+            "values.yaml": "monorepo/helm/values.yaml",
+            "templates/deployment.yaml": "monorepo/helm/deployment.yaml"
+        }.items():
+            self.write_template(f"helm/{self.name}/{file}", template)
+
         info("Helm chart scaffolded")
 
-    success(f"{lang.title()} service '{name}' created successfully in '{project}'!")
+def create_service(name: str, lang: str, gh: bool, config: dict, helm: bool = False, root: str = None):
+    """Factory function for backward compatibility"""
+    generator = ServiceGenerator(name, lang, gh, config, helm, root)
+    generator.create()
 

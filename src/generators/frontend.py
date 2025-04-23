@@ -1,26 +1,38 @@
 from pathlib import Path
-from src.utils.fs import write_file
-from src.utils.logger import success, warn
+from typing import Optional
+from src.generators.base import BaseGenerator
 
-TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "react"
+class FrontendGenerator(BaseGenerator):
+    def __init__(self, name: str, config: dict, root: Optional[str] = None):
+        super().__init__(name, config, root)
+        self.template_dir = self.template_dir / "react"
+
+    def create(self) -> None:
+        if not self.create_project():
+            return
+
+        # Create project structure
+        self.create_directories([
+            "src",
+            "public",
+            "tests",
+            "architecture"
+        ])
+
+        # Write template files
+        self.write_template(".gitignore", "gitignore.tpl")
+        self.write_template("Dockerfile", "Dockerfile.tpl")
+        self.write_template("Makefile", "Makefile.tpl")
+        self.write_template("README.md", "README.md.tpl")
+        self.write_template("package.json", "package.json.tpl")
+        
+        # Write direct content
+        self.write_content("architecture/README.md", f"# {self.name} Frontend Docs\n")
+
+        self.log_success(f"Frontend app '{self.name}' created successfully in '{self.project}'!")
 
 def create_frontend(name: str, config: dict, root: str = None):
-    project = Path(root) / name if root else Path(name)
-    if project.exists():
-        warn(f"Directory '{project}' already exists.")
-        return
-
-    (project / "src").mkdir(parents=True)
-    (project / "public").mkdir()
-    (project / "tests").mkdir()
-    (project / "architecture").mkdir()
-
-    write_file(project / ".gitignore", TEMPLATE_DIR / "gitignore.tpl")
-    write_file(project / "Dockerfile", TEMPLATE_DIR / "Dockerfile.tpl")
-    write_file(project / "Makefile", TEMPLATE_DIR / "Makefile.tpl", service_name=name)
-    write_file(project / "README.md", TEMPLATE_DIR / "README.md.tpl", service_name=name)
-    write_file(project / "package.json", TEMPLATE_DIR / "package.json.tpl", service_name=name)
-    write_file(project / "architecture/README.md", f"# {name} Frontend Docs\n")
-
-    success(f"Frontend app '{name}' created successfully in '{project}'!")
+    """Factory function for backward compatibility"""
+    generator = FrontendGenerator(name, config, root)
+    generator.create()
 
