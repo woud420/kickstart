@@ -23,8 +23,6 @@ The first public release of **Kickstart**, an opinionated scaffolding tool for f
 ```bash
 curl -L https://github.com/woud420/kickstart/releases/download/v0.1.0/kickstart -o /usr/local/bin/kickstart
 chmod +x /usr/local/bin/kickstart
-****
-
 ```
 
 ## 🚀 Quick Start Examples
