@@ -1,11 +1,9 @@
-import subprocess
+from typer.testing import CliRunner
+from src.cli.main import app
 
 def test_help_output():
-    result = subprocess.run(
-        ["poetry", "run", "kickstart", "--help"],
-        capture_output=True,
-        text=True
-    )
+    result = CliRunner().invoke(app, ["--help"])
+    assert result.exit_code == 0
     assert "Kickstart" in result.stdout
     assert "create" in result.stdout
 
