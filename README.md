@@ -1,4 +1,4 @@
-# 🚀 Kickstart v0.1.0
+# 🚀 Kickstart v0.2.0
 
 The first public release of **Kickstart**, an opinionated scaffolding tool for full-stack projects with strong infra and CI/CD support.
 
@@ -21,7 +21,7 @@ The first public release of **Kickstart**, an opinionated scaffolding tool for f
 ## 📦 Installation
 
 ```bash
-curl -L https://github.com/woud420/kickstart/releases/download/v0.1.0/kickstart -o /usr/local/bin/kickstart
+curl -L https://github.com/woud420/kickstart/releases/download/v0.2.0/kickstart -o /usr/local/bin/kickstart
 chmod +x /usr/local/bin/kickstart
 ```
 
@@ -55,6 +55,139 @@ This will generate:
 - GitHub Actions workflow
 - Unit and integration test setup
 - Makefile with common commands
+
+Project structure:
+```
+user-service/
+├── src/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── routes.py
+│   │   └── models.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   └── config.py
+│   └── services/
+│       └── __init__.py
+├── tests/
+│   ├── __init__.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── test_routes.py
+│   │   └── test_models.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   └── test_config.py
+│   └── services/
+│       └── __init__.py
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── Makefile
+├── README.md
+└── .github/
+    └── workflows/
+        └── ci.yml
+```
+
+### 2.1 Rust Service
+Create a Rust backend service with infrastructure support:
+
+```bash
+kickstart create service payment-service --lang rust --root ./services --gh --helm
+```
+
+This will generate:
+- Rust project with Cargo.toml
+- Actix-web or Rocket.rs setup
+- Dockerfile and docker-compose.yml
+- Helm chart for Kubernetes deployment
+- GitHub Actions workflow
+- Unit and integration test setup
+- Makefile with common commands
+
+Project structure:
+```
+payment-service/
+├── src/
+│   ├── main.rs
+│   ├── api/
+│   │   ├── mod.rs
+│   │   ├── routes.rs
+│   │   └── models.rs
+│   ├── core/
+│   │   ├── mod.rs
+│   │   └── config.rs
+│   └── services/
+│       └── mod.rs
+├── tests/
+│   ├── api/
+│   │   ├── mod.rs
+│   │   ├── routes_test.rs
+│   │   └── models_test.rs
+│   ├── core/
+│   │   ├── mod.rs
+│   │   └── config_test.rs
+│   └── services/
+│       └── mod.rs
+├── Cargo.toml
+├── Dockerfile
+├── docker-compose.yml
+├── Makefile
+├── README.md
+└── .github/
+    └── workflows/
+        └── ci.yml
+```
+
+### 2.2 C++ Service
+Create a C++ backend service with infrastructure support:
+
+```bash
+kickstart create service compute-service --lang cpp --root ./services --gh --helm
+```
+
+This will generate:
+- CMake-based project structure
+- Modern C++ setup (C++17/20)
+- Dockerfile and docker-compose.yml
+- Helm chart for Kubernetes deployment
+- GitHub Actions workflow
+- Unit and integration test setup
+- Makefile with common commands
+
+Project structure:
+```
+compute-service/
+├── src/
+│   ├── main.cpp
+│   ├── api/
+│   │   ├── routes.hpp
+│   │   └── models.hpp
+│   ├── core/
+│   │   ├── config.hpp
+│   │   └── config.cpp
+│   └── services/
+│       └── service.hpp
+├── tests/
+│   ├── api/
+│   │   ├── routes_test.cpp
+│   │   └── models_test.cpp
+│   ├── core/
+│   │   └── config_test.cpp
+│   └── services/
+│       └── service_test.cpp
+├── CMakeLists.txt
+├── Dockerfile
+├── docker-compose.yml
+├── Makefile
+├── README.md
+└── .github/
+    └── workflows/
+        └── ci.yml
+```
 
 ### 3. Infrastructure Monorepo
 Create a complete infrastructure setup for a microservices architecture:
