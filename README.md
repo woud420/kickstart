@@ -269,3 +269,30 @@ Keep your Kickstart installation up to date:
 ```bash
 kickstart upgrade
 ```
+
+## 📄 Component Manifest
+Kickstart supports describing multiple components in a single Markdown file. The
+manifest can live anywhere; pass the file to the CLI when running Kickstart.
+
+### Keys
+- `name` – component identifier (services and frontends)
+- `root` – directory where the component is created
+- `lang` – optional language for a service. Kickstart chooses a default when
+  omitted.
+
+### Example manifest
+```markdown
+## services
+- name: user-service
+  lang: python
+  root: services/user-service
+
+## frontends
+- name: dashboard
+  root: apps/dashboard
+
+## monorepo
+- root: platform
+```
+
+Run `kickstart --manifest path/to/components.md` to generate everything listed.
