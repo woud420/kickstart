@@ -269,3 +269,8 @@ Keep your Kickstart installation up to date:
 ```bash
 kickstart upgrade
 ```
+
+### GitHub Integration
+To automatically create a remote repository when using `--gh`, set the
+`GITHUB_TOKEN` environment variable with a personal access token that has `repo`
+permissions before running `kickstart create`.
