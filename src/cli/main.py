@@ -67,4 +67,4 @@ def create(
     elif type == "mono":
         create_monorepo(name, config, helm=helm, root=root)
     else:
-        print(f"[bold red]❌ Type '{type}' not supported.")
+        print(f"[bold red]❌ Type '{type}' not supported.[/]")
