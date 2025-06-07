@@ -7,3 +7,6 @@
 
 ## v0.1.0
 Initial release of kickstart
+
+## v0.2.1
+- Added Go support with templates and scaffolding for Go projects.

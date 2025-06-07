@@ -47,6 +47,8 @@ class ServiceGenerator(BaseGenerator):
             self._create_rust_structure()
         elif self.lang == "cpp":
             self._create_cpp_structure()
+        elif self.lang == "go":
+            self._create_go_structure()
 
         # Helm chart if requested
         if self.helm:
@@ -89,6 +91,36 @@ class ServiceGenerator(BaseGenerator):
 
         # Create CMakeLists.txt
         self.write_template("CMakeLists.txt", "cpp/CMakeLists.txt.tpl")
+
+    def _create_go_structure(self) -> None:
+        """Create Go-specific project structure."""
+        # Create minimal files
+        self.write_content("src/api/.gitkeep", "")
+        self.write_content("src/model/.gitkeep", "")
+        self.write_content("tests/api/.gitkeep", "")
+        self.write_content("tests/model/.gitkeep", "")
+
+        # Create main.go
+        self.write_content(
+            "src/main.go",
+            """package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        fmt.Fprintln(w, `{"message": "Hello World"}`)
+    })
+    fmt.Println("Listening on :8080...")
+    http.ListenAndServe(":8080", nil)
+}
+"""
+        )
+        # go.mod
+        self.write_template("go.mod", "go/go.mod.tpl")
 
     def _create_helm_chart(self) -> None:
         """Create Helm chart structure and files."""

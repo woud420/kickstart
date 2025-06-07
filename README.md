@@ -1,4 +1,4 @@
-# 🚀 Kickstart v0.2.0
+# 🚀 Kickstart v0.2.1
 
 The first public release of **Kickstart**, an opinionated scaffolding tool for full-stack projects with strong infra and CI/CD support.
 
@@ -21,7 +21,7 @@ The first public release of **Kickstart**, an opinionated scaffolding tool for f
 ## 📦 Installation
 
 ```bash
-curl -L https://github.com/woud420/kickstart/releases/download/v0.2.0/kickstart -o /usr/local/bin/kickstart
+curl -L https://github.com/woud420/kickstart/releases/download/v0.2.1/kickstart -o /usr/local/bin/kickstart
 chmod +x /usr/local/bin/kickstart
 ```
 
