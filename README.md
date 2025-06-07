@@ -117,6 +117,7 @@ kickstart create
 ```
 
 This will launch an interactive wizard to help you create your project.
+The wizard will prompt for the project type, name, root directory and other options.
 
 ### Shell Completion
 Enable shell completion for better CLI experience:
