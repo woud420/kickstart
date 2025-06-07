@@ -31,7 +31,7 @@ def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powers
 def create(
     type: str = typer.Argument(None),
     name: str = typer.Argument(None),
-    root: str = typer.Option(..., "--root", "-r", help="Root directory where the project will be created"),
+    root: str = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)")
