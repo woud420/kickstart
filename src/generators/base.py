@@ -11,7 +11,11 @@ class BaseGenerator:
         self.template_dir = Path(__file__).parent.parent / "templates"
 
     def create_project(self) -> bool:
-        """Initialize the project structure. Returns False if project exists."""
+        """Check if the project directory exists.
+
+        Return ``True`` when it doesn't exist; otherwise log a warning and
+        return ``False``.
+        """
         if self.project.exists():
             warn(f"Directory '{self.project}' already exists.")
             return False
