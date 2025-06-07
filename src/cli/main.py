@@ -1,6 +1,7 @@
 import typer
 from rich import print
 from rich.prompt import Prompt, Confirm
+from typing import Optional
 
 from src import __version__
 from src.utils.config import load_config
@@ -31,7 +32,7 @@ def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powers
 def create(
     type: str = typer.Argument(None),
     name: str = typer.Argument(None),
-    root: str = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
+    root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)")
@@ -41,11 +42,15 @@ def create(
     """
     config = load_config()
 
+    if type and root is None:
+        root = Prompt.ask("Where should the project be created?")
+
     if not type:
         typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
         type = Prompt.ask("What do you want to create?", choices=["service", "frontend", "lib", "cli", "mono"])
         name = Prompt.ask("Project name?")
-        root = Prompt.ask("Where should the project be created?")
+        if root is None:
+            root = Prompt.ask("Where should the project be created?")
         lang = Prompt.ask("Language", default=config.get("default_language", "python"))
         gh = Confirm.ask("Create GitHub repo?", default=False)
         if type in ["mono", "service"]:
