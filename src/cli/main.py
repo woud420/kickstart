@@ -30,7 +30,7 @@ def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powers
 
 @app.command()
 def create(
-    project_type: str = typer.Argument(None),
+    project_type: Optional[str] = typer.Argument(None),
     name: str = typer.Argument(None),
     root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
