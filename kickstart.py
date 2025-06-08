@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 from src.cli.main import app
 

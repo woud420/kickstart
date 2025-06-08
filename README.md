@@ -270,6 +270,33 @@ Keep your Kickstart installation up to date:
 kickstart upgrade
 ```
 
+## \ud83d\udcc4 Component Manifest
+Kickstart supports describing multiple components in a single Markdown file. The
+manifest can live anywhere; pass the file to the CLI when running Kickstart.
+
+### Keys
+- `name` \u2013 component identifier (services and frontends)
+- `root` \u2013 directory where the component is created
+- `lang` \u2013 optional language for a service. Kickstart chooses a default when
+  omitted.
+
+### Example manifest
+```markdown
+## services
+- name: user-service
+  lang: python
+  root: services/user-service
+
+## frontends
+- name: dashboard
+  root: apps/dashboard
+
+## monorepo
+- root: platform
+```
+
+Run `kickstart --manifest path/to/components.md` to generate everything listed.
+
 ### GitHub Integration
 To automatically create a remote repository when using `--gh`, set the
 `GITHUB_TOKEN` environment variable with a personal access token that has `repo`
