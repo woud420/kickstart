@@ -59,12 +59,12 @@ def create(
     if project_type == "service":
         create_service(name, lang, gh, config, helm=helm, root=root)
     elif project_type == "frontend":
-        create_frontend(name, config, root=root)
+        create_frontend(name, gh, config, root=root)
     elif project_type == "lib":
-        create_lib(name, lang, config, root=root)
+        create_lib(name, lang, gh, config, root=root)
     elif project_type == "cli":
-        create_cli(name, lang, config, root=root)
+        create_cli(name, lang, gh, config, root=root)
     elif project_type == "mono":
-        create_monorepo(name, config, helm=helm, root=root)
+        create_monorepo(name, gh, config, helm=helm, root=root)
     else:
         print(f"[bold red]❌ Type '{project_type}' not supported.[/]")

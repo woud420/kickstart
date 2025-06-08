@@ -1,11 +1,13 @@
 from pathlib import Path
 from typing import Optional
 from src.generators.base import BaseGenerator
+from src.utils.github import create_repo
 
 class MonorepoGenerator(BaseGenerator):
-    def __init__(self, name: str, config: dict, helm: bool = False, root: Optional[str] = None):
+    def __init__(self, name: str, gh: bool, config: dict, helm: bool = False, root: Optional[str] = None):
         super().__init__(name, config, root)
         self.helm = helm
+        self.gh = gh
         self.template_dir = self.template_dir / "monorepo"
 
     def create(self) -> None:
@@ -46,6 +48,9 @@ class MonorepoGenerator(BaseGenerator):
 
         self.log_success(f"Monorepo '{self.name}' scaffolded with {'Helm' if self.helm else 'Kustomize'} support in '{self.project}'.")
 
+        if self.gh:
+            create_repo(self.name)
+
     def _create_helm_structure(self) -> None:
         """Create Helm chart structure and files."""
         self.create_directories(["infra/helm/example-service/templates"])
@@ -65,8 +70,8 @@ class MonorepoGenerator(BaseGenerator):
         self.write_template("infra/k8s/base/deployment.yaml", "kustomize/deployment.yaml")
         self.write_template("infra/k8s/base/service.yaml", "kustomize/service.yaml")
 
-def create_monorepo(name: str, config: dict, helm: bool = False, root: str = None):
+def create_monorepo(name: str, gh: bool, config: dict, helm: bool = False, root: str = None):
     """Factory function for backward compatibility"""
-    generator = MonorepoGenerator(name, config, helm, root)
+    generator = MonorepoGenerator(name, gh, config, helm, root)
     generator.create()
 
