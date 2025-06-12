@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 from src.generators.base import BaseGenerator
 from src.utils.logger import success, warn
+from src.utils.github import create_repo
 
 class ServiceGenerator(BaseGenerator):
     def __init__(self, name: str, lang: str, gh: bool, config: dict, helm: bool = False, root: Optional[str] = None):
@@ -55,6 +56,9 @@ class ServiceGenerator(BaseGenerator):
             self._create_helm_chart()
 
         self.log_success(f"{self.lang.title()} service '{self.name}' created successfully in '{self.project}'!")
+
+        if self.gh:
+            create_repo(self.name)
 
     def _create_python_structure(self) -> None:
         """Create Python-specific project structure."""

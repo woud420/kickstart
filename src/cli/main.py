@@ -30,8 +30,8 @@ def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powers
 
 @app.command()
 def create(
-    type: str = typer.Argument(None),
-    name: str = typer.Argument(None),
+    project_type: Optional[str] = typer.Argument(None),
+    name: Optional[str] = typer.Argument(None),
     root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
@@ -42,29 +42,29 @@ def create(
     """
     config = load_config()
 
-    if type and root is None:
+    if project_type and root is None:
         root = Prompt.ask("Where should the project be created?")
 
-    if not type:
+    if not project_type:
         typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
-        type = Prompt.ask("What do you want to create?", choices=["service", "frontend", "lib", "cli", "mono"])
+        project_type = Prompt.ask("What do you want to create?", choices=["service", "frontend", "lib", "cli", "mono"])
         name = Prompt.ask("Project name?")
         if root is None:
             root = Prompt.ask("Where should the project be created?")
         lang = Prompt.ask("Language", default=config.get("default_language", "python"))
         gh = Confirm.ask("Create GitHub repo?", default=False)
-        if type in ["mono", "service"]:
+        if project_type in ["mono", "service"]:
             helm = Confirm.ask("Use Helm scaffolding?", default=False)
 
-    if type == "service":
+    if project_type == "service":
         create_service(name, lang, gh, config, helm=helm, root=root)
-    elif type == "frontend":
-        create_frontend(name, config, root=root)
-    elif type == "lib":
-        create_lib(name, lang, config, root=root)
-    elif type == "cli":
-        create_cli(name, lang, config, root=root)
-    elif type == "mono":
-        create_monorepo(name, config, helm=helm, root=root)
+    elif project_type == "frontend":
+        create_frontend(name, gh, config, root=root)
+    elif project_type == "lib":
+        create_lib(name, lang, gh, config, root=root)
+    elif project_type == "cli":
+        create_cli(name, lang, gh, config, root=root)
+    elif project_type == "mono":
+        create_monorepo(name, gh, config, helm=helm, root=root)
     else:
-        print(f"[bold red]❌ Type '{type}' not supported.[/]")
+        print(f"[bold red]❌ Type '{project_type}' not supported.[/]")

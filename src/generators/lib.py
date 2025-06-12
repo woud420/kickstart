@@ -1,11 +1,13 @@
 from pathlib import Path
 from typing import Optional
 from src.generators.base import BaseGenerator
+from src.utils.github import create_repo
 
 class LibraryGenerator(BaseGenerator):
-    def __init__(self, name: str, lang: str, config: dict, root: Optional[str] = None):
+    def __init__(self, name: str, lang: str, gh: bool, config: dict, root: Optional[str] = None):
         super().__init__(name, config, root)
         self.lang = lang
+        self.gh = gh
         self.lang_template_dir = self.template_dir / lang
 
     def create(self) -> None:
@@ -34,6 +36,9 @@ class LibraryGenerator(BaseGenerator):
             self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
 
         self.log_success(f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!")
+
+        if self.gh:
+            create_repo(self.name)
 
 class CLIGenerator(LibraryGenerator):
     def create(self) -> None:
@@ -65,13 +70,16 @@ class CLIGenerator(LibraryGenerator):
 
         self.log_success(f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!")
 
-def create_lib(name: str, lang: str, config: dict, root: str = None):
+        if self.gh:
+            create_repo(self.name)
+
+def create_lib(name: str, lang: str, gh: bool, config: dict, root: str = None):
     """Factory function for backward compatibility"""
-    generator = LibraryGenerator(name, lang, config, root)
+    generator = LibraryGenerator(name, lang, gh, config, root)
     generator.create()
 
-def create_cli(name: str, lang: str, config: dict, root: str = None):
+def create_cli(name: str, lang: str, gh: bool, config: dict, root: str = None):
     """Factory function for backward compatibility"""
-    generator = CLIGenerator(name, lang, config, root)
+    generator = CLIGenerator(name, lang, gh, config, root)
     generator.create()
 

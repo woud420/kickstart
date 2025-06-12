@@ -1,11 +1,13 @@
 from pathlib import Path
 from typing import Optional
 from src.generators.base import BaseGenerator
+from src.utils.github import create_repo
 
 class FrontendGenerator(BaseGenerator):
-    def __init__(self, name: str, config: dict, root: Optional[str] = None):
+    def __init__(self, name: str, gh: bool, config: dict, root: Optional[str] = None):
         super().__init__(name, config, root)
         self.template_dir = self.template_dir / "react"
+        self.gh = gh
 
     def create(self) -> None:
         if not self.create_project():
@@ -31,8 +33,11 @@ class FrontendGenerator(BaseGenerator):
 
         self.log_success(f"Frontend app '{self.name}' created successfully in '{self.project}'!")
 
-def create_frontend(name: str, config: dict, root: str = None):
+        if self.gh:
+            create_repo(self.name)
+
+def create_frontend(name: str, gh: bool, config: dict, root: str = None):
     """Factory function for backward compatibility"""
-    generator = FrontendGenerator(name, config, root)
+    generator = FrontendGenerator(name, gh, config, root)
     generator.create()
 
