@@ -1,18 +1,21 @@
 import subprocess
+import sys
 from pathlib import Path
 import tempfile
-import shutil
+import os
 
 def test_create_frontend():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        kickstart_bin = shutil.which("kickstart")
-        assert kickstart_bin is not None, "kickstart binary not found in PATH"
+        repo_root = Path(__file__).resolve().parents[2]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(repo_root)
 
         subprocess.run(
-            [kickstart_bin, "create", "frontend", "my-app", "--root", str(tmp)],
+            [sys.executable, str(repo_root / "kickstart.py"), "create", "frontend", "my-app", "--root", str(tmp)],
             cwd=tmp,
-            check=True
+            check=True,
+            env=env,
         )
 
         app = tmp / "my-app"
@@ -24,17 +27,19 @@ def test_create_frontend():
 def test_create_frontend_with_root():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        kickstart_bin = shutil.which("kickstart")
-        assert kickstart_bin is not None, "kickstart binary not found in PATH"
+        repo_root = Path(__file__).resolve().parents[2]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(repo_root)
 
         # Create a custom root directory
         custom_root = tmp / "custom-root"
         custom_root.mkdir()
 
         subprocess.run(
-            [kickstart_bin, "create", "frontend", "my-app", "--root", str(custom_root)],
+            [sys.executable, str(repo_root / "kickstart.py"), "create", "frontend", "my-app", "--root", str(custom_root)],
             cwd=tmp,
-            check=True
+            check=True,
+            env=env,
         )
 
         app = custom_root / "my-app"
