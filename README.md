@@ -270,14 +270,14 @@ Keep your Kickstart installation up to date:
 kickstart upgrade
 ```
 
-## \ud83d\udcc4 Component Manifest
+## 📄 Component Manifest
 Kickstart supports describing multiple components in a single Markdown file. The
 manifest can live anywhere; pass the file to the CLI when running Kickstart.
 
 ### Keys
-- `name` \u2013 component identifier (services and frontends)
-- `root` \u2013 directory where the component is created
-- `lang` \u2013 optional language for a service. Kickstart chooses a default when
+- `name` – component identifier (services and frontends)
+- `root` – directory where the component is created
+- `lang` – optional language for a service. Kickstart chooses a default when
   omitted.
 
 ### Example manifest
