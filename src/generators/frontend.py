@@ -36,8 +36,3 @@ class FrontendGenerator(BaseGenerator):
         if self.gh:
             create_repo(self.name)
 
-def create_frontend(name: str, gh: bool, config: dict, root: str = None):
-    """Factory function for backward compatibility"""
-    generator = FrontendGenerator(name, gh, config, root)
-    generator.create()
-

@@ -5,10 +5,13 @@ from typing import Optional
 
 from src import __version__
 from src.utils.config import load_config
-from src.generators.service import create_service
-from src.generators.frontend import create_frontend
-from src.generators.lib import create_lib, create_cli
-from src.generators.monorepo import create_monorepo
+from src.api import (
+    create_service,
+    create_frontend,
+    create_lib,
+    create_cli,
+    create_monorepo,
+)
 from src.utils.updater import check_for_update
 
 app = typer.Typer(help="Kickstart: Full-stack project scaffolding CLI")

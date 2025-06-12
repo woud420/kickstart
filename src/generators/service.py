@@ -141,8 +141,4 @@ func main() {
 
         success("Helm chart scaffolded")
 
-def create_service(name: str, lang: str, gh: bool, config: dict, helm: bool = False, root: str = None):
-    """Factory function for backward compatibility"""
-    generator = ServiceGenerator(name, lang, gh, config, helm, root)
-    generator.create()
 
