@@ -73,13 +73,3 @@ class CLIGenerator(LibraryGenerator):
         if self.gh:
             create_repo(self.name)
 
-def create_lib(name: str, lang: str, gh: bool, config: dict, root: str = None):
-    """Factory function for backward compatibility"""
-    generator = LibraryGenerator(name, lang, gh, config, root)
-    generator.create()
-
-def create_cli(name: str, lang: str, gh: bool, config: dict, root: str = None):
-    """Factory function for backward compatibility"""
-    generator = CLIGenerator(name, lang, gh, config, root)
-    generator.create()
-

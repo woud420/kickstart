@@ -70,8 +70,3 @@ class MonorepoGenerator(BaseGenerator):
         self.write_template("infra/k8s/base/deployment.yaml", "kustomize/deployment.yaml")
         self.write_template("infra/k8s/base/service.yaml", "kustomize/service.yaml")
 
-def create_monorepo(name: str, gh: bool, config: dict, helm: bool = False, root: str = None):
-    """Factory function for backward compatibility"""
-    generator = MonorepoGenerator(name, gh, config, helm, root)
-    generator.create()
-
