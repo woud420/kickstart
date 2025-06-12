@@ -15,7 +15,7 @@ class LibraryGenerator(BaseGenerator):
             return
 
         # Create project structure
-        self.create_directories([
+        self.init_basic_structure([
             "src",
             "tests",
             "architecture"
@@ -27,7 +27,7 @@ class LibraryGenerator(BaseGenerator):
         self.write_template("README.md", f"{self.lang}/README.md.tpl")
         
         # Write direct content
-        self.write_content("architecture/README.md", f"# {self.name} Library Docs\n")
+        self.create_architecture_docs(f"{self.name} Library Docs")
 
         # Language-specific files
         if self.lang == "python":
@@ -46,7 +46,7 @@ class CLIGenerator(LibraryGenerator):
             return
 
         # Create project structure
-        self.create_directories([
+        self.init_basic_structure([
             "src",
             "tests",
             "architecture"
@@ -58,7 +58,7 @@ class CLIGenerator(LibraryGenerator):
         self.write_template("README.md", f"{self.lang}/README.md.tpl")
         
         # Write direct content
-        self.write_content("architecture/README.md", f"# {self.name} CLI Docs\n")
+        self.create_architecture_docs(f"{self.name} CLI Docs")
 
         # Language-specific files
         if self.lang == "python":

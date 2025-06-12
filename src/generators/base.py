@@ -42,4 +42,13 @@ class BaseGenerator:
 
     def get_common_vars(self) -> Dict[str, str]:
         """Get common template variables."""
-        return {"service_name": self.name} 
+        return {"service_name": self.name}
+
+    def init_basic_structure(self, dirs: List[str]) -> None:
+        """Create the base directory structure for a new project."""
+        self.create_directories(dirs)
+
+    def create_architecture_docs(self, title: str) -> None:
+        """Create the architecture documentation directory and README."""
+        self.create_directories(["architecture"])
+        self.write_content("architecture/README.md", f"# {title}\n")

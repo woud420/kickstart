@@ -14,7 +14,7 @@ class FrontendGenerator(BaseGenerator):
             return
 
         # Create project structure
-        self.create_directories([
+        self.init_basic_structure([
             "src",
             "public",
             "tests",
@@ -29,7 +29,7 @@ class FrontendGenerator(BaseGenerator):
         self.write_template("package.json", "package.json.tpl")
         
         # Write direct content
-        self.write_content("architecture/README.md", f"# {self.name} Frontend Docs\n")
+        self.create_architecture_docs(f"{self.name} Frontend Docs")
 
         self.log_success(f"Frontend app '{self.name}' created successfully in '{self.project}'!")
 
