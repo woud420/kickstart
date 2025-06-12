@@ -37,6 +37,19 @@ def test_create_directories(base_generator, tmp_path):
         assert (tmp_path / "dir1").exists()
         assert (tmp_path / "dir2/subdir").exists()
 
+def test_init_basic_structure(base_generator, tmp_path):
+    with patch.object(base_generator, 'project', tmp_path):
+        base_generator.init_basic_structure(["foo", "bar"])
+        assert (tmp_path / "foo").exists()
+        assert (tmp_path / "bar").exists()
+
+def test_create_architecture_docs(base_generator, tmp_path):
+    with patch.object(base_generator, 'project', tmp_path):
+        base_generator.create_architecture_docs("My Docs")
+        arch = tmp_path / "architecture/README.md"
+        assert arch.exists()
+        assert arch.read_text() == "# My Docs\n"
+
 @patch('src.generators.base.write_file')
 def test_write_template(mock_write_file, base_generator, tmp_path):
     template_path = tmp_path / "template.txt"

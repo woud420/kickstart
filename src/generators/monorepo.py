@@ -15,7 +15,7 @@ class MonorepoGenerator(BaseGenerator):
             return
 
         # Create infrastructure directories
-        self.create_directories([
+        self.init_basic_structure([
             "infra/docker",
             "infra/terraform/modules/example_module",
             *[f"infra/terraform/env/{env}" for env in ["dev", "staging", "prod"]],
@@ -42,7 +42,7 @@ class MonorepoGenerator(BaseGenerator):
             self.write_template(f".github/workflows/{wf}", wf)
 
         # Write documentation and configuration
-        self.write_content("architecture/README.md", f"# {self.name} Deployment Infra Docs\n")
+        self.create_architecture_docs(f"{self.name} Deployment Infra Docs")
         self.write_template("Makefile", "Makefile.tpl", monorepo_name=self.name)
         self.write_template("README.md", "README.md.tpl", monorepo_name=self.name)
 

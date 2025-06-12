@@ -21,7 +21,7 @@ class ServiceGenerator(BaseGenerator):
             return
 
         # Create project structure
-        self.create_directories([
+        self.init_basic_structure([
             "src",
             "src/api",
             "src/model",
@@ -38,7 +38,7 @@ class ServiceGenerator(BaseGenerator):
         self.write_template("Makefile", f"{self.lang}/Makefile.tpl")
         
         # Write direct content
-        self.write_content("architecture/README.md", f"# {self.name} Architecture Notes\n")
+        self.create_architecture_docs(f"{self.name} Architecture Notes")
         self.write_content(".env.example", "EXAMPLE_ENV_VAR=value\n")
 
         # Language-specific files and structure
