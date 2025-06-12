@@ -1,18 +1,21 @@
 import tempfile
 from pathlib import Path
 import subprocess
-import shutil
+import sys
+import os
 
 def test_create_monorepo_kustomize():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        kickstart_bin = shutil.which("kickstart")
-        assert kickstart_bin is not None
+        repo_root = Path(__file__).resolve().parents[2]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(repo_root)
 
         subprocess.run(
-            [kickstart_bin, "create", "mono", "infra-stack", "--root", str(tmp)],
+            [sys.executable, str(repo_root / "kickstart.py"), "create", "mono", "infra-stack", "--root", str(tmp)],
             cwd=tmp,
-            check=True
+            check=True,
+            env=env,
         )
 
         base = tmp / "infra-stack"
@@ -22,17 +25,19 @@ def test_create_monorepo_kustomize():
 def test_create_monorepo_kustomize_with_root():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        kickstart_bin = shutil.which("kickstart")
-        assert kickstart_bin is not None
+        repo_root = Path(__file__).resolve().parents[2]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(repo_root)
 
         # Create a custom root directory
         custom_root = tmp / "custom-root"
         custom_root.mkdir()
 
         subprocess.run(
-            [kickstart_bin, "create", "mono", "infra-stack", "--root", str(custom_root)],
+            [sys.executable, str(repo_root / "kickstart.py"), "create", "mono", "infra-stack", "--root", str(custom_root)],
             cwd=tmp,
-            check=True
+            check=True,
+            env=env,
         )
 
         base = custom_root / "infra-stack"
