@@ -300,4 +300,5 @@ Run `kickstart --manifest path/to/components.md` to generate everything listed.
 ### GitHub Integration
 To automatically create a remote repository when using `--gh`, set the
 `GITHUB_TOKEN` environment variable with a personal access token that has `repo`
-permissions before running `kickstart create`.
+permissions before running `kickstart create`. Without a token, Kickstart will
+generate the project locally but skip GitHub repository creation.
