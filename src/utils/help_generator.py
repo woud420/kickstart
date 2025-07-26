@@ -43,6 +43,11 @@ class KickstartHelpGenerator:
                 "description": "Express.js service with tsx, ESLint, Prettier, Jest",
                 "project_types": ["service", "lib"]
             },
+            "elixir": {
+                "framework": "Phoenix",
+                "description": "Phoenix service with LiveView, Oban, Ecto, comprehensive testing",
+                "project_types": ["service", "lib"]
+            },
             "react": {
                 "framework": "React",
                 "description": "React app with Vite, TypeScript, Tailwind CSS",

@@ -42,6 +42,8 @@ class ServiceGenerator(BaseGenerator):
             self._create_go_structure()
         elif self.lang in ["typescript", "ts", "node"]:
             self._create_typescript_structure()
+        elif self.lang == "elixir":
+            self._create_elixir_structure()
 
         # Helm chart if requested
         if self.helm:
@@ -94,6 +96,16 @@ class ServiceGenerator(BaseGenerator):
                 "endpoints": "- `GET /` - Root endpoint\n- `GET /health` - Health check endpoint",
                 "docker_commands": "make docker-build\nmake docker-run",
                 "extra_docs": "\n3. **View API endpoints:**\n   - Health check: http://localhost:8000/health"
+            },
+            "elixir": {
+                "framework": "Phoenix",
+                "prerequisites": "- Erlang 26.2.5+ and Elixir 1.16.3+\n- [asdf](https://asdf-vm.com/) for version management (recommended)\n- PostgreSQL for database",
+                "commands": "make setup-asdf     # First-time setup: install asdf and language versions\nmake install       # Install dependencies\nmake dev           # Start development server with hot reload",
+                "lint_format": "make lint          # Run code linting with Credo\nmake format        # Format code with mix format\nmake check         # Run all checks (format, lint, test, dialyzer, security)",
+                "env_example": "MIX_ENV=dev\nPHX_SERVER=true",
+                "endpoints": "- `GET /health` - Health check endpoint\n- `GET /` - Root endpoint with service information",
+                "docker_commands": "docker build -t {{SERVICE_NAME}} .\ndocker run -p 4000:4000 {{SERVICE_NAME}}",
+                "extra_docs": "\n3. **View application:**\n   - Health check: http://localhost:4000/health\n   - Root endpoint: http://localhost:4000/"
             }
         }
         
@@ -101,15 +113,58 @@ class ServiceGenerator(BaseGenerator):
         lang_key = "typescript" if self.lang in ["typescript", "ts", "node"] else self.lang
         config = lang_configs.get(lang_key, lang_configs["python"])
         
-        readme_content = f"""# {{{{SERVICE_NAME}}}}
+        # Special handling for Elixir to include asdf setup
+        setup_section = ""
+        if self.lang == "elixir":
+            port = "4000"
+            setup_section = """
+### First-Time Setup (Elixir)
 
-A {self.lang.title()} service built with {config['framework']}.
+If you don't have Erlang/Elixir installed, use asdf for version management:
 
-## Quick Start
+1. **Setup asdf and language versions:**
+   ```bash
+   make setup-asdf
+   ```
+   This will:
+   - Install asdf version manager (detects your shell automatically)
+   - Install Erlang, Elixir, and Node.js versions from `.tool-versions`
+   - Add asdf to your shell profile
 
-### Prerequisites
-{config['prerequisites']}
+2. **Install dependencies:**
+   ```bash
+   make install
+   ```
 
+3. **Start development server:**
+   ```bash
+   make dev
+   ```
+   The API will be available at http://localhost:4000
+
+3. **View application:**
+   - Health check: http://localhost:4000/health
+   - Root endpoint: http://localhost:4000/
+
+### Quick Setup (if you already have Elixir)
+
+1. **Install dependencies:**
+   ```bash
+   make install
+   ```
+
+2. **Start development server:**
+   ```bash
+   make dev
+   ```
+   The API will be available at http://localhost:4000
+
+3. **View application:**
+   - Health check: http://localhost:4000/health
+   - Root endpoint: http://localhost:4000/"""
+        else:
+            port = "8000"
+            setup_section = f"""
 ### Development Setup
 
 1. **Install dependencies:**
@@ -121,7 +176,16 @@ A {self.lang.title()} service built with {config['framework']}.
    ```bash
    make dev
    ```
-   The API will be available at http://localhost:8000{config['extra_docs']}
+   The API will be available at http://localhost:{port}{config['extra_docs']}"""
+        
+        readme_content = f"""# {{{{SERVICE_NAME}}}}
+
+A {self.lang.title()} service built with {config['framework']}.
+
+## Quick Start
+
+### Prerequisites
+{config['prerequisites']}{setup_section}
 
 ## Development Commands
 
@@ -318,6 +382,114 @@ docker run -p 8000:8000 {{{{SERVICE_NAME}}}}
         
         # Create test file
         self.write_template("tests/index.test.ts", "typescript/index.test.ts.tpl")
+
+    def _create_elixir_structure(self) -> None:
+        """Create Elixir/Phoenix-specific project structure."""
+        # Create Elixir project directories following Phoenix conventions
+        self.create_directories([
+            "lib", f"lib/{self.name}", f"lib/{self.name}_web",
+            f"lib/{self.name}_web/controllers", 
+            "config", 
+            "priv/repo/migrations",
+            "priv/repo",
+            "test", "test/support",
+            f"test/{self.name}",
+            f"test/{self.name}_web",
+            f"test/{self.name}_web/controllers"
+        ])
+        
+        # Helper function to convert service name to different cases
+        def to_pascal_case(name):
+            return ''.join(word.capitalize() for word in name.replace('-', '_').split('_'))
+        
+        def to_snake_case(name):
+            return name.replace('-', '_').lower()
+        
+        pascal_name = to_pascal_case(self.name)
+        snake_name = to_snake_case(self.name)
+        
+        # Create main application files
+        self.write_template("mix.exs", "elixir/mix.exs.tpl", 
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        # Create lib structure
+        self.write_template(f"lib/{snake_name}/application.ex", "elixir/application.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template(f"lib/{snake_name}/repo.ex", "elixir/repo.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        # Create web structure
+        self.write_template(f"lib/{snake_name}_web.ex", "elixir/service_web.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template(f"lib/{snake_name}_web/endpoint.ex", "elixir/endpoint.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template(f"lib/{snake_name}_web/router.ex", "elixir/router.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        # Create controllers
+        self.write_template(f"lib/{snake_name}_web/controllers/health_controller.ex", 
+                          "elixir/health_controller.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template(f"lib/{snake_name}_web/controllers/root_controller.ex", 
+                          "elixir/root_controller.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        # Create config files
+        self.write_template("config/config.exs", "elixir/config.exs.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template("config/dev.exs", "elixir/dev.exs.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template("config/test.exs", "elixir/test.exs.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        # Create .env.example from shared template
+        self.write_template(".env.example", "_shared/env.example.tpl",
+                          language_specific_env="MIX_ENV=dev\nPHX_SERVER=true",
+                          default_port="4000")
+        
+        # Create .tool-versions for asdf
+        self.write_template(".tool-versions", "elixir/tool-versions.tpl")
+        
+        # Create test files
+        self.write_template("test/test_helper.exs", "elixir/test_helper.exs.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template("test/support/conn_case.ex", "elixir/conn_case.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template("test/support/data_case.ex", "elixir/data_case.ex.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        # Create controller tests
+        self.write_template(f"test/{snake_name}_web/controllers/health_controller_test.exs",
+                          "elixir/health_controller_test.exs.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
+        
+        self.write_template(f"test/{snake_name}_web/controllers/root_controller_test.exs",
+                          "elixir/root_controller_test.exs.tpl",
+                          SERVICE_NAME_PASCAL=pascal_name,
+                          SERVICE_NAME_UNDERSCORE=snake_name)
 
     def _create_helm_chart(self) -> None:
         """Create Helm chart structure and files."""
