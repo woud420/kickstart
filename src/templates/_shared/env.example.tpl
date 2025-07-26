@@ -1,16 +1,14 @@
 # Application Configuration
 APP_NAME={{SERVICE_NAME}}
 APP_VERSION=0.1.0
-GIN_MODE=debug
+{{LANGUAGE_SPECIFIC_ENV}}
 
 # Server Configuration
 HOST=0.0.0.0
-PORT=8000
+PORT={{DEFAULT_PORT}}
 
 # Database Configuration (if needed)
 # DATABASE_URL=postgresql://user:password@localhost:5432/{{SERVICE_NAME}}_db
-# DATABASE_MAX_OPEN_CONNS=25
-# DATABASE_MAX_IDLE_CONNS=5
 
 # Redis Configuration (if needed)
 # REDIS_URL=redis://localhost:6379/0

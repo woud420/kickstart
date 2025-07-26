@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Dict, List, Optional
-from src.utils.fs import write_file
+from src.utils.fs import write_file, compose_template
 from src.utils.logger import success, warn
 
 class BaseGenerator:
@@ -52,3 +52,30 @@ class BaseGenerator:
         """Create the architecture documentation directory and README."""
         self.create_directories(["architecture"])
         self.write_content("architecture/README.md", f"# {title}\n")
+
+    def write_standardized_template(self, target: str, template_type: str, lang: str, **extra_vars) -> None:
+        """Write a standardized template using shared patterns."""
+        from src.utils.template_config import TemplateConfig
+        
+        # Get language-specific variables
+        template_vars = TemplateConfig.get_vars(lang, self.name)
+        template_vars.update(extra_vars)
+        
+        # Generate content based on template type
+        if template_type == "env":
+            content = TemplateConfig.get_shared_env_template()
+        else:
+            # Fall back to regular template
+            template_path = self.template_dir / lang / f"{template_type}.tpl"
+            if template_path.exists():
+                content = template_path.read_text()
+            else:
+                self.log_success(f"Template not found: {template_path}")
+                return
+        
+        # Replace variables
+        for key, value in template_vars.items():
+            content = content.replace(f"{{{{{key.upper()}}}}}", str(value))
+        
+        # Write to file
+        write_file(self.project / target, content)

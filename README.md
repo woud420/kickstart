@@ -17,6 +17,7 @@ The first public release of **Kickstart**, an opinionated scaffolding tool for f
 - 📦 Package as a **single binary** using `shiv`
 - 🔄 Self-updating with `kickstart upgrade`
 - 🔁 Shell autocompletion with `kickstart completion [bash|zsh]`
+- 🤖 **AI Integration**: Enable Claude and other AI models to use kickstart directly via MCP (see `tools/mcp-server/`)
 
 ## 📦 Installation
 
@@ -302,3 +303,42 @@ To automatically create a remote repository when using `--gh`, set the
 `GITHUB_TOKEN` environment variable with a personal access token that has `repo`
 permissions before running `kickstart create`. Without a token, Kickstart will
 generate the project locally but skip GitHub repository creation.
+
+## 🤖 AI Integration
+
+Kickstart includes an MCP (Model Context Protocol) server that allows AI models like Claude to use kickstart directly through structured tool calls.
+
+### Quick Setup
+
+```bash
+# Install MCP server dependencies
+make mcp-setup
+
+# Test the MCP server
+make mcp-test
+```
+
+### Configure with Claude Desktop
+
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "kickstart": {
+      "command": "python",
+      "args": ["/path/to/your/kickstart/tools/mcp-server/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/path/to/your/kickstart"
+      }
+    }
+  }
+}
+```
+
+Once configured, you can ask Claude to:
+- "Create a Python FastAPI service called user-api"
+- "Generate a React frontend with TypeScript"
+- "Show me available project templates"
+
+For detailed setup instructions, see [`tools/mcp-server/README.md`](tools/mcp-server/README.md).

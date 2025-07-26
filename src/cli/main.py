@@ -14,8 +14,10 @@ from src.api import (
 )
 from src.utils.updater import check_for_update
 from src.utils.codegen import generate_dao_from_schema
+from src.utils.help_generator import get_help_generator
 
 app = typer.Typer(help="Kickstart: Full-stack project scaffolding CLI")
+
 
 @app.command()
 def version():
@@ -26,6 +28,13 @@ def version():
 def upgrade():
     """Upgrade to the latest version."""
     check_for_update()
+
+@app.command("list")
+def list_templates():
+    """List all available project templates and their capabilities."""
+    help_gen = get_help_generator()
+    output = help_gen.generate_list_command_output()
+    print(output)
 
 @app.command()
 def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powershell")):
@@ -38,12 +47,10 @@ def create(
     name: Optional[str] = typer.Argument(None),
     root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
-    gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
-    helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)")
+    gh: bool = typer.Option(False, "--gh", help="Create GitHub repository automatically"),
+    helm: bool = typer.Option(False, "--helm", help="Add Helm chart for Kubernetes deployment (services and monorepos only)")
 ):
-    """
-    Create a new service, lib, CLI, frontend, or mono repo.
-    """
+    """Create a new project with modern tooling and best practices."""
     config = load_config()
 
     if project_type and root is None:
@@ -99,3 +106,15 @@ def codegen(
     except Exception as e:
         print(f"[bold red]❌ Error generating code: {e}[/]")
         raise typer.Exit(1)
+
+# Initialize dynamic help after all commands are defined
+def _initialize_dynamic_help():
+    """Update CLI help text dynamically based on available templates."""
+    try:
+        help_gen = get_help_generator()
+        create.__doc__ = help_gen.generate_detailed_help_docstring()
+    except Exception:
+        # Fallback to static help if dynamic generation fails
+        pass
+
+_initialize_dynamic_help()

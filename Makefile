@@ -4,7 +4,7 @@ POETRY := $(VENV)/bin/poetry
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 
-.PHONY: help setup install build run tests clean package shell venv
+.PHONY: help setup install build run tests clean package shell venv mcp-setup mcp-test
 
 help:
 	@echo "Usage:"
@@ -15,6 +15,8 @@ help:
 	@echo "  make tests      - Run pytest tests"
 	@echo "  make package    - Package poetry project"
 	@echo "  make shell      - Drop into Poetry shell"
+	@echo "  make mcp-setup  - Set up MCP server dependencies"
+	@echo "  make mcp-test   - Test MCP server manually"
 	@echo "  make clean      - Remove venv and build artifacts"
 
 venv: $(VENV)/bin/activate
@@ -48,6 +50,16 @@ package: venv
 
 shell: venv
 	@$(POETRY) shell
+
+mcp-setup: venv
+	@echo "🔧 Setting up MCP server dependencies..."
+	@$(PIP) install -r tools/mcp-server/requirements.txt
+	@echo "✅ MCP setup complete! See tools/mcp-server/README.md for configuration instructions."
+
+mcp-test: venv mcp-setup
+	@echo "🧪 Testing MCP server..."
+	@echo "Starting MCP server (Ctrl+C to stop)..."
+	@PYTHONPATH=. $(PYTHON) tools/mcp-server/mcp_server.py
 
 clean:
 	rm -rf $(VENV) dist/ kickstart *.egg-info .pytest_cache
