@@ -13,6 +13,7 @@ from src.api import (
     create_monorepo,
 )
 from src.utils.updater import check_for_update
+from src.utils.codegen import generate_dao_from_schema
 
 app = typer.Typer(help="Kickstart: Full-stack project scaffolding CLI")
 
@@ -71,3 +72,30 @@ def create(
         create_monorepo(name, gh, config, helm=helm, root=root)
     else:
         print(f"[bold red]❌ Type '{project_type}' not supported.[/]")
+
+@app.command()
+def codegen(
+    schema_file: str = typer.Argument(..., help="Path to SQL schema file"),
+    language: str = typer.Option("rust", "--lang", "-l", help="Target language (rust, cpp, python, go)"),
+    output_dir: str = typer.Option("./src", "--output", "-o", help="Output directory"),
+    service_name: str = typer.Option("service", "--name", "-n", help="Service name")
+):
+    """Generate DAO code from database schema for multiple languages."""
+    import os
+    from pathlib import Path
+    
+    if not os.path.exists(schema_file):
+        print(f"[bold red]❌ Schema file '{schema_file}' not found.[/]")
+        raise typer.Exit(1)
+    
+    supported_languages = ['rust', 'cpp', 'python', 'go']
+    if language not in supported_languages:
+        print(f"[bold red]❌ Unsupported language '{language}'. Supported: {', '.join(supported_languages)}[/]")
+        raise typer.Exit(1)
+    
+    try:
+        generate_dao_from_schema(schema_file, output_dir, service_name, language)
+        print(f"[bold green]✅ Generated {language.upper()} DAO code in '{output_dir}'[/]")
+    except Exception as e:
+        print(f"[bold red]❌ Error generating code: {e}[/]")
+        raise typer.Exit(1)

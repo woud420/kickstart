@@ -1,5 +1,5 @@
 # {{SERVICE_NAME}} Makefile
-.PHONY: help install dev build test lint format clean
+.PHONY: help install dev build test lint format clean check
 
 # Colors for output
 GREEN := \033[0;32m
@@ -13,43 +13,55 @@ help: ## Show available commands
 	@echo ""
 
 install: ## Install dependencies
-	@echo "$(BLUE)Installing dependencies with uv...$(NC)"
-	@uv sync --dev
+	@echo "$(BLUE)Installing dependencies...$(NC)"
+	@npm install
 	@echo "$(GREEN)Dependencies installed!$(NC)"
 
-dev: ## Start development server
+dev: ## Start development server with auto-reload
 	@echo "$(BLUE)Starting development server...$(NC)"
-	@uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+	@npm run dev
 
 build: ## Build the application
 	@echo "$(BLUE)Building application...$(NC)"
-	@uv build
+	@npm run build
 	@echo "$(GREEN)Build complete!$(NC)"
+
+start: ## Start production server
+	@echo "$(BLUE)Starting production server...$(NC)"
+	@npm start
 
 test: ## Run tests
 	@echo "$(BLUE)Running tests...$(NC)"
-	@uv run pytest -v
+	@npm test
 
 test-watch: ## Run tests in watch mode
 	@echo "$(BLUE)Running tests in watch mode...$(NC)"
-	@uv run pytest --tb=short -q --disable-warnings -x -vvv --ff -l
+	@npm run test:watch
 
 lint: ## Run linting
 	@echo "$(BLUE)Running linters...$(NC)"
-	@uv run ruff check .
-	@uv run mypy src/
+	@npm run lint
 
 format: ## Format code
 	@echo "$(BLUE)Formatting code...$(NC)"
-	@uv run black .
-	@uv run ruff check --fix .
+	@npm run format
 	@echo "$(GREEN)Code formatted!$(NC)"
 
 clean: ## Clean build artifacts
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
-	@rm -rf dist/ build/ *.egg-info .pytest_cache __pycache__ .mypy_cache .ruff_cache
-	@find . -type d -name "__pycache__" -delete
-	@find . -type f -name "*.pyc" -delete
+	@rm -rf dist/ node_modules/.cache coverage/
 	@echo "$(GREEN)Clean complete!$(NC)"
 
-check: lint test ## Run all checks (lint + test)
+check: ## Run all checks (build + lint + test)
+	@echo "$(BLUE)Running all checks...$(NC)"
+	@npm run check
+	@echo "$(GREEN)All checks passed!$(NC)"
+
+# Docker Commands
+docker-build: ## Build Docker image
+	@echo "$(BLUE)Building Docker image...$(NC)"
+	@docker build -t {{SERVICE_NAME}}:latest .
+
+docker-run: ## Run Docker container
+	@echo "$(BLUE)Running Docker container...$(NC)"
+	@docker run -p 8000:8000 {{SERVICE_NAME}}:latest

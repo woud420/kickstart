@@ -20,16 +20,9 @@ class ServiceGenerator(BaseGenerator):
             warn(f"No templates for language: {self.lang}")
             return
 
-        # Create project structure
-        self.init_basic_structure([
-            "src",
-            "src/api",
-            "src/model",
-            "tests",
-            "tests/api",
-            "tests/model",
-            "architecture"
-        ])
+        # Create basic directories (language-specific structure created later)
+        self.create_directories(["architecture"])
+        self.create_architecture_docs(f"{self.name} Architecture Notes")
 
         # Write common template files
         self.write_template("README.md", f"{self.lang}/README.md.tpl")
@@ -37,9 +30,6 @@ class ServiceGenerator(BaseGenerator):
         self.write_template("Dockerfile", f"{self.lang}/Dockerfile.tpl")
         self.write_template("Makefile", f"{self.lang}/Makefile.tpl")
         
-        # Write direct content
-        self.create_architecture_docs(f"{self.name} Architecture Notes")
-        self.write_content(".env.example", "EXAMPLE_ENV_VAR=value\n")
 
         # Language-specific files and structure
         if self.lang == "python":
@@ -50,6 +40,8 @@ class ServiceGenerator(BaseGenerator):
             self._create_cpp_structure()
         elif self.lang == "go":
             self._create_go_structure()
+        elif self.lang in ["typescript", "ts", "node"]:
+            self._create_typescript_structure()
 
         # Helm chart if requested
         if self.helm:
@@ -62,27 +54,54 @@ class ServiceGenerator(BaseGenerator):
 
     def _create_python_structure(self) -> None:
         """Create Python-specific project structure."""
+        # Create Python project directories
+        self.create_directories([
+            "src", "src/api", "src/model", 
+            "tests", "tests/api", "tests/model"
+        ])
+        
         # Create __init__.py files
         for dir_path in ["src", "src/api", "src/model", "tests", "tests/api", "tests/model"]:
             self.write_content(f"{dir_path}/__init__.py", "")
 
-        # Create minimal main file
-        self.write_content("src/main.py", "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/')\ndef root():\n    return {'message': 'Hello World'}\n")
+        # Create main FastAPI app from template
+        self.write_template("src/main.py", "python/main.py.tpl")
+        
+        # Create pyproject.toml from template
+        self.write_template("pyproject.toml", "python/pyproject.toml.tpl")
+        
+        # Create .env.example from template
+        self.write_template(".env.example", "python/env.example.tpl")
 
-        # Create requirements.txt
+        # Create requirements.txt (for compatibility, though uv uses pyproject.toml)
         self.write_template("requirements.txt", "python/requirements.txt.tpl")
+        
+        # Create test file
+        self.write_template("tests/test_main.py", "python/test_main.py.tpl")
 
     def _create_rust_structure(self) -> None:
         """Create Rust-specific project structure."""
+        # Create Rust project directories
+        self.create_directories([
+            "src", "src/api", "src/model", 
+            "tests", "tests/api", "tests/model"
+        ])
+        
         # Create mod.rs files
         for dir_path in ["src/api", "src/model", "tests/api", "tests/model"]:
             self.write_content(f"{dir_path}/mod.rs", "// Module definitions\n")
 
-        # Create minimal main file
-        self.write_content("src/main.rs", "use actix_web::{web, App, HttpResponse, HttpServer};\n\n#[actix_web::main]\nasync fn main() -> std::io::Result<()> {\n    HttpServer::new(|| {\n        App::new()\n            .route(\"/\", web::get().to(|| async { HttpResponse::Ok().json(\"Hello World\") }))\n    })\n    .bind(\"127.0.0.1:8080\")?\n    .run()\n    .await\n}\n")
-
-        # Create Cargo.toml
+        # Create main Actix-web app from template
+        self.write_template("src/main.rs", "rust/main.rs.tpl")
+        
+        # Create Cargo.toml from template
         self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
+        
+        # Create .env.example from template
+        self.write_template(".env.example", "rust/env.example.tpl")
+        
+        # Create test file
+        self.write_template("tests/main_test.rs", "rust/main_test.rs.tpl")
 
     def _create_cpp_structure(self) -> None:
         """Create C++-specific project structure."""
@@ -98,33 +117,56 @@ class ServiceGenerator(BaseGenerator):
 
     def _create_go_structure(self) -> None:
         """Create Go-specific project structure."""
-        # Create minimal files
-        self.write_content("src/api/.gitkeep", "")
-        self.write_content("src/model/.gitkeep", "")
-        self.write_content("tests/api/.gitkeep", "")
-        self.write_content("tests/model/.gitkeep", "")
+        # Create Go project directories (following Go standard layout)
+        self.create_directories([
+            "cmd",
+            "internal/api",
+            "internal/model", 
+            "internal/config",
+            "pkg",
+            "tests/api",
+            "tests/model"
+        ])
 
-        # Create main.go
-        self.write_content(
-            "src/main.go",
-            """package main
-
-import (
-    "fmt"
-    "net/http"
-)
-
-func main() {
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintln(w, `{"message": "Hello World"}`)
-    })
-    fmt.Println("Listening on :8080...")
-    http.ListenAndServe(":8080", nil)
-}
-"""
-        )
-        # go.mod
+        # Create main.go from template  
+        self.write_template("cmd/main.go", "go/main.go.tpl")
+        
+        # Create go.mod from template
         self.write_template("go.mod", "go/go.mod.tpl")
+        
+        # Create .env.example from template
+        self.write_template(".env.example", "go/env.example.tpl")
+        
+        # Create test file
+        self.write_template("cmd/main_test.go", "go/main_test.go.tpl")
+
+    def _create_typescript_structure(self) -> None:
+        """Create TypeScript/Node.js-specific project structure."""
+        # Create project directories
+        self.create_directories([
+            "src/routes",
+            "src/middleware", 
+            "src/types",
+            "src/utils",
+            "tests/routes",
+            "tests/utils"
+        ])
+
+        # Create main application file
+        self.write_template("src/index.ts", "typescript/index.ts.tpl")
+        
+        # Create package.json and config files
+        self.write_template("package.json", "typescript/package.json.tpl")
+        self.write_template("tsconfig.json", "typescript/tsconfig.json.tpl")
+        self.write_template("jest.config.js", "typescript/jest.config.js.tpl")
+        self.write_template(".eslintrc.js", "typescript/eslintrc.js.tpl")
+        self.write_template(".prettierrc", "typescript/prettierrc.tpl")
+        
+        # Create .env.example from template
+        self.write_template(".env.example", "typescript/env.example.tpl")
+        
+        # Create test file
+        self.write_template("tests/index.test.ts", "typescript/index.test.ts.tpl")
 
     def _create_helm_chart(self) -> None:
         """Create Helm chart structure and files."""
