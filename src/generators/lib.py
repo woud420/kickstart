@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Optional
 from src.generators.base import BaseGenerator
-from src.utils.github import create_repo
+from src.generators.mixins import GitHubMixin, CommonTemplatesMixin
 
-class LibraryGenerator(BaseGenerator):
+class LibraryGenerator(BaseGenerator, GitHubMixin, CommonTemplatesMixin):
     def __init__(self, name: str, lang: str, gh: bool, config: dict, root: Optional[str] = None):
         super().__init__(name, config, root)
         self.lang = lang
@@ -22,9 +22,7 @@ class LibraryGenerator(BaseGenerator):
         ])
 
         # Write common template files
-        self.write_template(".gitignore", f"{self.lang}/gitignore.tpl")
-        self.write_template("Makefile", f"{self.lang}/Makefile.tpl")
-        self.write_template("README.md", f"{self.lang}/README.md.tpl")
+        self.write_common_lib_templates(self.lang)
         
         # Write direct content
         self.create_architecture_docs(f"{self.name} Library Docs")
@@ -37,8 +35,7 @@ class LibraryGenerator(BaseGenerator):
 
         self.log_success(f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!")
 
-        if self.gh:
-            create_repo(self.name)
+        self.create_github_repo_if_requested()
 
 class CLIGenerator(LibraryGenerator):
     def create(self) -> None:
@@ -53,9 +50,7 @@ class CLIGenerator(LibraryGenerator):
         ])
 
         # Write common template files
-        self.write_template(".gitignore", f"{self.lang}/gitignore.tpl")
-        self.write_template("Makefile", f"{self.lang}/Makefile.tpl")
-        self.write_template("README.md", f"{self.lang}/README.md.tpl")
+        self.write_common_lib_templates(self.lang)
         
         # Write direct content
         self.create_architecture_docs(f"{self.name} CLI Docs")
@@ -70,6 +65,5 @@ class CLIGenerator(LibraryGenerator):
 
         self.log_success(f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!")
 
-        if self.gh:
-            create_repo(self.name)
+        self.create_github_repo_if_requested()
 

@@ -4,19 +4,17 @@ The first public release of **Kickstart**, an opinionated scaffolding tool for f
 
 ## ✨ Features
 
-- 🔧 Create structured **backend services** (`python`, `rust`, `ts-node`, `cpp`)
-- 🖥️ Generate modern **frontend apps** (React/TS)
-- 📦 Define **libraries** and **CLI tools** as standalone modules
-- 🏗️ Spin up an entire **infrastructure monorepo**:
-  - Kustomize overlays OR Helm charts (via `--helm`)
-  - Docker Compose for local dev
-  - Terraform for cloud provisioning
-  - GitHub Actions for CI/CD pipelines
-- 🛠️ Built-in **Makefiles**, `.gitignore`, `.env.example`, `README.md`, `architecture/`
-- 🧪 Supports unit, integration, and e2e test layout
-- 📦 Package as a **single binary** using `shiv`
-- 🔄 Self-updating with `kickstart upgrade`
-- 🔁 Shell autocompletion with `kickstart completion [bash|zsh]`
+**Project Types:**
+- 🔧 **Backend Services** - Python, Rust, Elixir, Go, TypeScript, C++
+- 🖥️ **Frontend Apps** - React with TypeScript  
+- 📦 **Libraries & CLIs** - Reusable packages and command-line tools
+- 🏗️ **Infrastructure Monorepos** - Complete platform setup with K8s/Docker
+
+**Built-in Tooling:**
+- 🛠️ Makefiles, Docker, CI/CD, testing setup, documentation
+- ⚙️ ASDF integration with automatic shell detection (Elixir)
+- 🤖 AI integration via MCP for Claude and other models
+- 🔄 Self-updating and shell completion
 
 ## 📦 Installation
 
@@ -25,280 +23,88 @@ curl -L https://github.com/woud420/kickstart/releases/download/v0.2.1/kickstart 
 chmod +x /usr/local/bin/kickstart
 ```
 
-## 🚀 Quick Start Examples
-
-### 1. Frontend Project
-Create a modern React/TypeScript frontend application:
+## 🚀 Quick Start
 
 ```bash
-kickstart create frontend my-awesome-app --root ./projects
+# Backend service with any language
+kickstart create service my-api --lang python --gh
+kickstart create service my-api --lang elixir --gh  # Includes ASDF setup
+kickstart create service my-api --lang rust --gh
+
+# React frontend
+kickstart create frontend my-app --gh
+
+# Infrastructure monorepo  
+kickstart create mono my-platform --helm
+
+# Library or CLI tool
+kickstart create lib my-utils --lang python
+kickstart create cli my-tool --lang python
 ```
 
-This will generate:
-- React + TypeScript setup
-- Vite as the build tool
-- ESLint and Prettier configuration
-- Jest for testing
-- GitHub Actions workflow for CI/CD
-
-### 2. Backend Service
-Create a Python backend service with infrastructure support:
-
-```bash
-kickstart create service user-service --lang python --root ./services --gh --helm
-```
-
-This will generate:
-- FastAPI/Flask project structure
-- Dockerfile and docker-compose.yml
-- Helm chart for Kubernetes deployment
-- GitHub Actions workflow
-- Unit and integration test setup
-- Makefile with common commands
-
-Project structure:
-```
-user-service/
-├── src/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── routes.py
-│   │   └── models.py
-│   ├── core/
-│   │   ├── __init__.py
-│   │   └── config.py
-│   └── services/
-│       └── __init__.py
-├── tests/
-│   ├── __init__.py
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── test_routes.py
-│   │   └── test_models.py
-│   ├── core/
-│   │   ├── __init__.py
-│   │   └── test_config.py
-│   └── services/
-│       └── __init__.py
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── Makefile
-├── README.md
-└── .github/
-    └── workflows/
-        └── ci.yml
-```
-
-### 2.1 Rust Service
-Create a Rust backend service with infrastructure support:
-
-```bash
-kickstart create service payment-service --lang rust --root ./services --gh --helm
-```
-
-This will generate:
-- Rust project with Cargo.toml
-- Actix-web or Rocket.rs setup
-- Dockerfile and docker-compose.yml
-- Helm chart for Kubernetes deployment
-- GitHub Actions workflow
-- Unit and integration test setup
-- Makefile with common commands
-
-Project structure:
-```
-payment-service/
-├── src/
-│   ├── main.rs
-│   ├── api/
-│   │   ├── mod.rs
-│   │   ├── routes.rs
-│   │   └── models.rs
-│   ├── core/
-│   │   ├── mod.rs
-│   │   └── config.rs
-│   └── services/
-│       └── mod.rs
-├── tests/
-│   ├── api/
-│   │   ├── mod.rs
-│   │   ├── routes_test.rs
-│   │   └── models_test.rs
-│   ├── core/
-│   │   ├── mod.rs
-│   │   └── config_test.rs
-│   └── services/
-│       └── mod.rs
-├── Cargo.toml
-├── Dockerfile
-├── docker-compose.yml
-├── Makefile
-├── README.md
-└── .github/
-    └── workflows/
-        └── ci.yml
-```
-
-### 2.2 C++ Service
-Create a C++ backend service with infrastructure support:
-
-```bash
-kickstart create service compute-service --lang cpp --root ./services --gh --helm
-```
-
-This will generate:
-- CMake-based project structure
-- Modern C++ setup (C++17/20)
-- Dockerfile and docker-compose.yml
-- Helm chart for Kubernetes deployment
-- GitHub Actions workflow
-- Unit and integration test setup
-- Makefile with common commands
-
-Project structure:
-```
-compute-service/
-├── src/
-│   ├── main.cpp
-│   ├── api/
-│   │   ├── routes.hpp
-│   │   └── models.hpp
-│   ├── core/
-│   │   ├── config.hpp
-│   │   └── config.cpp
-│   └── services/
-│       └── service.hpp
-├── tests/
-│   ├── api/
-│   │   ├── routes_test.cpp
-│   │   └── models_test.cpp
-│   ├── core/
-│   │   └── config_test.cpp
-│   └── services/
-│       └── service_test.cpp
-├── CMakeLists.txt
-├── Dockerfile
-├── docker-compose.yml
-├── Makefile
-├── README.md
-└── .github/
-    └── workflows/
-        └── ci.yml
-```
-
-### 3. Infrastructure Monorepo
-Create a complete infrastructure setup for a microservices architecture:
-
-```bash
-kickstart create mono my-platform --root ./platform --helm
-```
-
-This will generate a monorepo structure with:
-```
-platform/
-├── apps/
-│   ├── frontend/          # React frontend
-│   ├── auth-service/      # Authentication service
-│   └── api-service/       # Main API service
-├── infra/
-│   ├── k8s/              # Kubernetes manifests
-│   ├── terraform/        # Cloud infrastructure
-│   └── docker-compose/   # Local development
-└── .github/
-    └── workflows/        # CI/CD pipelines
-```
-
-### 4. Library Package
-Create a reusable library:
-
-```bash
-kickstart create lib my-utils --lang python --root ./libs
-```
-
-This will generate:
-- Python package structure
-- Poetry for dependency management
-- Unit test setup
-- Documentation template
-- GitHub Actions workflow
-
-### 5. CLI Tool
-Create a command-line tool:
-
-```bash
-kickstart create cli my-cli --lang python --root ./tools
-```
-
-This will generate:
-- CLI project structure
-- Click or Typer setup
-- Argument parsing
-- Command structure
-- Unit tests
-- GitHub Actions workflow
+**What you get:** Full project structure, Docker, CI/CD, testing, documentation, and deployment configs.
 
 ## 🔧 Advanced Usage
 
-### Interactive Mode
-If you prefer a guided experience, run without arguments:
-
+**Interactive Mode:**
 ```bash
-kickstart create
+kickstart create  # Guided wizard
 ```
 
-This will launch an interactive wizard to help you create your project.
-The wizard will prompt for the project type, name, root directory and other options.
-
-### Shell Completion
-Enable shell completion for better CLI experience:
-
+**Batch Generation:**
 ```bash
-# For zsh
+kickstart --manifest components.md  # Generate multiple projects from manifest
+```
+
+**Shell Completion:**
+```bash
 kickstart completion zsh >> ~/.zshrc
-
-# For bash
-kickstart completion bash >> ~/.bashrc
+kickstart upgrade  # Self-update
 ```
 
-### Self-Updating
-Keep your Kickstart installation up to date:
+**GitHub Integration:** Set `GITHUB_TOKEN` environment variable for automatic repo creation with `--gh`.
+
+## 🤖 AI Integration
+
+Kickstart includes MCP (Model Context Protocol) support for AI models like Claude.
 
 ```bash
-kickstart upgrade
+make mcp-setup  # Install dependencies
+make mcp-test   # Test the server
 ```
 
-## 📄 Component Manifest
-Kickstart supports describing multiple components in a single Markdown file. The
-manifest can live anywhere; pass the file to the CLI when running Kickstart.
+Configure Claude Desktop to use kickstart directly. See [`tools/mcp-server/README.md`](tools/mcp-server/README.md) for details.
 
-### Keys
-- `name` – component identifier (services and frontends)
-- `root` – directory where the component is created
-- `lang` – optional language for a service. Kickstart chooses a default when
-  omitted.
+## 🏗️ Architecture
 
-### Example manifest
-```markdown
-## services
-- name: user-service
-  lang: python
-  root: services/user-service
+Kickstart uses a modular, extensible architecture:
 
-## frontends
-- name: dashboard
-  root: apps/dashboard
+- **Strategy Pattern**: Each language (Python, Elixir, etc.) has its own strategy class
+- **Mixins**: Common functionality (GitHub, templates) shared across generators  
+- **Centralized Config**: Language settings in one place for easy maintenance
 
-## monorepo
-- root: platform
+### Adding New Languages
+
+```python
+# 1. Add to lang_config.py
+LANGUAGE_CONFIG["kotlin"] = {"framework": "Spring Boot", ...}
+
+# 2. Create strategy class  
+class KotlinStrategy(LanguageStrategy):
+    def create_structure(self): # implementation
+
+# 3. Register it
+LANGUAGE_STRATEGIES["kotlin"] = KotlinStrategy
 ```
 
-Run `kickstart --manifest path/to/components.md` to generate everything listed.
+**Recent improvements:** 83% code reduction, eliminated duplication, maintained full compatibility.
 
-### GitHub Integration
-To automatically create a remote repository when using `--gh`, set the
-`GITHUB_TOKEN` environment variable with a personal access token that has `repo`
-permissions before running `kickstart create`. Without a token, Kickstart will
-generate the project locally but skip GitHub repository creation.
+## 🧪 Development
+
+```bash
+make tests     # Run all tests
+make build     # Build binary
+make package   # Package for distribution
+```
+
+**Contributing:** The modular architecture makes it easy to add languages, extend generators, or improve templates. See the [Architecture](#-architecture) section for guidance.

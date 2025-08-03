@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Optional
 from src.generators.base import BaseGenerator
-from src.utils.github import create_repo
+from src.generators.mixins import GitHubMixin
 
-class FrontendGenerator(BaseGenerator):
+class FrontendGenerator(BaseGenerator, GitHubMixin):
     def __init__(self, name: str, gh: bool, config: dict, root: Optional[str] = None):
         super().__init__(name, config, root)
         self.template_dir = self.template_dir / "react"
@@ -33,6 +33,5 @@ class FrontendGenerator(BaseGenerator):
 
         self.log_success(f"Frontend app '{self.name}' created successfully in '{self.project}'!")
 
-        if self.gh:
-            create_repo(self.name)
+        self.create_github_repo_if_requested()
 
