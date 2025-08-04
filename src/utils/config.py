@@ -1,8 +1,10 @@
 import toml
 from pathlib import Path
+from typing import Any
 
-def load_config():
-    config = {}
+
+def load_config() -> dict[str, Any]:
+    config: dict[str, Any] = {}
     paths = [
         Path.cwd() / ".kickstart.toml",
         Path.home() / ".kickstartrc",

@@ -1,9 +1,9 @@
 """Public API for Kickstart generators."""
 
-from src.generators.service import ServiceGenerator
-from src.generators.frontend import FrontendGenerator
-from src.generators.lib import LibraryGenerator, CLIGenerator
-from src.generators.monorepo import MonorepoGenerator
+from src.generator.service import ServiceGenerator
+from src.generator.frontend import FrontendGenerator
+from src.generator.lib import LibraryGenerator, CLIGenerator
+from src.generator.monorepo import MonorepoGenerator
 
 __all__ = [
     "create_service",

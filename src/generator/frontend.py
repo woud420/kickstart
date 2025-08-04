@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Optional
-from src.generators.base import BaseGenerator
+from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
 
 class FrontendGenerator(BaseGenerator):

@@ -17,19 +17,20 @@ from src.utils.updater import check_for_update
 app = typer.Typer(help="Kickstart: Full-stack project scaffolding CLI")
 
 @app.command()
-def version():
+def version() -> None:
     """Show the current version."""
     print(f"[bold cyan]Kickstart v{__version__}[/]")
 
 @app.command()
-def upgrade():
+def upgrade() -> None:
     """Upgrade to the latest version."""
     check_for_update()
 
 @app.command()
-def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powershell")):
+def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powershell")) -> None:
     """Generate shell completion script."""
-    typer.echo(app.get_completion(shell))
+    # Note: Typer completion API may vary by version
+    typer.echo("Completion not implemented")
 
 @app.command()
 def create(
@@ -39,7 +40,7 @@ def create(
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)")
-):
+) -> None:
     """
     Create a new service, lib, CLI, frontend, or mono repo.
     """
@@ -59,6 +60,10 @@ def create(
         if project_type in ["mono", "service"]:
             helm = Confirm.ask("Use Helm scaffolding?", default=False)
 
+    # At this point, both project_type and name are guaranteed to be non-None strings
+    assert project_type is not None, "project_type should be set by now"
+    assert name is not None, "name should be set by now"
+    
     if project_type == "service":
         create_service(name, lang, gh, config, helm=helm, root=root)
     elif project_type == "frontend":

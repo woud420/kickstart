@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from src.generators.base import BaseGenerator
+from src.generator.base import BaseGenerator
 from unittest.mock import patch
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_create_architecture_docs(base_generator, tmp_path):
         assert arch.exists()
         assert arch.read_text() == "# My Docs\n"
 
-@patch('src.generators.base.write_file')
+@patch('src.generator.base.write_file')
 def test_write_template(mock_write_file, base_generator, tmp_path):
     template_path = tmp_path / "template.txt"
     template_path.write_text("Hello {{NAME}}")
@@ -64,7 +64,7 @@ def test_write_template(mock_write_file, base_generator, tmp_path):
         name="World"
     )
 
-@patch('src.generators.base.write_file')
+@patch('src.generator.base.write_file')
 def test_write_content(mock_write_file, base_generator):
     target = "output.txt"
     content = "test content"
@@ -74,7 +74,7 @@ def test_write_content(mock_write_file, base_generator):
         content
     )
 
-@patch('src.generators.base.success')
+@patch('src.generator.base.success')
 def test_log_success(mock_success, base_generator):
     message = "Test success message"
     base_generator.log_success(message)

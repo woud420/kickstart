@@ -1,6 +1,8 @@
 from pathlib import Path
+from typing import Any
 
-def write_file(path: Path, template: Path | str, **vars):
+
+def write_file(path: Path, template: Path | str, **vars: Any) -> None:
     if isinstance(template, Path):
         content = template.read_text()
     else:

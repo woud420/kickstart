@@ -4,7 +4,7 @@ POETRY := $(VENV)/bin/poetry
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 
-.PHONY: help setup install build run tests clean package shell venv
+.PHONY: help setup install build run tests test-unit test-integration typecheck lint format clean package shell venv
 
 help:
 	@echo "Usage:"
@@ -12,7 +12,12 @@ help:
 	@echo "  make install    - Same as setup"
 	@echo "  make build      - Build self-contained kickstart binary"
 	@echo "  make run        - Run kickstart CLI from venv"
-	@echo "  make tests      - Run pytest tests"
+	@echo "  make tests      - Run all tests"
+	@echo "  make test-unit  - Run unit tests only"
+	@echo "  make test-integration - Run integration tests only"
+	@echo "  make typecheck  - Run mypy type checking"
+	@echo "  make lint       - Run linting (placeholder)"
+	@echo "  make format     - Run code formatting (placeholder)"
 	@echo "  make package    - Package poetry project"
 	@echo "  make shell      - Drop into Poetry shell"
 	@echo "  make clean      - Remove venv and build artifacts"
@@ -39,9 +44,28 @@ run: venv
 	@echo "🚀 Running kickstart..."
 	@$(POETRY) run kickstart
 
-tests: venv setup build
-	@echo "🧪 Running tests..."
-	@PATH="$$(pwd):$$PATH" $(PYTEST) tests/
+tests: test-unit test-integration typecheck
+	@echo "✅ All tests completed!"
+
+test-unit: venv setup
+	@echo "🧪 Running unit tests..."
+	@PATH="$$(pwd):$$PATH" $(PYTEST) tests/unit/
+
+test-integration: venv setup build
+	@echo "🧪 Running integration tests..."
+	@PATH="$$(pwd):$$PATH" $(PYTEST) tests/integration/
+
+typecheck: venv setup
+	@echo "🔍 Running mypy type checking..."
+	@$(VENV)/bin/mypy src/
+
+lint: venv setup
+	@echo "🔧 Running linting..."
+	@echo "  (Linting not yet configured - add ruff or flake8 here)"
+
+format: venv setup
+	@echo "🎨 Running code formatting..."
+	@echo "  (Formatting not yet configured - add black or ruff here)"
 
 package: venv
 	@$(POETRY) build

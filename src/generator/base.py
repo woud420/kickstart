@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from src.utils.fs import write_file
 from src.utils.logger import success, warn
 
@@ -26,11 +26,14 @@ class BaseGenerator:
         for directory in directories:
             (self.project / directory).mkdir(parents=True, exist_ok=True)
 
-    def write_template(self, target: str, template_path: str, **vars) -> None:
+    def write_template(self, target: str, template_path: str, **vars: Any) -> None:
         """Write a template file to the project."""
+        resolved_template_path: Path | str
         if isinstance(template_path, str) and not Path(template_path).is_absolute():
-            template_path = self.template_dir / template_path
-        write_file(self.project / target, template_path, service_name=self.name, **vars)
+            resolved_template_path = self.template_dir / template_path
+        else:
+            resolved_template_path = template_path
+        write_file(self.project / target, resolved_template_path, service_name=self.name, **vars)
 
     def write_content(self, target: str, content: str) -> None:
         """Write direct content to a file in the project."""
