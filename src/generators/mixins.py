@@ -11,12 +11,17 @@ class GitHubMixin:
         super().__init__(*args, **kwargs)
         # Expect gh and name attributes to be set by the concrete class
     
-    def create_github_repo_if_requested(self) -> None:
-        """Create GitHub repository if the gh flag is set."""
+    def create_github_repo_if_requested(self) -> bool:
+        """Create GitHub repository if the gh flag is set.
+
+        Returns ``True`` if the repository was created, ``False`` otherwise.
+        """
         if hasattr(self, 'gh') and self.gh and hasattr(self, 'name'):
             created = create_repo(self.name)
             if not created:
                 warn(f"Failed to create GitHub repository '{self.name}'")
+            return created
+        return False
 
 
 class CommonTemplatesMixin:

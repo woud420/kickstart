@@ -37,6 +37,22 @@ def test_mixin_warns_on_repo_creation_failure():
     dummy = Dummy()
     with patch("src.generators.mixins.create_repo", return_value=False) as mock_create, \
          patch("src.generators.mixins.warn") as mock_warn:
-        dummy.create_github_repo_if_requested()
+        result = dummy.create_github_repo_if_requested()
+        assert result is False
         mock_create.assert_called_once_with("dummy")
         mock_warn.assert_called_once_with("Failed to create GitHub repository 'dummy'")
+
+
+def test_mixin_no_warn_on_repo_creation_success():
+    class Dummy(GitHubMixin):
+        def __init__(self):
+            self.gh = True
+            self.name = "dummy"
+
+    dummy = Dummy()
+    with patch("src.generators.mixins.create_repo", return_value=True) as mock_create, \
+         patch("src.generators.mixins.warn") as mock_warn:
+        result = dummy.create_github_repo_if_requested()
+        assert result is True
+        mock_create.assert_called_once_with("dummy")
+        mock_warn.assert_not_called()
