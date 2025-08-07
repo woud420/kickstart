@@ -39,6 +39,7 @@ kickstart create mono my-platform --helm
 
 # Library or CLI tool
 kickstart create lib my-utils --lang python
+kickstart create lib my-utils --lang rust --gh
 kickstart create cli my-tool --lang python
 ```
 
