@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch, MagicMock
 
 from src.utils.github import create_repo
+from src.generators.mixins import GitHubMixin
 
 
 def test_create_repo_no_token():
@@ -25,3 +26,33 @@ def test_create_repo_failure():
         mock_post.return_value = mock_resp
         assert create_repo("bad") is False
         mock_post.assert_called_once()
+
+
+def test_mixin_warns_on_repo_creation_failure():
+    class Dummy(GitHubMixin):
+        def __init__(self):
+            self.gh = True
+            self.name = "dummy"
+
+    dummy = Dummy()
+    with patch("src.generators.mixins.create_repo", return_value=False) as mock_create, \
+         patch("src.generators.mixins.warn") as mock_warn:
+        result = dummy.create_github_repo_if_requested()
+        assert result is False
+        mock_create.assert_called_once_with("dummy")
+        mock_warn.assert_called_once_with("Failed to create GitHub repository 'dummy'")
+
+
+def test_mixin_no_warn_on_repo_creation_success():
+    class Dummy(GitHubMixin):
+        def __init__(self):
+            self.gh = True
+            self.name = "dummy"
+
+    dummy = Dummy()
+    with patch("src.generators.mixins.create_repo", return_value=True) as mock_create, \
+         patch("src.generators.mixins.warn") as mock_warn:
+        result = dummy.create_github_repo_if_requested()
+        assert result is True
+        mock_create.assert_called_once_with("dummy")
+        mock_warn.assert_not_called()
