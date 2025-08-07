@@ -1,22 +1,20 @@
-"""
-Code generation utilities for database models and DAOs.
-"""
+"""Code generation utilities for database models and DAOs."""
 import re
 import json
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
 
+@dataclass
 class DatabaseColumn:
     """Represents a database column."""
-    
-    def __init__(self, name: str, column_type: str, nullable: bool = False, 
-                 primary_key: bool = False, foreign_key: Optional[str] = None):
-        self.name = name
-        self.column_type = column_type
-        self.nullable = nullable
-        self.primary_key = primary_key
-        self.foreign_key = foreign_key
+
+    name: str
+    column_type: str
+    nullable: bool = False
+    primary_key: bool = False
+    foreign_key: Optional[str] = None
     
     @property
     def rust_type(self) -> str:
@@ -103,12 +101,12 @@ class DatabaseColumn:
         return go_type
 
 
+@dataclass
 class DatabaseTable:
     """Represents a database table."""
-    
-    def __init__(self, name: str, columns: List[DatabaseColumn]):
-        self.name = name
-        self.columns = columns
+
+    name: str
+    columns: List[DatabaseColumn] = field(default_factory=list)
     
     @property
     def struct_name(self) -> str:
