@@ -788,7 +788,17 @@ class GoDAOGenerator:
         import_block = ""
         if imports:
             import_block = f"import (\n{chr(10).join(imports)}\n)\n\n"
-        
+        create_fields = chr(10).join(
+            f"\t{''.join(word.capitalize() for word in col.name.split('_'))} {col.go_type} `json:\"{col.name}\"`"
+            for col in table.columns
+            if not col.primary_key
+        )
+        update_fields = chr(10).join(
+            f"\t{''.join(word.capitalize() for word in col.name.split('_'))} *{col.go_type.lstrip('*')} `json:\"{col.name},omitempty\"`"
+            for col in table.columns
+            if not col.primary_key
+        )
+
         return f'''
 package {package_name}
 
@@ -799,12 +809,12 @@ type {table.struct_name} struct {{
 
 // {table.struct_name}Create represents the data needed to create a {table.name}
 type {table.struct_name}Create struct {{
-{chr(10).join([f"\t{(''.join(word.capitalize() for word in col.name.split('_')))} {col.go_type} `json:\"{col.name}\"`" for col in table.columns if not col.primary_key])}
+{create_fields}
 }}
 
 // {table.struct_name}Update represents the data that can be updated for a {table.name}
 type {table.struct_name}Update struct {{
-{chr(10).join([f"\t{(''.join(word.capitalize() for word in col.name.split('_')))} *{col.go_type.lstrip('*')} `json:\"{col.name},omitempty\"`" for col in table.columns if not col.primary_key])}
+{update_fields}
 }}
 '''.strip()
     
