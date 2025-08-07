@@ -308,5 +308,3 @@ class ServiceGenerator(BaseGenerator, GitHubMixin, CommonTemplatesMixin):
             self.write_template(f"helm/{self.name}/{file}", template)
 
         success("Helm chart scaffolded")
-
-

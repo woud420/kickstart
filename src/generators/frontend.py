@@ -34,4 +34,3 @@ class FrontendGenerator(BaseGenerator, GitHubMixin):
         self.log_success(f"Frontend app '{self.name}' created successfully in '{self.project}'!")
 
         self.create_github_repo_if_requested()
-

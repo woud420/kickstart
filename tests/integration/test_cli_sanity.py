@@ -19,4 +19,3 @@ def test_help_output(tmp_path):
     assert result.returncode == 0
     assert "Kickstart" in result.stdout
     assert "create" in result.stdout
-

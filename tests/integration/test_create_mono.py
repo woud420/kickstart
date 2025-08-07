@@ -43,4 +43,3 @@ def test_create_monorepo_kustomize_with_root():
         base = custom_root / "infra-stack"
         assert (base / "infra/k8s/base/deployment.yaml").exists()
         assert (base / "Makefile").exists()
-

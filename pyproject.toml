@@ -15,5 +15,8 @@ rich = "^13.0"
 requests = "^2.31"
 toml = "^0.10.2"
 
+[tool.poetry.dev-dependencies]
+pre-commit = "^3.3"
+
 [tool.poetry.scripts]
 kickstart = "src.cli.main:app"
