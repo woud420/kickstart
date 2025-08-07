@@ -3,7 +3,7 @@ import shutil
 import requests
 from pathlib import Path
 from src import __version__
-from .logger import info, success, error
+from .logger import info, success, warn, error
 
 REPO = "woud420/kickstart"
 RELEASE_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
@@ -16,9 +16,14 @@ def check_for_update():
         r.raise_for_status()
         data = r.json()
         latest = data["tag_name"].lstrip("v")
-        download_url = next(asset["browser_download_url"]
-                            for asset in data["assets"]
-                            if asset["name"] == "kickstart")
+        assets = data["assets"]
+        kickstart_asset = next((asset for asset in assets if asset["name"] == "kickstart"), None)
+
+        if kickstart_asset is None:
+            warn("No 'kickstart' asset found; update aborted")
+            return
+
+        download_url = kickstart_asset["browser_download_url"]
 
         if latest == __version__:
             success("You're already up to date")
