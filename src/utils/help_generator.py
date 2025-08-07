@@ -151,13 +151,17 @@ class KickstartHelpGenerator:
         types = self.get_available_project_types()
         
         examples = []
-        
+
         # Service examples
         if "service" in types:
             if "python" in languages:
                 examples.append("kickstart create service my-api --lang python")
             if "rust" in languages:
-                examples.append("kickstart create lib my-utils --lang rust --gh")
+                examples.append("kickstart create service my-api --lang rust")
+
+        # Library examples
+        if "lib" in types and "rust" in languages:
+            examples.append("kickstart create lib my-utils --lang rust --gh")
         
         # Frontend examples  
         if "frontend" in types:
