@@ -66,4 +66,3 @@ class CLIGenerator(LibraryGenerator):
         self.log_success(f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!")
 
         self.create_github_repo_if_requested()
-

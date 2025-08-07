@@ -68,4 +68,3 @@ def compose_template(parts: list[str], template_dir: Path, **vars) -> str:
         content = content.replace(f"{{{{{key.upper()}}}}}", str(value))
     
     return content
-
