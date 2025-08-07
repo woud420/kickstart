@@ -7,7 +7,7 @@ with manual overrides for better descriptions.
 
 import json
 from pathlib import Path
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, Any
 
 class KickstartHelpGenerator:
     """Generates CLI help dynamically from project structure."""
@@ -87,7 +87,7 @@ class KickstartHelpGenerator:
         
         return sorted(types)
     
-    def get_language_info(self, language: str) -> Dict[str, any]:
+    def get_language_info(self, language: str) -> Dict[str, Any]:
         """Get information about a specific language."""
         # Start with override if available
         if language in self.language_overrides:
@@ -105,7 +105,7 @@ class KickstartHelpGenerator:
             "project_types": ["service"]
         }
     
-    def _infer_language_info(self, template_dir: Path) -> Dict[str, any]:
+    def _infer_language_info(self, template_dir: Path) -> Dict[str, Any]:
         """Infer language info from template files."""
         info = {
             "framework": "Unknown",
