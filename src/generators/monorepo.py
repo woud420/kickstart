@@ -69,4 +69,3 @@ class MonorepoGenerator(BaseGenerator):
         self.write_template("infra/k8s/base/kustomization.yaml", "kustomize/kustomization.yaml")
         self.write_template("infra/k8s/base/deployment.yaml", "kustomize/deployment.yaml")
         self.write_template("infra/k8s/base/service.yaml", "kustomize/service.yaml")
-

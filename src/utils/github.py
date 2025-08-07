@@ -57,4 +57,3 @@ def create_repo(name: str, private: bool = False, description: str | None = None
         error(f"Failed to create GitHub repository: {exc}")
 
     return False
-

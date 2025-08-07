@@ -40,4 +40,3 @@ def check_for_update():
 
     except Exception as e:
         print(f"[red]✖ Update failed: {e}")
-

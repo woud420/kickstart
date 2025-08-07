@@ -45,4 +45,3 @@ def test_create_python_service_with_root():
         assert (svc / "src").exists()
         assert (svc / "Dockerfile").exists()
         assert (svc / "README.md").read_text().startswith("# hello-api")
-
