@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
-
+from .logger import success
 @dataclass
 class DatabaseColumn:
     """Represents a database column."""
@@ -457,7 +457,7 @@ pub use pg_dao::*;
 pub use mock_dao::*;
 ''')
     
-    print(f"Generated DAO structure for {len(tables)} tables in {output_dir}")
+    success(f"Generated DAO structure for {len(tables)} tables in {output_dir}")
 
 
 class CppDAOGenerator:
@@ -797,12 +797,12 @@ type {table.struct_name} struct {{
 
 // {table.struct_name}Create represents the data needed to create a {table.name}
 type {table.struct_name}Create struct {{
-{chr(10).join([f"\t{(''.join(word.capitalize() for word in col.name.split('_')))} {col.go_type} `json:\"{col.name}\"`" for col in table.columns if not col.primary_key])}
+  {chr(10).join([f'{chr(9)}{("".join(word.capitalize() for word in col.name.split("_")))} {col.go_type} `json:"{col.name}"`' for col in table.columns if not col.primary_key])}
 }}
 
 // {table.struct_name}Update represents the data that can be updated for a {table.name}
 type {table.struct_name}Update struct {{
-{chr(10).join([f"\t{(''.join(word.capitalize() for word in col.name.split('_')))} *{col.go_type.lstrip('*')} `json:\"{col.name},omitempty\"`" for col in table.columns if not col.primary_key])}
+  {chr(10).join([f'{chr(9)}{("".join(word.capitalize() for word in col.name.split("_")))} *{col.go_type.lstrip("*")} `json:"{col.name},omitempty"`' for col in table.columns if not col.primary_key])}
 }}
 '''.strip()
     
@@ -1029,4 +1029,6 @@ __all__ = [
             with open(output_path / f"pg_{table.name}_dao.go", 'w') as f:
                 f.write(generator.generate_pg_dao_impl(table))
     
-    print(f"Generated {language.upper()} DAO structure for {len(tables)} tables in {output_dir}")
+    success(
+        f"Generated {language.upper()} DAO structure for {len(tables)} tables in {output_dir}"
+    )
