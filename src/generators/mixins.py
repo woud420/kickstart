@@ -1,6 +1,7 @@
 """Mixins for common generator functionality."""
 
 from src.utils.github import create_repo
+from src.utils.logger import warn
 
 
 class GitHubMixin:
@@ -13,7 +14,9 @@ class GitHubMixin:
     def create_github_repo_if_requested(self) -> None:
         """Create GitHub repository if the gh flag is set."""
         if hasattr(self, 'gh') and self.gh and hasattr(self, 'name'):
-            create_repo(self.name)
+            created = create_repo(self.name)
+            if not created:
+                warn(f"Failed to create GitHub repository '{self.name}'")
 
 
 class CommonTemplatesMixin:
