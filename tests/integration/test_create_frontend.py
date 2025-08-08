@@ -12,7 +12,16 @@ def test_create_frontend():
         env["PYTHONPATH"] = str(repo_root)
 
         subprocess.run(
-            [sys.executable, str(repo_root / "kickstart.py"), "create", "frontend", "my-app", "--root", str(tmp)],
+            [
+                sys.executable,
+                str(repo_root / "kickstart.py"),
+                "create",
+                "frontend",
+                "my-app",
+                "--root",
+                str(tmp),
+                "--non-interactive",
+            ],
             cwd=tmp,
             check=True,
             env=env,
@@ -36,7 +45,16 @@ def test_create_frontend_with_root():
         custom_root.mkdir()
 
         subprocess.run(
-            [sys.executable, str(repo_root / "kickstart.py"), "create", "frontend", "my-app", "--root", str(custom_root)],
+            [
+                sys.executable,
+                str(repo_root / "kickstart.py"),
+                "create",
+                "frontend",
+                "my-app",
+                "--root",
+                str(custom_root),
+                "--non-interactive",
+            ],
             cwd=tmp,
             check=True,
             env=env,

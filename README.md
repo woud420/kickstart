@@ -52,6 +52,12 @@ kickstart create cli my-tool --lang python
 kickstart create  # Guided wizard
 ```
 
+**Non-interactive Mode:**
+```bash
+kickstart create service my-api --lang python --root /tmp --non-interactive  # or --yes
+```
+Provide all required arguments to skip prompts.
+
 **Batch Generation:**
 ```bash
 kickstart --manifest components.md  # Generate multiple projects from manifest
