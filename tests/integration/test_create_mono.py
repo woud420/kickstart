@@ -12,7 +12,16 @@ def test_create_monorepo_kustomize():
         env["PYTHONPATH"] = str(repo_root)
 
         subprocess.run(
-            [sys.executable, str(repo_root / "kickstart.py"), "create", "mono", "infra-stack", "--root", str(tmp)],
+            [
+                sys.executable,
+                str(repo_root / "kickstart.py"),
+                "create",
+                "mono",
+                "infra-stack",
+                "--root",
+                str(tmp),
+                "--non-interactive",
+            ],
             cwd=tmp,
             check=True,
             env=env,
@@ -34,7 +43,16 @@ def test_create_monorepo_kustomize_with_root():
         custom_root.mkdir()
 
         subprocess.run(
-            [sys.executable, str(repo_root / "kickstart.py"), "create", "mono", "infra-stack", "--root", str(custom_root)],
+            [
+                sys.executable,
+                str(repo_root / "kickstart.py"),
+                "create",
+                "mono",
+                "infra-stack",
+                "--root",
+                str(custom_root),
+                "--non-interactive",
+            ],
             cwd=tmp,
             check=True,
             env=env,

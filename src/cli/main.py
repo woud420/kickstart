@@ -48,24 +48,35 @@ def create(
     root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repository automatically"),
-    helm: bool = typer.Option(False, "--helm", help="Add Helm chart for Kubernetes deployment (services and monorepos only)")
+    helm: bool = typer.Option(False, "--helm", help="Add Helm chart for Kubernetes deployment (services and monorepos only)"),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        "--yes",
+        help="Run without prompts; requires all arguments via CLI",
+    ),
 ):
     """Create a new project with modern tooling and best practices."""
     config = load_config()
 
-    if project_type and root is None:
-        root = Prompt.ask("Where should the project be created?")
-
-    if not project_type:
-        typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
-        project_type = Prompt.ask("What do you want to create?", choices=["service", "frontend", "lib", "cli", "mono"])
-        name = Prompt.ask("Project name?")
-        if root is None:
+    if non_interactive:
+        if not project_type or not name or root is None:
+            print("[bold red]❌ Non-interactive mode requires project type, name, and --root.[/]")
+            raise typer.Exit(1)
+    else:
+        if project_type and root is None:
             root = Prompt.ask("Where should the project be created?")
-        lang = Prompt.ask("Language", default=config.get("default_language", "python"))
-        gh = Confirm.ask("Create GitHub repo?", default=False)
-        if project_type in ["mono", "service"]:
-            helm = Confirm.ask("Use Helm scaffolding?", default=False)
+
+        if not project_type:
+            typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
+            project_type = Prompt.ask("What do you want to create?", choices=["service", "frontend", "lib", "cli", "mono"])
+            name = Prompt.ask("Project name?")
+            if root is None:
+                root = Prompt.ask("Where should the project be created?")
+            lang = Prompt.ask("Language", default=config.get("default_language", "python"))
+            gh = Confirm.ask("Create GitHub repo?", default=False)
+            if project_type in ["mono", "service"]:
+                helm = Confirm.ask("Use Helm scaffolding?", default=False)
 
     if project_type == "service":
         create_service(name, lang, gh, config, helm=helm, root=root)
