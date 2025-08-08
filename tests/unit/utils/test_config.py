@@ -1,6 +1,5 @@
 import pytest
-from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 import toml
 from src.utils.config import load_config
 
