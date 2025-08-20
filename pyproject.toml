@@ -14,9 +14,14 @@ typer = "^0.9"
 rich = "^13.0"
 requests = "^2.31"
 toml = "^0.10.2"
+cryptography = "^42.0.0"
+jinja2 = "^3.1.0"
 
 [tool.poetry.scripts]
 kickstart = "src.cli.main:app"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.17.1"
 
 [tool.mypy]
 python_version = "3.10"

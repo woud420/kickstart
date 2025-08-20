@@ -1,38 +1,37 @@
 from pathlib import Path
-from typing import Optional
+from typing import Any
 from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
 
 class FrontendGenerator(BaseGenerator):
-    def __init__(self, name: str, gh: bool, config: dict, root: Optional[str] = None):
+    gh: bool
+    
+    def __init__(self, name: str, gh: bool, config: dict[str, Any], root: str | None = None) -> None:
         super().__init__(name, config, root)
         self.template_dir = self.template_dir / "react"
         self.gh = gh
 
     def create(self) -> None:
-        if not self.create_project():
-            return
-
-        # Create project structure
-        self.init_basic_structure([
-            "src",
-            "public",
-            "tests",
-            "architecture"
-        ])
-
-        # Write template files
-        self.write_template(".gitignore", "gitignore.tpl")
-        self.write_template("Dockerfile", "Dockerfile.tpl")
-        self.write_template("Makefile", "Makefile.tpl")
-        self.write_template("README.md", "README.md.tpl")
-        self.write_template("package.json", "package.json.tpl")
+        directories: list[str] = ["src", "public", "tests", "architecture"]
         
-        # Write direct content
-        self.create_architecture_docs(f"{self.name} Frontend Docs")
-
-        self.log_success(f"Frontend app '{self.name}' created successfully in '{self.project}'!")
-
-        if self.gh:
-            create_repo(self.name)
+        template_configs: list[dict[str, str]] = [
+            {"target": ".gitignore", "template": "gitignore.tpl"},
+            {"target": "Dockerfile", "template": "Dockerfile.tpl"},
+            {"target": "Makefile", "template": "Makefile.tpl"},
+            {"target": "README.md", "template": "README.md.tpl"},
+            {"target": "package.json", "template": "package.json.tpl"}
+        ]
+        
+        architecture_title: str = f"{self.name} Frontend Docs"
+        success_message: str = f"Frontend app '{self.name}' created successfully in '{self.project}'!"
+        
+        github_create_fn = lambda: create_repo(self.name) if self.gh else None
+        
+        self.execute_create_flow(
+            directories=directories,
+            template_configs=template_configs,
+            architecture_title=architecture_title,
+            success_message=success_message,
+            github_create_fn=github_create_fn if self.gh else None
+        )
 
