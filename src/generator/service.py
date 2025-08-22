@@ -22,6 +22,9 @@ class ServiceGenerator(BaseGenerator):
     lang: str
     gh: bool
     helm: bool
+    database: str | None
+    cache: str | None
+    auth: str | None
     lang_template_dir: Path
     
     def __init__(
@@ -31,7 +34,10 @@ class ServiceGenerator(BaseGenerator):
         gh: bool, 
         config: dict[str, Any], 
         helm: bool = False, 
-        root: str | None = None
+        root: str | None = None,
+        database: str | None = None,
+        cache: str | None = None,
+        auth: str | None = None
     ) -> None:
         """Initialize the ServiceGenerator.
         
@@ -42,6 +48,9 @@ class ServiceGenerator(BaseGenerator):
             config: Configuration dictionary with user preferences
             helm: Whether to include Helm chart scaffolding
             root: Root directory for project creation (optional)
+            database: Database extension (postgres, mysql, sqlite)
+            cache: Cache extension (redis, memcached)
+            auth: Authentication extension (jwt, oauth)
             
         Raises:
             ValueError: If unsupported language is specified
@@ -50,6 +59,9 @@ class ServiceGenerator(BaseGenerator):
         self.lang = lang
         self.gh = gh
         self.helm = helm
+        self.database = database
+        self.cache = cache
+        self.auth = auth
         self.lang_template_dir = self.template_dir / lang
 
     def create(self) -> None:
@@ -81,17 +93,13 @@ class ServiceGenerator(BaseGenerator):
             return
 
         directories: list[str] = [
-            # New improved structure for Python services
-            "models/entities/user", "models/dto",
-            "core/services", "core/validators", 
-            "repository", "dao/postgres",
-            "api/routes", "api/middleware",
-            "infrastructure/database", "infrastructure/cache", "infrastructure/external",
-            "config",
-            "tests/unit/services", "tests/unit/validators", "tests/unit/repository", 
-            "tests/integration/repository", "tests/integration/api",
+            # New improved structure using src/model/, src/api/, src/routes/, src/handler/, src/clients/
+            "src/model", "src/api", "src/routes", "src/handler", "src/clients",
+            "src/config",
+            "tests/unit/model", "tests/unit/api", "tests/unit/routes", 
+            "tests/integration/api", "tests/integration/clients",
             "tests/fixtures",
-            "architecture"
+            "docs"
         ]
         
         # Use template registry for cleaner template management
@@ -147,90 +155,55 @@ class ServiceGenerator(BaseGenerator):
         """Create Python-specific project structure.
         
         Sets up a modern Python microservice with:
-        - Repository/DAO/Service pattern architecture
-        - FastAPI with proper dependency injection
-        - Complete 4-level directory structure
+        - Core functionality with no external dependencies
+        - Optional extensions (database, cache, auth) via progressive enhancement
+        - Clean architecture with src/model/, src/api/, src/routes/, src/handler/, src/clients/
         - Type hints and proper error handling
-        - Infrastructure components (database, cache)
         """
         # Create __init__.py files for all Python packages
         python_packages = [
-            "models", "models/entities", "models/entities/user", "models/dto",
-            "core", "core/services", "core/validators",
-            "repository", "dao", "dao/postgres",
-            "api", "api/routes", "api/middleware",
-            "infrastructure", "infrastructure/database", "infrastructure/cache", "infrastructure/external",
-            "config",
-            "tests", "tests/unit", "tests/unit/services", "tests/unit/validators", "tests/unit/repository",
-            "tests/integration", "tests/integration/repository", "tests/integration/api",
+            "src", "src/model", "src/api", "src/routes", "src/handler", "src/clients", "src/config",
+            "tests", "tests/unit", "tests/unit/model", "tests/unit/api", "tests/unit/routes",
+            "tests/integration", "tests/integration/api", "tests/integration/clients",
             "tests/fixtures"
         ]
         
         for package_path in python_packages:
             self.write_content(f"{package_path}/__init__.py", "")
         
-        # Write template files using the new improved templates
-        templates_to_write = [
+        # Write core template files
+        core_templates = [
             # Core application files
-            ("main.py", "python/main.py.tpl"),
+            ("src/main.py", "python/core/main.py.tpl"),
             
-            # Models layer
-            ("models/__init__.py", "python/models/__init__.py.tpl"),
-            ("models/entities/__init__.py", "python/models/entities/__init__.py.tpl"),
-            ("models/entities/user/__init__.py", "python/models/entities/user/__init__.py.tpl"),
-            ("models/entities/user/user.py", "python/models/entities/user/user.py.tpl"),
-            ("models/entities/user/profile.py", "python/models/entities/user/profile.py.tpl"),
-            ("models/dto/__init__.py", "python/models/dto/__init__.py.tpl"),
-            ("models/dto/requests.py", "python/models/dto/requests.py.tpl"),
-            ("models/dto/responses.py", "python/models/dto/responses.py.tpl"),
-            ("models/schemas.py", "python/models/schemas.py.tpl"),
+            # Model layer (all data-related code)
+            ("src/model/__init__.py", "python/core/model/__init__.py.tpl"),
+            ("src/model/entities.py", "python/core/model/entities.py.tpl"),
+            ("src/model/dto.py", "python/core/model/dto.py.tpl"),
+            ("src/model/repository.py", "python/core/model/repository.py.tpl"),
             
-            # Core business logic
-            ("core/__init__.py", "python/core/__init__.py.tpl"),
-            ("core/services/__init__.py", "python/core/services/__init__.py.tpl"),
-            ("core/services/base_service.py", "python/core/services/base_service.py.tpl"),
-            ("core/services/user_service.py", "python/core/services/user_service.py.tpl"),
-            ("core/services/exceptions.py", "python/core/services/exceptions.py.tpl"),
-            ("core/validators/__init__.py", "python/core/validators/__init__.py.tpl"),
-            ("core/validators/user_validator.py", "python/core/validators/user_validator.py.tpl"),
+            # API layer (business logic)
+            ("src/api/__init__.py", "python/core/api/__init__.py.tpl"),
+            ("src/api/services.py", "python/core/api/services.py.tpl"),
             
-            # Repository layer
-            ("repository/__init__.py", "python/repository/__init__.py.tpl"),
-            ("repository/base.py", "python/repository/base.py.tpl"),
-            ("repository/user_repo.py", "python/repository/user_repo.py.tpl"),
-            
-            # DAO layer
-            ("dao/__init__.py", "python/dao/__init__.py.tpl"),
-            ("dao/base.py", "python/dao/base.py.tpl"),
-            ("dao/postgres/__init__.py", "python/dao/postgres/__init__.py.tpl"),
-            ("dao/postgres/user_dao.py", "python/dao/postgres/user_dao.py.tpl"),
-            
-            # API layer
-            ("api/__init__.py", "python/api/__init__.py.tpl"),
-            ("api/routes/__init__.py", "python/api/routes/__init__.py.tpl"),
-            ("api/routes/user_routes.py", "python/api/routes/user_routes.py.tpl"),
-            ("api/routes/health.py", "python/api/routes/health.py.tpl"),
-            ("api/middleware/__init__.py", "python/api/middleware/__init__.py.tpl"),
-            ("api/middleware/auth.py", "python/api/middleware/auth.py.tpl"),
-            ("api/middleware/logging.py", "python/api/middleware/logging.py.tpl"),
-            ("api/dependencies.py", "python/api/dependencies.py.tpl"),
-            
-            # Infrastructure layer
-            ("infrastructure/__init__.py", "python/infrastructure/__init__.py.tpl"),
-            ("infrastructure/database/__init__.py", "python/infrastructure/database/__init__.py.tpl"),
-            ("infrastructure/database/connection.py", "python/infrastructure/database/connection.py.tpl"),
-            ("infrastructure/cache/__init__.py", "python/infrastructure/cache/__init__.py.tpl"),
-            ("infrastructure/cache/redis_cache.py", "python/infrastructure/cache/redis_cache.py.tpl"),
+            # Routes layer (HTTP routing)
+            ("src/routes/__init__.py", "python/core/routes/__init__.py.tpl"),
+            ("src/routes/users.py", "python/core/routes/users.py.tpl"),
+            ("src/routes/health.py", "python/core/routes/health.py.tpl"),
             
             # Configuration
-            ("config/settings.py", "python/config/settings.py.tpl"),
+            ("src/config/__init__.py", "python/core/config/__init__.py.tpl"),
+            ("src/config/settings.py", "python/core/config/settings.py.tpl"),
             
-            # Create basic requirements.txt
-            ("requirements.txt", "python/requirements.txt.tpl"),
+            # Core requirements (minimal dependencies)
+            ("requirements.txt", "python/core/requirements.txt.tpl"),
         ]
         
-        for target_path, template_path in templates_to_write:
+        for target_path, template_path in core_templates:
             self.write_template(target_path, template_path)
+        
+        # Add extensions based on flags
+        self._add_python_extensions()
         
         # Create environment example
         self.write_content(".env.example", """# Application Settings
@@ -294,6 +267,86 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 """)
         
         self.create_directories(["migrations"])
+
+    def _add_python_extensions(self) -> None:
+        """Add extension functionality based on flags.
+        
+        This method adds database, cache, and authentication extensions
+        based on the flags provided during initialization.
+        """
+        extensions_added = []
+        additional_requirements = []
+        
+        # Database extension
+        if self.database:
+            if self.database == "postgres":
+                self._add_postgres_extension()
+                extensions_added.append("PostgreSQL database")
+                additional_requirements.extend([
+                    "asyncpg==0.29.0",
+                    "psycopg2-binary==2.9.9",
+                    "alembic==1.13.1",
+                    "sqlalchemy[asyncio]==2.0.23"
+                ])
+        
+        # Cache extension
+        if self.cache:
+            if self.cache == "redis":
+                self._add_redis_extension()
+                extensions_added.append("Redis cache")
+                additional_requirements.extend([
+                    "redis==5.0.1",
+                    "redis[hiredis]==5.0.1"
+                ])
+        
+        # Authentication extension
+        if self.auth:
+            if self.auth == "jwt":
+                self._add_jwt_auth_extension()
+                extensions_added.append("JWT authentication")
+                additional_requirements.extend([
+                    "python-jose[cryptography]==3.3.0",
+                    "passlib[bcrypt]==1.7.4",
+                    "python-multipart==0.0.6"
+                ])
+        
+        # Update requirements.txt with extensions
+        if additional_requirements:
+            extension_requirements = "\n\n# Extension requirements\n" + "\n".join(additional_requirements) + "\n"
+            
+            # Read core requirements and append extensions
+            try:
+                with open(self.project / "requirements.txt", "r") as f:
+                    current_requirements = f.read()
+                enhanced_requirements = current_requirements + extension_requirements
+                self.write_content("requirements.txt", enhanced_requirements)
+            except FileNotFoundError:
+                # If core requirements don't exist, create with extensions only
+                self.write_content("requirements.txt", "\n".join(additional_requirements))
+        
+        # Log what was added
+        if extensions_added:
+            from src.utils.logger import success
+            success(f"Extensions added: {', '.join(extensions_added)}")
+
+    def _add_postgres_extension(self) -> None:
+        """Add PostgreSQL database extension."""
+        # Add PostgreSQL DAO implementation
+        self.write_template("src/clients/database.py", "python/extensions/database/dao.py.tpl")
+        
+        # Add database migration
+        self.write_template("migrations/001_initial.sql", "python/extensions/database/migrations.sql.tpl")
+        self.create_directories(["migrations"])
+
+    def _add_redis_extension(self) -> None:
+        """Add Redis cache extension."""
+        # Add Redis client implementation
+        self.write_template("src/clients/cache.py", "python/extensions/cache/redis_client.py.tpl")
+
+    def _add_jwt_auth_extension(self) -> None:
+        """Add JWT authentication extension."""
+        # Add JWT authentication implementation
+        self.write_template("src/handler/auth.py", "python/extensions/auth/jwt_auth.py.tpl")
 
     def _create_rust_structure(self) -> None:
         """Create Rust-specific project structure.

@@ -42,8 +42,11 @@ def _prompt_for_missing_args(
     lang: str, 
     gh: bool, 
     helm: bool, 
-    config: Dict[str, Any]
-) -> Tuple[str, str, Optional[str], str, bool, bool]:
+    config: Dict[str, Any],
+    database: Optional[str] = None,
+    cache: Optional[str] = None,
+    auth: Optional[str] = None
+) -> Tuple[str, str, Optional[str], str, bool, bool, Optional[str], Optional[str], Optional[str]]:
     """Prompt user for any missing arguments in interactive mode.
     
     Args:
@@ -77,11 +80,31 @@ def _prompt_for_missing_args(
         if project_type in ["mono", "service"]:
             helm = Confirm.ask("Use Helm scaffolding?", default=False)
 
+    # Prompt for extensions if creating a service and they weren't provided
+    if project_type == "service" and lang == "python":
+        if database is None:
+            database_options = ["none", "postgres", "mysql", "sqlite"]
+            database = Prompt.ask("Database extension", choices=database_options, default="none")
+            if database == "none":
+                database = None
+        
+        if cache is None:
+            cache_options = ["none", "redis", "memcached"]
+            cache = Prompt.ask("Cache extension", choices=cache_options, default="none")
+            if cache == "none":
+                cache = None
+        
+        if auth is None:
+            auth_options = ["none", "jwt", "oauth"]
+            auth = Prompt.ask("Authentication extension", choices=auth_options, default="none")
+            if auth == "none":
+                auth = None
+
     # Ensure required values are set
     assert project_type is not None, "project_type should be set by now"
     assert name is not None, "name should be set by now"
     
-    return project_type, name, root, lang, gh, helm
+    return project_type, name, root, lang, gh, helm, database, cache, auth
 
 
 def _dispatch_project_creation(
@@ -91,7 +114,10 @@ def _dispatch_project_creation(
     lang: str, 
     gh: bool, 
     helm: bool, 
-    config: Dict[str, Any]
+    config: Dict[str, Any],
+    database: Optional[str] = None,
+    cache: Optional[str] = None,
+    auth: Optional[str] = None
 ) -> None:
     """Dispatch to the appropriate project creation function.
     
@@ -106,7 +132,7 @@ def _dispatch_project_creation(
     """
     # Dispatch table for cleaner code and easier extension
     project_creators = {
-        "service": lambda: create_service(name, lang, gh, config, helm=helm, root=root),
+        "service": lambda: create_service(name, lang, gh, config, helm=helm, root=root, database=database, cache=cache, auth=auth),
         "frontend": lambda: create_frontend(name, gh, config, root=root),
         "lib": lambda: create_lib(name, lang, gh, config, root=root),
         "cli": lambda: create_cli(name, lang, gh, config, root=root),
@@ -127,7 +153,10 @@ def create(
     root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
-    helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)")
+    helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)"),
+    database: Optional[str] = typer.Option(None, "--database", help="Database extension (postgres, mysql, sqlite)"),
+    cache: Optional[str] = typer.Option(None, "--cache", help="Cache extension (redis, memcached)"),
+    auth: Optional[str] = typer.Option(None, "--auth", help="Authentication extension (jwt, oauth)")
 ) -> None:
     """Create a new service, lib, CLI, frontend, or mono repo.
     
@@ -147,12 +176,12 @@ def create(
         config: Dict[str, Any] = load_config()
 
         # Prompt for any missing arguments
-        project_type, name, root, lang, gh, helm = _prompt_for_missing_args(
-            project_type, name, root, lang, gh, helm, config
+        project_type, name, root, lang, gh, helm, database, cache, auth = _prompt_for_missing_args(
+            project_type, name, root, lang, gh, helm, config, database, cache, auth
         )
 
         # Dispatch to appropriate creation function
-        _dispatch_project_creation(project_type, name, root, lang, gh, helm, config)
+        _dispatch_project_creation(project_type, name, root, lang, gh, helm, config, database, cache, auth)
         
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
