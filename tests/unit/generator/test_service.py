@@ -72,7 +72,17 @@ def test_create_success_python_with_helm_and_gh(
     # Verify
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "src/api", "src/model", "tests", "tests/api", "tests/model", "architecture"
+        # New improved structure for Python services
+        "models/entities/user", "models/dto",
+        "core/services", "core/validators", 
+        "repository", "dao/postgres",
+        "api/routes", "api/middleware",
+        "infrastructure/database", "infrastructure/cache", "infrastructure/external",
+        "config",
+        "tests/unit/services", "tests/unit/validators", "tests/unit/repository", 
+        "tests/integration/repository", "tests/integration/api",
+        "tests/fixtures",
+        "architecture"
     ])
     
     # Verify template files are written
@@ -113,32 +123,66 @@ def test_create_warns_when_language_template_missing(mock_create_project, mock_w
     mock_warn.assert_called_once_with("No templates for language: nonexistent")
 
 
+@patch.object(ServiceGenerator, 'create_directories')
+@patch.object(ServiceGenerator, 'write_template')  
 @patch.object(ServiceGenerator, 'write_content')
-def test_create_python_structure(mock_write_content, service_generator):
+def test_create_python_structure(mock_write_content, mock_write_template, mock_create_directories, service_generator):
     service_generator._create_python_structure()
     
-    # Verify __init__.py files are created
-    expected_init_calls = [
-        call("src/__init__.py", ""),
-        call("src/api/__init__.py", ""),
-        call("src/model/__init__.py", ""),
-        call("tests/__init__.py", ""),
-        call("tests/api/__init__.py", ""),
-        call("tests/model/__init__.py", "")
+    # Verify all __init__.py files are created for Python packages
+    expected_python_packages = [
+        "models", "models/entities", "models/entities/user", "models/dto",
+        "core", "core/services", "core/validators",
+        "repository", "dao", "dao/postgres",
+        "api", "api/routes", "api/middleware",
+        "infrastructure", "infrastructure/database", "infrastructure/cache", "infrastructure/external",
+        "config",
+        "tests", "tests/unit", "tests/unit/services", "tests/unit/validators", "tests/unit/repository",
+        "tests/integration", "tests/integration/repository", "tests/integration/api",
+        "tests/fixtures"
     ]
     
-    # Verify main.py is created
-    expected_main_content = "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/')\ndef root():\n    return {'message': 'Hello World'}\n"
-    expected_main_call = call("src/main.py", expected_main_content)
+    expected_init_calls = [call(f"{package}/__init__.py", "") for package in expected_python_packages]
+    mock_write_content.assert_has_calls(expected_init_calls, any_order=True)
     
-    mock_write_content.assert_has_calls(expected_init_calls + [expected_main_call], any_order=True)
+    # Verify key template files are written
+    expected_template_calls = [
+        call("main.py", "python/main.py.tpl"),
+        call("models/entities/user/user.py", "python/models/entities/user/user.py.tpl"),
+        call("core/services/user_service.py", "python/core/services/user_service.py.tpl"),
+        call("repository/user_repo.py", "python/repository/user_repo.py.tpl"),
+        call("dao/postgres/user_dao.py", "python/dao/postgres/user_dao.py.tpl"),
+        call("api/routes/user_routes.py", "python/api/routes/user_routes.py.tpl"),
+        call("config/settings.py", "python/config/settings.py.tpl"),
+        call("requirements.txt", "python/requirements.txt.tpl"),
+    ]
+    
+    for expected_call in expected_template_calls:
+        mock_write_template.assert_any_call(*expected_call)
+    
+    # Verify directories are created
+    mock_create_directories.assert_called_with(["migrations"])
 
 
-@patch.object(ServiceGenerator, 'write_template')
-def test_create_python_structure_writes_requirements(mock_write_template, service_generator):
+@patch.object(ServiceGenerator, 'create_directories')
+@patch.object(ServiceGenerator, 'write_template')  
+@patch.object(ServiceGenerator, 'write_content')
+def test_create_python_structure_writes_env_example(mock_write_content, mock_write_template, mock_create_directories, service_generator):
     service_generator._create_python_structure()
     
-    mock_write_template.assert_called_once_with("requirements.txt", "python/requirements.txt.tpl")
+    # Verify .env.example is created with proper content
+    env_content_calls = [call for call in mock_write_content.call_args_list if '.env.example' in str(call)]
+    assert len(env_content_calls) > 0, "Should create .env.example file"
+    
+    # Verify the content contains expected environment variables
+    env_call = env_content_calls[0]
+    env_content = env_call[0][1]  # Second argument is the content
+    
+    # Check for key configuration sections
+    assert "APP_NAME=" in env_content
+    assert "DB_HOST=" in env_content
+    assert "REDIS_HOST=" in env_content
+    assert "SECRET_KEY=" in env_content
 
 
 @patch.object(ServiceGenerator, 'write_content')

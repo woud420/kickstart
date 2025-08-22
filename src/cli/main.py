@@ -2,7 +2,7 @@ import typer
 import logging
 from rich import print
 from rich.prompt import Prompt, Confirm
-from typing import Any
+from typing import Any, Optional, Dict, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +36,14 @@ def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powers
     typer.echo("Completion not implemented")
 
 def _prompt_for_missing_args(
-    project_type: str | None, 
-    name: str | None, 
-    root: str | None, 
+    project_type: Optional[str], 
+    name: Optional[str], 
+    root: Optional[str], 
     lang: str, 
     gh: bool, 
     helm: bool, 
-    config: dict[str, Any]
-) -> tuple[str, str, str | None, str, bool, bool]:
+    config: Dict[str, Any]
+) -> Tuple[str, str, Optional[str], str, bool, bool]:
     """Prompt user for any missing arguments in interactive mode.
     
     Args:
@@ -87,11 +87,11 @@ def _prompt_for_missing_args(
 def _dispatch_project_creation(
     project_type: str, 
     name: str, 
-    root: str | None, 
+    root: Optional[str], 
     lang: str, 
     gh: bool, 
     helm: bool, 
-    config: dict[str, Any]
+    config: Dict[str, Any]
 ) -> None:
     """Dispatch to the appropriate project creation function.
     
@@ -122,9 +122,9 @@ def _dispatch_project_creation(
 
 @app.command()
 def create(
-    project_type: str | None = typer.Argument(None),
-    name: str | None = typer.Argument(None),
-    root: str | None = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
+    project_type: Optional[str] = typer.Argument(None),
+    name: Optional[str] = typer.Argument(None),
+    root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)")
@@ -144,7 +144,7 @@ def create(
         helm: Add Helm scaffolding (for services and monorepos only)
     """
     try:
-        config: dict[str, Any] = load_config()
+        config: Dict[str, Any] = load_config()
 
         # Prompt for any missing arguments
         project_type, name, root, lang, gh, helm = _prompt_for_missing_args(

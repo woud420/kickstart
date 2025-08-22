@@ -81,8 +81,16 @@ class ServiceGenerator(BaseGenerator):
             return
 
         directories: list[str] = [
-            "src", "src/api", "src/model", 
-            "tests", "tests/api", "tests/model",
+            # New improved structure for Python services
+            "models/entities/user", "models/dto",
+            "core/services", "core/validators", 
+            "repository", "dao/postgres",
+            "api/routes", "api/middleware",
+            "infrastructure/database", "infrastructure/cache", "infrastructure/external",
+            "config",
+            "tests/unit/services", "tests/unit/validators", "tests/unit/repository", 
+            "tests/integration/repository", "tests/integration/api",
+            "tests/fixtures",
             "architecture"
         ]
         
@@ -138,21 +146,154 @@ class ServiceGenerator(BaseGenerator):
     def _create_python_structure(self) -> None:
         """Create Python-specific project structure.
         
-        Sets up a Python microservice with:
-        - __init__.py files for proper package structure
-        - FastAPI-based main.py with basic endpoint
-        - requirements.txt with common dependencies
-        - Proper directory structure for src and tests
+        Sets up a modern Python microservice with:
+        - Repository/DAO/Service pattern architecture
+        - FastAPI with proper dependency injection
+        - Complete 4-level directory structure
+        - Type hints and proper error handling
+        - Infrastructure components (database, cache)
         """
-        # Create __init__.py files
-        for dir_path in ["src", "src/api", "src/model", "tests", "tests/api", "tests/model"]:
-            self.write_content(f"{dir_path}/__init__.py", "")
+        # Create __init__.py files for all Python packages
+        python_packages = [
+            "models", "models/entities", "models/entities/user", "models/dto",
+            "core", "core/services", "core/validators",
+            "repository", "dao", "dao/postgres",
+            "api", "api/routes", "api/middleware",
+            "infrastructure", "infrastructure/database", "infrastructure/cache", "infrastructure/external",
+            "config",
+            "tests", "tests/unit", "tests/unit/services", "tests/unit/validators", "tests/unit/repository",
+            "tests/integration", "tests/integration/repository", "tests/integration/api",
+            "tests/fixtures"
+        ]
+        
+        for package_path in python_packages:
+            self.write_content(f"{package_path}/__init__.py", "")
+        
+        # Write template files using the new improved templates
+        templates_to_write = [
+            # Core application files
+            ("main.py", "python/main.py.tpl"),
+            
+            # Models layer
+            ("models/__init__.py", "python/models/__init__.py.tpl"),
+            ("models/entities/__init__.py", "python/models/entities/__init__.py.tpl"),
+            ("models/entities/user/__init__.py", "python/models/entities/user/__init__.py.tpl"),
+            ("models/entities/user/user.py", "python/models/entities/user/user.py.tpl"),
+            ("models/entities/user/profile.py", "python/models/entities/user/profile.py.tpl"),
+            ("models/dto/__init__.py", "python/models/dto/__init__.py.tpl"),
+            ("models/dto/requests.py", "python/models/dto/requests.py.tpl"),
+            ("models/dto/responses.py", "python/models/dto/responses.py.tpl"),
+            ("models/schemas.py", "python/models/schemas.py.tpl"),
+            
+            # Core business logic
+            ("core/__init__.py", "python/core/__init__.py.tpl"),
+            ("core/services/__init__.py", "python/core/services/__init__.py.tpl"),
+            ("core/services/base_service.py", "python/core/services/base_service.py.tpl"),
+            ("core/services/user_service.py", "python/core/services/user_service.py.tpl"),
+            ("core/services/exceptions.py", "python/core/services/exceptions.py.tpl"),
+            ("core/validators/__init__.py", "python/core/validators/__init__.py.tpl"),
+            ("core/validators/user_validator.py", "python/core/validators/user_validator.py.tpl"),
+            
+            # Repository layer
+            ("repository/__init__.py", "python/repository/__init__.py.tpl"),
+            ("repository/base.py", "python/repository/base.py.tpl"),
+            ("repository/user_repo.py", "python/repository/user_repo.py.tpl"),
+            
+            # DAO layer
+            ("dao/__init__.py", "python/dao/__init__.py.tpl"),
+            ("dao/base.py", "python/dao/base.py.tpl"),
+            ("dao/postgres/__init__.py", "python/dao/postgres/__init__.py.tpl"),
+            ("dao/postgres/user_dao.py", "python/dao/postgres/user_dao.py.tpl"),
+            
+            # API layer
+            ("api/__init__.py", "python/api/__init__.py.tpl"),
+            ("api/routes/__init__.py", "python/api/routes/__init__.py.tpl"),
+            ("api/routes/user_routes.py", "python/api/routes/user_routes.py.tpl"),
+            ("api/routes/health.py", "python/api/routes/health.py.tpl"),
+            ("api/middleware/__init__.py", "python/api/middleware/__init__.py.tpl"),
+            ("api/middleware/auth.py", "python/api/middleware/auth.py.tpl"),
+            ("api/middleware/logging.py", "python/api/middleware/logging.py.tpl"),
+            ("api/dependencies.py", "python/api/dependencies.py.tpl"),
+            
+            # Infrastructure layer
+            ("infrastructure/__init__.py", "python/infrastructure/__init__.py.tpl"),
+            ("infrastructure/database/__init__.py", "python/infrastructure/database/__init__.py.tpl"),
+            ("infrastructure/database/connection.py", "python/infrastructure/database/connection.py.tpl"),
+            ("infrastructure/cache/__init__.py", "python/infrastructure/cache/__init__.py.tpl"),
+            ("infrastructure/cache/redis_cache.py", "python/infrastructure/cache/redis_cache.py.tpl"),
+            
+            # Configuration
+            ("config/settings.py", "python/config/settings.py.tpl"),
+            
+            # Create basic requirements.txt
+            ("requirements.txt", "python/requirements.txt.tpl"),
+        ]
+        
+        for target_path, template_path in templates_to_write:
+            self.write_template(target_path, template_path)
+        
+        # Create environment example
+        self.write_content(".env.example", """# Application Settings
+APP_NAME={{service_name}}
+APP_VERSION=1.0.0
+ENVIRONMENT=development
+DEBUG=true
+HOST=0.0.0.0
+PORT=8000
 
-        # Create minimal main file
-        self.write_content("src/main.py", "from fastapi import FastAPI\n\napp = FastAPI()\n\n@app.get('/')\ndef root():\n    return {'message': 'Hello World'}\n")
+# Database Settings (PostgreSQL)
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_password_here
+DB_NAME={{service_name}}_db
 
-        # Create requirements.txt
-        self.write_template("requirements.txt", "python/requirements.txt.tpl")
+# Redis Settings (optional)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+# Security Settings
+SECRET_KEY=your_secret_key_here_at_least_32_characters_long
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# External Services
+EMAIL_ENABLED=false
+EMAIL_BACKEND=console
+
+# Feature Flags
+FEATURE_USER_REGISTRATION=true
+FEATURE_EMAIL_NOTIFICATIONS=false
+""")
+        
+        # Create basic migration file as example
+        self.write_content("migrations/001_initial.sql", """-- Initial database schema
+-- This is an example migration file
+-- In production, use a proper migration tool like Alembic
+
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    deactivated_at TIMESTAMP WITH TIME ZONE,
+    profile_data JSONB DEFAULT '{}'::jsonb
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+""")
+        
+        self.create_directories(["migrations"])
 
     def _create_rust_structure(self) -> None:
         """Create Rust-specific project structure.
