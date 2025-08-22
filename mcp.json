@@ -1,0 +1,143 @@
+{
+  "name": "kickstart",
+  "version": "0.3.0",
+  "description": "Full-stack project scaffolding with progressive enhancement",
+  "commands": {
+    "create": {
+      "description": "Create a new project with Kickstart",
+      "parameters": {
+        "type": {
+          "type": "string",
+          "description": "Project type",
+          "enum": ["service", "frontend", "lib", "cli", "monorepo"],
+          "required": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Project name",
+          "required": true
+        },
+        "lang": {
+          "type": "string",
+          "description": "Programming language",
+          "enum": ["python", "rust", "go", "cpp", "java", "typescript"],
+          "required": true
+        },
+        "root": {
+          "type": "string",
+          "description": "Root directory for project creation",
+          "default": "."
+        },
+        "database": {
+          "type": "string",
+          "description": "Database extension",
+          "enum": ["none", "postgres", "mysql", "sqlite", "mongo"],
+          "default": "none"
+        },
+        "cache": {
+          "type": "string",
+          "description": "Cache extension",
+          "enum": ["none", "redis", "memcached"],
+          "default": "none"
+        },
+        "auth": {
+          "type": "string",
+          "description": "Authentication extension",
+          "enum": ["none", "jwt", "oauth", "basic"],
+          "default": "none"
+        },
+        "gh": {
+          "type": "boolean",
+          "description": "Create GitHub repository",
+          "default": false
+        },
+        "helm": {
+          "type": "boolean",
+          "description": "Include Helm charts",
+          "default": false
+        }
+      },
+      "examples": [
+        {
+          "description": "Create minimal Python service",
+          "command": "kickstart create service myapp --lang python"
+        },
+        {
+          "description": "Create Python service with PostgreSQL and Redis",
+          "command": "kickstart create service myapp --lang python --database postgres --cache redis"
+        },
+        {
+          "description": "Create full-featured Python service",
+          "command": "kickstart create service myapp --lang python --database postgres --cache redis --auth jwt"
+        },
+        {
+          "description": "Create Rust library",
+          "command": "kickstart create lib mylib --lang rust"
+        },
+        {
+          "description": "Create Go service with MySQL",
+          "command": "kickstart create service myservice --lang go --database mysql"
+        }
+      ]
+    },
+    "upgrade": {
+      "description": "Upgrade Kickstart to the latest version",
+      "parameters": {}
+    },
+    "version": {
+      "description": "Show Kickstart version",
+      "parameters": {}
+    }
+  },
+  "templates": {
+    "structure": {
+      "description": "Project structure patterns used by Kickstart",
+      "patterns": {
+        "src/model/": "All data-related code (entities, DTOs, repositories, DAOs)",
+        "src/api/": "Business logic layer (services, validators, interfaces)",
+        "src/routes/": "HTTP routing layer (endpoint definitions)",
+        "src/handler/": "Protocol handlers (middleware, auth, logging)",
+        "src/clients/": "External system clients (database, cache, HTTP APIs)"
+      }
+    },
+    "languages": {
+      "python": {
+        "core": "Minimal structure with standard library only",
+        "extensions": {
+          "database": ["postgres", "mysql", "sqlite", "mongo"],
+          "cache": ["redis", "memcached"],
+          "auth": ["jwt", "oauth", "basic"]
+        }
+      },
+      "go": {
+        "structure": "Uses internal/ for private packages, cmd/ for binaries",
+        "extensions": {
+          "database": ["postgres", "mysql", "sqlite"],
+          "cache": ["redis", "memcached"],
+          "auth": ["jwt", "oauth"]
+        }
+      },
+      "rust": {
+        "structure": "Workspace with crates for clean boundaries",
+        "extensions": {
+          "database": ["postgres", "mysql", "sqlite"],
+          "cache": ["redis"],
+          "auth": ["jwt"]
+        }
+      }
+    }
+  },
+  "philosophy": {
+    "core_principles": [
+      "Start minimal, enhance progressively",
+      "No unnecessary dependencies",
+      "Clear separation of concerns",
+      "Composition over inheritance",
+      "Technology-agnostic patterns"
+    ],
+    "directory_structure": {
+      "4_level_depth": "Allowed when it makes logical sense (e.g., src/model/entities/user/profile.py)",
+      "organization": "Group by domain, not by file type"
+    }
+  }
+}
