@@ -72,17 +72,13 @@ def test_create_success_python_with_helm_and_gh(
     # Verify
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        # New improved structure for Python services
-        "models/entities/user", "models/dto",
-        "core/services", "core/validators", 
-        "repository", "dao/postgres",
-        "api/routes", "api/middleware",
-        "infrastructure/database", "infrastructure/cache", "infrastructure/external",
-        "config",
-        "tests/unit/services", "tests/unit/validators", "tests/unit/repository", 
-        "tests/integration/repository", "tests/integration/api",
+        # New improved structure using src/model/, src/api/, src/routes/, src/handler/, src/clients/
+        "src/model", "src/api", "src/routes", "src/handler", "src/clients",
+        "src/config",
+        "tests/unit/model", "tests/unit/api", "tests/unit/routes", 
+        "tests/integration/api", "tests/integration/clients",
         "tests/fixtures",
-        "architecture"
+        "docs"
     ])
     
     # Verify template files are written
@@ -131,14 +127,9 @@ def test_create_python_structure(mock_write_content, mock_write_template, mock_c
     
     # Verify all __init__.py files are created for Python packages
     expected_python_packages = [
-        "models", "models/entities", "models/entities/user", "models/dto",
-        "core", "core/services", "core/validators",
-        "repository", "dao", "dao/postgres",
-        "api", "api/routes", "api/middleware",
-        "infrastructure", "infrastructure/database", "infrastructure/cache", "infrastructure/external",
-        "config",
-        "tests", "tests/unit", "tests/unit/services", "tests/unit/validators", "tests/unit/repository",
-        "tests/integration", "tests/integration/repository", "tests/integration/api",
+        "src", "src/model", "src/api", "src/routes", "src/handler", "src/clients", "src/config",
+        "tests", "tests/unit", "tests/unit/model", "tests/unit/api", "tests/unit/routes",
+        "tests/integration", "tests/integration/api", "tests/integration/clients",
         "tests/fixtures"
     ]
     
@@ -147,14 +138,19 @@ def test_create_python_structure(mock_write_content, mock_write_template, mock_c
     
     # Verify key template files are written
     expected_template_calls = [
-        call("main.py", "python/main.py.tpl"),
-        call("models/entities/user/user.py", "python/models/entities/user/user.py.tpl"),
-        call("core/services/user_service.py", "python/core/services/user_service.py.tpl"),
-        call("repository/user_repo.py", "python/repository/user_repo.py.tpl"),
-        call("dao/postgres/user_dao.py", "python/dao/postgres/user_dao.py.tpl"),
-        call("api/routes/user_routes.py", "python/api/routes/user_routes.py.tpl"),
-        call("config/settings.py", "python/config/settings.py.tpl"),
-        call("requirements.txt", "python/requirements.txt.tpl"),
+        call("src/main.py", "python/core/main.py.tpl"),
+        call("src/model/__init__.py", "python/core/model/__init__.py.tpl"),
+        call("src/model/entities.py", "python/core/model/entities.py.tpl"),
+        call("src/model/dto.py", "python/core/model/dto.py.tpl"),
+        call("src/model/repository.py", "python/core/model/repository.py.tpl"),
+        call("src/api/__init__.py", "python/core/api/__init__.py.tpl"),
+        call("src/api/services.py", "python/core/api/services.py.tpl"),
+        call("src/routes/__init__.py", "python/core/routes/__init__.py.tpl"),
+        call("src/routes/users.py", "python/core/routes/users.py.tpl"),
+        call("src/routes/health.py", "python/core/routes/health.py.tpl"),
+        call("src/config/__init__.py", "python/core/config/__init__.py.tpl"),
+        call("src/config/settings.py", "python/core/config/settings.py.tpl"),
+        call("requirements.txt", "python/core/requirements.txt.tpl"),
     ]
     
     for expected_call in expected_template_calls:
