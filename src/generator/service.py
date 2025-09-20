@@ -1,8 +1,11 @@
 from pathlib import Path
 from typing import Any
+import logging
 from src.generator.base import BaseGenerator
 from src.utils.logger import success, warn
 from src.utils.github import create_repo
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceGenerator(BaseGenerator):
@@ -70,8 +73,9 @@ class ServiceGenerator(BaseGenerator):
 
     def create(self) -> None:
         """Create a complete microservice project.
-        
-        This method orchestrates the entire service creation process:
+
+        This method orchestrates the entire service creation process using the
+        standardized create flow from BaseGenerator:
         1. Validates project can be created (directory doesn't exist)
         2. Checks language template availability
         3. Creates directory structure
@@ -79,81 +83,102 @@ class ServiceGenerator(BaseGenerator):
         5. Sets up language-specific files and dependencies
         6. Creates Helm charts if requested
         7. Optionally creates GitHub repository
-        
+
         Returns:
             None
-            
+
         Raises:
             OSError: If file/directory operations fail
             TemplateError: If template rendering fails
         """
-        # Check if project can be created
-        if not self.create_project():
-            return
-
         # Check if templates exist for the language
         if not self.lang_template_dir.exists():
             warn(f"No templates for language: {self.lang}")
             return
 
+        # Define project structure
         directories: list[str] = [
             # New improved structure using src/model/, src/api/, src/routes/, src/handler/, src/clients/
             "src/model", "src/api", "src/routes", "src/handler", "src/clients",
             "src/config",
-            "tests/unit/model", "tests/unit/api", "tests/unit/routes", 
+            "tests/unit/model", "tests/unit/api", "tests/unit/routes",
             "tests/integration/api", "tests/integration/clients",
             "tests/fixtures",
             "docs"
         ]
-        
+
         # Use template registry for cleaner template management
         template_configs: list[dict[str, str]] = self.template_registry.get_template_configs_for_service(self.lang)
-        
+
+        # Configuration for the common create flow
         architecture_title: str = f"{self.name} Architecture Notes"
         success_message: str = f"{self.lang.title()} service '{self.name}' created successfully in '{self.project}'!"
-        
         github_create_fn = lambda: create_repo(self.name) if self.gh else None
-        
-        # Create project structure without the create_project check since we already did it
-        self.init_basic_structure(directories)
-        
-        # Write template files
-        self.write_templates_from_config(template_configs)
-        
-        # Create architecture docs
-        self.create_architecture_docs(architecture_title)
 
-        # Language-specific setup
-        self._setup_service_specific()
+        # Execute common create flow with service-specific setup
+        success = self.execute_create_flow(
+            directories=directories,
+            template_configs=template_configs,
+            architecture_title=architecture_title,
+            success_message=success_message,
+            language_setup_fn=self._setup_service_specific,
+            additional_setup_fn=self._setup_helm_if_requested,
+            github_create_fn=github_create_fn if self.gh else None
+        )
 
-        # Success message and GitHub integration
-        self.create_with_github(success_message, github_create_fn if self.gh else None)
+        if not success:
+            warn(f"Failed to create {self.lang} service '{self.name}'")
     
-    def _setup_service_specific(self) -> None:
+    def _setup_service_specific(self) -> bool:
         """Setup service-specific files and structure.
-        
+
         Creates language-specific project files, directory structure,
-        and dependency configuration. Also sets up Helm charts if requested.
-        
+        and dependency configuration.
+
         This method dispatches to language-specific setup methods based
         on the configured language.
+
+        Returns:
+            True if setup was successful, False otherwise
         """
-        # Write direct content
-        self.write_content(".env.example", "EXAMPLE_ENV_VAR=value\n")
+        try:
+            # Write direct content
+            self.write_content(".env.example", "EXAMPLE_ENV_VAR=value\n")
 
-        # Language-specific files and structure
-        if self.lang == "python":
-            self._create_python_structure()
-        elif self.lang == "rust":
-            self._create_rust_structure()
-        elif self.lang == "cpp":
-            self._create_cpp_structure()
-        elif self.lang == "go":
-            self._create_go_structure()
+            # Language-specific files and structure
+            if self.lang == "python":
+                self._create_python_structure()
+            elif self.lang == "rust":
+                self._create_rust_structure()
+            elif self.lang == "cpp":
+                self._create_cpp_structure()
+            elif self.lang == "go":
+                self._create_go_structure()
+            else:
+                warn(f"Unsupported language: {self.lang}")
+                return False
 
-        # Helm chart if requested
-        if self.helm:
+            return True
+
+        except Exception as e:
+            logger.error(f"Service-specific setup failed: {e}")
+            return False
+
+    def _setup_helm_if_requested(self) -> bool:
+        """Setup Helm charts if requested.
+
+        Returns:
+            True if Helm setup was successful or not requested, False if failed
+        """
+        if not self.helm:
+            return True
+
+        try:
             self._create_helm_chart()
+            return True
+        except Exception as e:
+            logger.error(f"Helm chart creation failed: {e}")
+            return False
 
     def _create_python_structure(self) -> None:
         """Create Python-specific project structure.

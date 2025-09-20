@@ -133,15 +133,15 @@ def get_template_engine() -> TemplateEngine:
 
 def write_file(path: Path, template: Path | str, **vars: Any) -> None:
     """Write a template file to the specified path with variable substitution.
-    
+
     This function supports both Jinja2 templating (recommended) and legacy
     placeholder replacement for backward compatibility.
-    
+
     Args:
         path: Target file path
         template: Either a Path to a template file or template content as string
         **vars: Template variables
-        
+
     Raises:
         OSError: If file cannot be written
         TemplateError: If template rendering fails
@@ -149,13 +149,17 @@ def write_file(path: Path, template: Path | str, **vars: Any) -> None:
     try:
         # Ensure parent directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         if isinstance(template, Path):
             # Template file path
             try:
-                # Try Jinja2 templating first
-                engine = get_template_engine()
-                content = engine.render_template(template, vars)
+                # Set up template engine with correct template directories for inheritance
+                template_base_dir = _find_template_base_dir(template)
+                engine = TemplateEngine([template_base_dir])
+
+                # Get relative template path for Jinja2
+                relative_path = template.relative_to(template_base_dir)
+                content = engine.render_template(str(relative_path), vars)
                 logger.debug(f"Successfully rendered Jinja2 template: {template}")
             except (TemplateError, FileNotFoundError) as e:
                 # Fallback to legacy placeholder replacement
@@ -177,13 +181,33 @@ def write_file(path: Path, template: Path | str, **vars: Any) -> None:
         # Write the rendered content
         path.write_text(content, encoding='utf-8')
         logger.debug(f"Successfully wrote file: {path}")
-        
+
     except OSError as e:
         logger.error(f"Failed to write file {path}: {e}")
         raise
     except Exception as e:
         logger.error(f"Unexpected error writing file {path}: {e}")
         raise
+
+
+def _find_template_base_dir(template_path: Path) -> Path:
+    """Find the base template directory for Jinja2 inheritance.
+
+    Args:
+        template_path: Path to the template file
+
+    Returns:
+        Base directory containing the templates directory structure
+    """
+    # Look for the 'templates' directory in the path
+    current = template_path.parent
+    while current != current.parent:  # Not root directory
+        if current.name == 'templates':
+            return current
+        current = current.parent
+
+    # Fallback to the directory containing the template
+    return template_path.parent
 
 
 def _legacy_replace(content: str, variables: Dict[str, Any]) -> str:
