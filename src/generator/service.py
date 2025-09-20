@@ -4,6 +4,11 @@ import logging
 from src.generator.base import BaseGenerator
 from src.utils.logger import success, warn
 from src.utils.github import create_repo
+from src.utils.extension_manager import ExtensionManager
+from src.utils.error_handling import (
+    safe_operation_context, handle_file_operations, ErrorCollector,
+    LanguageNotSupportedError, validate_language_support
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +35,8 @@ class ServiceGenerator(BaseGenerator):
     auth: str | None
     framework: str | None
     lang_template_dir: Path
-    
+    extension_manager: ExtensionManager
+
     def __init__(
         self,
         name: str,
@@ -70,6 +76,7 @@ class ServiceGenerator(BaseGenerator):
         self.auth = auth
         self.framework = framework
         self.lang_template_dir = self.template_dir / lang
+        self.extension_manager = ExtensionManager()
 
     def create(self) -> None:
         """Create a complete microservice project.
@@ -88,13 +95,15 @@ class ServiceGenerator(BaseGenerator):
             None
 
         Raises:
-            OSError: If file/directory operations fail
-            TemplateError: If template rendering fails
+            LanguageNotSupportedError: If unsupported language is specified
         """
+        # Validate language support
+        supported_languages = ["python", "rust", "go", "cpp"]
+        validate_language_support(self.lang, supported_languages)
+
         # Check if templates exist for the language
         if not self.lang_template_dir.exists():
-            warn(f"No templates for language: {self.lang}")
-            return
+            raise LanguageNotSupportedError(f"No templates found for language: {self.lang}")
 
         # Define project structure
         directories: list[str] = [
@@ -141,7 +150,7 @@ class ServiceGenerator(BaseGenerator):
         Returns:
             True if setup was successful, False otherwise
         """
-        try:
+        with safe_operation_context("Service-specific setup", log_errors=True):
             # Write direct content
             self.write_content(".env.example", "EXAMPLE_ENV_VAR=value\n")
 
@@ -155,14 +164,9 @@ class ServiceGenerator(BaseGenerator):
             elif self.lang == "go":
                 self._create_go_structure()
             else:
-                warn(f"Unsupported language: {self.lang}")
-                return False
+                raise LanguageNotSupportedError(f"Unsupported language: {self.lang}")
 
             return True
-
-        except Exception as e:
-            logger.error(f"Service-specific setup failed: {e}")
-            return False
 
     def _setup_helm_if_requested(self) -> bool:
         """Setup Helm charts if requested.
@@ -173,12 +177,9 @@ class ServiceGenerator(BaseGenerator):
         if not self.helm:
             return True
 
-        try:
+        with safe_operation_context("Helm chart creation", log_errors=True):
             self._create_helm_chart()
             return True
-        except Exception as e:
-            logger.error(f"Helm chart creation failed: {e}")
-            return False
 
     def _create_python_structure(self) -> None:
         """Create Python-specific project structure.
@@ -312,36 +313,16 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
     def _add_python_extensions(self) -> None:
         """Add extension functionality based on flags.
 
-        This method adds database, cache, and authentication extensions
-        based on the flags provided during initialization. Requirements are
-        read from extension template files to ensure consistency.
+        This method uses ExtensionManager to add database, cache, and authentication
+        extensions based on the flags provided during initialization.
         """
-        extensions_added = []
-        all_extension_requirements = []
-
-        # Database extension
-        if self.database:
-            if self.database == "postgres":
-                self._add_postgres_extension()
-                extensions_added.append("PostgreSQL database")
-                db_requirements = self._load_extension_requirements("database")
-                all_extension_requirements.extend(db_requirements)
-
-        # Cache extension
-        if self.cache:
-            if self.cache == "redis":
-                self._add_redis_extension()
-                extensions_added.append("Redis cache")
-                cache_requirements = self._load_extension_requirements("cache")
-                all_extension_requirements.extend(cache_requirements)
-
-        # Authentication extension
-        if self.auth:
-            if self.auth == "jwt":
-                self._add_jwt_auth_extension()
-                extensions_added.append("JWT authentication")
-                auth_requirements = self._load_extension_requirements("auth")
-                all_extension_requirements.extend(auth_requirements)
+        # Apply extensions using the extension manager
+        extensions_added, all_extension_requirements = self.extension_manager.apply_extensions(
+            writer=self,
+            database=self.database,
+            cache=self.cache,
+            auth=self.auth
+        )
 
         # Update requirements.txt with extensions
         if all_extension_requirements:
@@ -362,52 +343,6 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
             from src.utils.logger import success
             success(f"Extensions added: {', '.join(extensions_added)}")
 
-    def _load_extension_requirements(self, extension_type: str) -> list[str]:
-        """Load requirements from extension template files.
-
-        Args:
-            extension_type: Type of extension (database, cache, auth)
-
-        Returns:
-            List of requirement strings from the extension template
-        """
-        requirements_file = self.template_dir / "python" / "extensions" / extension_type / "requirements.txt.tpl"
-
-        try:
-            with open(requirements_file, "r") as f:
-                content = f.read()
-
-            # Parse requirements from template, filtering out comments and empty lines
-            requirements = []
-            for line in content.split("\n"):
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    requirements.append(line)
-
-            return requirements
-        except FileNotFoundError:
-            from src.utils.logger import warn
-            warn(f"Extension requirements template not found: {requirements_file}")
-            return []
-
-    def _add_postgres_extension(self) -> None:
-        """Add PostgreSQL database extension."""
-        # Add PostgreSQL DAO implementation
-        self.write_template("src/clients/database.py", "python/extensions/database/dao.py.tpl")
-        
-        # Add database migration
-        self.write_template("migrations/001_initial.sql", "python/extensions/database/migrations.sql.tpl")
-        self.create_directories(["migrations"])
-
-    def _add_redis_extension(self) -> None:
-        """Add Redis cache extension."""
-        # Add Redis client implementation
-        self.write_template("src/clients/cache.py", "python/extensions/cache/redis_client.py.tpl")
-
-    def _add_jwt_auth_extension(self) -> None:
-        """Add JWT authentication extension."""
-        # Add JWT authentication implementation
-        self.write_template("src/handler/auth.py", "python/extensions/auth/jwt_auth.py.tpl")
 
     def _create_rust_structure(self) -> None:
         """Create Rust-specific project structure.
