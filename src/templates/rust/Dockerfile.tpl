@@ -1,8 +1,8 @@
 FROM rust:1.74
 
-WORKDIR /usr/src/{{SERVICE_NAME}}
+WORKDIR /usr/src/{{service_name}}
 COPY . .
 
 RUN cargo build --release
 
-CMD ["./target/release/{{SERVICE_NAME}}"]
+CMD ["./target/release/{{service_name}}"]

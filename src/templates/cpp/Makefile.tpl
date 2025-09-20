@@ -6,7 +6,7 @@ TEST_DIR = $(BUILD_DIR)/tests
 dev:
 	@mkdir -p $(BUILD_DIR)
 	cd $(BUILD_DIR) && cmake .. && make
-	./$(BUILD_DIR)/{{SERVICE_NAME}}
+	./$(BUILD_DIR)/{{service_name}}
 
 test:
 	@mkdir -p $(BUILD_DIR)

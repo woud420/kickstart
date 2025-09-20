@@ -1,2 +1,2 @@
 [package]
-name = "{{SERVICE_NAME}} CLI"
+name = "{{service_name}} CLI"

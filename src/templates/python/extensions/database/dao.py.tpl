@@ -7,9 +7,9 @@ import asyncpg
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from ...core.model.entities import User, UserProfile
-from ...core.model.dto import PaginationRequest
-from ...core.model.repository import (
+from ..model.entities import User, UserProfile
+from ..model.dto import PaginationRequest
+from ..model.repository import (
     UserRepository, UserProfileRepository,
     UserNotFoundError, UserAlreadyExistsError,
     ProfileNotFoundError, ProfileAlreadyExistsError

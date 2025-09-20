@@ -8,7 +8,7 @@ import logging
 import functools
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union, Generator
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union, Generator, cast
 from src.utils.logger import warn
 
 logger = logging.getLogger(__name__)
@@ -113,7 +113,7 @@ def handle_file_operations(
                 if reraise:
                     raise FileOperationError(f"File operation failed: {e}") from e
                 return default_return
-        return wrapper
+        return cast(F, wrapper)
     return decorator
 
 
@@ -141,7 +141,7 @@ def handle_template_operations(
                 # Always use warn for user-facing feedback
                 warn(f"Template operation failed: {e}")
                 return default_return
-        return wrapper
+        return cast(F, wrapper)
     return decorator
 
 
@@ -168,7 +168,7 @@ def handle_directory_operations(
                     logger.error(f"Directory operation failed in {func.__name__}: {e}")
                 warn(f"Directory operation failed: {e}")
                 return default_return
-        return wrapper
+        return cast(F, wrapper)
     return decorator
 
 
@@ -216,7 +216,7 @@ def handle_http_operations(
                     raise KickstartError(error_msg) from e
 
                 return default_return
-        return wrapper
+        return cast(F, wrapper)
     return decorator
 
 
@@ -250,7 +250,7 @@ def safe_operation(
                     raise reraise_as(f"{operation_name} failed: {e}") from e
 
                 return default_return
-        return wrapper
+        return cast(F, wrapper)
     return decorator
 
 

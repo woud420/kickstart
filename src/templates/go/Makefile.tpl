@@ -7,7 +7,7 @@ test:
 	go test ./...
 
 build:
-	go build -o bin/{{SERVICE_NAME}} ./src
+	go build -o bin/{{service_name}} ./src
 
 clean:
 	rm -rf bin/ 

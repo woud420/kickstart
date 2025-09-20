@@ -398,7 +398,7 @@ class AuthService:
             Registration response or None if registration failed
         """
         try:
-            from ...core.model.entities import User
+            from ..model.entities import User
             
             # Hash password
             password_hash = self.jwt_auth.hash_password(password)

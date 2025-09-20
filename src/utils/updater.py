@@ -37,18 +37,21 @@ def verify_signature(data: bytes, signature: bytes) -> bool:
     try:
         # Load the public key
         public_key = serialization.load_pem_public_key(PUBLIC_KEY_PEM.encode())
-        
-        # Verify the signature
-        public_key.verify(
-            signature,
-            data,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hashes.SHA256()
-        )
-        return True
+
+        # Verify the signature - cast to RSAPublicKey as we know it's RSA
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        if isinstance(public_key, rsa.RSAPublicKey):
+            public_key.verify(
+                signature,
+                data,
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+            return True
+        return False
     except (InvalidSignature, Exception):
         return False
 
