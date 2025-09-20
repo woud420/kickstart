@@ -25,19 +25,21 @@ class ServiceGenerator(BaseGenerator):
     database: str | None
     cache: str | None
     auth: str | None
+    framework: str | None
     lang_template_dir: Path
     
     def __init__(
-        self, 
-        name: str, 
-        lang: str, 
-        gh: bool, 
-        config: dict[str, Any], 
-        helm: bool = False, 
+        self,
+        name: str,
+        lang: str,
+        gh: bool,
+        config: dict[str, Any],
+        helm: bool = False,
         root: str | None = None,
         database: str | None = None,
         cache: str | None = None,
-        auth: str | None = None
+        auth: str | None = None,
+        framework: str | None = None
     ) -> None:
         """Initialize the ServiceGenerator.
         
@@ -51,6 +53,7 @@ class ServiceGenerator(BaseGenerator):
             database: Database extension (postgres, mysql, sqlite)
             cache: Cache extension (redis, memcached)
             auth: Authentication extension (jwt, oauth)
+            framework: HTTP framework (None for FastAPI default, minimal for standard library)
             
         Raises:
             ValueError: If unsupported language is specified
@@ -62,6 +65,7 @@ class ServiceGenerator(BaseGenerator):
         self.database = database
         self.cache = cache
         self.auth = auth
+        self.framework = framework
         self.lang_template_dir = self.template_dir / lang
 
     def create(self) -> None:
@@ -153,11 +157,12 @@ class ServiceGenerator(BaseGenerator):
 
     def _create_python_structure(self) -> None:
         """Create Python-specific project structure.
-        
-        Sets up a modern Python microservice with:
-        - Core functionality with no external dependencies
+
+        Sets up a Python microservice with:
+        - FastAPI framework by default (modern, async, type-safe)
+        - Minimal http.server framework when --framework minimal is used
         - Optional extensions (database, cache, auth) via progressive enhancement
-        - Clean architecture with src/model/, src/api/, src/routes/, src/handler/, src/clients/
+        - Clean architecture with proper separation of concerns
         - Type hints and proper error handling
         """
         # Create __init__.py files for all Python packages
@@ -171,39 +176,51 @@ class ServiceGenerator(BaseGenerator):
         for package_path in python_packages:
             self.write_content(f"{package_path}/__init__.py", "")
         
-        # Write core template files
-        core_templates = [
-            # Core application files
-            ("src/main.py", "python/core/main.py.tpl"),
-            
-            # Model layer (all data-related code)
-            ("src/model/__init__.py", "python/core/model/__init__.py.tpl"),
-            ("src/model/entities.py", "python/core/model/entities.py.tpl"),
-            ("src/model/dto.py", "python/core/model/dto.py.tpl"),
-            ("src/model/repository.py", "python/core/model/repository.py.tpl"),
-            
-            # API layer (business logic)
-            ("src/api/__init__.py", "python/core/api/__init__.py.tpl"),
-            ("src/api/services.py", "python/core/api/services.py.tpl"),
-            
-            # Routes layer (HTTP routing)
-            ("src/routes/__init__.py", "python/core/routes/__init__.py.tpl"),
-            ("src/routes/users.py", "python/core/routes/users.py.tpl"),
-            ("src/routes/health.py", "python/core/routes/health.py.tpl"),
-            
-            # Configuration
-            ("src/config/__init__.py", "python/core/config/__init__.py.tpl"),
-            ("src/config/settings.py", "python/core/config/settings.py.tpl"),
-            
-            # Core requirements (minimal dependencies)
-            ("requirements.txt", "python/core/requirements.txt.tpl"),
-        ]
+        # Choose templates based on framework
+        if self.framework == "minimal":
+            # Use minimal HTTP server framework (standard library only)
+            core_templates = [
+                # Core application files
+                ("src/main.py", "python/extensions/minimal/core/main.py.tpl"),
+
+                # Minimal requirements (standard library only)
+                ("requirements.txt", "python/extensions/minimal/core/requirements.txt.tpl"),
+            ]
+        else:
+            # Use FastAPI framework (default)
+            core_templates = [
+                # Core application files
+                ("src/main.py", "python/core/main.py.tpl"),
+
+                # Model layer (all data-related code)
+                ("src/model/__init__.py", "python/core/model/__init__.py.tpl"),
+                ("src/model/entities.py", "python/core/model/entities.py.tpl"),
+                ("src/model/dto.py", "python/core/model/dto.py.tpl"),
+                ("src/model/repository.py", "python/core/model/repository.py.tpl"),
+
+                # API layer (business logic)
+                ("src/api/__init__.py", "python/core/api/__init__.py.tpl"),
+                ("src/api/services.py", "python/core/api/services.py.tpl"),
+
+                # Routes layer (HTTP routing)
+                ("src/routes/__init__.py", "python/core/routes/__init__.py.tpl"),
+                ("src/routes/users.py", "python/core/routes/users.py.tpl"),
+                ("src/routes/health.py", "python/core/routes/health.py.tpl"),
+
+                # Configuration
+                ("src/config/__init__.py", "python/core/config/__init__.py.tpl"),
+                ("src/config/settings.py", "python/core/config/settings.py.tpl"),
+
+                # Core requirements (FastAPI by default)
+                ("requirements.txt", "python/core/requirements.txt.tpl"),
+            ]
         
         for target_path, template_path in core_templates:
             self.write_template(target_path, template_path)
         
-        # Add extensions based on flags
-        self._add_python_extensions()
+        # Add extensions based on flags (only for FastAPI framework)
+        if self.framework != "minimal":
+            self._add_python_extensions()
         
         # Create environment example
         self.write_content(".env.example", """# Application Settings
@@ -244,7 +261,6 @@ FEATURE_EMAIL_NOTIFICATIONS=false
         # Create basic migration file as example
         self.write_content("migrations/001_initial.sql", """-- Initial database schema
 -- This is an example migration file
--- In production, use a proper migration tool like Alembic
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -270,50 +286,42 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 
     def _add_python_extensions(self) -> None:
         """Add extension functionality based on flags.
-        
+
         This method adds database, cache, and authentication extensions
-        based on the flags provided during initialization.
+        based on the flags provided during initialization. Requirements are
+        read from extension template files to ensure consistency.
         """
         extensions_added = []
-        additional_requirements = []
-        
+        all_extension_requirements = []
+
         # Database extension
         if self.database:
             if self.database == "postgres":
                 self._add_postgres_extension()
                 extensions_added.append("PostgreSQL database")
-                additional_requirements.extend([
-                    "asyncpg==0.29.0",
-                    "psycopg2-binary==2.9.9",
-                    "alembic==1.13.1",
-                    "sqlalchemy[asyncio]==2.0.23"
-                ])
-        
+                db_requirements = self._load_extension_requirements("database")
+                all_extension_requirements.extend(db_requirements)
+
         # Cache extension
         if self.cache:
             if self.cache == "redis":
                 self._add_redis_extension()
                 extensions_added.append("Redis cache")
-                additional_requirements.extend([
-                    "redis==5.0.1",
-                    "redis[hiredis]==5.0.1"
-                ])
-        
+                cache_requirements = self._load_extension_requirements("cache")
+                all_extension_requirements.extend(cache_requirements)
+
         # Authentication extension
         if self.auth:
             if self.auth == "jwt":
                 self._add_jwt_auth_extension()
                 extensions_added.append("JWT authentication")
-                additional_requirements.extend([
-                    "python-jose[cryptography]==3.3.0",
-                    "passlib[bcrypt]==1.7.4",
-                    "python-multipart==0.0.6"
-                ])
-        
+                auth_requirements = self._load_extension_requirements("auth")
+                all_extension_requirements.extend(auth_requirements)
+
         # Update requirements.txt with extensions
-        if additional_requirements:
-            extension_requirements = "\n\n# Extension requirements\n" + "\n".join(additional_requirements) + "\n"
-            
+        if all_extension_requirements:
+            extension_requirements = "\n\n# Extension requirements\n" + "\n".join(all_extension_requirements) + "\n"
+
             # Read core requirements and append extensions
             try:
                 with open(self.project / "requirements.txt", "r") as f:
@@ -322,12 +330,40 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
                 self.write_content("requirements.txt", enhanced_requirements)
             except FileNotFoundError:
                 # If core requirements don't exist, create with extensions only
-                self.write_content("requirements.txt", "\n".join(additional_requirements))
-        
+                self.write_content("requirements.txt", "\n".join(all_extension_requirements))
+
         # Log what was added
         if extensions_added:
             from src.utils.logger import success
             success(f"Extensions added: {', '.join(extensions_added)}")
+
+    def _load_extension_requirements(self, extension_type: str) -> list[str]:
+        """Load requirements from extension template files.
+
+        Args:
+            extension_type: Type of extension (database, cache, auth)
+
+        Returns:
+            List of requirement strings from the extension template
+        """
+        requirements_file = self.template_dir / "python" / "extensions" / extension_type / "requirements.txt.tpl"
+
+        try:
+            with open(requirements_file, "r") as f:
+                content = f.read()
+
+            # Parse requirements from template, filtering out comments and empty lines
+            requirements = []
+            for line in content.split("\n"):
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    requirements.append(line)
+
+            return requirements
+        except FileNotFoundError:
+            from src.utils.logger import warn
+            warn(f"Extension requirements template not found: {requirements_file}")
+            return []
 
     def _add_postgres_extension(self) -> None:
         """Add PostgreSQL database extension."""

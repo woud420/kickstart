@@ -38,7 +38,30 @@ class TemplateEngine:
                 lstrip_blocks=True,
                 keep_trailing_newline=True
             )
+
+            # Add custom filters
+            self._env.filters['classname'] = self._to_class_name
         return self._env
+
+    def _to_class_name(self, value: str) -> str:
+        """Convert a service name to a valid Python class name.
+
+        Removes hyphens, underscores, and other invalid characters,
+        then converts to PascalCase.
+
+        Args:
+            value: Service name to convert
+
+        Returns:
+            Valid Python class name
+        """
+        import re
+        # Remove invalid characters and split on word boundaries
+        clean_name = re.sub(r'[^a-zA-Z0-9]', ' ', str(value))
+        # Split into words and capitalize each
+        words = [word.capitalize() for word in clean_name.split() if word]
+        # Join words together
+        return ''.join(words) if words else 'Service'
     
     def render_template(self, template_path: Path | str, variables: Dict[str, Any]) -> str:
         """Render a template file with the given variables.

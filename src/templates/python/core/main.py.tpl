@@ -1,250 +1,399 @@
 """Main application entry point.
 
-This is a minimal HTTP server using only Python standard library.
-For enhanced functionality, use progressive enhancement flags:
-- --database postgres (adds database support)
-- --cache redis (adds caching support)  
-- --auth jwt (adds authentication support)
+This module sets up the FastAPI application with proper dependency injection,
+middleware configuration, and lifecycle management.
 """
 
-import json
 import logging
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import urlparse, parse_qs
+from contextlib import asynccontextmanager
 from typing import Dict, Any
-import os
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+import uvicorn
+
+from config.settings import get_settings
+from api.routes import user_router, health_router
+from api.middleware import setup_request_logging
+from infrastructure.database import initialize_database, shutdown_database
+from infrastructure.cache import close_redis_client
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("app.log") if get_settings().log_file else logging.NullHandler()
+    ]
 )
 
 logger = logging.getLogger(__name__)
 
 
-class {{service_name|title}}Handler(BaseHTTPRequestHandler):
-    """HTTP request handler for {{service_name}} service."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown events.
     
-    def do_GET(self):
-        """Handle GET requests."""
-        parsed_path = urlparse(self.path)
-        path = parsed_path.path
+    Args:
+        app: FastAPI application instance
+    """
+    # Startup
+    logger.info("Starting application...")
+    
+    try:
+        # Initialize database
+        await initialize_database()
+        logger.info("Database initialized")
         
-        if path == "/":
-            self._send_json_response(200, {
-                "name": "{{service_name}}",
-                "version": "1.0.0",
-                "description": "{{service_name}} microservice",
-                "endpoints": {
-                    "health": "/health",
-                    "api": "/api/v1"
-                }
-            })
-        elif path == "/health":
-            self._handle_health_check()
-        elif path.startswith("/api/v1"):
-            self._handle_api_request(path)
-        else:
-            self._send_json_response(404, {
-                "success": False,
-                "message": "Endpoint not found",
-                "error_code": "NOT_FOUND"
-            })
-    
-    def do_POST(self):
-        """Handle POST requests."""
-        parsed_path = urlparse(self.path)
-        path = parsed_path.path
+        # Other initialization tasks could go here
+        # - Initialize cache connections
+        # - Connect to external services
+        # - Load ML models
+        # - etc.
         
-        if path.startswith("/api/v1"):
-            self._handle_api_request(path)
-        else:
-            self._send_json_response(404, {
-                "success": False,
-                "message": "Endpoint not found",
-                "error_code": "NOT_FOUND"
-            })
+        logger.info("Application startup complete")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize application: {e}")
+        sys.exit(1)
     
-    def _handle_health_check(self):
-        """Handle health check endpoint."""
-        health_data = {
-            "healthy": True,
-            "service": "{{service_name}}",
-            "version": "1.0.0",
-            "checks": {
-                "application": {"healthy": True, "status": "running"}
-            }
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down application...")
+    
+    try:
+        # Cleanup database connections
+        await shutdown_database()
+        logger.info("Database connections closed")
+        
+        # Cleanup cache connections
+        await close_redis_client()
+        logger.info("Cache connections closed")
+        
+        # Other cleanup tasks
+        
+        logger.info("Application shutdown complete")
+        
+    except Exception as e:
+        logger.error(f"Error during application shutdown: {e}")
+
+
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application.
+    
+    Returns:
+        Configured FastAPI application instance
+    """
+    settings = get_settings()
+    
+    # Create FastAPI app with lifespan management
+    app = FastAPI(
+        title=settings.app_name,
+        description=settings.app_description,
+        version=settings.app_version,
+        docs_url=settings.docs_url if not settings.is_production else None,
+        redoc_url=settings.redoc_url if not settings.is_production else None,
+        openapi_url=settings.openapi_url if not settings.is_production else None,
+        lifespan=lifespan
+    )
+    
+    # Add middleware
+    setup_middleware(app)
+    
+    # Add routes
+    setup_routes(app)
+    
+    # Add exception handlers
+    setup_exception_handlers(app)
+    
+    return app
+
+
+def setup_middleware(app: FastAPI) -> None:
+    """Configure middleware for the application.
+    
+    Args:
+        app: FastAPI application instance
+    """
+    settings = get_settings()
+    
+    # CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        **settings.get_cors_config()
+    )
+    
+    # Gzip compression
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    
+    # Request logging middleware
+    setup_request_logging(app)
+    
+    logger.info("Middleware configured")
+
+
+def setup_routes(app: FastAPI) -> None:
+    """Configure routes for the application.
+    
+    Args:
+        app: FastAPI application instance
+    """
+    settings = get_settings()
+    
+    # Include routers with API prefix
+    app.include_router(health_router)  # Health checks don't need prefix
+    app.include_router(user_router, prefix=settings.api_prefix)
+    
+    # Root endpoint
+    @app.get("/")
+    async def root():
+        """Root endpoint returning basic API information."""
+        return {
+            "name": settings.app_name,
+            "version": settings.app_version,
+            "description": settings.app_description,
+            "docs_url": f"{settings.api_prefix}/docs" if settings.docs_url else None,
+            "health_url": "/health"
         }
-        self._send_json_response(200, health_data)
     
-    def _handle_api_request(self, path: str):
-        """Handle API requests."""
-        # Remove /api/v1 prefix
-        api_path = path[7:] if path.startswith("/api/v1") else path
-        
-        if api_path == "/users" or api_path == "/users/":
-            if self.command == "GET":
-                self._handle_get_users()
-            elif self.command == "POST":
-                self._handle_create_user()
-        elif api_path.startswith("/users/"):
-            user_id = api_path.split("/")[-1]
-            if self.command == "GET":
-                self._handle_get_user(user_id)
-        else:
-            self._send_json_response(404, {
-                "success": False,
-                "message": "API endpoint not found",
-                "error_code": "ENDPOINT_NOT_FOUND"
-            })
+    logger.info("Routes configured")
+
+
+def setup_exception_handlers(app: FastAPI) -> None:
+    """Configure exception handlers for the application.
     
-    def _handle_get_users(self):
-        """Handle GET /users request."""
-        # Mock data - replace with actual implementation
-        users = [
-            {"id": "1", "username": "user1", "email": "user1@example.com"},
-            {"id": "2", "username": "user2", "email": "user2@example.com"}
-        ]
-        self._send_json_response(200, {
-            "success": True,
-            "data": users,
-            "count": len(users)
-        })
+    Args:
+        app: FastAPI application instance
+    """
     
-    def _handle_get_user(self, user_id: str):
-        """Handle GET /users/{id} request."""
-        # Mock data - replace with actual implementation
-        if user_id in ["1", "2"]:
-            user = {
-                "id": user_id,
-                "username": f"user{user_id}",
-                "email": f"user{user_id}@example.com",
-                "full_name": f"User {user_id}",
-                "created_at": "2024-01-01T00:00:00Z"
-            }
-            self._send_json_response(200, {
-                "success": True,
-                "data": user
-            })
-        else:
-            self._send_json_response(404, {
-                "success": False,
-                "message": "User not found",
-                "error_code": "USER_NOT_FOUND"
-            })
-    
-    def _handle_create_user(self):
-        """Handle POST /users request."""
-        try:
-            content_length = int(self.headers.get('Content-Length', 0))
-            post_data = self.rfile.read(content_length)
-            data = json.loads(post_data.decode('utf-8'))
-            
-            # Mock creation - replace with actual implementation
-            user = {
-                "id": "3",
-                "username": data.get("username"),
-                "email": data.get("email"),
-                "full_name": data.get("full_name", ""),
-                "created_at": "2024-01-01T00:00:00Z"
-            }
-            
-            self._send_json_response(201, {
-                "success": True,
-                "message": "User created successfully",
-                "data": user
-            })
-        except json.JSONDecodeError:
-            self._send_json_response(400, {
-                "success": False,
-                "message": "Invalid JSON data",
-                "error_code": "INVALID_JSON"
-            })
-        except Exception as e:
-            logger.error(f"Error creating user: {e}")
-            self._send_json_response(500, {
+    @app.exception_handler(500)
+    async def internal_server_error(request, exc):
+        """Handle internal server errors."""
+        logger.error(f"Internal server error: {exc}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
                 "success": False,
                 "message": "Internal server error",
                 "error_code": "INTERNAL_ERROR"
-            })
+            }
+        )
     
-    def _send_json_response(self, status_code: int, data: Dict[str, Any]):
-        """Send JSON response."""
-        self.send_response(status_code)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        self.end_headers()
-        
-        response_json = json.dumps(data, indent=2)
-        self.wfile.write(response_json.encode('utf-8'))
+    @app.exception_handler(404)
+    async def not_found_error(request, exc):
+        """Handle not found errors."""
+        return JSONResponse(
+            status_code=404,
+            content={
+                "success": False,
+                "message": "Endpoint not found",
+                "error_code": "NOT_FOUND"
+            }
+        )
     
-    def log_message(self, format, *args):
-        """Override to use our logger."""
-        logger.info(f"{self.address_string()} - {format % args}")
+    @app.exception_handler(422)
+    async def validation_error(request, exc):
+        """Handle validation errors."""
+        return JSONResponse(
+            status_code=422,
+            content={
+                "success": False,
+                "message": "Validation error",
+                "error_code": "VALIDATION_ERROR",
+                "details": exc.errors()
+            }
+        )
+    
+    logger.info("Exception handlers configured")
+
+
+# Create the application instance
+app = create_app()
 
 
 def run_server():
-    """Run the HTTP server."""
-    host = os.environ.get("HOST", "127.0.0.1")
-    port = int(os.environ.get("PORT", "8000"))
+    """Run the application server.
     
-    server_address = (host, port)
-    httpd = HTTPServer(server_address, {{service_name|title}}Handler)
+    This function is used when running the application directly
+    or through a process manager like supervisord.
+    """
+    settings = get_settings()
     
-    logger.info(f"Starting {{service_name}} server on {host}:{port}")
-    logger.info("Available endpoints:")
-    logger.info("  GET  /            - Service information")
-    logger.info("  GET  /health      - Health check")
-    logger.info("  GET  /api/v1/users - List users")
-    logger.info("  POST /api/v1/users - Create user")
-    logger.info("  GET  /api/v1/users/{id} - Get user by ID")
+    # Configure uvicorn
+    uvicorn_config = {
+        "app": "main:app",
+        "host": settings.host,
+        "port": settings.port,
+        "reload": settings.debug and settings.is_development,
+        "log_level": settings.log_level.lower(),
+        "access_log": True,
+        "workers": 1 if settings.debug else settings.workers,
+    }
     
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
-        httpd.server_close()
+    logger.info(f"Starting server on {settings.host}:{settings.port}")
+    logger.info(f"Environment: {settings.environment}")
+    logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"Workers: {uvicorn_config['workers']}")
+    
+    # Run the server
+    uvicorn.run(**uvicorn_config)
+
+
+def run_development_server():
+    """Run the development server with auto-reload.
+    
+    This is a convenience function for development that ensures
+    the proper development configuration is used.
+    """
+    settings = get_settings()
+    
+    if not settings.is_development:
+        logger.warning("Running development server in non-development environment")
+    
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True,
+        log_level="debug",
+        access_log=True,
+        workers=1
+    )
+
+
+def run_production_server():
+    """Run the production server with optimized settings.
+    
+    This function configures the server for production use with
+    proper worker processes and performance optimizations.
+    """
+    settings = get_settings()
+    
+    if not settings.is_production:
+        logger.warning("Running production server in non-production environment")
+    
+    # Production server configuration
+    uvicorn_config = {
+        "app": "main:app",
+        "host": "0.0.0.0",
+        "port": settings.port,
+        "workers": settings.workers,
+        "log_level": "info",
+        "access_log": True,
+        "proxy_headers": True,
+        "forwarded_allow_ips": "*",
+    }
+    
+    logger.info("Starting production server")
+    logger.info(f"Configuration: {uvicorn_config}")
+    
+    uvicorn.run(**uvicorn_config)
 
 
 async def health_check() -> Dict[str, Any]:
-    """Perform application health check."""
-    return {
-        "healthy": True,
-        "service": "{{service_name}}",
-        "version": "1.0.0",
-        "checks": {
-            "application": {"healthy": True, "status": "running"}
+    """Perform application health check.
+    
+    This function can be called directly for health check purposes
+    without starting the full web server.
+    
+    Returns:
+        Health check results
+    """
+    from infrastructure.database import get_database_health
+    from infrastructure.cache import get_cache_health
+    
+    try:
+        # Check database
+        db_health = await get_database_health()
+        
+        # Check cache (optional)
+        cache_health = await get_cache_health()
+        
+        # Overall health status
+        healthy = db_health.get("healthy", False)
+        # Cache is optional, so don't fail if it's down
+        
+        return {
+            "healthy": healthy,
+            "checks": {
+                "database": db_health,
+                "cache": cache_health
+            },
+            "application": {
+                "name": get_settings().app_name,
+                "version": get_settings().app_version,
+                "environment": get_settings().environment
+            }
         }
-    }
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "healthy": False,
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":
     """Main entry point when running the module directly."""
     import argparse
+    import asyncio
     
     parser = argparse.ArgumentParser(description="{{service_name}} API Server")
     parser.add_argument(
+        "--mode",
+        choices=["dev", "prod", "health"],
+        default="dev",
+        help="Run mode (default: dev)"
+    )
+    parser.add_argument(
         "--host",
-        default="127.0.0.1",
-        help="Host to bind to (default: 127.0.0.1)"
+        default=None,
+        help="Host to bind to"
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port to bind to (default: 8000)"
+        default=None,
+        help="Port to bind to"
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Number of worker processes"
     )
     
     args = parser.parse_args()
     
-    # Set environment variables
-    os.environ["HOST"] = args.host
-    os.environ["PORT"] = str(args.port)
+    # Override settings if specified
+    if args.host or args.port or args.workers:
+        import os
+        if args.host:
+            os.environ["HOST"] = args.host
+        if args.port:
+            os.environ["PORT"] = str(args.port)
+        if args.workers:
+            os.environ["WORKERS"] = str(args.workers)
     
-    # Run the server
-    run_server()
+    # Run based on mode
+    if args.mode == "dev":
+        run_development_server()
+    elif args.mode == "prod":
+        run_production_server()
+    elif args.mode == "health":
+        async def check_health():
+            result = await health_check()
+            print(f"Health check result: {result}")
+            return result["healthy"]
+        
+        healthy = asyncio.run(check_health())
+        sys.exit(0 if healthy else 1)
+    else:
+        # Default to development server
+        run_development_server()

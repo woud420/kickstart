@@ -36,17 +36,18 @@ def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powers
     typer.echo("Completion not implemented")
 
 def _prompt_for_missing_args(
-    project_type: Optional[str], 
-    name: Optional[str], 
-    root: Optional[str], 
-    lang: str, 
-    gh: bool, 
-    helm: bool, 
+    project_type: Optional[str],
+    name: Optional[str],
+    root: Optional[str],
+    lang: str,
+    gh: bool,
+    helm: bool,
     config: Dict[str, Any],
     database: Optional[str] = None,
     cache: Optional[str] = None,
-    auth: Optional[str] = None
-) -> Tuple[str, str, Optional[str], str, bool, bool, Optional[str], Optional[str], Optional[str]]:
+    auth: Optional[str] = None,
+    framework: Optional[str] = None
+) -> Tuple[str, str, Optional[str], str, bool, bool, Optional[str], Optional[str], Optional[str], Optional[str]]:
     """Prompt user for any missing arguments in interactive mode.
     
     Args:
@@ -100,24 +101,31 @@ def _prompt_for_missing_args(
             if auth == "none":
                 auth = None
 
+        if framework is None:
+            framework_options = ["fastapi", "minimal"]
+            framework = Prompt.ask("HTTP framework", choices=framework_options, default="fastapi")
+            if framework == "fastapi":
+                framework = None  # None means FastAPI default
+
     # Ensure required values are set
     assert project_type is not None, "project_type should be set by now"
     assert name is not None, "name should be set by now"
     
-    return project_type, name, root, lang, gh, helm, database, cache, auth
+    return project_type, name, root, lang, gh, helm, database, cache, auth, framework
 
 
 def _dispatch_project_creation(
-    project_type: str, 
-    name: str, 
-    root: Optional[str], 
-    lang: str, 
-    gh: bool, 
-    helm: bool, 
+    project_type: str,
+    name: str,
+    root: Optional[str],
+    lang: str,
+    gh: bool,
+    helm: bool,
     config: Dict[str, Any],
     database: Optional[str] = None,
     cache: Optional[str] = None,
-    auth: Optional[str] = None
+    auth: Optional[str] = None,
+    framework: Optional[str] = None
 ) -> None:
     """Dispatch to the appropriate project creation function.
     
@@ -132,7 +140,7 @@ def _dispatch_project_creation(
     """
     # Dispatch table for cleaner code and easier extension
     project_creators = {
-        "service": lambda: create_service(name, lang, gh, config, helm=helm, root=root, database=database, cache=cache, auth=auth),
+        "service": lambda: create_service(name, lang, gh, config, helm=helm, root=root, database=database, cache=cache, auth=auth, framework=framework),
         "frontend": lambda: create_frontend(name, gh, config, root=root),
         "lib": lambda: create_lib(name, lang, gh, config, root=root),
         "cli": lambda: create_cli(name, lang, gh, config, root=root),
@@ -156,7 +164,8 @@ def create(
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)"),
     database: Optional[str] = typer.Option(None, "--database", help="Database extension (postgres, mysql, sqlite)"),
     cache: Optional[str] = typer.Option(None, "--cache", help="Cache extension (redis, memcached)"),
-    auth: Optional[str] = typer.Option(None, "--auth", help="Authentication extension (jwt, oauth)")
+    auth: Optional[str] = typer.Option(None, "--auth", help="Authentication extension (jwt, oauth)"),
+    framework: Optional[str] = typer.Option(None, "--framework", help="HTTP framework (minimal for standard library, default is FastAPI)")
 ) -> None:
     """Create a new service, lib, CLI, frontend, or mono repo.
     
@@ -176,12 +185,12 @@ def create(
         config: Dict[str, Any] = load_config()
 
         # Prompt for any missing arguments
-        project_type, name, root, lang, gh, helm, database, cache, auth = _prompt_for_missing_args(
-            project_type, name, root, lang, gh, helm, config, database, cache, auth
+        project_type, name, root, lang, gh, helm, database, cache, auth, framework = _prompt_for_missing_args(
+            project_type, name, root, lang, gh, helm, config, database, cache, auth, framework
         )
 
         # Dispatch to appropriate creation function
-        _dispatch_project_creation(project_type, name, root, lang, gh, helm, config, database, cache, auth)
+        _dispatch_project_creation(project_type, name, root, lang, gh, helm, config, database, cache, auth, framework)
         
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
