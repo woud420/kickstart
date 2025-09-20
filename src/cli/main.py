@@ -49,19 +49,22 @@ def _prompt_for_missing_args(
     framework: Optional[str] = None
 ) -> Tuple[str, str, Optional[str], str, bool, bool, Optional[str], Optional[str], Optional[str], Optional[str]]:
     """Prompt user for any missing arguments in interactive mode.
-    
+
     Args:
         project_type: Type of project to create
-        name: Project name  
+        name: Project name
         root: Root directory
         lang: Programming language
         gh: Whether to create GitHub repo
         helm: Whether to use Helm scaffolding
         config: Configuration dictionary
-        
+
     Returns:
         Tuple of (project_type, name, root, lang, gh, helm) with all values filled
     """
+    # Track if we're in interactive mode
+    interactive_mode = not project_type or not name
+
     # Handle case where project_type is provided but root is not
     if project_type and root is None:
         root = Prompt.ask("Where should the project be created?")
@@ -70,7 +73,7 @@ def _prompt_for_missing_args(
     if not project_type:
         typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
         project_type = Prompt.ask(
-            "What do you want to create?", 
+            "What do you want to create?",
             choices=["service", "frontend", "lib", "cli", "mono"]
         )
         name = Prompt.ask("Project name?")
@@ -82,19 +85,20 @@ def _prompt_for_missing_args(
             helm = Confirm.ask("Use Helm scaffolding?", default=False)
 
     # Prompt for extensions if creating a service and they weren't provided
-    if project_type == "service" and lang == "python":
+    # Only prompt in interactive mode
+    if project_type == "service" and lang == "python" and interactive_mode:
         if database is None:
             database_options = ["none", "postgres", "mysql", "sqlite"]
             database = Prompt.ask("Database extension", choices=database_options, default="none")
             if database == "none":
                 database = None
-        
+
         if cache is None:
             cache_options = ["none", "redis", "memcached"]
             cache = Prompt.ask("Cache extension", choices=cache_options, default="none")
             if cache == "none":
                 cache = None
-        
+
         if auth is None:
             auth_options = ["none", "jwt", "oauth"]
             auth = Prompt.ask("Authentication extension", choices=auth_options, default="none")
