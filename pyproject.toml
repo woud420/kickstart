@@ -7,6 +7,8 @@ name = "kickstart"
 version = "0.3.0"
 description = "Project scaffolding CLI"
 authors = ["You"]
+packages = [{include = "src"}]
+include = ["src/templates/**/*"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
