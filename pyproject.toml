@@ -13,6 +13,7 @@ include = ["src/templates/**/*"]
 [tool.poetry.dependencies]
 python = "^3.12"
 typer = "0.9.0"
+click = "8.1.7"
 rich = "^13.0"
 requests = "^2.31"
 toml = "^0.10.2"
