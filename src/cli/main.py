@@ -1,10 +1,9 @@
-import typer
 import logging
-from rich import print
-from rich.prompt import Prompt, Confirm
+import typer
 from typing import Any, Optional, Dict, Tuple
 
-logger = logging.getLogger(__name__)
+from rich import print
+from rich.prompt import Prompt, Confirm
 
 from src import __version__
 from src.utils.config import load_config
@@ -16,6 +15,8 @@ from src.api import (
     create_monorepo,
 )
 from src.utils.updater import check_for_update
+
+logger = logging.getLogger(__name__)
 
 app: typer.Typer = typer.Typer(help="Kickstart: Full-stack project scaffolding CLI")
 

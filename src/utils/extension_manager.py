@@ -45,15 +45,15 @@ class ExtensionConfig:
 class ExtensionWriter(Protocol):
     """Protocol for objects that can write extension files."""
 
-    def write_template(self, target_path: str, template_path: str) -> None:
+    def write_template(self, target: str, template_path: str, **vars: Any) -> bool:
         """Write a template file to target path."""
         ...
 
-    def create_directories(self, directories: List[str]) -> None:
+    def create_directories(self, directories: List[str]) -> bool:
         """Create directories."""
         ...
 
-    def write_content(self, target_path: str, content: str) -> None:
+    def write_content(self, target_path: str, content: str) -> bool:
         """Write content to target path."""
         ...
 

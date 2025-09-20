@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, Optional
 import logging
-from jinja2 import Environment, FileSystemLoader, BaseLoader, DictLoader, Template
+from jinja2 import Environment, FileSystemLoader, DictLoader, Template
 from jinja2.exceptions import TemplateError, TemplateNotFound
 
 logger = logging.getLogger(__name__)
@@ -26,11 +26,11 @@ class TemplateEngine:
         if self._env is None:
             if self.template_dirs:
                 # Use filesystem loader for template directories
-                loader = FileSystemLoader([str(d) for d in self.template_dirs])
+                loader: FileSystemLoader | DictLoader = FileSystemLoader([str(d) for d in self.template_dirs])
             else:
                 # Use dict loader for string templates
                 loader = DictLoader({})
-            
+
             self._env = Environment(
                 loader=loader,
                 autoescape=False,  # We're not generating HTML

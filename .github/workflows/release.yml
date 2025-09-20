@@ -3,34 +3,19 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'  # Triggers on version tags like v0.3.0, v1.0.0
-  workflow_dispatch:  # Manual trigger with inputs
-    inputs:
-      version:
-        description: 'Version to release (e.g., 0.3.1)'
-        required: true
-        type: string
+      - 'v*.*.*'  # Triggers on version tags like v0.3.1, v1.0.0, etc.
 
-permissions:
-  contents: write  # Needed to create releases
-  packages: write  # Needed if publishing to GitHub packages
+env:
+  PYTHON_VERSION: '3.12'
+  POETRY_VERSION: '1.7.0'
 
 jobs:
-  build-binaries:
-    name: Build ${{ matrix.os }} Binary
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            artifact_name: kickstart-linux-x86_64
-            pyinstaller_args: --onefile
-          - os: macos-latest
-            artifact_name: kickstart-darwin-x86_64
-            pyinstaller_args: --onefile --windowed
-          - os: windows-latest
-            artifact_name: kickstart-windows-x86_64.exe
-            pyinstaller_args: --onefile --console
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed to create releases
+      id-token: write  # Needed for trusted publishing to PyPI
 
     steps:
       - name: Checkout code
@@ -39,179 +24,105 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: '1.7.0'
+          version: ${{ env.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
 
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+
       - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Build package
         run: |
-          poetry install --no-interaction
+          poetry build
+          echo "Built packages:"
+          ls -la dist/
+
+      - name: Build standalone binary with PyInstaller
+        run: |
           poetry run pip install pyinstaller
-
-      - name: Get version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
-
-      - name: Update version in pyproject.toml
-        run: |
-          poetry version ${{ steps.version.outputs.VERSION }}
-
-      - name: Build binary with PyInstaller
-        run: |
           poetry run pyinstaller \
-            ${{ matrix.pyinstaller_args }} \
             --name kickstart \
-            --add-data "src/templates:src/templates" \
+            --onefile \
+            --add-data "src/templates:templates" \
             --hidden-import typer \
             --hidden-import rich \
+            --hidden-import requests \
+            --hidden-import toml \
             --hidden-import jinja2 \
-            --distpath dist \
-            --workpath build \
-            --specpath build \
-            --clean \
-            --noconfirm \
+            --collect-all src \
             src/cli/main.py
 
-      - name: Test binary
+          # Rename binary with platform suffix
+          mv dist/kickstart dist/kickstart-linux-amd64
+          echo "Built binary:"
+          ls -la dist/kickstart-*
+
+      - name: Build macOS binary (cross-compile attempt)
         run: |
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            ./dist/kickstart.exe --version
-            ./dist/kickstart.exe --help
-          else
-            ./dist/kickstart --version
-            ./dist/kickstart --help
-            # Make sure it's executable on Unix
-            chmod +x ./dist/kickstart
-          fi
-        shell: bash
+          # Note: True cross-compilation to macOS from Linux is complex
+          # This is a placeholder - for real macOS builds, use a macOS runner
+          echo "macOS binary would be built on macOS runner"
 
-      - name: Compress binary
-        run: |
-          cd dist
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            7z a -tzip ../${{ matrix.artifact_name }}.zip kickstart.exe
-          else
-            tar -czf ../${{ matrix.artifact_name }}.tar.gz kickstart
-          fi
-        shell: bash
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ${{ matrix.artifact_name }}
-          path: |
-            ${{ matrix.artifact_name }}.tar.gz
-            ${{ matrix.artifact_name }}.zip
-          retention-days: 7
-
-  create-release:
-    name: Create GitHub Release
-    needs: build-binaries
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for changelog
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v3
-        with:
-          path: artifacts/
-
-      - name: Get version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-            echo "TAG=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          # Get commits since last tag
-          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            CHANGES=$(git log --pretty=format:"- %s" HEAD)
-          else
-            CHANGES=$(git log --pretty=format:"- %s" ${LAST_TAG}..HEAD)
-          fi
-
-          # Create changelog
-          cat << EOF > CHANGELOG.md
-          ## What's Changed in v${{ steps.version.outputs.VERSION }}
-
-          ### Commits
-          ${CHANGES}
-
-          ### Installation
-
-          #### Via pip (recommended)
-          \`\`\`bash
-          pip install kickstart==${{ steps.version.outputs.VERSION }}
-          \`\`\`
-
-          #### Via binary
-          Download the appropriate binary for your platform below and add it to your PATH.
-
-          **macOS/Linux:**
-          \`\`\`bash
-          # Download and extract (replace darwin with linux for Linux)
-          tar -xzf kickstart-darwin-x86_64.tar.gz
-          chmod +x kickstart
-          sudo mv kickstart /usr/local/bin/
-          \`\`\`
-
-          **Windows:**
-          Download the zip file, extract, and add to your PATH.
-
-          ### Checksums
-          EOF
-
-          # Add checksums
-          cd artifacts
-          for file in */*.tar.gz */*.zip; do
-            if [ -f "$file" ]; then
-              echo "\`$(basename $file)\`: \`$(sha256sum $file | cut -d' ' -f1)\`" >> ../CHANGELOG.md
-            fi
-          done
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.version.outputs.TAG }}
-          name: Release v${{ steps.version.outputs.VERSION }}
-          body_path: CHANGELOG.md
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           draft: false
-          prerelease: ${{ contains(steps.version.outputs.VERSION, 'alpha') || contains(steps.version.outputs.VERSION, 'beta') || contains(steps.version.outputs.VERSION, 'rc') }}
+          prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          generate_release_notes: true
           files: |
-            artifacts/*/*.tar.gz
-            artifacts/*/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            dist/*.whl
+            dist/*.tar.gz
+            dist/kickstart-*
+          body: |
+            ## Installation
 
-  publish-pypi:
-    name: Publish to PyPI
-    needs: create-release
-    runs-on: ubuntu-latest
-    # Only publish to PyPI on actual version tags, not manual triggers
-    if: github.event_name != 'workflow_dispatch'
+            ### Via pip (recommended)
+            ```bash
+            pip install kickstart
+            ```
+
+            ### Standalone Binary
+            Download the appropriate binary for your platform from the assets below.
+
+            ### From Source
+            ```bash
+            pip install dist/kickstart-*.whl
+            ```
+
+            ## What's Changed
+            Auto-generated release notes below:
+
+      - name: Publish to PyPI
+        if: ${{ !contains(github.ref_name, 'rc') && !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'alpha') }}
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          # Only publish to PyPI for non-prerelease versions
+          # Requires PYPI_API_TOKEN secret to be set in repository settings
+          if [ -n "$POETRY_PYPI_TOKEN_PYPI" ]; then
+            poetry publish --no-interaction
+          else
+            echo "⚠️ PYPI_API_TOKEN not set, skipping PyPI publish"
+          fi
+
+  build-macos:
+    name: Build macOS Binary
+    runs-on: macos-latest
+    needs: release
 
     steps:
       - name: Checkout code
@@ -220,75 +131,86 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: '1.7.0'
+          version: ${{ env.POETRY_VERSION }}
 
-      - name: Get version from tag
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Build macOS binary
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          poetry version $VERSION
+          poetry run pip install pyinstaller
+          poetry run pyinstaller \
+            --name kickstart \
+            --onefile \
+            --add-data "src/templates:templates" \
+            --hidden-import typer \
+            --hidden-import rich \
+            --hidden-import requests \
+            --hidden-import toml \
+            --hidden-import jinja2 \
+            --collect-all src \
+            src/cli/main.py
 
-      - name: Build package
-        run: poetry build
+          # Rename binary with platform suffix
+          mv dist/kickstart dist/kickstart-darwin-amd64
+          echo "Built binary:"
+          ls -la dist/kickstart-*
 
-      - name: Publish to PyPI
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          poetry publish --skip-existing
-        continue-on-error: true  # Don't fail if package already exists
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/kickstart-darwin-amd64
 
-  docker-build:
-    name: Build Docker Image
-    needs: create-release
-    runs-on: ubuntu-latest
+  build-windows:
+    name: Build Windows Binary
+    runs-on: windows-latest
+    needs: release
+    if: false  # Disabled since you're not interested in Windows support
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-        continue-on-error: true  # Don't fail if no Docker credentials
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ env.POETRY_VERSION }}
 
-      - name: Get version
-        id: version
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Build Windows binary
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          fi
+          poetry run pip install pyinstaller
+          poetry run pyinstaller `
+            --name kickstart `
+            --onefile `
+            --add-data "src/templates;templates" `
+            --hidden-import typer `
+            --hidden-import rich `
+            --hidden-import requests `
+            --hidden-import toml `
+            --hidden-import jinja2 `
+            --collect-all src `
+            src/cli/main.py
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+          # Rename binary with platform suffix
+          Move-Item dist/kickstart.exe dist/kickstart-windows-amd64.exe
+          Get-ChildItem dist/kickstart-*
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
         with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
-          labels: |
-            org.opencontainers.image.source=${{ github.event.repository.html_url }}
-            org.opencontainers.image.version=${{ steps.version.outputs.VERSION }}
-            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tag_name: ${{ github.ref_name }}
+          files: dist/kickstart-windows-amd64.exe

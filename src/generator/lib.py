@@ -25,8 +25,9 @@ class LibraryGenerator(BaseGenerator):
         
         architecture_title: str = f"{self.name} Library Docs"
         success_message: str = f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!"
-        
-        github_create_fn = lambda: create_repo(self.name) if self.gh else None
+
+        def github_create_fn() -> Any:
+            return create_repo(self.name) if self.gh else None
         
         self.execute_create_flow(
             directories=directories,
@@ -56,8 +57,9 @@ class CLIGenerator(LibraryGenerator):
         
         architecture_title: str = f"{self.name} CLI Docs"
         success_message: str = f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!"
-        
-        github_create_fn = lambda: create_repo(self.name) if self.gh else None
+
+        def github_create_fn() -> Any:
+            return create_repo(self.name) if self.gh else None
         
         self.execute_create_flow(
             directories=directories,

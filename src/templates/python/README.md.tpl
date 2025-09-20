@@ -1,1 +1,1 @@
-# {{SERVICE_NAME}} Python
+# {{service_name}} Python

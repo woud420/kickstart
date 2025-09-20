@@ -1,4 +1,4 @@
-# {{SERVICE_NAME}}
+# {{service_name}}
 
 A Rust service with Actix-web.
 

@@ -1,2 +1,2 @@
 [project]
-name = "{{SERVICE_NAME}}"
+name = "{{service_name}}"

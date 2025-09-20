@@ -1,4 +1,4 @@
-# {{SERVICE_NAME}}
+# {{service_name}}
 
 A Go service using idiomatic project structure.
 
@@ -12,7 +12,7 @@ go run ./src/main.go
 go test ./...
 
 # Build
-go build -o bin/{{SERVICE_NAME}} ./src
+go build -o bin/{{service_name}} ./src
 ```
 
 ## Project Structure

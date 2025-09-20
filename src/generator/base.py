@@ -1,13 +1,13 @@
 from pathlib import Path
-from typing import Any, Dict, List, Callable, Optional
+from typing import Any, Callable
 import logging
 from src.utils.fs import write_file
 from src.utils.logger import success, warn
 from src.utils.template_registry import get_template_registry, TemplateRegistry
 from src.utils.error_handling import (
     ErrorCollector, batch_operation_wrapper, handle_file_operations,
-    handle_template_operations, handle_directory_operations, safe_operation_context,
-    ensure_directory_exists, safe_file_write, FileOperationError, TemplateError
+    handle_template_operations, safe_operation_context,
+    ensure_directory_exists, TemplateError
 )
 
 logger = logging.getLogger(__name__)

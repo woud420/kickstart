@@ -5,7 +5,7 @@ replacing hardcoded template paths with a configurable, extensible system.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Any
 from dataclasses import dataclass
 import logging
 
@@ -244,7 +244,7 @@ class TemplateRegistry:
         """
         return self._project_templates.get(project_type, {})
     
-    def resolve_template_path(self, template: TemplateInfo, **context) -> Path:
+    def resolve_template_path(self, template: TemplateInfo, **context: Any) -> Path:
         """Resolve the full filesystem path for a template.
         
         Args:
@@ -257,7 +257,7 @@ class TemplateRegistry:
         resolved_path = template.path.format(**context)
         return self.base_template_dir / resolved_path
     
-    def validate_template_variables(self, template: TemplateInfo, variables: Dict[str, any]) -> List[str]:
+    def validate_template_variables(self, template: TemplateInfo, variables: Dict[str, Any]) -> List[str]:
         """Validate that all required template variables are provided.
         
         Args:

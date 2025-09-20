@@ -1,4 +1,4 @@
-# {{SERVICE_NAME}}
+# {{service_name}}
 
 A C++ service with modern C++ features.
 

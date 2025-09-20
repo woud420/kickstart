@@ -1,6 +1,6 @@
 FROM gcc:latest as builder
 
-WORKDIR /usr/src/{{SERVICE_NAME}}
+WORKDIR /usr/src/{{service_name}}
 COPY . .
 
 RUN mkdir build && cd build && \
@@ -9,7 +9,7 @@ RUN mkdir build && cd build && \
 
 FROM debian:bullseye-slim
 
-WORKDIR /usr/local/bin/{{SERVICE_NAME}}
-COPY --from=builder /usr/src/{{SERVICE_NAME}}/build/{{SERVICE_NAME}} .
+WORKDIR /usr/local/bin/{{service_name}}
+COPY --from=builder /usr/src/{{service_name}}/build/{{service_name}} .
 
-CMD ["./{{SERVICE_NAME}}"] 
+CMD ["./{{service_name}}"] 
