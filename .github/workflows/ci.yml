@@ -100,7 +100,7 @@ jobs:
       - name: Test CLI execution
         run: |
           poetry run kickstart --help
-          poetry run kickstart --version
+          poetry run kickstart version
 
   integration-test:
     name: Integration Test - Generate Projects
@@ -252,7 +252,7 @@ jobs:
       - name: Test installation
         run: |
           pip install dist/*.whl
-          kickstart --version
+          kickstart version
           kickstart --help
 
       - name: Upload build artifacts
