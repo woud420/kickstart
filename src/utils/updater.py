@@ -1,5 +1,4 @@
 import sys
-import shutil
 import hashlib
 from pathlib import Path
 from typing import Any, Optional

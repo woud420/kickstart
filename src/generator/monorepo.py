@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any
 from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
@@ -40,7 +39,8 @@ class MonorepoGenerator(BaseGenerator):
         architecture_title: str = f"{self.name} Deployment Infra Docs"
         success_message: str = f"Monorepo '{self.name}' scaffolded with {'Helm' if self.helm else 'Kustomize'} support in '{self.project}'."
         
-        github_create_fn = lambda: create_repo(self.name) if self.gh else None
+        def github_create_fn() -> Any:
+            return create_repo(self.name) if self.gh else None
         
         self.execute_create_flow(
             directories=directories,

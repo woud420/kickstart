@@ -6,8 +6,7 @@ from src.utils.logger import success, warn
 from src.utils.github import create_repo
 from src.utils.extension_manager import ExtensionManager
 from src.utils.error_handling import (
-    safe_operation_context, handle_file_operations, ErrorCollector,
-    LanguageNotSupportedError, validate_language_support
+    safe_operation_context, LanguageNotSupportedError, validate_language_support
 )
 
 logger = logging.getLogger(__name__)
@@ -122,7 +121,8 @@ class ServiceGenerator(BaseGenerator):
         # Configuration for the common create flow
         architecture_title: str = f"{self.name} Architecture Notes"
         success_message: str = f"{self.lang.title()} service '{self.name}' created successfully in '{self.project}'!"
-        github_create_fn = lambda: create_repo(self.name) if self.gh else None
+        def github_create_fn() -> Any:
+            return create_repo(self.name) if self.gh else None
 
         # Execute common create flow with service-specific setup
         success = self.execute_create_flow(
