@@ -1,5 +1,6 @@
 from pathlib import Path
 from src.generator.base import BaseGenerator
+from src.generator.specs import CliSpec, LibrarySpec
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
 
@@ -7,12 +8,15 @@ class LibraryGenerator(BaseGenerator):
     lang: str
     gh: bool
     lang_template_dir: Path
+    spec: LibrarySpec | CliSpec
     
     def __init__(self, name: str, lang: str, gh: bool, config: GeneratorConfig, root: str | None = None) -> None:
-        super().__init__(name, config, root)
-        self.lang = lang
-        self.gh = gh
-        self.lang_template_dir = self.template_dir / lang
+        spec = LibrarySpec(name=name, language=lang, gh=gh, config=config, root=root)
+        super().__init__(spec.name, spec.config, spec.root)
+        self.spec = spec
+        self.lang = spec.language
+        self.gh = spec.gh
+        self.lang_template_dir = self.template_dir / self.lang
 
     def create(self) -> None:
         directories: list[str] = ["src", "tests", "docs", "architecture"]
@@ -47,6 +51,11 @@ class LibraryGenerator(BaseGenerator):
         return True
 
 class CLIGenerator(LibraryGenerator):
+    def __init__(self, name: str, lang: str, gh: bool, config: GeneratorConfig, root: str | None = None) -> None:
+        spec = CliSpec(name=name, language=lang, gh=gh, config=config, root=root)
+        super().__init__(spec.name, spec.language, spec.gh, spec.config, spec.root)
+        self.spec = spec
+
     def create(self) -> None:
         directories: list[str] = ["src", "tests", "docs", "architecture"]
         

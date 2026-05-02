@@ -1,14 +1,18 @@
 from src.generator.base import BaseGenerator
+from src.generator.specs import FrontendSpec
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
 
 class FrontendGenerator(BaseGenerator):
     gh: bool
+    spec: FrontendSpec
     
     def __init__(self, name: str, gh: bool, config: GeneratorConfig, root: str | None = None) -> None:
-        super().__init__(name, config, root)
+        spec = FrontendSpec(name=name, gh=gh, config=config, root=root)
+        super().__init__(spec.name, spec.config, spec.root)
+        self.spec = spec
         self.template_dir = self.template_dir / "react"
-        self.gh = gh
+        self.gh = spec.gh
 
     def create(self) -> None:
         directories: list[str] = ["src", "public", "tests", "architecture"]

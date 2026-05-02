@@ -1,6 +1,7 @@
 from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
 from src.stack.profile import stack_registry, MonorepoSelection
+from src.generator.specs import MonorepoSpec
 from src.utils.types import GeneratorConfig, TemplateValue
 
 class MonorepoGenerator(BaseGenerator):
@@ -9,6 +10,7 @@ class MonorepoGenerator(BaseGenerator):
     cloud: str
     knowledge: str
     runtime: str
+    spec: MonorepoSpec
 
     VALID_CLOUDS = set(stack_registry.clouds)
     VALID_KNOWLEDGE = set(stack_registry.knowledge)
@@ -25,12 +27,23 @@ class MonorepoGenerator(BaseGenerator):
         knowledge: str = "both",
         runtime: str = "kubernetes",
     ) -> None:
-        super().__init__(name, config, root)
-        self.helm = helm
-        self.gh = gh
-        self.cloud = stack_registry.normalize_cloud(cloud)
-        self.knowledge = stack_registry.normalize_knowledge(knowledge)
-        self.runtime = stack_registry.normalize_monorepo_runtime(runtime)
+        spec = MonorepoSpec.from_options(
+            name=name,
+            gh=gh,
+            config=config,
+            helm=helm,
+            root=root,
+            cloud=cloud,
+            knowledge=knowledge,
+            runtime=runtime,
+        )
+        super().__init__(spec.name, spec.config, spec.root)
+        self.spec = spec
+        self.helm = spec.helm
+        self.gh = spec.gh
+        self.cloud = spec.cloud
+        self.knowledge = spec.knowledge
+        self.runtime = spec.runtime
         self.template_dir = self.template_dir / "monorepo"
 
     def create(self) -> None:

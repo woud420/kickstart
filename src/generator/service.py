@@ -5,6 +5,7 @@ from src.utils.logger import success, warn
 from src.utils.github import create_repo
 from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
+from src.generator.specs import ServiceSpec
 from src.utils.types import GeneratorConfig
 from src.utils.error_handling import (
     safe_operation_context, LanguageNotSupportedError
@@ -37,6 +38,7 @@ class ServiceGenerator(BaseGenerator):
     framework: str | None
     lang_template_dir: Path
     extension_manager: ExtensionManager
+    spec: ServiceSpec
 
     def __init__(
         self,
@@ -70,15 +72,29 @@ class ServiceGenerator(BaseGenerator):
         Raises:
             ValueError: If unsupported language is specified
         """
-        super().__init__(name, config, root)
-        self.lang = stack_registry.normalize_language(lang)
-        self.runtime = stack_registry.normalize_service_runtime(runtime)
-        self.gh = gh
-        self.helm = helm
-        self.database = database
-        self.cache = cache
-        self.auth = auth
-        self.framework = framework
+        spec = ServiceSpec.from_options(
+            name=name,
+            language=lang,
+            gh=gh,
+            config=config,
+            helm=helm,
+            root=root,
+            database=database,
+            cache=cache,
+            auth=auth,
+            framework=framework,
+            runtime=runtime,
+        )
+        super().__init__(spec.name, spec.config, spec.root)
+        self.spec = spec
+        self.lang = spec.language
+        self.runtime = spec.runtime
+        self.gh = spec.gh
+        self.helm = spec.helm
+        self.database = spec.database
+        self.cache = spec.cache
+        self.auth = spec.auth
+        self.framework = spec.framework
         self.lang_template_dir = self.template_dir / self.lang
         self.extension_manager = ExtensionManager()
 
