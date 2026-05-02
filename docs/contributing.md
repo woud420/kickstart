@@ -28,7 +28,7 @@ make check
 ```
 
 Use `make package` to build the wheel/source distribution and `make binary` to build the local standalone binary.
-GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Linux/macOS binaries for each supported Python minor.
+GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Linux/macOS x64 and arm64 binaries for each supported Python minor.
 
 ## Where To Add Things
 

@@ -73,4 +73,4 @@ make package
 make binary
 ```
 
-Kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS, and release builds attach Linux/macOS standalone binaries for each supported Python minor.
+Kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 standalone binaries for each supported Python minor.

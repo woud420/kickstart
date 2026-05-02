@@ -86,14 +86,49 @@ jobs:
           retention-days: 7
 
   binary:
-    name: Build ${{ matrix.python-version }} Binary on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.platform }} Python ${{ matrix.python-version }} Binary
+    runs-on: ${{ matrix.runner }}
     needs: verify
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ["3.12", "3.13", "3.14"]
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-x64
+            python-version: "3.12"
+          - runner: ubuntu-24.04
+            platform: linux-x64
+            python-version: "3.13"
+          - runner: ubuntu-24.04
+            platform: linux-x64
+            python-version: "3.14"
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+            python-version: "3.12"
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+            python-version: "3.13"
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+            python-version: "3.14"
+          - runner: macos-15-intel
+            platform: macos-x64
+            python-version: "3.12"
+          - runner: macos-15-intel
+            platform: macos-x64
+            python-version: "3.13"
+          - runner: macos-15-intel
+            platform: macos-x64
+            python-version: "3.14"
+          - runner: macos-15
+            platform: macos-arm64
+            python-version: "3.12"
+          - runner: macos-15
+            platform: macos-arm64
+            python-version: "3.13"
+          - runner: macos-15
+            platform: macos-arm64
+            python-version: "3.14"
 
     steps:
       - name: Checkout code
@@ -119,16 +154,20 @@ jobs:
 
       - name: Name binary artifact
         env:
+          PLATFORM: ${{ matrix.platform }}
           PYTHON_MINOR: ${{ matrix.python-version }}
         run: |
-          platform="$(echo "${RUNNER_OS}-${RUNNER_ARCH}" | tr '[:upper:]' '[:lower:]')"
-          mv dist/kickstart "dist/kickstart-${platform}-py${PYTHON_MINOR}"
-          "dist/kickstart-${platform}-py${PYTHON_MINOR}" version
+          asset="kickstart-${PLATFORM}-py${PYTHON_MINOR}"
+          mv dist/kickstart "dist/${asset}"
+          "dist/${asset}" version
+          install -m 0755 "dist/${asset}" "${RUNNER_TEMP}/kickstart"
+          "${RUNNER_TEMP}/kickstart" --help
+          shasum -a 256 "dist/${asset}" > "dist/${asset}.sha256"
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary-${{ runner.os }}-${{ runner.arch }}-py${{ matrix.python-version }}
+          name: binary-${{ matrix.platform }}-py${{ matrix.python-version }}
           path: dist/kickstart-*
           retention-days: 7
 
@@ -175,3 +214,13 @@ jobs:
             ```
 
             Standalone binaries are attached for Linux and macOS across the supported Python minor versions.
+
+            Pick the asset for your platform, then install it:
+
+            ```bash
+            curl -L -o kickstart "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/kickstart-linux-x64-py3.14"
+            chmod +x kickstart
+            ./kickstart version
+            ```
+
+            Check the matching `.sha256` file before installing when you want integrity verification.

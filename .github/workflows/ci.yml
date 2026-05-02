@@ -40,7 +40,6 @@ jobs:
           key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
 
       - name: Validate package metadata
@@ -58,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-15]
         python-version: ["3.12", "3.13", "3.14"]
 
     steps:
@@ -85,7 +84,6 @@ jobs:
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
 
       - name: Run tests
@@ -168,13 +166,21 @@ jobs:
           python -m py_compile /tmp/test-python-service/src/model/__init__.py
 
   build-test:
-    name: Package & Binary on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Package & Binary for ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
     needs: [lint, test]
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-x64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: macos-15-intel
+            platform: macos-x64
+          - runner: macos-15
+            platform: macos-arm64
 
     steps:
       - name: Checkout code
@@ -201,15 +207,24 @@ jobs:
       - name: Build standalone binary
         run: make binary
 
-      - name: Check binary
-        run: ./dist/kickstart version
+      - name: Name, install, and check binary
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          PYTHON_MINOR: ${{ env.PYTHON_VERSION }}
+        run: |
+          asset="kickstart-${PLATFORM}-py${PYTHON_MINOR}"
+          mv dist/kickstart "dist/${asset}"
+          "dist/${asset}" version
+          install -m 0755 "dist/${asset}" "${RUNNER_TEMP}/kickstart"
+          "${RUNNER_TEMP}/kickstart" --help
+          shasum -a 256 "dist/${asset}" > "dist/${asset}.sha256"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kickstart-${{ runner.os }}-${{ runner.arch }}-py${{ env.PYTHON_VERSION }}
+          name: kickstart-${{ matrix.platform }}-py${{ env.PYTHON_VERSION }}
           path: |
             dist/*.whl
             dist/*.tar.gz
-            dist/kickstart
+            dist/kickstart-*
           retention-days: 7
