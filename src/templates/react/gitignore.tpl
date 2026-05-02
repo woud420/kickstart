@@ -1,7 +1,2 @@
-node_modules/
-dist/
-coverage/
-.env
-.env.local
-bun-debug.log*
-.DS_Store
+{# React scaffold shares the Node gitignore body. #}
+{% include "_shared/node_gitignore.tpl" %}

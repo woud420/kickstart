@@ -1,7 +1,2 @@
-node_modules/
-dist/
-coverage/
-.env
-.env.local
-bun-debug.log*
-.DS_Store
+{# TypeScript service shares the Node gitignore body. #}
+{% include "_shared/node_gitignore.tpl" %}
