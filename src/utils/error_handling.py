@@ -8,7 +8,7 @@ import logging
 import functools
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union, Generator, cast
+from typing import Any, Callable, Dict, List, Optional, Sequence, Type, TypeVar, Union, Generator, cast
 from src.utils.logger import warn
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Type variable for generic decorator support
 F = TypeVar('F', bound=Callable[..., Any])
 R = TypeVar('R')
+T = TypeVar('T')
 
 
 # Custom Exceptions
@@ -406,10 +407,10 @@ def log_operation_result(
 
 
 def batch_operation_wrapper(
-    items: List[Any],
-    operation_func: Callable[[Any], bool],
+    items: Sequence[T],
+    operation_func: Callable[[T], bool],
     operation_name: str,
-    item_name_func: Optional[Callable[[Any], str]] = None
+    item_name_func: Optional[Callable[[T], str]] = None
 ) -> ErrorCollector:
     """Execute a batch operation with standardized error collection.
 

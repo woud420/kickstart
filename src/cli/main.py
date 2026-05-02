@@ -47,8 +47,11 @@ def _prompt_for_missing_args(
     database: Optional[str] = None,
     cache: Optional[str] = None,
     auth: Optional[str] = None,
-    framework: Optional[str] = None
-) -> Tuple[str, str, Optional[str], str, bool, bool, Optional[str], Optional[str], Optional[str], Optional[str]]:
+    framework: Optional[str] = None,
+    cloud: str = "multi",
+    knowledge: str = "both",
+    runtime: Optional[str] = None,
+) -> Tuple[str, str, Optional[str], str, bool, bool, Optional[str], Optional[str], Optional[str], Optional[str], str, str, Optional[str]]:
     """Prompt user for any missing arguments in interactive mode.
 
     Args:
@@ -116,7 +119,7 @@ def _prompt_for_missing_args(
     assert project_type is not None, "project_type should be set by now"
     assert name is not None, "name should be set by now"
     
-    return project_type, name, root, lang, gh, helm, database, cache, auth, framework
+    return project_type, name, root, lang, gh, helm, database, cache, auth, framework, cloud, knowledge, runtime
 
 
 def _dispatch_project_creation(
@@ -130,7 +133,10 @@ def _dispatch_project_creation(
     database: Optional[str] = None,
     cache: Optional[str] = None,
     auth: Optional[str] = None,
-    framework: Optional[str] = None
+    framework: Optional[str] = None,
+    cloud: str = "multi",
+    knowledge: str = "both",
+    runtime: Optional[str] = None,
 ) -> None:
     """Dispatch to the appropriate project creation function.
     
@@ -143,13 +149,33 @@ def _dispatch_project_creation(
         helm: Whether to use Helm scaffolding
         config: Configuration dictionary
     """
+    service_kwargs: Dict[str, Any] = {"helm": helm, "root": root}
+    if database is not None and database != "none":
+        service_kwargs["database"] = database
+    if cache is not None and cache != "none":
+        service_kwargs["cache"] = cache
+    if auth is not None and auth != "none":
+        service_kwargs["auth"] = auth
+    if framework is not None and framework != "fastapi":
+        service_kwargs["framework"] = framework
+    if runtime is not None:
+        service_kwargs["runtime"] = runtime
+
+    monorepo_kwargs: Dict[str, Any] = {"helm": helm, "root": root}
+    if cloud != "multi":
+        monorepo_kwargs["cloud"] = cloud
+    if knowledge != "both":
+        monorepo_kwargs["knowledge"] = knowledge
+    if runtime is not None:
+        monorepo_kwargs["runtime"] = runtime
+
     # Dispatch table for cleaner code and easier extension
     project_creators = {
-        "service": lambda: create_service(name, lang, gh, config, helm=helm, root=root, database=database, cache=cache, auth=auth, framework=framework),
+        "service": lambda: create_service(name, lang, gh, config, **service_kwargs),
         "frontend": lambda: create_frontend(name, gh, config, root=root),
         "lib": lambda: create_lib(name, lang, gh, config, root=root),
         "cli": lambda: create_cli(name, lang, gh, config, root=root),
-        "mono": lambda: create_monorepo(name, gh, config, helm=helm, root=root),
+        "mono": lambda: create_monorepo(name, gh, config, **monorepo_kwargs),
     }
     
     creator = project_creators.get(project_type)
@@ -170,7 +196,14 @@ def create(
     database: Optional[str] = typer.Option(None, "--database", help="Database extension (postgres, mysql, sqlite)"),
     cache: Optional[str] = typer.Option(None, "--cache", help="Cache extension (redis, memcached)"),
     auth: Optional[str] = typer.Option(None, "--auth", help="Authentication extension (jwt, oauth)"),
-    framework: Optional[str] = typer.Option(None, "--framework", help="HTTP framework (minimal for standard library, default is FastAPI)")
+    framework: Optional[str] = typer.Option(None, "--framework", help="HTTP framework (minimal for standard library, default is FastAPI)"),
+    cloud: str = typer.Option("multi", "--cloud", help="Monorepo cloud target (aws, gcp, cloudflare, multi, none)"),
+    knowledge: str = typer.Option("both", "--knowledge", help="Knowledge base scaffold (none, obsidian, backstage, both)"),
+    runtime: Optional[str] = typer.Option(
+        None,
+        "--runtime",
+        help="Runtime target. Services: container or cloudflare-workers. Monorepos: kubernetes, cloudflare-workers, hybrid.",
+    )
 ) -> None:
     """Create a new service, lib, CLI, frontend, or mono repo.
     
@@ -190,15 +223,18 @@ def create(
         config: Dict[str, Any] = load_config()
 
         # Prompt for any missing arguments
-        project_type, name, root, lang, gh, helm, database, cache, auth, framework = _prompt_for_missing_args(
-            project_type, name, root, lang, gh, helm, config, database, cache, auth, framework
+        project_type, name, root, lang, gh, helm, database, cache, auth, framework, cloud, knowledge, runtime = _prompt_for_missing_args(
+            project_type, name, root, lang, gh, helm, config, database, cache, auth, framework, cloud, knowledge, runtime
         )
 
         # Dispatch to appropriate creation function
-        _dispatch_project_creation(project_type, name, root, lang, gh, helm, config, database, cache, auth, framework)
+        _dispatch_project_creation(
+            project_type, name, root, lang, gh, helm, config, database, cache, auth, framework, cloud, knowledge, runtime
+        )
         
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
     except Exception as e:
         print(f"[bold red]❌ Failed to create project: {e}[/]")
         logger.exception("Project creation failed")
+        raise typer.Exit(code=1) from e

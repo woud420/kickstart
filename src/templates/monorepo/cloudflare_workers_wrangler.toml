@@ -1,0 +1,9 @@
+name = "{{ monorepo_name }}-example-worker"
+main = "src/index.ts"
+compatibility_date = "2026-05-02"
+
+# This file is an example for Worker services in this workspace.
+# Service-owned Workers should keep their own wrangler.toml beside their code.
+
+[vars]
+ENVIRONMENT = "dev"

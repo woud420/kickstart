@@ -22,6 +22,26 @@ poetry run kickstart --help
 kickstart create service my-api --lang python
 ```
 
+### Create a TypeScript Service
+```bash
+kickstart create service edge-api --lang typescript
+# or
+kickstart create service edge-api --lang ts
+```
+
+### Create a Cloudflare Worker
+```bash
+kickstart create service edge-api --lang typescript --runtime cloudflare-workers
+kickstart create service edge-rust --lang rust --runtime cloudflare-workers
+```
+
+### Create an Application Workspace
+```bash
+kickstart create mono product-stack --cloud multi --knowledge both
+# Cloudflare edge/DNS/workers-oriented workspace
+kickstart create mono edge-stack --cloud cloudflare --runtime cloudflare-workers --knowledge both
+```
+
 ### Add Extensions
 ```bash
 # With PostgreSQL database
@@ -63,18 +83,20 @@ my-api/
 
 ### Services (Backend APIs)
 ```bash
-kickstart create service <name> --lang [python|go|rust|cpp]
+kickstart create service <name> --lang [python|typescript|ts|rust|cpp|go] [--runtime container|cloudflare-workers]
 ```
 - **Python**: FastAPI by default
-- **Go**: Gin framework
+- **TypeScript**: Bun + Fastify with strict TypeScript
 - **Rust**: Actix-web
-- **C++**: Modern C++20 with CMake
+- **C++**: C++20 with CMake
+- **Go**: tolerated, minimal net/http scaffold
+- **Cloudflare Workers runtime**: TypeScript Worker or Rust/Wasm Worker with Wrangler
 
 ### Frontend Applications
 ```bash
 kickstart create frontend <name>
 ```
-React 18 with TypeScript, Vite, TailwindCSS
+React 18 with TypeScript, Vite, and Bun
 
 ### Libraries
 ```bash
@@ -88,8 +110,12 @@ kickstart create cli <name> --lang [python|go|rust]
 
 ### Monorepo Infrastructure
 ```bash
-kickstart create mono <name> [--helm]
+kickstart create mono <name> [--helm] [--cloud aws|gcp|cloudflare|multi|none] [--runtime kubernetes|cloudflare-workers|hybrid] [--knowledge none|obsidian|backstage|both]
 ```
+
+Generates a Bun/Turbo TypeScript workspace, Docker Compose, Kubernetes, Terraform environment entrypoints for AWS/GCP/Cloudflare, SQL seed schema, Backstage catalog/template files, Obsidian vault settings, ADRs, and recommended agent workflow docs.
+
+`--cloud` selects account/provider infrastructure. `--runtime` selects where code runs: Kubernetes via Kustomize/Helm, Cloudflare Workers via Wrangler, or both with `hybrid`.
 
 ## Advanced Usage
 

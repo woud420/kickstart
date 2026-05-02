@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 from src.utils.logger import info, success, warn, error
 

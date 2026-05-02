@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from src.utils.fs import write_file
 
 def test_write_file_with_path_template(tmp_path):

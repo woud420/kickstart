@@ -9,13 +9,14 @@ import tempfile
 import shutil
 from pathlib import Path
 from typing import Any, Dict
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.api import create_service, create_frontend, create_lib, create_cli, create_monorepo
 from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibGenerator
 from src.generator.monorepo import MonorepoGenerator
+from src.utils.error_handling import LanguageNotSupportedError
 
 
 @pytest.fixture
@@ -74,7 +75,7 @@ class TestServiceCreation:
         # Verify directory structure
         expected_dirs = [
             "src", "src/api", "src/model",
-            "tests", "tests/api", "tests/model",
+            "tests", "tests/unit/api", "tests/unit/model",
             "architecture"
         ]
         for expected_dir in expected_dirs:
@@ -87,8 +88,8 @@ class TestServiceCreation:
             "src/model/__init__.py",
             "src/main.py",
             "tests/__init__.py",
-            "tests/api/__init__.py",
-            "tests/model/__init__.py",
+            "tests/unit/api/__init__.py",
+            "tests/unit/model/__init__.py",
         ]
         for py_file in python_files:
             assert (project_path / py_file).exists(), f"Missing Python file: {py_file}"
@@ -96,7 +97,7 @@ class TestServiceCreation:
         # Verify main.py contains FastAPI code
         main_py_content = (project_path / "src/main.py").read_text()
         assert "FastAPI" in main_py_content
-        assert "app = FastAPI()" in main_py_content
+        assert "app = create_app()" in main_py_content
         
         # Verify architecture docs
         arch_readme = project_path / "architecture/README.md"
@@ -140,6 +141,57 @@ class TestServiceCreation:
         assert (helm_path / "Chart.yaml").exists()
         assert (helm_path / "values.yaml").exists()
         assert (helm_path / "templates/deployment.yaml").exists()
+
+    def test_typescript_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test TypeScript Cloudflare Worker service creation."""
+        service_name = "test-worker-service"
+
+        generator = ServiceGenerator(
+            name=service_name,
+            lang="typescript",
+            gh=False,
+            config=mock_config,
+            runtime="cloudflare-workers",
+            root=str(temp_project_dir),
+        )
+        generator.create()
+
+        project_path = temp_project_dir / service_name
+
+        assert (project_path / "wrangler.toml").exists()
+        assert (project_path / "package.json").exists()
+        assert (project_path / "src/index.ts").exists()
+        assert (project_path / "tests/worker.test.ts").exists()
+        assert not (project_path / "Dockerfile").exists()
+
+        worker_source = (project_path / "src/index.ts").read_text()
+        assert "ExportedHandler" in worker_source
+        assert "/healthz" in worker_source
+
+    def test_rust_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test Rust Cloudflare Worker service creation."""
+        service_name = "test-rust-worker"
+
+        generator = ServiceGenerator(
+            name=service_name,
+            lang="rust",
+            gh=False,
+            config=mock_config,
+            runtime="cloudflare-workers",
+            root=str(temp_project_dir),
+        )
+        generator.create()
+
+        project_path = temp_project_dir / service_name
+
+        assert (project_path / "wrangler.toml").exists()
+        assert (project_path / "Cargo.toml").exists()
+        assert (project_path / "src/lib.rs").exists()
+        assert not (project_path / "Dockerfile").exists()
+
+        cargo_toml = (project_path / "Cargo.toml").read_text()
+        assert 'crate-type = ["cdylib"]' in cargo_toml
+        assert 'worker = "0.8"' in cargo_toml
     
     def test_service_creation_error_handling(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test error handling during service creation."""
@@ -236,7 +288,7 @@ class TestMonorepoCreation:
         
         # Verify monorepo structure
         assert project_path.exists()
-        expected_dirs = ["services", "libs", "frontend", "docs", "architecture"]
+        expected_dirs = ["services", "libs", "frontend", "docs", "architecture", "infra"]
         for expected_dir in expected_dirs:
             assert (project_path / expected_dir).exists()
 
@@ -328,6 +380,57 @@ class TestAPIFunctions:
         project_path = temp_project_dir / mono_name
         assert project_path.exists()
         assert (project_path / "services").exists()
+        assert (project_path / "infra/k8s/base/deployment.yaml").exists()
+
+    def test_create_monorepo_api_with_cloudflare(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test that Cloudflare monorepos render Cloudflare Terraform only."""
+        mono_name = "api-test-cloudflare-monorepo"
+
+        with patch('src.utils.github.create_repo'):
+            create_monorepo(
+                name=mono_name,
+                gh=False,
+                config=mock_config,
+                helm=False,
+                root=str(temp_project_dir),
+                cloud="cloudflare",
+                knowledge="none",
+            )
+
+        project_path = temp_project_dir / mono_name
+        main_tf = (project_path / "infra/terraform/env/dev/main.tf").read_text()
+        variables_tf = (project_path / "infra/terraform/env/dev/variables.tf").read_text()
+        tfvars = (project_path / "infra/terraform/env/dev/terraform.tfvars.example").read_text()
+
+        assert 'source  = "cloudflare/cloudflare"' in main_tf
+        assert 'provider "cloudflare"' in main_tf
+        assert 'clouds = ["cloudflare"]' in tfvars
+        assert "cloudflare_account_id" in variables_tf
+        assert "aws_region" not in variables_tf
+        assert "gcp_project_id" not in variables_tf
+
+    def test_create_monorepo_api_with_cloudflare_workers_runtime(
+        self, temp_project_dir: Path, mock_config: Dict[str, Any]
+    ):
+        """Test that Cloudflare Workers runtime renders Worker runtime docs."""
+        mono_name = "api-test-worker-runtime-monorepo"
+
+        create_monorepo(
+            name=mono_name,
+            gh=False,
+            config=mock_config,
+            helm=False,
+            root=str(temp_project_dir),
+            cloud="cloudflare",
+            runtime="cloudflare-workers",
+            knowledge="none",
+        )
+
+        project_path = temp_project_dir / mono_name
+
+        assert (project_path / "infra/cloudflare/workers/README.md").exists()
+        assert (project_path / "infra/cloudflare/workers/wrangler.example.toml").exists()
+        assert not (project_path / "infra/k8s/base/deployment.yaml").exists()
 
 
 class TestErrorRecovery:
@@ -346,12 +449,11 @@ class TestErrorRecovery:
             root=str(temp_project_dir)
         )
         
-        # Should handle missing templates gracefully
-        generator.create()
+        # Unsupported languages fail before creating files.
+        with pytest.raises(LanguageNotSupportedError):
+            generator.create()
         
-        # Project directory should not be created due to missing templates
-        project_path = temp_project_dir / service_name
-        # The method should warn and return early, not creating the directory
+        # The method should fail before creating the project directory.
     
     def test_permission_error_handling(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test handling of permission errors during file creation."""

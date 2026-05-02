@@ -1,2 +1,6 @@
 apiVersion: v2
-name: example
+name: {{ service_name }}
+description: Helm chart for {{ service_name }}
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

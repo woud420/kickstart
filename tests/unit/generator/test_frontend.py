@@ -56,11 +56,17 @@ def test_create_success_with_gh(
     
     # Verify template files are written
     expected_template_calls = [
+        call("index.html", "index.html.tpl"),
         call(".gitignore", "gitignore.tpl"),
         call("Dockerfile", "Dockerfile.tpl"),
         call("Makefile", "Makefile.tpl"),
         call("README.md", "README.md.tpl"),
-        call("package.json", "package.json.tpl")
+        call("package.json", "package.json.tpl"),
+        call("tsconfig.json", "tsconfig.json.tpl"),
+        call("vite.config.ts", "vite.config.ts.tpl"),
+        call("src/App.tsx", "src/App.tsx.tpl"),
+        call("src/main.tsx", "src/main.tsx.tpl"),
+        call("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
@@ -91,11 +97,17 @@ def test_create_success_without_gh(
     
     # Verify template files are written
     expected_template_calls = [
+        call("index.html", "index.html.tpl"),
         call(".gitignore", "gitignore.tpl"),
         call("Dockerfile", "Dockerfile.tpl"),
         call("Makefile", "Makefile.tpl"),
         call("README.md", "README.md.tpl"),
-        call("package.json", "package.json.tpl")
+        call("package.json", "package.json.tpl"),
+        call("tsconfig.json", "tsconfig.json.tpl"),
+        call("vite.config.ts", "vite.config.ts.tpl"),
+        call("src/App.tsx", "src/App.tsx.tpl"),
+        call("src/main.tsx", "src/main.tsx.tpl"),
+        call("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
@@ -140,11 +152,17 @@ def test_project_structure_directories():
 def test_all_template_files_are_written():
     """Test that all expected template files are written."""
     expected_template_files = [
+        ("index.html", "index.html.tpl"),
         (".gitignore", "gitignore.tpl"),
         ("Dockerfile", "Dockerfile.tpl"),
         ("Makefile", "Makefile.tpl"),
         ("README.md", "README.md.tpl"),
-        ("package.json", "package.json.tpl")
+        ("package.json", "package.json.tpl"),
+        ("tsconfig.json", "tsconfig.json.tpl"),
+        ("vite.config.ts", "vite.config.ts.tpl"),
+        ("src/App.tsx", "src/App.tsx.tpl"),
+        ("src/main.tsx", "src/main.tsx.tpl"),
+        ("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
     ]
     
     with patch.object(FrontendGenerator, 'create_project', return_value=True), \
@@ -215,7 +233,7 @@ def test_github_repo_creation_conditional():
 
 
 def test_template_files_count():
-    """Test that exactly 5 template files are written."""
+    """Test that all frontend template files are written."""
     with patch.object(FrontendGenerator, 'create_project', return_value=True), \
          patch.object(FrontendGenerator, 'init_basic_structure'), \
          patch.object(FrontendGenerator, 'create_architecture_docs'), \
@@ -225,8 +243,7 @@ def test_template_files_count():
         generator = FrontendGenerator("test", False, {})
         generator.create()
         
-        # Should write exactly 5 template files
-        assert mock_write_template.call_count == 5
+        assert mock_write_template.call_count == 11
 
 
 def test_no_language_specific_logic():

@@ -1,1 +1,27 @@
 name: Test
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  generated-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate expected docs
+        run: make docs-check
+
+      - name: Render Kubernetes manifests
+        run: make k8s-render ENV=dev
+
+      - name: Validate Terraform syntax
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - run: make tf-init ENV=dev
+      - run: make tf-validate ENV=dev

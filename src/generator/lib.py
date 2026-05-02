@@ -1,21 +1,21 @@
 from pathlib import Path
-from typing import Any
 from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
+from src.utils.types import GeneratorConfig
 
 class LibraryGenerator(BaseGenerator):
     lang: str
     gh: bool
     lang_template_dir: Path
     
-    def __init__(self, name: str, lang: str, gh: bool, config: dict[str, Any], root: str | None = None) -> None:
+    def __init__(self, name: str, lang: str, gh: bool, config: GeneratorConfig, root: str | None = None) -> None:
         super().__init__(name, config, root)
         self.lang = lang
         self.gh = gh
         self.lang_template_dir = self.template_dir / lang
 
     def create(self) -> None:
-        directories: list[str] = ["src", "tests", "architecture"]
+        directories: list[str] = ["src", "tests", "docs", "architecture"]
         
         template_configs: list[dict[str, str]] = [
             {"target": ".gitignore", "template": f"{self.lang}/gitignore.tpl"},
@@ -26,7 +26,7 @@ class LibraryGenerator(BaseGenerator):
         architecture_title: str = f"{self.name} Library Docs"
         success_message: str = f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!"
 
-        def github_create_fn() -> Any:
+        def github_create_fn() -> bool | None:
             return create_repo(self.name) if self.gh else None
         
         self.execute_create_flow(
@@ -38,16 +38,17 @@ class LibraryGenerator(BaseGenerator):
             github_create_fn=github_create_fn if self.gh else None
         )
     
-    def _setup_language_specific_files(self) -> None:
+    def _setup_language_specific_files(self) -> bool:
         """Setup language-specific files for library."""
         if self.lang == "python":
             self.write_template("pyproject.toml", "python/pyproject.toml.tpl")
         elif self.lang == "rust":
             self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
+        return True
 
 class CLIGenerator(LibraryGenerator):
     def create(self) -> None:
-        directories: list[str] = ["src", "tests", "architecture"]
+        directories: list[str] = ["src", "tests", "docs", "architecture"]
         
         template_configs: list[dict[str, str]] = [
             {"target": ".gitignore", "template": f"{self.lang}/gitignore.tpl"},
@@ -58,7 +59,7 @@ class CLIGenerator(LibraryGenerator):
         architecture_title: str = f"{self.name} CLI Docs"
         success_message: str = f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!"
 
-        def github_create_fn() -> Any:
+        def github_create_fn() -> bool | None:
             return create_repo(self.name) if self.gh else None
         
         self.execute_create_flow(
@@ -70,12 +71,15 @@ class CLIGenerator(LibraryGenerator):
             github_create_fn=github_create_fn if self.gh else None
         )
     
-    def _setup_cli_specific_files(self) -> None:
+    def _setup_cli_specific_files(self) -> bool:
         """Setup language-specific files for CLI."""
         if self.lang == "python":
             self.write_template("pyproject.toml", "python/pyproject.cli.toml.tpl")
-            self.write_content("src/main.py", 'import sys\nprint("Hello from CLI")\nsys.exit(0)\n')
+            self.write_content("src/main.py", 'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n')
         elif self.lang == "rust":
             self.write_template("Cargo.toml", "rust/Cargo.cli.toml.tpl")
             self.write_content("src/main.rs", 'fn main() {\n    println!("Hello from CLI!");\n}\n')
+        return True
 
+
+LibGenerator = LibraryGenerator

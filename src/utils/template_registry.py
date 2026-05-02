@@ -5,9 +5,11 @@ replacing hardcoded template paths with a configurable, extensible system.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Any
+from typing import Dict, List, Mapping, Optional, Set
 from dataclasses import dataclass
 import logging
+from src.stack.profile import stack_registry
+from src.utils.types import TemplateValue
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +122,39 @@ class TemplateRegistry:
                 language="go"
             ),
         ]
-        
+
+        # TypeScript-specific templates
+        typescript_templates = [
+            TemplateInfo(
+                name="package",
+                path="typescript/package.json.tpl",
+                description="Bun package manifest",
+                variables={"service_name"},
+                language="typescript"
+            ),
+            TemplateInfo(
+                name="tsconfig",
+                path="typescript/tsconfig.json.tpl",
+                description="TypeScript compiler configuration",
+                variables={"service_name"},
+                language="typescript"
+            ),
+            TemplateInfo(
+                name="tsconfig_build",
+                path="typescript/tsconfig.build.json.tpl",
+                description="TypeScript build compiler configuration",
+                variables={"service_name"},
+                language="typescript"
+            ),
+            TemplateInfo(
+                name="bunfig",
+                path="typescript/bunfig.toml.tpl",
+                description="Bun configuration",
+                variables={"service_name"},
+                language="typescript"
+            ),
+        ]
+
         # C++-specific templates
         cpp_templates = [
             TemplateInfo(
@@ -160,7 +194,7 @@ class TemplateRegistry:
         # Register all templates
         all_templates = (
             common_templates + python_templates + rust_templates + 
-            go_templates + cpp_templates + helm_templates
+            go_templates + typescript_templates + cpp_templates + helm_templates
         )
         
         for template in all_templates:
@@ -244,7 +278,7 @@ class TemplateRegistry:
         """
         return self._project_templates.get(project_type, {})
     
-    def resolve_template_path(self, template: TemplateInfo, **context: Any) -> Path:
+    def resolve_template_path(self, template: TemplateInfo, **context: TemplateValue) -> Path:
         """Resolve the full filesystem path for a template.
         
         Args:
@@ -257,7 +291,7 @@ class TemplateRegistry:
         resolved_path = template.path.format(**context)
         return self.base_template_dir / resolved_path
     
-    def validate_template_variables(self, template: TemplateInfo, variables: Dict[str, Any]) -> List[str]:
+    def validate_template_variables(self, template: TemplateInfo, variables: Mapping[str, TemplateValue]) -> List[str]:
         """Validate that all required template variables are provided.
         
         Args:
@@ -281,52 +315,7 @@ class TemplateRegistry:
         Returns:
             List of template configurations (target -> template mappings)
         """
-        configs = []
-        templates = self.get_templates_for_language(language)
-        
-        # Standard mappings for service projects
-        standard_mappings = {
-            "readme": "README.md",
-            "gitignore": ".gitignore", 
-            "dockerfile": "Dockerfile",
-            "makefile": "Makefile",
-        }
-        
-        # Language-specific mappings
-        language_mappings = {
-            "python": {
-                "requirements": "requirements.txt",
-                "pyproject": "pyproject.toml",
-            },
-            "rust": {
-                "cargo": "Cargo.toml",
-            },
-            "go": {
-                "gomod": "go.mod",
-            },
-            "cpp": {
-                "cmake": "CMakeLists.txt",
-            },
-        }
-        
-        # Add standard templates
-        for template_name, target_file in standard_mappings.items():
-            if template_name in templates:
-                configs.append({
-                    "target": target_file,
-                    "template": templates[template_name].path
-                })
-        
-        # Add language-specific templates
-        if language in language_mappings:
-            for template_name, target_file in language_mappings[language].items():
-                if template_name in templates:
-                    configs.append({
-                        "target": target_file,
-                        "template": templates[template_name].path
-                    })
-        
-        return configs
+        return stack_registry.service_template_configs(language, "container")
     
     def list_available_languages(self) -> List[str]:
         """Get list of all supported languages.

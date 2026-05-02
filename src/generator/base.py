@@ -1,9 +1,11 @@
 from pathlib import Path
-from typing import Any, Callable
+from collections.abc import Mapping
+from typing import Callable, Sequence
 import logging
 from src.utils.fs import write_file
 from src.utils.logger import success, warn
 from src.utils.template_registry import get_template_registry, TemplateRegistry
+from src.utils.types import GeneratorConfig, TemplateConfigMapping, TemplateValue
 from src.utils.error_handling import (
     ErrorCollector, batch_operation_wrapper, handle_file_operations,
     handle_template_operations, safe_operation_context,
@@ -27,12 +29,12 @@ class BaseGenerator:
     """
     
     name: str
-    config: dict[str, Any]
+    config: GeneratorConfig
     project: Path
     template_dir: Path
     template_registry: TemplateRegistry
     
-    def __init__(self, name: str, config: dict[str, Any], root: str | None = None) -> None:
+    def __init__(self, name: str, config: GeneratorConfig, root: str | None = None) -> None:
         """Initialize the base generator.
         
         Args:
@@ -52,8 +54,12 @@ class BaseGenerator:
         Return ``True`` when it doesn't exist; otherwise log a warning and
         return ``False``.
         """
-        if self.project.exists():
-            warn(f"Directory '{self.project}' already exists.")
+        try:
+            if self.project.exists():
+                warn(f"Directory '{self.project}' already exists.")
+                return False
+        except OSError as exc:
+            warn(f"Cannot access project directory '{self.project}': {exc}")
             return False
         return True
 
@@ -85,7 +91,7 @@ class BaseGenerator:
         return not collector.has_errors()
 
     @handle_template_operations(default_return=False, log_errors=True)
-    def write_template(self, target: str, template_path: str, **vars: Any) -> bool:
+    def write_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
         """Write a template file to the project.
 
         Args:
@@ -106,7 +112,8 @@ class BaseGenerator:
         if isinstance(resolved_template_path, Path) and not resolved_template_path.exists():
             raise TemplateError(f"Template file not found: {template_path}")
 
-        write_file(self.project / target, resolved_template_path, service_name=self.name, **vars)
+        template_vars = {"service_name": self.name, **vars}
+        write_file(self.project / target, resolved_template_path, **template_vars)
         logger.debug(f"Successfully wrote template {template_path} to {target}")
         return True
 
@@ -121,7 +128,7 @@ class BaseGenerator:
         Returns:
             True if file was written successfully, False otherwise
         """
-        write_file(self.project / target, content)
+        write_file(self.project / target, content, service_name=self.name)
         logger.debug(f"Successfully wrote content to {target}")
         return True
 
@@ -157,7 +164,7 @@ class BaseGenerator:
             return False
         return self.write_content("architecture/README.md", f"# {title}\n")
 
-    def write_templates_from_config(self, template_configs: list[dict[str, str]]) -> bool:
+    def write_templates_from_config(self, template_configs: Sequence[TemplateConfigMapping]) -> bool:
         """Write multiple template files from configuration list.
 
         Args:
@@ -166,12 +173,18 @@ class BaseGenerator:
         Returns:
             True if all templates were written successfully, False otherwise
         """
-        def write_single_template(config: dict[str, str]) -> bool:
+        def write_single_template(config: TemplateConfigMapping) -> bool:
             """Write a single template with validation."""
-            if 'target' not in config or 'template' not in config:
+            target = config.get("target")
+            template = config.get("template")
+            if not isinstance(target, str) or not isinstance(template, str):
                 raise ValueError(f"Invalid template config: missing 'target' or 'template' key: {config}")
 
-            return self.write_template(config['target'], config['template'])
+            template_vars = config.get("vars", {})
+            if not isinstance(template_vars, Mapping):
+                raise ValueError(f"Invalid template config: 'vars' must be a mapping: {config}")
+
+            return self.write_template(target, template, **dict(template_vars))
 
         # Use batch operation wrapper for standardized error collection
         collector = batch_operation_wrapper(
@@ -183,7 +196,7 @@ class BaseGenerator:
 
         return not collector.has_errors()
 
-    def create_with_github(self, success_message: str, create_repo_fn: Callable[[], Any] | None = None) -> None:
+    def create_with_github(self, success_message: str, create_repo_fn: Callable[[], bool | None] | None = None) -> None:
         """Create project and optionally create GitHub repository.
         
         Args:
@@ -196,12 +209,12 @@ class BaseGenerator:
 
     def execute_create_flow(self, 
                           directories: list[str],
-                          template_configs: list[dict[str, str]],
+                          template_configs: Sequence[TemplateConfigMapping],
                           architecture_title: str,
                           success_message: str,
                           language_setup_fn: Callable[[], bool] | None = None,
                           additional_setup_fn: Callable[[], bool] | None = None,
-                          github_create_fn: Callable[[], Any] | None = None) -> bool:
+                          github_create_fn: Callable[[], bool | None] | None = None) -> bool:
         """Execute the common create flow for generators.
         
         Args:

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {% raw %}{{ include "example-service.fullname" . }}{% endraw %}-config
+data:
+{% raw %}{{- range $key, $value := .Values.env }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}{% endraw %}

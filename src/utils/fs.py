@@ -146,6 +146,8 @@ def write_file(path: Path, template: Path | str, **vars: Any) -> None:
         OSError: If file cannot be written
         TemplateError: If template rendering fails
     """
+    render_vars = _with_legacy_variable_aliases(vars)
+
     try:
         # Ensure parent directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -159,24 +161,24 @@ def write_file(path: Path, template: Path | str, **vars: Any) -> None:
 
                 # Get relative template path for Jinja2
                 relative_path = template.relative_to(template_base_dir)
-                content = engine.render_template(str(relative_path), vars)
+                content = engine.render_template(str(relative_path), render_vars)
                 logger.debug(f"Successfully rendered Jinja2 template: {template}")
             except (TemplateError, FileNotFoundError) as e:
                 # Fallback to legacy placeholder replacement
                 logger.warning(f"Jinja2 templating failed for {template}, falling back to legacy: {e}")
                 content = template.read_text(encoding='utf-8')
-                content = _legacy_replace(content, vars)
+                content = _legacy_replace(content, render_vars)
         else:
             # Template content as string
             try:
                 # Try Jinja2 templating first
                 engine = get_template_engine()
-                content = engine.render_string(template, vars)
+                content = engine.render_string(template, render_vars)
                 logger.debug("Successfully rendered Jinja2 string template")
             except TemplateError as e:
                 # Fallback to legacy placeholder replacement
                 logger.warning(f"Jinja2 string templating failed, falling back to legacy: {e}")
-                content = _legacy_replace(template, vars)
+                content = _legacy_replace(template, render_vars)
 
         # Write the rendered content
         path.write_text(content, encoding='utf-8')
@@ -228,3 +230,10 @@ def _legacy_replace(content: str, variables: Dict[str, Any]) -> str:
         content = content.replace(f"{{{{{key}}}}}", str(value))
     return content
 
+
+def _with_legacy_variable_aliases(variables: Dict[str, Any]) -> Dict[str, Any]:
+    """Add uppercase aliases for legacy ``{{NAME}}`` templates."""
+    aliases = dict(variables)
+    for key, value in variables.items():
+        aliases.setdefault(str(key).upper(), value)
+    return aliases

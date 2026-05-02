@@ -1,0 +1,30 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: {{ monorepo_name }}-service
+  title: {{ monorepo_name }} Service
+  description: Create a service that follows the {{ monorepo_name }} workspace conventions.
+spec:
+  owner: group:default/platform
+  type: service
+  parameters:
+    - title: Service
+      required:
+        - name
+      properties:
+        name:
+          title: Name
+          type: string
+          pattern: "^[a-z0-9-]+$"
+  steps:
+    - id: fetch-base
+      name: Fetch base
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: {% raw %}${{ parameters.name }}{% endraw %}
+  output:
+    text:
+      - title: Next step
+        content: Add a `skeleton/` directory or point this template at a remote template source.

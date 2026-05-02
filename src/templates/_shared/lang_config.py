@@ -64,6 +64,19 @@ LANGUAGE_CONFIG: Dict[str, Dict[str, Any]] = {
             "go.sum",
         ]
     },
+    "typescript": {
+        "main_ext": "ts",
+        "config_file": "package.json",
+        "dependency_file": "package.json",
+        "build_tool": "bun",
+        "test_framework": "vitest",
+        "gitignore_patterns": [
+            "node_modules/",
+            "dist/",
+            "coverage/",
+            "bun-debug.log*",
+        ]
+    },
     "cpp": {
         "main_ext": "cpp",
         "config_file": "CMakeLists.txt",
@@ -79,38 +92,6 @@ LANGUAGE_CONFIG: Dict[str, Dict[str, Any]] = {
             "CMakeCache.txt",
             "CMakeFiles/",
             "cmake_install.cmake",
-        ]
-    },
-    "java": {
-        "main_ext": "java",
-        "config_file": "pom.xml",
-        "dependency_file": "pom.xml", 
-        "build_tool": "maven",
-        "test_framework": "junit",
-        "gitignore_patterns": [
-            "target/",
-            "*.class",
-            "*.jar",
-            "*.war",
-            "*.ear",
-            ".mvn/",
-        ]
-    },
-    "node": {
-        "main_ext": "js",
-        "config_file": "package.json",
-        "dependency_file": "package.json",
-        "build_tool": "npm",
-        "test_framework": "jest",
-        "gitignore_patterns": [
-            "node_modules/",
-            "npm-debug.log*",
-            "yarn-debug.log*",
-            "yarn-error.log*",
-            ".npm",
-            ".yarn-integrity",
-            "*.tgz",
-            "*.tar.gz",
         ]
     }
 }

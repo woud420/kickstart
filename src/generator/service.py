@@ -1,12 +1,13 @@
 from pathlib import Path
-from typing import Any
 import logging
 from src.generator.base import BaseGenerator
 from src.utils.logger import success, warn
 from src.utils.github import create_repo
 from src.utils.extension_manager import ExtensionManager
+from src.stack.profile import stack_registry
+from src.utils.types import GeneratorConfig
 from src.utils.error_handling import (
-    safe_operation_context, LanguageNotSupportedError, validate_language_support
+    safe_operation_context, LanguageNotSupportedError
 )
 
 logger = logging.getLogger(__name__)
@@ -20,13 +21,14 @@ class ServiceGenerator(BaseGenerator):
     and optional Helm charts for Kubernetes deployment.
     
     Attributes:
-        lang: Programming language for the service (python, rust, go, cpp)
+        lang: Programming language for the service (python, rust, typescript, cpp, go)
         gh: Whether to create a GitHub repository
         helm: Whether to include Helm chart scaffolding
         lang_template_dir: Path to language-specific templates
     """
     
     lang: str
+    runtime: str
     gh: bool
     helm: bool
     database: str | None
@@ -41,19 +43,20 @@ class ServiceGenerator(BaseGenerator):
         name: str,
         lang: str,
         gh: bool,
-        config: dict[str, Any],
+        config: GeneratorConfig,
         helm: bool = False,
         root: str | None = None,
         database: str | None = None,
         cache: str | None = None,
         auth: str | None = None,
-        framework: str | None = None
+        framework: str | None = None,
+        runtime: str = "container",
     ) -> None:
         """Initialize the ServiceGenerator.
         
         Args:
             name: Name of the service to create
-            lang: Programming language (python, rust, go, cpp)
+            lang: Programming language (python, rust, typescript/ts, cpp, go)
             gh: Whether to create a GitHub repository
             config: Configuration dictionary with user preferences
             helm: Whether to include Helm chart scaffolding
@@ -62,20 +65,26 @@ class ServiceGenerator(BaseGenerator):
             cache: Cache extension (redis, memcached)
             auth: Authentication extension (jwt, oauth)
             framework: HTTP framework (None for FastAPI default, minimal for standard library)
+            runtime: Runtime target (container or cloudflare-workers)
             
         Raises:
             ValueError: If unsupported language is specified
         """
         super().__init__(name, config, root)
-        self.lang = lang
+        self.lang = stack_registry.normalize_language(lang)
+        self.runtime = stack_registry.normalize_service_runtime(runtime)
         self.gh = gh
         self.helm = helm
         self.database = database
         self.cache = cache
         self.auth = auth
         self.framework = framework
-        self.lang_template_dir = self.template_dir / lang
+        self.lang_template_dir = self.template_dir / self.lang
         self.extension_manager = ExtensionManager()
+
+    def _normalize_runtime(self, runtime: str) -> str:
+        """Normalize runtime aliases to canonical service runtime ids."""
+        return stack_registry.normalize_service_runtime(runtime)
 
     def create(self) -> None:
         """Create a complete microservice project.
@@ -96,9 +105,11 @@ class ServiceGenerator(BaseGenerator):
         Raises:
             LanguageNotSupportedError: If unsupported language is specified
         """
-        # Validate language support
-        supported_languages = ["python", "rust", "go", "cpp"]
-        validate_language_support(self.lang, supported_languages)
+        profile = stack_registry.service_selection(self.lang, self.runtime, helm=self.helm)
+
+        if profile.runtime == "cloudflare-workers":
+            self._create_cloudflare_worker_project()
+            return
 
         # Check if templates exist for the language
         if not self.lang_template_dir.exists():
@@ -115,13 +126,12 @@ class ServiceGenerator(BaseGenerator):
             "docs"
         ]
 
-        # Use template registry for cleaner template management
-        template_configs: list[dict[str, str]] = self.template_registry.get_template_configs_for_service(self.lang)
+        template_configs = profile.template_configs()
 
         # Configuration for the common create flow
         architecture_title: str = f"{self.name} Architecture Notes"
         success_message: str = f"{self.lang.title()} service '{self.name}' created successfully in '{self.project}'!"
-        def github_create_fn() -> Any:
+        def github_create_fn() -> bool | None:
             return create_repo(self.name) if self.gh else None
 
         # Execute common create flow with service-specific setup
@@ -137,6 +147,38 @@ class ServiceGenerator(BaseGenerator):
 
         if not success:
             warn(f"Failed to create {self.lang} service '{self.name}'")
+
+    def _create_cloudflare_worker_project(self) -> None:
+        """Create a Cloudflare Worker service project."""
+        stack_registry.service_selection(self.lang, self.runtime, helm=self.helm)
+
+        worker_template_dir = self.template_dir / "cloudflare-workers" / self.lang
+        if not worker_template_dir.exists():
+            raise LanguageNotSupportedError(f"No Cloudflare Worker templates found for language: {self.lang}")
+
+        directories = ["src", "tests", "docs"]
+        template_configs = self._cloudflare_worker_template_configs()
+
+        architecture_title = f"{self.name} Cloudflare Worker Architecture Notes"
+        success_message = f"{self.lang.title()} Cloudflare Worker '{self.name}' created successfully in '{self.project}'!"
+
+        def github_create_fn() -> bool | None:
+            return create_repo(self.name) if self.gh else None
+
+        success = self.execute_create_flow(
+            directories=directories,
+            template_configs=template_configs,
+            architecture_title=architecture_title,
+            success_message=success_message,
+            github_create_fn=github_create_fn if self.gh else None,
+        )
+
+        if not success:
+            warn(f"Failed to create {self.lang} Cloudflare Worker '{self.name}'")
+
+    def _cloudflare_worker_template_configs(self) -> list[dict[str, str]]:
+        """Return template mappings for Cloudflare Worker services."""
+        return stack_registry.service_template_configs(self.lang, "cloudflare-workers")
     
     def _setup_service_specific(self) -> bool:
         """Setup service-specific files and structure.
@@ -163,6 +205,8 @@ class ServiceGenerator(BaseGenerator):
                 self._create_cpp_structure()
             elif self.lang == "go":
                 self._create_go_structure()
+            elif self.lang == "typescript":
+                self._create_typescript_structure()
             else:
                 raise LanguageNotSupportedError(f"Unsupported language: {self.lang}")
 
@@ -365,21 +409,23 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 
     def _create_cpp_structure(self) -> None:
         """Create C++-specific project structure.
-        
-        Sets up a C++ microservice with:
-        - Header files with proper namespace organization
-        - Basic main.cpp with console output
-        - CMakeLists.txt for build configuration
-        - Modern C++ project structure
-        """
-        # Create minimal header files
-        self.write_content("src/api/routes.hpp", "#pragma once\n\nnamespace api {\n    class Routes {\n    public:\n        Routes() = default;\n    };\n}\n")
-        self.write_content("src/model/user.hpp", "#pragma once\n\nnamespace model {\n    // Add your models here\n}\n")
-        
-        # Create minimal main file
-        self.write_content("src/main.cpp", "#include <iostream>\n\nint main() {\n    std::cout << \"Hello World\" << std::endl;\n    return 0;\n}\n")
 
-        # Create CMakeLists.txt
+        Sets up a C++ service with CMake, a small executable, and header files
+        that match the generated source layout.
+        """
+        self.write_content(
+            "src/api/routes.hpp",
+            "#pragma once\n\nnamespace api {\nclass Routes {\npublic:\n    Routes() = default;\n};\n}  // namespace api\n",
+        )
+        self.write_content(
+            "src/model/user.hpp",
+            "#pragma once\n\n#include <string>\n\nnamespace model {\nstruct User {\n    std::string id;\n    std::string email;\n};\n}  // namespace model\n",
+        )
+        self.write_content(
+            "src/main.cpp",
+            '#include <iostream>\n\nint main() {\n    std::cout << "Hello World" << std::endl;\n    return 0;\n}\n',
+        )
+
         self.write_template("CMakeLists.txt", "cpp/CMakeLists.txt.tpl")
 
     def _create_go_structure(self) -> None:
@@ -419,6 +465,22 @@ func main() {
         # go.mod
         self.write_template("go.mod", "go/go.mod.tpl")
 
+    def _create_typescript_structure(self) -> None:
+        """Create TypeScript-specific service structure.
+
+        Sets up a Fastify service with strict TypeScript, environment parsing,
+        a health route, and a small test harness.
+        """
+        for target_path, template_path in [
+            ("src/main.ts", "typescript/src/main.ts.tpl"),
+            ("src/config/env.ts", "typescript/src/config/env.ts.tpl"),
+            ("src/routes/health.ts", "typescript/src/routes/health.ts.tpl"),
+            ("tests/health.test.ts", "typescript/tests/health.test.ts.tpl"),
+        ]:
+            self.write_template(target_path, template_path)
+
+        self.write_content(".env.example", "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n")
+
     def _create_helm_chart(self) -> None:
         """Create Helm chart structure and files.
         
@@ -442,5 +504,3 @@ func main() {
             self.write_template(f"helm/{self.name}/{file}", template)
 
         success("Helm chart scaffolded")
-
-

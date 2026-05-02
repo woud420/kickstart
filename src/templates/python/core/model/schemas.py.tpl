@@ -280,7 +280,7 @@ class UserProfileSchema(BaseModel):
                     "country": "USA"
                 },
                 "interests": ["programming", "music", "travel"],
-                "skills": ["python", "javascript", "docker"],
+                "skills": ["python", "typescript", "docker"],
                 "occupation": "Software Engineer",
                 "company": "Tech Corp"
             }

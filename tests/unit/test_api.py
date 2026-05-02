@@ -16,7 +16,19 @@ def test_create_service_basic(mock_service_generator):
     
     create_service("test-service", "python", True, {"key": "value"})
     
-    mock_service_generator.assert_called_once_with("test-service", "python", True, {"key": "value"}, False, None)
+    mock_service_generator.assert_called_once_with(
+        "test-service",
+        "python",
+        True,
+        {"key": "value"},
+        helm=False,
+        root=None,
+        database=None,
+        cache=None,
+        auth=None,
+        framework=None,
+        runtime="container",
+    )
     mock_generator_instance.create.assert_called_once()
 
 
@@ -27,7 +39,19 @@ def test_create_service_with_helm_and_root(mock_service_generator):
     
     create_service("test-service", "rust", False, {"config": "test"}, helm=True, root="/tmp")
     
-    mock_service_generator.assert_called_once_with("test-service", "rust", False, {"config": "test"}, True, "/tmp")
+    mock_service_generator.assert_called_once_with(
+        "test-service",
+        "rust",
+        False,
+        {"config": "test"},
+        helm=True,
+        root="/tmp",
+        database=None,
+        cache=None,
+        auth=None,
+        framework=None,
+        runtime="container",
+    )
     mock_generator_instance.create.assert_called_once()
 
 
@@ -104,9 +128,9 @@ def test_create_cli_with_root(mock_cli_generator):
     mock_generator_instance = MagicMock()
     mock_cli_generator.return_value = mock_generator_instance
     
-    create_cli("test-cli", "java", True, {"config": "test"}, root="/cli/path")
+    create_cli("test-cli", "rust", True, {"config": "test"}, root="/cli/path")
     
-    mock_cli_generator.assert_called_once_with("test-cli", "java", True, {"config": "test"}, "/cli/path")
+    mock_cli_generator.assert_called_once_with("test-cli", "rust", True, {"config": "test"}, "/cli/path")
     mock_generator_instance.create.assert_called_once()
 
 
@@ -117,7 +141,16 @@ def test_create_monorepo_basic(mock_monorepo_generator):
     
     create_monorepo("test-monorepo", True, {"infrastructure": "k8s"})
     
-    mock_monorepo_generator.assert_called_once_with("test-monorepo", True, {"infrastructure": "k8s"}, False, None)
+    mock_monorepo_generator.assert_called_once_with(
+        "test-monorepo",
+        True,
+        {"infrastructure": "k8s"},
+        helm=False,
+        root=None,
+        cloud="multi",
+        knowledge="both",
+        runtime="kubernetes",
+    )
     mock_generator_instance.create.assert_called_once()
 
 
@@ -128,7 +161,85 @@ def test_create_monorepo_with_helm_and_root(mock_monorepo_generator):
     
     create_monorepo("test-monorepo", False, {"config": "test"}, helm=True, root="/monorepo/path")
     
-    mock_monorepo_generator.assert_called_once_with("test-monorepo", False, {"config": "test"}, True, "/monorepo/path")
+    mock_monorepo_generator.assert_called_once_with(
+        "test-monorepo",
+        False,
+        {"config": "test"},
+        helm=True,
+        root="/monorepo/path",
+        cloud="multi",
+        knowledge="both",
+        runtime="kubernetes",
+    )
+    mock_generator_instance.create.assert_called_once()
+
+
+@patch('src.api.MonorepoGenerator')
+def test_create_monorepo_with_cloud_and_knowledge(mock_monorepo_generator):
+    mock_generator_instance = MagicMock()
+    mock_monorepo_generator.return_value = mock_generator_instance
+
+    create_monorepo(
+        "test-monorepo",
+        False,
+        {"config": "test"},
+        cloud="gcp",
+        knowledge="obsidian",
+    )
+
+    mock_monorepo_generator.assert_called_once_with(
+        "test-monorepo",
+        False,
+        {"config": "test"},
+        helm=False,
+        root=None,
+        cloud="gcp",
+        knowledge="obsidian",
+        runtime="kubernetes",
+    )
+    mock_generator_instance.create.assert_called_once()
+
+
+@patch('src.api.ServiceGenerator')
+def test_create_service_with_runtime(mock_service_generator):
+    mock_generator_instance = MagicMock()
+    mock_service_generator.return_value = mock_generator_instance
+
+    create_service("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
+
+    mock_service_generator.assert_called_once_with(
+        "edge-api",
+        "typescript",
+        False,
+        {},
+        helm=False,
+        root=None,
+        database=None,
+        cache=None,
+        auth=None,
+        framework=None,
+        runtime="cloudflare-workers",
+    )
+    mock_generator_instance.create.assert_called_once()
+
+
+@patch('src.api.MonorepoGenerator')
+def test_create_monorepo_with_runtime(mock_monorepo_generator):
+    mock_generator_instance = MagicMock()
+    mock_monorepo_generator.return_value = mock_generator_instance
+
+    create_monorepo("edge-stack", False, {}, cloud="cloudflare", runtime="cloudflare-workers")
+
+    mock_monorepo_generator.assert_called_once_with(
+        "edge-stack",
+        False,
+        {},
+        helm=False,
+        root=None,
+        cloud="cloudflare",
+        knowledge="both",
+        runtime="cloudflare-workers",
+    )
     mock_generator_instance.create.assert_called_once()
 
 
@@ -233,7 +344,19 @@ def test_optional_parameters_default_behavior():
         
         # Test default values
         create_service("test", "python", True, {})
-        mock_service_gen.assert_called_with("test", "python", True, {}, False, None)
+        mock_service_gen.assert_called_with(
+            "test",
+            "python",
+            True,
+            {},
+            helm=False,
+            root=None,
+            database=None,
+            cache=None,
+            auth=None,
+            framework=None,
+            runtime="container",
+        )
         
         create_frontend("test", True, {})
         mock_frontend_gen.assert_called_with("test", True, {}, None)
@@ -245,4 +368,13 @@ def test_optional_parameters_default_behavior():
         mock_cli_gen.assert_called_with("test", "python", True, {}, None)
         
         create_monorepo("test", True, {})
-        mock_monorepo_gen.assert_called_with("test", True, {}, False, None)
+        mock_monorepo_gen.assert_called_with(
+            "test",
+            True,
+            {},
+            helm=False,
+            root=None,
+            cloud="multi",
+            knowledge="both",
+            runtime="kubernetes",
+        )

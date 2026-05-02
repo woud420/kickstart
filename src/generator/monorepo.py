@@ -1,45 +1,79 @@
-from typing import Any
 from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
+from src.stack.profile import stack_registry, MonorepoSelection
+from src.utils.types import GeneratorConfig, TemplateValue
 
 class MonorepoGenerator(BaseGenerator):
     helm: bool
     gh: bool
+    cloud: str
+    knowledge: str
+    runtime: str
+
+    VALID_CLOUDS = set(stack_registry.clouds)
+    VALID_KNOWLEDGE = set(stack_registry.knowledge)
+    VALID_RUNTIMES = set(stack_registry.monorepo_runtimes)
     
-    def __init__(self, name: str, gh: bool, config: dict[str, Any], helm: bool = False, root: str | None = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        gh: bool,
+        config: GeneratorConfig,
+        helm: bool = False,
+        root: str | None = None,
+        cloud: str = "multi",
+        knowledge: str = "both",
+        runtime: str = "kubernetes",
+    ) -> None:
         super().__init__(name, config, root)
         self.helm = helm
         self.gh = gh
+        self.cloud = stack_registry.normalize_cloud(cloud)
+        self.knowledge = stack_registry.normalize_knowledge(knowledge)
+        self.runtime = stack_registry.normalize_monorepo_runtime(runtime)
         self.template_dir = self.template_dir / "monorepo"
 
     def create(self) -> None:
+        selection = self._selection()
+
         directories: list[str] = [
+            "apps",
+            "packages",
+            "config/eslint",
+            "config/tsconfig",
             "infra/docker",
             "infra/terraform/modules/example_module",
-            *[f"infra/terraform/env/{env}" for env in ["dev", "staging", "prod"]],
+            "infra/terraform/modules/service_runtime",
+            *[f"infra/terraform/env/{env}" for env in stack_registry.environments],
             ".github/workflows",
-            "architecture"
+            "architecture",
+            "frontend",
+            "libs",
+            "services",
+            "data/postgres",
+            "knowledge",
+            "docs/adr",
+            "docs/agents",
+            "docs/architecture",
+            "docs/data",
+            "docs/knowledge",
+            "docs/runbooks",
+            "reports",
+            "scripts",
         ]
+        if selection.uses_cloudflare_workers:
+            directories.append("infra/cloudflare/workers")
         
-        template_configs: list[dict[str, str]] = [
-            {"target": "infra/docker/docker-compose.yml", "template": "docker-compose.yml"}
-        ]
-        
-        # Add Terraform files for each environment
-        for env in ["dev", "staging", "prod"]:
-            template_configs.extend([
-                {"target": f"infra/terraform/env/{env}/main.tf", "template": "terraform_env_main.tf"},
-                {"target": f"infra/terraform/env/{env}/variables.tf", "template": "variables.tf"}
-            ])
-        
-        # Add GitHub workflow files
-        for wf in ["build.yml", "test.yml", "deploy.yml"]:
-            template_configs.append({"target": f".github/workflows/{wf}", "template": wf})
+        template_vars = self._template_vars()
+        template_configs = selection.template_configs(template_vars)
         
         architecture_title: str = f"{self.name} Deployment Infra Docs"
-        success_message: str = f"Monorepo '{self.name}' scaffolded with {'Helm' if self.helm else 'Kustomize'} support in '{self.project}'."
+        success_message: str = (
+            f"Monorepo '{self.name}' scaffolded for {self._runtime_label()} "
+            f"with {self._deployment_label()} support in '{self.project}'."
+        )
         
-        def github_create_fn() -> Any:
+        def github_create_fn() -> bool | None:
             return create_repo(self.name) if self.gh else None
         
         self.execute_create_flow(
@@ -51,34 +85,96 @@ class MonorepoGenerator(BaseGenerator):
             github_create_fn=github_create_fn if self.gh else None
         )
     
-    def _setup_monorepo_specific(self) -> None:
+    def _setup_monorepo_specific(self) -> bool:
         """Setup monorepo-specific files and structure."""
         # Create and configure deployment infrastructure
-        if self.helm:
-            self._create_helm_structure()
-        else:
-            self._create_kustomize_structure()
+        if self._uses_kubernetes():
+            if self.helm:
+                self._create_helm_structure()
+            else:
+                self._create_kustomize_structure()
         
         # Write documentation and configuration with variables
-        self.write_template("Makefile", "Makefile.tpl", monorepo_name=self.name)
-        self.write_template("README.md", "README.md.tpl", monorepo_name=self.name)
+        self.write_template("Makefile", "Makefile.tpl", **self._template_vars())
+        self.write_template("README.md", "README.md.tpl", **self._template_vars())
+        return True
+
+    def _validate_options(self) -> None:
+        """Validate monorepo profile options."""
+        self._selection()
+
+    def _normalize_runtime(self, runtime: str) -> str:
+        return stack_registry.normalize_monorepo_runtime(runtime)
+
+    def _selection(self) -> MonorepoSelection:
+        """Return the validated stack selection for this monorepo."""
+        return stack_registry.monorepo_selection(self.cloud, self.knowledge, self.runtime, helm=self.helm)
+
+    def _clouds(self) -> list[str]:
+        """Return concrete cloud providers to scaffold."""
+        return list(self._selection().clouds)
+
+    def _include_backstage(self) -> bool:
+        return self._selection().include_backstage
+
+    def _include_obsidian(self) -> bool:
+        return self._selection().include_obsidian
+
+    def _uses_kubernetes(self) -> bool:
+        return self._selection().uses_kubernetes
+
+    def _uses_cloudflare_workers(self) -> bool:
+        return self._selection().uses_cloudflare_workers
+
+    def _runtime_label(self) -> str:
+        return self._selection().runtime_label
+
+    def _deployment_label(self) -> str:
+        return self._selection().deployment_label
+
+    def _template_vars(self) -> dict[str, TemplateValue]:
+        selection = self._selection()
+        return {
+            "monorepo_name": self.name,
+            "service_name": self.name,
+            "cloud": selection.cloud,
+            "clouds": list(selection.clouds),
+            "cloud_label": selection.cloud_label,
+            "runtime": selection.runtime,
+            "runtime_label": selection.runtime_label,
+            "include_aws": "aws" in selection.clouds,
+            "include_gcp": "gcp" in selection.clouds,
+            "include_cloudflare": "cloudflare" in selection.clouds,
+            "uses_kubernetes": selection.uses_kubernetes,
+            "uses_cloudflare_workers": selection.uses_cloudflare_workers,
+            "knowledge": selection.knowledge,
+            "include_backstage": selection.include_backstage,
+            "include_obsidian": selection.include_obsidian,
+            "deployment_tool": selection.deployment_label.lower(),
+        }
 
     def _create_helm_structure(self) -> None:
         """Create Helm chart structure and files."""
         self.create_directories(["infra/helm/example-service/templates"])
-        
-        self.write_template("infra/helm/example-service/Chart.yaml", "helm/Chart.yaml")
-        self.write_template("infra/helm/example-service/values.yaml", "helm/values.yaml")
-        self.write_template("infra/helm/example-service/templates/deployment.yaml", "helm/deployment.yaml")
+
+        template_vars = self._template_vars()
+        for template in stack_registry.helm_template_configs():
+            self.write_template(template.target, template.template, **template_vars)
 
     def _create_kustomize_structure(self) -> None:
         """Create Kustomize structure and files."""
         self.create_directories([
             "infra/k8s/base",
-            *[f"infra/k8s/overlays/{env}" for env in ["dev", "staging", "prod"]]
+            *[f"infra/k8s/overlays/{env}" for env in stack_registry.environments]
         ])
 
-        self.write_template("infra/k8s/base/kustomization.yaml", "kustomize/kustomization.yaml")
-        self.write_template("infra/k8s/base/deployment.yaml", "kustomize/deployment.yaml")
-        self.write_template("infra/k8s/base/service.yaml", "kustomize/service.yaml")
+        template_vars = self._template_vars()
+        for template in stack_registry.kustomize_template_configs():
+            self.write_template(template.target, template.template, **template_vars)
 
+        for env in stack_registry.environments:
+            self.write_template(
+                f"infra/k8s/overlays/{env}/kustomization.yaml",
+                "kustomize/overlay-kustomization.yaml",
+                **{**template_vars, "environment": env},
+            )

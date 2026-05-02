@@ -71,7 +71,8 @@ def test_write_content(mock_write_file, base_generator):
     base_generator.write_content(target, content)
     mock_write_file.assert_called_once_with(
         base_generator.project / target,
-        content
+        content,
+        service_name="test-project"
     )
 
 @patch('src.generator.base.success')

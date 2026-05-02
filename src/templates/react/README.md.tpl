@@ -6,17 +6,17 @@ A modern React application.
 
 1. Install dependencies:
 ```bash
-npm install
+bun install
 ```
 
 2. Start the development server:
 ```bash
-npm start
+bun run dev
 ```
 
 3. Build for production:
 ```bash
-npm run build
+bun run build
 ```
 
 ## Project Structure

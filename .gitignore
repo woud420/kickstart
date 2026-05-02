@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 kickstart
 *.tar.gz
+
+reports/*
