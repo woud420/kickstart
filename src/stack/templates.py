@@ -1,5 +1,6 @@
 """Stack template mapping helpers."""
 
+from src.stack.agent_workflows import agent_workflow_template_configs
 from src.stack.types import KnowledgeProfile, RuntimeProfile, TemplateConfig
 
 
@@ -45,7 +46,7 @@ def monorepo_templates(
         TemplateConfig("infra/terraform/modules/service_runtime/main.tf", "terraform_module_service_runtime.tf"),
         TemplateConfig("data/postgres/schema.sql", "postgres_schema.sql"),
         TemplateConfig("docs/adr/0001-stack-profile.md", "adr_stack_profile.md"),
-        TemplateConfig("docs/agents/recommended-agents.md", "agents_recommended.md"),
+        *agent_workflow_template_configs(),
         TemplateConfig("docs/architecture/context.md", "architecture_context.md"),
         TemplateConfig("docs/data/README.md", "data_readme.md"),
         TemplateConfig("docs/knowledge/README.md", "knowledge_readme.md"),
