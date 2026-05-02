@@ -7,7 +7,6 @@ The ExtensionManager uses a registry pattern to support different extension
 types (database, cache, auth) with configuration-driven approach.
 """
 
-from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
@@ -65,13 +64,12 @@ class ExtensionWriter(Protocol):
         ...
 
 
-class Extension(ABC):
-    """Abstract base class for all extensions."""
+class Extension:
+    """Base class for template-backed extensions."""
 
     def __init__(self, config: ExtensionConfig) -> None:
         self.config = config
 
-    @abstractmethod
     def apply(self, writer: ExtensionWriter) -> list[str]:
         """Apply the extension using the provided writer.
 
@@ -81,7 +79,13 @@ class Extension(ABC):
         Returns:
             List of requirements to be added
         """
-        pass
+        for target_path, template_path in self.config.templates:
+            writer.write_template(target_path, template_path)
+
+        if self.config.directories:
+            writer.create_directories(self.config.directories)
+
+        return self._load_requirements(writer)
 
     def _load_requirements(self, writer: ExtensionWriter) -> list[str]:
         """Load requirements from extension template file.
@@ -112,54 +116,15 @@ class Extension(ABC):
 
 
 class DatabaseExtension(Extension):
-    """Database extension implementation."""
-
-    def apply(self, writer: ExtensionWriter) -> list[str]:
-        """Apply database extension."""
-        # Write template files
-        for target_path, template_path in self.config.templates:
-            writer.write_template(target_path, template_path)
-
-        # Create directories
-        if self.config.directories:
-            writer.create_directories(self.config.directories)
-
-        # Load and return requirements
-        return self._load_requirements(writer)
+    """Database extension marker."""
 
 
 class CacheExtension(Extension):
-    """Cache extension implementation."""
-
-    def apply(self, writer: ExtensionWriter) -> list[str]:
-        """Apply cache extension."""
-        # Write template files
-        for target_path, template_path in self.config.templates:
-            writer.write_template(target_path, template_path)
-
-        # Create directories
-        if self.config.directories:
-            writer.create_directories(self.config.directories)
-
-        # Load and return requirements
-        return self._load_requirements(writer)
+    """Cache extension marker."""
 
 
 class AuthExtension(Extension):
-    """Authentication extension implementation."""
-
-    def apply(self, writer: ExtensionWriter) -> list[str]:
-        """Apply authentication extension."""
-        # Write template files
-        for target_path, template_path in self.config.templates:
-            writer.write_template(target_path, template_path)
-
-        # Create directories
-        if self.config.directories:
-            writer.create_directories(self.config.directories)
-
-        # Load and return requirements
-        return self._load_requirements(writer)
+    """Authentication extension marker."""
 
 
 class ExtensionManager:
