@@ -1,1 +1,0 @@
-{% extends "python/base/database_init.py.tpl" %}

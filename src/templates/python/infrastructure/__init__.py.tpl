@@ -1,1 +1,0 @@
-{% extends "python/base/infrastructure_init.py.tpl" %}

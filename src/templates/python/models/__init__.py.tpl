@@ -1,1 +1,0 @@
-{% extends "python/base/model_init.py.tpl" %}
