@@ -1,11 +1,11 @@
 from pathlib import Path
-from collections.abc import Mapping
 from typing import Callable, Sequence
 import logging
+from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
 from src.utils.fs import write_file
 from src.utils.logger import success, warn
 from src.utils.template_registry import get_template_registry, TemplateRegistry
-from src.utils.types import GeneratorConfig, TemplateConfigMapping, TemplateValue
+from src.utils.types import GeneratorConfig, TemplateValue
 from src.utils.error_handling import (
     ErrorCollector, batch_operation_wrapper, handle_file_operations,
     handle_template_operations, safe_operation_context,
@@ -164,34 +164,25 @@ class BaseGenerator:
             return False
         return self.write_content("architecture/README.md", f"# {title}\n")
 
-    def write_templates_from_config(self, template_configs: Sequence[TemplateConfigMapping]) -> bool:
-        """Write multiple template files from configuration list.
+    def write_templates_from_plan(self, template_plan: TemplatePlan) -> bool:
+        """Write multiple template files from a typed plan.
 
         Args:
-            template_configs: List of dicts with 'target' and 'template' keys
+            template_plan: Typed template render plan
 
         Returns:
             True if all templates were written successfully, False otherwise
         """
-        def write_single_template(config: TemplateConfigMapping) -> bool:
-            """Write a single template with validation."""
-            target = config.get("target")
-            template = config.get("template")
-            if not isinstance(target, str) or not isinstance(template, str):
-                raise ValueError(f"Invalid template config: missing 'target' or 'template' key: {config}")
-
-            template_vars = config.get("vars", {})
-            if not isinstance(template_vars, Mapping):
-                raise ValueError(f"Invalid template config: 'vars' must be a mapping: {config}")
-
-            return self.write_template(target, template, **dict(template_vars))
+        def write_single_template(entry: TemplatePlanEntry) -> bool:
+            """Write a single template entry."""
+            return self.write_template(entry.target, entry.template, **entry.vars)
 
         # Use batch operation wrapper for standardized error collection
         collector = batch_operation_wrapper(
-            items=template_configs,
+            items=template_plan.entries(),
             operation_func=write_single_template,
             operation_name="Template writing",
-            item_name_func=lambda c: f"{c.get('target', 'unknown')} (from {c.get('template', 'unknown')})"
+            item_name_func=lambda entry: f"{entry.target} (from {entry.template})"
         )
 
         return not collector.has_errors()
@@ -209,7 +200,7 @@ class BaseGenerator:
 
     def execute_create_flow(self, 
                           directories: Sequence[str],
-                          template_configs: Sequence[TemplateConfigMapping],
+                          template_plan: TemplatePlan,
                           architecture_title: str,
                           success_message: str,
                           language_setup_fn: Callable[[], bool] | None = None,
@@ -219,7 +210,7 @@ class BaseGenerator:
         
         Args:
             directories: Directories to create
-            template_configs: List of template configurations
+            template_plan: Typed template render plan
             architecture_title: Title for architecture documentation
             success_message: Success message to log
             language_setup_fn: Optional function for language-specific setup
@@ -245,7 +236,7 @@ class BaseGenerator:
         error_collector.increment_total()
 
         # Write template files
-        if not self.write_templates_from_config(template_configs):
+        if not self.write_templates_from_plan(template_plan):
             error_collector.add_error("Failed to write template files")
         else:
             error_collector.increment_success()

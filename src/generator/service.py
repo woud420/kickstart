@@ -7,6 +7,7 @@ from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
 from src.generator.layouts import python_package_directories, service_directories, worker_directories
 from src.generator.specs import ServiceSpec
+from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig
 from src.utils.error_handling import (
     safe_operation_context, LanguageNotSupportedError
@@ -134,7 +135,7 @@ class ServiceGenerator(BaseGenerator):
 
         directories = service_directories()
 
-        template_configs = profile.template_configs()
+        template_plan = TemplatePlan.from_templates(profile.templates)
 
         # Configuration for the common create flow
         architecture_title: str = f"{self.name} Architecture Notes"
@@ -145,7 +146,7 @@ class ServiceGenerator(BaseGenerator):
         # Execute common create flow with service-specific setup
         success = self.execute_create_flow(
             directories=directories,
-            template_configs=template_configs,
+            template_plan=template_plan,
             architecture_title=architecture_title,
             success_message=success_message,
             language_setup_fn=self._setup_service_specific,
@@ -165,7 +166,7 @@ class ServiceGenerator(BaseGenerator):
             raise LanguageNotSupportedError(f"No Cloudflare Worker templates found for language: {self.lang}")
 
         directories = worker_directories()
-        template_configs = self._cloudflare_worker_template_configs()
+        template_plan = self._cloudflare_worker_template_plan()
 
         architecture_title = f"{self.name} Cloudflare Worker Architecture Notes"
         success_message = f"{self.lang.title()} Cloudflare Worker '{self.name}' created successfully in '{self.project}'!"
@@ -175,7 +176,7 @@ class ServiceGenerator(BaseGenerator):
 
         success = self.execute_create_flow(
             directories=directories,
-            template_configs=template_configs,
+            template_plan=template_plan,
             architecture_title=architecture_title,
             success_message=success_message,
             github_create_fn=github_create_fn if self.gh else None,
@@ -187,6 +188,11 @@ class ServiceGenerator(BaseGenerator):
     def _cloudflare_worker_template_configs(self) -> list[dict[str, str]]:
         """Return template mappings for Cloudflare Worker services."""
         return stack_registry.service_template_configs(self.lang, "cloudflare-workers")
+
+    def _cloudflare_worker_template_plan(self) -> TemplatePlan:
+        """Return a typed template plan for Cloudflare Worker services."""
+        selection = stack_registry.service_selection(self.lang, "cloudflare-workers")
+        return TemplatePlan.from_templates(selection.templates)
     
     def _setup_service_specific(self) -> bool:
         """Setup service-specific files and structure.

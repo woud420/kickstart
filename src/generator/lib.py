@@ -2,6 +2,8 @@ from pathlib import Path
 from src.generator.base import BaseGenerator
 from src.generator.layouts import cli_directories, library_directories
 from src.generator.specs import CliSpec, LibrarySpec
+from src.generator.template_plan import TemplatePlan
+from src.stack.types import TemplateConfig
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
 
@@ -22,11 +24,13 @@ class LibraryGenerator(BaseGenerator):
     def create(self) -> None:
         directories = library_directories()
         
-        template_configs: list[dict[str, str]] = [
-            {"target": ".gitignore", "template": f"{self.lang}/gitignore.tpl"},
-            {"target": "Makefile", "template": f"{self.lang}/Makefile.tpl"},
-            {"target": "README.md", "template": f"{self.lang}/README.md.tpl"}
-        ]
+        template_plan = TemplatePlan.from_templates(
+            [
+                TemplateConfig(".gitignore", f"{self.lang}/gitignore.tpl"),
+                TemplateConfig("Makefile", f"{self.lang}/Makefile.tpl"),
+                TemplateConfig("README.md", f"{self.lang}/README.md.tpl"),
+            ]
+        )
         
         architecture_title: str = f"{self.name} Library Docs"
         success_message: str = f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!"
@@ -36,7 +40,7 @@ class LibraryGenerator(BaseGenerator):
         
         self.execute_create_flow(
             directories=directories,
-            template_configs=template_configs,
+            template_plan=template_plan,
             architecture_title=architecture_title,
             success_message=success_message,
             language_setup_fn=self._setup_language_specific_files,
@@ -60,11 +64,13 @@ class CLIGenerator(LibraryGenerator):
     def create(self) -> None:
         directories = cli_directories()
         
-        template_configs: list[dict[str, str]] = [
-            {"target": ".gitignore", "template": f"{self.lang}/gitignore.tpl"},
-            {"target": "Makefile", "template": f"{self.lang}/Makefile.tpl"},
-            {"target": "README.md", "template": f"{self.lang}/README.md.tpl"}
-        ]
+        template_plan = TemplatePlan.from_templates(
+            [
+                TemplateConfig(".gitignore", f"{self.lang}/gitignore.tpl"),
+                TemplateConfig("Makefile", f"{self.lang}/Makefile.tpl"),
+                TemplateConfig("README.md", f"{self.lang}/README.md.tpl"),
+            ]
+        )
         
         architecture_title: str = f"{self.name} CLI Docs"
         success_message: str = f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!"
@@ -74,7 +80,7 @@ class CLIGenerator(LibraryGenerator):
         
         self.execute_create_flow(
             directories=directories,
-            template_configs=template_configs,
+            template_plan=template_plan,
             architecture_title=architecture_title,
             success_message=success_message,
             language_setup_fn=self._setup_cli_specific_files,

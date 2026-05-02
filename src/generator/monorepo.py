@@ -3,6 +3,7 @@ from src.utils.github import create_repo
 from src.stack.profile import stack_registry, MonorepoSelection
 from src.generator.layouts import monorepo_directories
 from src.generator.specs import MonorepoSpec
+from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig, TemplateValue
 
 class MonorepoGenerator(BaseGenerator):
@@ -53,7 +54,7 @@ class MonorepoGenerator(BaseGenerator):
         directories = monorepo_directories(selection)
         
         template_vars = self._template_vars()
-        template_configs = selection.template_configs(template_vars)
+        template_plan = TemplatePlan.from_templates(selection.templates, template_vars)
         
         architecture_title: str = f"{self.name} Deployment Infra Docs"
         success_message: str = (
@@ -66,7 +67,7 @@ class MonorepoGenerator(BaseGenerator):
         
         self.execute_create_flow(
             directories=directories,
-            template_configs=template_configs,
+            template_plan=template_plan,
             architecture_title=architecture_title,
             success_message=success_message,
             additional_setup_fn=self._setup_monorepo_specific,
