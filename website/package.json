@@ -1,0 +1,26 @@
+{
+  "name": "kickstart-website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.5",
+  "engines": {
+    "bun": ">=1.3.0 <2"
+  },
+  "scripts": {
+    "check": "bun run typecheck && bun run test",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:release": "wrangler deploy --config wrangler.release.toml",
+    "prepare-release": "bun run scripts/render-release-config.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260502.1",
+    "@types/bun": "^1.3.13",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.5",
+    "wrangler": "^4.87.0"
+  }
+}

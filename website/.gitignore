@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.dev.vars
+.wrangler/
+wrangler.release.toml
+bun.lockb
+bun-debug.log*
+.DS_Store
