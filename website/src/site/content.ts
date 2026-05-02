@@ -13,18 +13,13 @@ export interface GeneratedComponent {
   detail: string;
 }
 
-export interface ProblemPoint {
-  title: string;
-  body: string;
-}
-
 export interface ContractRow {
   axis: string;
   choice: string;
   reason: string;
 }
 
-export interface ProofPoint {
+export interface PositioningPoint {
   title: string;
   body: string;
 }
@@ -46,7 +41,7 @@ export const defaultProjectMeta: ProjectMeta = {
   latestVersion: "0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
   releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.0",
-  releaseLabel: "Latest",
+  releaseLabel: "Release",
 };
 
 export const commandExamples: CommandExample[] = [
@@ -199,61 +194,56 @@ export const commandExamples: CommandExample[] = [
   },
 ];
 
-export const problemPoints: ProblemPoint[] = [
+export const isPoints: PositioningPoint[] = [
   {
-    title: "Blank repos invite drift",
-    body: "Every agent has to infer layout, commands, test strategy, release shape, and deploy surface from scratch.",
+    title: "Opinionated scaffold factory",
+    body: "It turns a stack profile into a deterministic starter repo.",
   },
   {
-    title: "Setup work hides inside the first feature",
-    body: "The first real task becomes mixed with Docker, CI, directory naming, dependency choices, and docs.",
+    title: "Agent-readable contract",
+    body: "It writes layout, docs, validation commands, and boundaries an agent can inspect before editing.",
   },
   {
-    title: "Reviewers cannot trust invisible conventions",
-    body: "If the project shape is not encoded, humans review structure and implementation at the same time.",
+    title: "Repeatable bootstrap",
+    body: "The same intent produces the same starting shape, which makes review and iteration less noisy.",
+  },
+];
+
+export const isNotPoints: PositioningPoint[] = [
+  {
+    title: "Universal create-app",
+    body: "It is intentionally narrow and stack-specific instead of trying to support every ecosystem.",
+  },
+  {
+    title: "Product architect",
+    body: "It does not design the domain model, threat model, APIs, or business logic.",
+  },
+  {
+    title: "Runtime platform",
+    body: "It may create Docker, Worker, or Kubernetes files, but dependency services still need explicit local/deploy setup.",
   },
 ];
 
 export const contractRows: ContractRow[] = [
   {
-    axis: "Shape",
+    axis: "Project kind",
     choice: "service, frontend, library, CLI, monorepo",
     reason: "Start from the kind of thing being built, not a bag of files.",
   },
   {
-    axis: "Stack",
+    axis: "Stack profile",
     choice: "Python, TypeScript, Rust, C++, SQL",
-    reason: "Stay inside the languages this scaffold is meant to keep sharp.",
+    reason: "Keep generated projects inside the ecosystems this scaffold is meant to maintain well.",
   },
   {
-    axis: "Runtime",
-    choice: "container, Kubernetes, Cloudflare Workers",
-    reason: "Generated code should already know where it is supposed to run.",
+    axis: "Runtime surface",
+    choice: "Docker, Cloudflare Workers, Kubernetes where relevant",
+    reason: "Generate runnable surfaces only when they fit the project shape.",
   },
   {
-    axis: "Cloud",
-    choice: "Cloudflare, AWS, GCP, none",
-    reason: "Cloud is a deployment choice, not decoration.",
-  },
-  {
-    axis: "Evidence",
-    choice: "tests, docs, CI, release binaries",
-    reason: "A scaffold is only useful if the generated project can prove it works.",
-  },
-];
-
-export const proofPoints: ProofPoint[] = [
-  {
-    title: "Tests before polish",
-    body: "Generated paths are covered by unit and integration tests so refactors can prove behavior did not move.",
-  },
-  {
-    title: "Agent-readable structure",
-    body: "Specs, layouts, template plans, and docs make the generated project easy for another agent to inspect.",
-  },
-  {
-    title: "Deploy surfaces included",
-    body: "Workers, Docker, Kubernetes, Terraform, GitHub Actions, and release binaries are part of the scaffold contract.",
+    axis: "Review contract",
+    choice: "tests, typecheck, docs, CI, release artifacts",
+    reason: "A scaffold is useful when humans and agents can prove the generated shape works.",
   },
 ];
 

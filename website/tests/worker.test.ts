@@ -26,7 +26,7 @@ describe("Kickstart website worker", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");
-    expect(await response.text()).toContain("Stop making agents rediscover your project structure");
+    expect(await response.text()).toContain("Reviewable starter repos");
   });
 
   it("renders version and repository metadata from Worker vars", async () => {
@@ -42,7 +42,7 @@ describe("Kickstart website worker", () => {
     const html = await response.text();
 
     expect(response.status).toBe(200);
-    expect(html).toContain("Latest: v0.5.0");
+    expect(html).toContain("Release v0.5.0");
     expect(html).toContain("https://github.com/example/kickstart");
     expect(html).toContain("https://github.com/example/kickstart/releases/tag/v0.5.0");
   });
@@ -56,8 +56,21 @@ describe("Kickstart website worker", () => {
 
     expect(response.status).toBe(200);
     expect(html).toContain("Kickstart encodes the project shape once");
-    expect(html).toContain("Cloudflare Workers");
-    expect(html).toContain("tests, docs, CI, release binaries");
+    expect(html).toContain("Docker, Cloudflare Workers, Kubernetes where relevant");
+    expect(html).toContain("tests, typecheck, docs, CI, release artifacts");
+  });
+
+  it("states what Kickstart is and is not", async () => {
+    const request = new Request("https://example.test/positioning") as Parameters<typeof worker.fetch>[0];
+
+    const response = await worker.fetch(request, defaultEnv);
+
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain("A scaffold contract, not a software generator");
+    expect(html).toContain("Opinionated scaffold factory");
+    expect(html).toContain("Product architect");
   });
 
   it("serves stylesheet assets", async () => {

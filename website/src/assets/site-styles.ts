@@ -84,8 +84,7 @@ nav a:hover {
 }
 
 .kicker,
-.section-index,
-.proof-label {
+.section-index {
   margin: 0;
   color: var(--accent);
   font-family: var(--font-mono);
@@ -102,32 +101,21 @@ p {
 }
 
 h1 {
-  max-width: 1040px;
+  max-width: 780px;
   margin-bottom: 28px;
   font-family: var(--font-display);
-  font-size: clamp(56px, 9vw, 126px);
+  font-size: clamp(42px, 6vw, 86px);
   font-weight: 650;
-  line-height: 0.95;
+  line-height: 1;
   letter-spacing: 0;
 }
 
 .intro {
-  max-width: 800px;
-  margin-bottom: 42px;
+  max-width: 680px;
+  margin-bottom: 32px;
   color: var(--muted);
-  font-size: clamp(20px, 2vw, 26px);
+  font-size: clamp(19px, 1.8vw, 23px);
   line-height: 1.55;
-}
-
-.hero-proof {
-  max-width: 520px;
-  border-top: 1px solid var(--ink);
-  border-bottom: 1px solid var(--ink);
-  padding: 16px 0;
-}
-
-.hero-proof pre {
-  margin-top: 12px;
 }
 
 .release-strip {
@@ -189,13 +177,12 @@ h2 {
   line-height: 1.6;
 }
 
-.argument-list,
-.proof-grid {
+.argument-list {
   border-top: 1px solid var(--ink);
 }
 
 .argument,
-.proof-point,
+.positioning-point,
 .change {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -205,7 +192,7 @@ h2 {
 }
 
 .argument h3,
-.proof-point h3,
+.positioning-point h3,
 .change h3 {
   margin-bottom: 4px;
   font-family: var(--font-body);
@@ -215,10 +202,30 @@ h2 {
 }
 
 .argument p,
-.proof-point p,
+.positioning-point p,
 .change p {
   margin-bottom: 0;
   color: var(--muted);
+}
+
+.positioning-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 34px;
+  margin-bottom: 34px;
+}
+
+.positioning-heading {
+  margin-bottom: 12px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.positioning-point {
+  grid-template-columns: 1fr;
+  gap: 4px;
 }
 
 .release-actions {
@@ -477,10 +484,14 @@ footer a {
 
   .split-section,
   .argument,
-  .proof-point,
+  .positioning-point,
   .change {
     grid-template-columns: 1fr;
     gap: 18px;
+  }
+
+  .positioning-grid {
+    grid-template-columns: 1fr;
   }
 
   .release-strip {

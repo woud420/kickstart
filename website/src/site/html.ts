@@ -3,10 +3,11 @@ import {
   commandExamples,
   contractRows,
   defaultProjectMeta,
-  problemPoints,
-  proofPoints,
+  isNotPoints,
+  isPoints,
   type ChangelogEntry,
   type GeneratedComponent,
+  type PositioningPoint,
   type ProjectMeta,
 } from "./content";
 
@@ -33,11 +34,11 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
-function renderProblemPoints(): string {
-  return problemPoints
+function renderPositioningPoints(points: PositioningPoint[]): string {
+  return points
     .map(
       (point) => `
-        <article class="argument">
+        <article class="positioning-point">
           <h3>${escapeHtml(point.title)}</h3>
           <p>${escapeHtml(point.body)}</p>
         </article>`,
@@ -64,18 +65,6 @@ function renderCommandButtons(): string {
       const activeClass = index === 0 ? " active" : "";
       return `<button class="pick${activeClass}" data-command="${escapeHtml(example.key)}" type="button">[${escapeHtml(example.label)}]</button>`;
     })
-    .join("");
-}
-
-function renderProofPoints(): string {
-  return proofPoints
-    .map(
-      (point) => `
-        <article class="proof-point">
-          <h3>${escapeHtml(point.title)}</h3>
-          <p>${escapeHtml(point.body)}</p>
-        </article>`,
-    )
     .join("");
 }
 
@@ -108,10 +97,6 @@ function renderChangelog(meta: ProjectMeta): string {
         </article>`,
     )
     .join("");
-}
-
-function renderOutputTree(files: string[]): string {
-  return files.map((file) => `./${escapeHtml(file)}`).join("\n");
 }
 
 function renderComponentMap(components: GeneratedComponent[]): string {
@@ -149,14 +134,13 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
     <header class="shell topbar">
       <div>
         <a class="brand" href="/" aria-label="Kickstart home">Kickstart:</a>
-        <span class="status">${escapeHtml(meta.releaseLabel)} v${escapeHtml(meta.latestVersion)} / Cloudflare Worker site</span>
+        <span class="status">v${escapeHtml(meta.latestVersion)} / Cloudflare Worker site</span>
       </div>
       <nav aria-label="Main navigation">
-        <a href="#problem">[Problem]</a>
+        <a href="#positioning">[Position]</a>
         <a href="#contract">[Contract]</a>
-        <a href="#generate">[Generate]</a>
+        <a href="#generate">[Examples]</a>
         <a href="#release">[Release]</a>
-        <a href="#proof">[Proof]</a>
         <a href="#boundary">[Boundary]</a>
         <a href="${escapeHtml(meta.repositoryUrl)}">[GitHub]</a>
       </nav>
@@ -164,32 +148,39 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
 
     <main>
       <section class="hero shell" aria-labelledby="hero-title">
-        <p class="kicker">A scaffold contract for humans and agents.</p>
-        <h1 id="hero-title">Stop making agents rediscover your project structure.</h1>
+        <p class="kicker">Opinionated scaffolds for agent-assisted projects.</p>
+        <h1 id="hero-title">Reviewable starter repos.</h1>
         <p class="intro">
-          Kickstart turns project intent into a working repo shape: commands, tests, docs, runtime files, CI, and deploy surfaces. The point is not templates. The point is eliminating setup entropy.
+          Kickstart turns project intent into files, commands, tests, docs, and agent-readable boundaries.
         </p>
         <div class="release-strip" aria-label="Project status">
-          <span>${escapeHtml(meta.releaseLabel)} version</span>
+          <span>version</span>
           <strong>v${escapeHtml(meta.latestVersion)}</strong>
           <a href="${escapeHtml(meta.releaseUrl)}">Release notes</a>
           <a href="${escapeHtml(meta.repositoryUrl)}">GitHub repository</a>
         </div>
-        <div class="hero-proof" aria-label="Generated output example">
-          <div class="proof-label">generated artifact</div>
-          <pre><code>${renderOutputTree(firstExample.output)}</code></pre>
-        </div>
       </section>
 
-      <section id="problem" class="shell split-section">
-        <div class="section-index">[Problem]</div>
+      <section id="positioning" class="shell split-section">
+        <div class="section-index">[Position]</div>
         <div>
-          <h2>Every new repo begins with invisible work.</h2>
+          <h2>A scaffold contract, not a software generator.</h2>
           <p class="section-lead">
-            Someone has to decide the layout, test command, Docker shape, CI file, deploy target, docs, and conventions. When an agent starts from an empty folder, all of that becomes hidden prompt work.
+            Useful for blank-repo setup. Not a substitute for architecture, domain modeling, or deployment operations.
           </p>
-          <div class="argument-list">
-${renderProblemPoints()}
+          <div class="positioning-grid">
+            <div>
+              <h3 class="positioning-heading">It is</h3>
+              <div class="argument-list">
+${renderPositioningPoints(isPoints)}
+              </div>
+            </div>
+            <div>
+              <h3 class="positioning-heading">It is not</h3>
+              <div class="argument-list">
+${renderPositioningPoints(isNotPoints)}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -199,7 +190,7 @@ ${renderProblemPoints()}
         <div>
           <h2>Kickstart encodes the project shape once.</h2>
           <p class="section-lead">
-            A generated project should tell the next human or agent what kind of thing it is, how it runs, how it is tested, and where it can deploy.
+            A generated project should state its shape, stack profile, runtime files, and validation commands.
           </p>
           <table class="contract-table">
             <tbody>
@@ -214,7 +205,7 @@ ${renderContractRows()}
         <div>
           <h2>One command should produce something inspectable.</h2>
           <p class="section-lead">
-            The examples below show the files and runtime pieces Kickstart creates. They also call out what is only a code hook today, so the scaffold contract is visible instead of implied.
+            Examples show concrete files and the parts they create.
           </p>
           <div class="command-panel">
             <div class="picker" role="tablist" aria-label="Project examples">
@@ -230,7 +221,7 @@ ${renderContractRows()}
                   <pre><code id="command">${escapeHtml(firstExample.command)}</code></pre>
                   <div class="terminal-rule"></div>
                   <div class="tree-label">selected generated files</div>
-                  <pre><code id="output-tree">${renderOutputTree(firstExample.output)}</code></pre>
+                  <pre><code id="output-tree">${firstExample.output.map((file) => `./${escapeHtml(file)}`).join("\n")}</code></pre>
                 </div>
                 <p id="example-summary" class="example-summary">${escapeHtml(firstExample.summary)}</p>
               </div>
@@ -248,9 +239,9 @@ ${renderComponentMap(firstExample.components)}
       <section id="release" class="shell split-section">
         <div class="section-index">[Release]</div>
         <div>
-          <h2>Latest: v${escapeHtml(meta.latestVersion)}</h2>
+          <h2>Release v${escapeHtml(meta.latestVersion)}</h2>
           <p class="section-lead">
-            This site maps the current public version to the project source, release notes, and the scaffold contract.
+            CI reads the version from repository metadata and deploys this Worker site from committed source.
           </p>
           <div class="release-actions">
             <a href="${escapeHtml(meta.repositoryUrl)}">Open GitHub</a>
@@ -263,25 +254,12 @@ ${renderChangelog(meta)}
         </div>
       </section>
 
-      <section id="proof" class="shell split-section">
-        <div class="section-index">[Proof]</div>
-        <div>
-          <h2>The value is not the landing page.</h2>
-          <p class="section-lead">
-            Kickstart has value when generated output is boring in the right way: predictable, typed, runnable, and covered by commands that another agent can execute without guessing.
-          </p>
-          <div class="proof-grid">
-${renderProofPoints()}
-          </div>
-        </div>
-      </section>
-
       <section id="boundary" class="shell split-section boundary">
         <div class="section-index">[Boundary]</div>
         <div>
-          <h2>Not every stack. Your stack.</h2>
+          <h2>Specific beats universal.</h2>
           <p class="section-lead">
-            The weak version of a scaffold tool supports everything shallowly. The useful version is opinionated enough to keep Python, TypeScript, Rust, C++, SQL, Cloudflare, Docker, Kubernetes, and CI coherent.
+            Kickstart stays narrow so Python, TypeScript, Rust, C++, SQL, Docker, Cloudflare Workers, Kubernetes, tests, and docs can stay coherent.
           </p>
           <p class="closing-line">The contract is simple: generate less uncertainty.</p>
         </div>

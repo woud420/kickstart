@@ -21,10 +21,10 @@ bun run check
 bun run deploy
 ```
 
-Release deployment uses:
+Release deployment reads the package version from the repository `pyproject.toml` by default and writes an ignored Wrangler config:
 
 ```bash
-bun run prepare-release -- --version 0.4.0
+bun run prepare-release
 bun run deploy:release
 ```
 

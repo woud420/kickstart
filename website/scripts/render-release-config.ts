@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 interface ReleaseConfig {
   output: string;
   releaseLabel: string;
@@ -9,7 +11,7 @@ interface ReleaseConfig {
 
 const defaultConfig: ReleaseConfig = {
   output: "wrangler.release.toml",
-  releaseLabel: "Latest",
+  releaseLabel: "Release",
   releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
   serviceName: "kickstart-site",
@@ -40,6 +42,16 @@ function repositoryUrlFromEnv(env: Record<string, string | undefined>): string |
   return env.GITHUB_REPOSITORY === undefined ? undefined : `https://github.com/${env.GITHUB_REPOSITORY}`;
 }
 
+export function versionFromPyproject(path: string): string | undefined {
+  try {
+    const pyproject = readFileSync(path, "utf8");
+    const match = pyproject.match(/^version = "([^"]+)"$/m);
+    return match?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
 function tomlString(value: string): string {
   return JSON.stringify(value);
 }
@@ -50,8 +62,9 @@ export function resolveReleaseConfig(
 ): ReleaseConfig {
   const repositoryUrl =
     argumentValue(args, "--repository-url") ?? repositoryUrlFromEnv(env) ?? defaultConfig.repositoryUrl;
+  const versionFile = argumentValue(args, "--version-file") ?? "../pyproject.toml";
   const version = trimVersionPrefix(
-    argumentValue(args, "--version") ?? env.GITHUB_REF_NAME ?? defaultConfig.version,
+    argumentValue(args, "--version") ?? versionFromPyproject(versionFile) ?? env.GITHUB_REF_NAME ?? defaultConfig.version,
   );
   const releaseUrl =
     argumentValue(args, "--release-url") ?? `${repositoryUrl}/releases/tag/v${version}`;
