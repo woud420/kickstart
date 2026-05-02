@@ -6,27 +6,28 @@ decorators, and utilities to eliminate duplication across the codebase.
 
 import logging
 import functools
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Type, TypeVar, Union, Generator, cast
+from typing import ParamSpec, TypeVar
 from src.utils.logger import warn
+from src.utils.types import ErrorContext, ErrorContextValue, MutableErrorContext
 
 logger = logging.getLogger(__name__)
 
-# Type variable for generic decorator support
-F = TypeVar('F', bound=Callable[..., Any])
-R = TypeVar('R')
-T = TypeVar('T')
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
 
 # Custom Exceptions
 class KickstartError(Exception):
     """Base exception for all Kickstart-related errors."""
 
-    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, message: str, context: ErrorContext | None = None) -> None:
         super().__init__(message)
         self.message = message
-        self.context = context or {}
+        self.context: MutableErrorContext = dict(context or {})
 
 
 class ProjectCreationError(KickstartError):
@@ -61,7 +62,7 @@ class ExtensionError(KickstartError):
 
 # Error Context Manager
 @contextmanager
-def error_context(operation: str, **context: Any) -> Generator[None, None, None]:
+def error_context(operation: str, **context: ErrorContextValue) -> Generator[None, None, None]:
     """Context manager for standardized error handling with operation context.
 
     Args:
@@ -89,10 +90,10 @@ def error_context(operation: str, **context: Any) -> Generator[None, None, None]
 
 # Error Handling Decorators
 def handle_file_operations(
-    default_return: Any = False,
+    default_return: R,
     log_errors: bool = True,
     reraise: bool = False
-) -> Callable[[F], F]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator for standardizing file operation error handling.
 
     Args:
@@ -103,9 +104,9 @@ def handle_file_operations(
     Returns:
         Decorated function
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 return func(*args, **kwargs)
             except (OSError, FileNotFoundError, PermissionError) as e:
@@ -114,14 +115,14 @@ def handle_file_operations(
                 if reraise:
                     raise FileOperationError(f"File operation failed: {e}") from e
                 return default_return
-        return cast(F, wrapper)
+        return wrapper
     return decorator
 
 
 def handle_template_operations(
-    default_return: Any = False,
+    default_return: R,
     log_errors: bool = True
-) -> Callable[[F], F]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator for standardizing template operation error handling.
 
     Args:
@@ -131,9 +132,9 @@ def handle_template_operations(
     Returns:
         Decorated function
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 return func(*args, **kwargs)
             except Exception as e:
@@ -142,14 +143,14 @@ def handle_template_operations(
                 # Always use warn for user-facing feedback
                 warn(f"Template operation failed: {e}")
                 return default_return
-        return cast(F, wrapper)
+        return wrapper
     return decorator
 
 
 def handle_directory_operations(
-    default_return: Any = False,
+    default_return: R,
     log_errors: bool = True
-) -> Callable[[F], F]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator for standardizing directory operation error handling.
 
     Args:
@@ -159,9 +160,9 @@ def handle_directory_operations(
     Returns:
         Decorated function
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 return func(*args, **kwargs)
             except OSError as e:
@@ -169,16 +170,16 @@ def handle_directory_operations(
                     logger.error(f"Directory operation failed in {func.__name__}: {e}")
                 warn(f"Directory operation failed: {e}")
                 return default_return
-        return cast(F, wrapper)
+        return wrapper
     return decorator
 
 
 def handle_http_operations(
     operation_name: str,
-    default_return: Any = False,
+    default_return: R,
     log_errors: bool = True,
     reraise: bool = False
-) -> Callable[[F], F]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator for standardizing HTTP operation error handling.
 
     Handles common HTTP exceptions including requests.RequestException,
@@ -193,9 +194,9 @@ def handle_http_operations(
     Returns:
         Decorated function
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 return func(*args, **kwargs)
             except Exception as e:
@@ -217,16 +218,16 @@ def handle_http_operations(
                     raise KickstartError(error_msg) from e
 
                 return default_return
-        return cast(F, wrapper)
+        return wrapper
     return decorator
 
 
 def safe_operation(
     operation_name: str,
-    reraise_as: Optional[Type[Exception]] = None,
-    default_return: Any = None,
+    reraise_as: type[Exception] | None = None,
+    default_return: R | None = None,
     log_errors: bool = True
-) -> Callable[[F], F]:
+) -> Callable[[Callable[P, R | None]], Callable[P, R | None]]:
     """Generic decorator for safe operation execution with standardized error handling.
 
     Args:
@@ -238,9 +239,9 @@ def safe_operation(
     Returns:
         Decorated function
     """
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[P, R | None]) -> Callable[P, R | None]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | None:
             try:
                 return func(*args, **kwargs)
             except Exception as e:
@@ -251,7 +252,7 @@ def safe_operation(
                     raise reraise_as(f"{operation_name} failed: {e}") from e
 
                 return default_return
-        return cast(F, wrapper)
+        return wrapper
     return decorator
 
 
@@ -288,8 +289,8 @@ class ErrorCollector:
 
     def __init__(self, operation_name: str) -> None:
         self.operation_name = operation_name
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
         self.success_count = 0
         self.total_count = 0
 
@@ -357,9 +358,9 @@ class ErrorCollector:
 # Utility Functions
 def format_error_message(
     operation: str,
-    target: Union[str, Path],
+    target: str | Path,
     error: Exception,
-    context: Optional[Dict[str, Any]] = None
+    context: ErrorContext | None = None
 ) -> str:
     """Format a standardized error message.
 
@@ -384,9 +385,9 @@ def format_error_message(
 def log_operation_result(
     operation: str,
     success: bool,
-    target: Optional[Union[str, Path]] = None,
-    error: Optional[Exception] = None,
-    context: Optional[Dict[str, Any]] = None
+    target: str | Path | None = None,
+    error: Exception | None = None,
+    context: ErrorContext | None = None
 ) -> None:
     """Log the result of an operation with standardized formatting.
 
@@ -410,7 +411,7 @@ def batch_operation_wrapper(
     items: Sequence[T],
     operation_func: Callable[[T], bool],
     operation_name: str,
-    item_name_func: Optional[Callable[[T], str]] = None
+    item_name_func: Callable[[T], str] | None = None
 ) -> ErrorCollector:
     """Execute a batch operation with standardized error collection.
 
@@ -443,7 +444,7 @@ def batch_operation_wrapper(
 
 
 # Common Error Patterns
-def validate_language_support(language: str, supported_languages: List[str]) -> None:
+def validate_language_support(language: str, supported_languages: Sequence[str]) -> None:
     """Validate that a language is supported.
 
     Args:
@@ -490,7 +491,7 @@ def safe_binary_write(
     file_path: Path,
     content: bytes,
     create_dirs: bool = True,
-    permissions: Optional[int] = None
+    permissions: int | None = None
 ) -> bool:
     """Safely write binary content to a file with error handling.
 

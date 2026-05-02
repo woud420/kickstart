@@ -5,7 +5,7 @@ replacing hardcoded template paths with a configurable, extensible system.
 """
 
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Set
+from typing import Mapping
 from dataclasses import dataclass
 import logging
 from src.stack.profile import stack_registry
@@ -29,9 +29,9 @@ class TemplateInfo:
     name: str
     path: str
     description: str
-    variables: Set[str]
-    language: Optional[str] = None
-    project_type: Optional[str] = None
+    variables: set[str]
+    language: str | None = None
+    project_type: str | None = None
 
 
 class TemplateRegistry:
@@ -48,9 +48,9 @@ class TemplateRegistry:
             base_template_dir: Base directory containing all templates
         """
         self.base_template_dir = base_template_dir
-        self._templates: Dict[str, TemplateInfo] = {}
-        self._language_templates: Dict[str, Dict[str, TemplateInfo]] = {}
-        self._project_templates: Dict[str, Dict[str, TemplateInfo]] = {}
+        self._templates: dict[str, TemplateInfo] = {}
+        self._language_templates: dict[str, dict[str, TemplateInfo]] = {}
+        self._project_templates: dict[str, dict[str, TemplateInfo]] = {}
         self._initialize_default_templates()
     
     def _initialize_default_templates(self) -> None:
@@ -218,7 +218,7 @@ class TemplateRegistry:
                 self._project_templates[template.project_type] = {}
             self._project_templates[template.project_type][template.name] = template
     
-    def get_template(self, name: str, language: Optional[str] = None) -> Optional[TemplateInfo]:
+    def get_template(self, name: str, language: str | None = None) -> TemplateInfo | None:
         """Get template information by name.
         
         Args:
@@ -236,7 +236,7 @@ class TemplateRegistry:
         # Fall back to global lookup
         return self._templates.get(name)
     
-    def get_templates_for_language(self, language: str) -> Dict[str, TemplateInfo]:
+    def get_templates_for_language(self, language: str) -> dict[str, TemplateInfo]:
         """Get all templates available for a specific language.
         
         Args:
@@ -267,7 +267,7 @@ class TemplateRegistry:
         
         return templates
     
-    def get_templates_for_project_type(self, project_type: str) -> Dict[str, TemplateInfo]:
+    def get_templates_for_project_type(self, project_type: str) -> dict[str, TemplateInfo]:
         """Get all templates available for a specific project type.
         
         Args:
@@ -291,7 +291,7 @@ class TemplateRegistry:
         resolved_path = template.path.format(**context)
         return self.base_template_dir / resolved_path
     
-    def validate_template_variables(self, template: TemplateInfo, variables: Mapping[str, TemplateValue]) -> List[str]:
+    def validate_template_variables(self, template: TemplateInfo, variables: Mapping[str, TemplateValue]) -> list[str]:
         """Validate that all required template variables are provided.
         
         Args:
@@ -306,7 +306,7 @@ class TemplateRegistry:
         missing_vars = required_vars - provided_vars
         return list(missing_vars)
     
-    def get_template_configs_for_service(self, language: str) -> List[Dict[str, str]]:
+    def get_template_configs_for_service(self, language: str) -> list[dict[str, str]]:
         """Get standard template configurations for a service project.
         
         Args:
@@ -317,7 +317,7 @@ class TemplateRegistry:
         """
         return stack_registry.service_template_configs(language, "container")
     
-    def list_available_languages(self) -> List[str]:
+    def list_available_languages(self) -> list[str]:
         """Get list of all supported languages.
         
         Returns:
@@ -335,10 +335,10 @@ class TemplateRegistry:
 
 
 # Global registry instance
-_registry: Optional[TemplateRegistry] = None
+_registry: TemplateRegistry | None = None
 
 
-def get_template_registry(base_template_dir: Optional[Path] = None) -> TemplateRegistry:
+def get_template_registry(base_template_dir: Path | None = None) -> TemplateRegistry:
     """Get the global template registry instance.
     
     Args:

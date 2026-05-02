@@ -2,7 +2,7 @@ import sys
 import hashlib
 import shutil
 from pathlib import Path
-from typing import Any, Optional
+from typing import TypedDict, cast
 
 import requests
 from cryptography.hazmat.primitives import hashes, serialization
@@ -19,6 +19,20 @@ RELEASE_URL: str = f"https://api.github.com/repos/{REPO}/releases/latest"
 PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... # Replace with actual public key
 -----END PUBLIC KEY-----"""
+
+
+class ReleaseAsset(TypedDict):
+    """Relevant GitHub release asset fields."""
+
+    name: str
+    browser_download_url: str
+
+
+class ReleaseInfo(TypedDict):
+    """Relevant GitHub release response fields."""
+
+    tag_name: str
+    assets: list[ReleaseAsset]
 
 
 def verify_signature(data: bytes, signature: bytes) -> bool:
@@ -65,9 +79,12 @@ def get_sha256_hash(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-@handle_http_operations("Binary download", default_return=None, log_errors=True)
-def download_and_verify_binary(download_url: str, expected_hash: Optional[str] = None,
-                             signature_url: Optional[str] = None) -> Optional[bytes]:
+@handle_http_operations("Binary download", default_return=cast(bytes | None, None), log_errors=True)
+def download_and_verify_binary(
+    download_url: str,
+    expected_hash: str | None = None,
+    signature_url: str | None = None,
+) -> bytes | None:
     """Download binary and verify its integrity and authenticity.
 
     Args:
@@ -120,7 +137,7 @@ def check_for_update() -> None:
         # Fetch release information
         r: requests.Response = requests.get(RELEASE_URL, timeout=5)
         r.raise_for_status()
-        data: dict[str, Any] = r.json()
+        data = cast(ReleaseInfo, r.json())
 
         latest: str = data["tag_name"].lstrip("v")
 
@@ -136,8 +153,8 @@ def check_for_update() -> None:
         download_url: str = kickstart_asset["browser_download_url"]
 
         # Look for hash and signature files
-        expected_hash: Optional[str] = None
-        signature_url: Optional[str] = None
+        expected_hash: str | None = None
+        signature_url: str | None = None
 
         # Try to find SHA256 hash file
         hash_asset = next(
@@ -165,8 +182,8 @@ def check_for_update() -> None:
         print(f"[yellow]⬆ New version available: {latest} — downloading...")
         print("[cyan]🔒 Verifying download integrity and authenticity...")
 
-        binary_data: Optional[bytes] = None
-        download_response: Optional[requests.Response] = None
+        binary_data: bytes | None = None
+        download_response: requests.Response | None = None
         if expected_hash or signature_url:
             binary_data = download_and_verify_binary(download_url, expected_hash, signature_url)
             if binary_data is None:

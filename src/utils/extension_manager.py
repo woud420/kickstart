@@ -8,9 +8,11 @@ types (database, cache, auth) with configuration-driven approach.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Protocol
 import logging
+from src.utils.types import TemplateValue
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +24,9 @@ class ExtensionConfig:
         self,
         name: str,
         extension_type: str,
-        templates: List[tuple[str, str]],
+        templates: list[tuple[str, str]],
         requirements_file: str,
-        directories: Optional[List[str]] = None
+        directories: list[str] | None = None
     ) -> None:
         """Initialize extension configuration.
 
@@ -45,11 +47,11 @@ class ExtensionConfig:
 class ExtensionWriter(Protocol):
     """Protocol for objects that can write extension files."""
 
-    def write_template(self, target: str, template_path: str, **vars: Any) -> bool:
+    def write_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
         """Write a template file to target path."""
         ...
 
-    def create_directories(self, directories: List[str]) -> bool:
+    def create_directories(self, directories: Sequence[str]) -> bool:
         """Create directories."""
         ...
 
@@ -70,7 +72,7 @@ class Extension(ABC):
         self.config = config
 
     @abstractmethod
-    def apply(self, writer: ExtensionWriter) -> List[str]:
+    def apply(self, writer: ExtensionWriter) -> list[str]:
         """Apply the extension using the provided writer.
 
         Args:
@@ -81,7 +83,7 @@ class Extension(ABC):
         """
         pass
 
-    def _load_requirements(self, writer: ExtensionWriter) -> List[str]:
+    def _load_requirements(self, writer: ExtensionWriter) -> list[str]:
         """Load requirements from extension template file.
 
         Args:
@@ -112,7 +114,7 @@ class Extension(ABC):
 class DatabaseExtension(Extension):
     """Database extension implementation."""
 
-    def apply(self, writer: ExtensionWriter) -> List[str]:
+    def apply(self, writer: ExtensionWriter) -> list[str]:
         """Apply database extension."""
         # Write template files
         for target_path, template_path in self.config.templates:
@@ -129,7 +131,7 @@ class DatabaseExtension(Extension):
 class CacheExtension(Extension):
     """Cache extension implementation."""
 
-    def apply(self, writer: ExtensionWriter) -> List[str]:
+    def apply(self, writer: ExtensionWriter) -> list[str]:
         """Apply cache extension."""
         # Write template files
         for target_path, template_path in self.config.templates:
@@ -146,7 +148,7 @@ class CacheExtension(Extension):
 class AuthExtension(Extension):
     """Authentication extension implementation."""
 
-    def apply(self, writer: ExtensionWriter) -> List[str]:
+    def apply(self, writer: ExtensionWriter) -> list[str]:
         """Apply authentication extension."""
         # Write template files
         for target_path, template_path in self.config.templates:
@@ -169,7 +171,7 @@ class ExtensionManager:
 
     def __init__(self) -> None:
         """Initialize the extension manager with default configurations."""
-        self._extensions: Dict[str, Dict[str, Extension]] = {}
+        self._extensions: dict[str, dict[str, Extension]] = {}
         self._setup_default_extensions()
 
     def _setup_default_extensions(self) -> None:
@@ -224,10 +226,10 @@ class ExtensionManager:
     def apply_extensions(
         self,
         writer: ExtensionWriter,
-        database: Optional[str] = None,
-        cache: Optional[str] = None,
-        auth: Optional[str] = None
-    ) -> tuple[List[str], List[str]]:
+        database: str | None = None,
+        cache: str | None = None,
+        auth: str | None = None
+    ) -> tuple[list[str], list[str]]:
         """Apply multiple extensions and return consolidated results.
 
         Args:
@@ -280,13 +282,13 @@ class ExtensionManager:
             and name in self._extensions[extension_type]
         )
 
-    def get_supported_extensions(self) -> Dict[str, List[str]]:
+    def get_supported_extensions(self) -> dict[str, list[str]]:
         """Get all supported extensions by type.
 
         Returns:
             Dictionary mapping extension types to lists of supported names
         """
-        result = {}
+        result: dict[str, list[str]] = {}
         for ext_type, extensions in self._extensions.items():
             result[ext_type] = list(extensions.keys())
         return result
