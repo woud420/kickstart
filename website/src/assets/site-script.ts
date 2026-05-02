@@ -53,9 +53,9 @@ buttons.forEach((button) => {
 
 copy.addEventListener("click", async () => {
   await navigator.clipboard.writeText(command.textContent);
-  copy.textContent = "Copied";
+  copy.textContent = "copied";
   window.setTimeout(() => {
-    copy.textContent = "Copy";
+    copy.textContent = "copy";
   }, 1200);
 });
 `;

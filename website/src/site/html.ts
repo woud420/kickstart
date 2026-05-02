@@ -12,15 +12,15 @@ import {
 
 const firstExample = commandExamples[0] ?? {
   key: "worker",
-  label: "Cloudflare Worker",
-  title: "Generate an edge service",
+  label: "cf worker",
+  title: "cloudflare worker",
   command: "kickstart create service edge-site --lang typescript --runtime cloudflare-workers",
-  summary: "Creates a TypeScript Worker with Wrangler config, strict TypeScript, a health endpoint, tests, and deploy commands.",
+  summary: "Writes a TypeScript Worker with Wrangler config, strict TypeScript, tests, and deploy commands.",
   output: ["wrangler.toml", "src/index.ts", "tests/worker.test.ts"],
   components: [
     {
       label: "HTTP fetch handler",
-      detail: "src/index.ts routes requests and returns health JSON.",
+      detail: "src/index.ts routes requests.",
     },
   ],
 };
@@ -103,10 +103,10 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Kickstart</title>
+    <title>kickstart</title>
     <meta
       name="description"
-      content="Kickstart is a scaffold contract for humans and agents."
+      content="kickstart is a scaffold contract for humans and agents."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -114,18 +114,18 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
       href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Fraunces:opsz,wght@9..144,500..800&family=IBM+Plex+Mono:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/assets/site.css" />
+    <link rel="stylesheet" href="/assets/site.css?v=${escapeHtml(meta.latestVersion)}" />
   </head>
   <body>
     <header class="shell topbar">
       <div>
-        <a class="brand" href="/" aria-label="Kickstart home">Kickstart:</a>
+        <a class="brand" href="/" aria-label="kickstart home">kickstart:</a>
       </div>
       <nav aria-label="Main navigation">
-        <a href="#examples">[Example]</a>
-        <a href="#positioning">[Position]</a>
-        <a href="#release">[Release]</a>
-        <a href="${escapeHtml(meta.repositoryUrl)}">[GitHub]</a>
+        <a href="#examples">[examples]</a>
+        <a href="#positioning">[position]</a>
+        <a href="#release">[release]</a>
+        <a href="${escapeHtml(meta.repositoryUrl)}">[github]</a>
       </nav>
     </header>
 
@@ -133,7 +133,7 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
       <section class="hero shell" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="kicker">Opinionated scaffolds for agent-assisted projects.</p>
-          <h1 id="hero-title">Kickstart</h1>
+          <h1 id="hero-title">kickstart</h1>
           <p class="tagline">Starter repos for humans and agents.</p>
           <p class="intro">
             Files, commands, tests, docs, and boundaries from one project intent.
@@ -154,7 +154,7 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
                 <div class="terminal">
                   <div class="copy-row">
                     <span id="command-title">${escapeHtml(firstExample.title)}</span>
-                    <button class="copy" type="button">Copy</button>
+                    <button class="copy" type="button">copy</button>
                   </div>
                   <pre><code id="command">${escapeHtml(firstExample.command)}</code></pre>
                   <div class="terminal-rule"></div>
@@ -175,7 +175,7 @@ ${renderComponentMap(firstExample.components)}
 
       <section id="positioning" class="shell compact-section positioning-section">
         <div class="section-head">
-          <div class="section-index">[Position]</div>
+          <div class="section-index">[position]</div>
           <h2>Useful setup. Not architecture.</h2>
         </div>
         <div>
@@ -198,14 +198,14 @@ ${renderPositioningPoints(isNotPoints)}
 
       <section id="release" class="shell compact-section boundary">
         <div class="section-head">
-          <div class="section-index">[Release]</div>
+          <div class="section-index">[release]</div>
           <h2>v${escapeHtml(meta.latestVersion)}</h2>
         </div>
         <div>
           <div class="release-actions">
-            <a href="${escapeHtml(meta.releaseUrl)}">Release notes</a>
-            <a href="${escapeHtml(meta.repositoryUrl)}">GitHub</a>
-            <a href="${escapeHtml(meta.repositoryUrl)}/releases">All releases</a>
+            <a href="${escapeHtml(meta.releaseUrl)}">release notes</a>
+            <a href="${escapeHtml(meta.repositoryUrl)}">github</a>
+            <a href="${escapeHtml(meta.repositoryUrl)}/releases">all releases</a>
           </div>
           <div class="changelog" aria-label="Small changelog">
 ${renderChangelog(meta)}
@@ -215,11 +215,11 @@ ${renderChangelog(meta)}
     </main>
 
     <footer class="shell">
-      <span>Served by a Kickstart Cloudflare Worker.</span>
+      <span>Served by a kickstart Cloudflare Worker.</span>
       <a href="/healthz">[healthz]</a>
     </footer>
 
-    <script src="/assets/site.js" type="module"></script>
+    <script src="/assets/site.js?v=${escapeHtml(meta.latestVersion)}" type="module"></script>
   </body>
 </html>`;
 }

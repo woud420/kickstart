@@ -41,10 +41,10 @@ export const defaultProjectMeta: ProjectMeta = {
 export const commandExamples: CommandExample[] = [
   {
     key: "service",
-    label: "Python + Redis",
-    title: "Generate an API service with clients",
+    label: "python service",
+    title: "python service",
     command: "kickstart create service api --lang python --database postgres --cache redis --auth jwt",
-    summary: "Creates Python service code, Dockerfile, Postgres/Redis/JWT hooks, migrations, docs, and test folders. Dependency containers are still explicit setup.",
+    summary: "Writes a Python API with Dockerfile, Postgres/Redis clients, JWT hook, migrations, docs, and tests. Dependency containers remain explicit.",
     output: [
       "Dockerfile",
       "Makefile",
@@ -89,10 +89,10 @@ export const commandExamples: CommandExample[] = [
   },
   {
     key: "worker",
-    label: "Cloudflare Worker",
-    title: "Generate an edge service",
+    label: "cf worker",
+    title: "cloudflare worker",
     command: "kickstart create service edge-site --lang typescript --runtime cloudflare-workers",
-    summary: "Creates a TypeScript Worker with Wrangler config, strict TypeScript, tests, and deploy commands.",
+    summary: "Writes a TypeScript Worker with Wrangler config, strict TypeScript, tests, and deploy commands.",
     output: [
       "wrangler.toml",
       "package.json",
@@ -120,10 +120,10 @@ export const commandExamples: CommandExample[] = [
   },
   {
     key: "mono",
-    label: "AWS + K8s",
-    title: "Generate a cloud workspace",
+    label: "aws k8s",
+    title: "aws kubernetes workspace",
     command: "kickstart create mono platform --cloud aws --runtime kubernetes --knowledge none",
-    summary: "Creates a TypeScript/Bun workspace with apps, packages, Terraform envs, Kubernetes manifests, GitHub Actions, docs, and agent notes.",
+    summary: "Writes a TypeScript/Bun workspace with apps, packages, AWS Terraform, Kubernetes manifests, GitHub Actions, docs, and agent notes.",
     output: [
       "apps/",
       "packages/",
@@ -166,10 +166,10 @@ export const commandExamples: CommandExample[] = [
   },
   {
     key: "cli",
-    label: "Rust CLI",
-    title: "Generate a command-line tool",
+    label: "rust cli",
+    title: "rust cli",
     command: "kickstart create cli ops-tool --lang rust",
-    summary: "Creates a Rust CLI with Cargo metadata, source entrypoint, test folder, Makefile, README, and architecture notes.",
+    summary: "Writes a Rust CLI with Cargo metadata, source entrypoint, tests, Makefile, README, and architecture notes.",
     output: [
       "Cargo.toml",
       "src/main.rs",

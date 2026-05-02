@@ -24,7 +24,7 @@ function jsonResponse(body: unknown, init?: ResponseInit): Response {
 function assetResponse(body: string, contentType: string): Response {
   return new Response(body, {
     headers: {
-      "cache-control": "public, max-age=3600",
+      "cache-control": "no-store",
       "content-type": contentType,
     },
   });
@@ -49,7 +49,7 @@ function resolveProjectMeta(env: Env): ProjectMeta {
 function htmlResponse(meta: ProjectMeta): Response {
   return new Response(renderSiteHtml(meta), {
     headers: {
-      "cache-control": "public, max-age=300",
+      "cache-control": "no-store",
       "content-type": "text/html; charset=utf-8",
     },
   });

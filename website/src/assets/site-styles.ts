@@ -282,12 +282,12 @@ h2 {
 .generated-view {
   display: grid;
   grid-template-columns: minmax(0, 1.06fr) minmax(250px, 0.94fr);
+  min-height: 610px;
 }
 
 .picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-bottom: 1px solid var(--ink);
 }
 
@@ -302,6 +302,10 @@ h2 {
   font-family: var(--font-mono);
   font-size: 13px;
   padding: 0 14px;
+}
+
+.pick:last-child {
+  border-right: 0;
 }
 
 .pick.active {
@@ -357,6 +361,7 @@ h2 {
 
 .example-summary {
   margin: 0;
+  min-height: 112px;
   padding: 14px 20px;
   border-top: 1px solid var(--ink);
   background: var(--paper);
@@ -499,6 +504,23 @@ footer a {
 
   .generated-view {
     grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .picker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pick:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .pick:nth-child(n + 3) {
+    border-top: 1px solid var(--ink);
+  }
+
+  .example-summary {
+    min-height: 0;
   }
 
   .component-map {

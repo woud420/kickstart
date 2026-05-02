@@ -6,7 +6,7 @@ const defaultEnv = {
   SERVICE_NAME: "kickstart-site",
 };
 
-describe("Kickstart website worker", () => {
+describe("kickstart website worker", () => {
   it("returns health status", async () => {
     const request = new Request("https://example.test/healthz") as Parameters<typeof worker.fetch>[0];
 
@@ -26,7 +26,11 @@ describe("Kickstart website worker", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");
-    expect(await response.text()).toContain("Starter repos for humans and agents");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const html = await response.text();
+    expect(html).toContain('<h1 id="hero-title">kickstart</h1>');
+    expect(html).toContain("/assets/site.css?v=0.4.0");
+    expect(html).toContain("/assets/site.js?v=0.4.0");
   });
 
   it("renders version and repository metadata from Worker vars", async () => {
@@ -43,6 +47,8 @@ describe("Kickstart website worker", () => {
 
     expect(response.status).toBe(200);
     expect(html).toContain("v0.5.0");
+    expect(html).toContain("/assets/site.css?v=0.5.0");
+    expect(html).toContain("/assets/site.js?v=0.5.0");
     expect(html).toContain("https://github.com/example/kickstart");
     expect(html).toContain("https://github.com/example/kickstart/releases/tag/v0.5.0");
   });
@@ -56,11 +62,11 @@ describe("Kickstart website worker", () => {
 
     expect(response.status).toBe(200);
     expect(html).toContain("Starter repos for humans and agents");
-    expect(html).toContain("Generate an API service with clients");
+    expect(html).toContain("python service");
     expect(html).toContain("component map");
   });
 
-  it("states what Kickstart is and is not", async () => {
+  it("states what kickstart is and is not", async () => {
     const request = new Request("https://example.test/positioning") as Parameters<typeof worker.fetch>[0];
 
     const response = await worker.fetch(request, defaultEnv);
@@ -80,20 +86,24 @@ describe("Kickstart website worker", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/css");
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.text()).toContain(".hero");
   });
 
   it("serves script assets", async () => {
-    const request = new Request("https://example.test/assets/site.js") as Parameters<typeof worker.fetch>[0];
+    const request = new Request("https://example.test/assets/site.js?v=0.4.0") as Parameters<typeof worker.fetch>[0];
 
     const response = await worker.fetch(request, defaultEnv);
     const script = await response.text();
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/javascript");
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(script).toContain("navigator.clipboard");
     expect(script).toContain('"output":"./Dockerfile\\n./Makefile');
     expect(script).not.toContain('"output":"./Dockerfile\\\\n./Makefile');
+    expect(script).toContain("kickstart create mono platform --cloud aws --runtime kubernetes --knowledge none");
+    expect(script).not.toContain("kickstart create mono platform --cloud cloudflare --runtime cloudflare-workers");
   });
 
   it("falls back to the SPA for client-side routes", async () => {
