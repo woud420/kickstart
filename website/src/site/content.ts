@@ -13,12 +13,6 @@ export interface GeneratedComponent {
   detail: string;
 }
 
-export interface ContractRow {
-  axis: string;
-  choice: string;
-  reason: string;
-}
-
 export interface PositioningPoint {
   title: string;
   body: string;
@@ -50,7 +44,7 @@ export const commandExamples: CommandExample[] = [
     label: "Python + Redis",
     title: "Generate an API service with clients",
     command: "kickstart create service api --lang python --database postgres --cache redis --auth jwt",
-    summary: "Creates a FastAPI-style Python service, Dockerfile, Postgres client/migration code, Redis client code, JWT auth hook, requirements, and test directories. It does not yet create a docker-compose file that runs Redis/Postgres locally.",
+    summary: "Creates Python service code, Dockerfile, Postgres/Redis/JWT hooks, migrations, docs, and test folders. Dependency containers are still explicit setup.",
     output: [
       "Dockerfile",
       "Makefile",
@@ -73,23 +67,23 @@ export const commandExamples: CommandExample[] = [
     components: [
       {
         label: "API process",
-        detail: "src/main.py wires the Python HTTP service and generated routes.",
+        detail: "src/main.py and generated routes.",
       },
       {
         label: "Postgres client",
-        detail: "src/clients/database.py plus migrations/001_initial.sql.",
+        detail: "src/clients/database.py plus migration SQL.",
       },
       {
         label: "Redis client",
-        detail: "src/clients/cache.py and redis dependency entries.",
+        detail: "src/clients/cache.py and dependency entries.",
       },
       {
         label: "JWT auth",
-        detail: "src/handler/auth.py provides the auth extension hook.",
+        detail: "src/handler/auth.py extension hook.",
       },
       {
         label: "Container boundary",
-        detail: "Dockerfile builds the app; dependency containers are not generated yet.",
+        detail: "Dockerfile builds the app; services are explicit.",
       },
     ],
   },
@@ -98,7 +92,7 @@ export const commandExamples: CommandExample[] = [
     label: "Cloudflare Worker",
     title: "Generate an edge service",
     command: "kickstart create service edge-site --lang typescript --runtime cloudflare-workers",
-    summary: "Creates a TypeScript Worker with Wrangler config, strict TypeScript, a health endpoint, tests, and deploy commands.",
+    summary: "Creates a TypeScript Worker with Wrangler config, strict TypeScript, tests, and deploy commands.",
     output: [
       "wrangler.toml",
       "package.json",
@@ -112,29 +106,32 @@ export const commandExamples: CommandExample[] = [
     components: [
       {
         label: "HTTP fetch handler",
-        detail: "src/index.ts routes requests and returns health JSON.",
+        detail: "src/index.ts routes requests.",
       },
       {
         label: "Cloudflare runtime",
-        detail: "wrangler.toml points the Worker at src/index.ts.",
+        detail: "wrangler.toml owns Worker config.",
       },
       {
         label: "Verification",
-        detail: "Vitest and TypeScript checks are scaffolded with package scripts.",
+        detail: "Vitest and TypeScript scripts.",
       },
     ],
   },
   {
     key: "mono",
-    label: "Cloud Workspace",
+    label: "AWS + K8s",
     title: "Generate a cloud workspace",
-    command: "kickstart create mono platform --cloud cloudflare --runtime cloudflare-workers --knowledge none",
-    summary: "Creates a workspace shape with apps, packages, infrastructure folders, GitHub Actions, docs, and Cloudflare Worker deployment notes.",
+    command: "kickstart create mono platform --cloud aws --runtime kubernetes --knowledge none",
+    summary: "Creates a TypeScript/Bun workspace with apps, packages, Terraform envs, Kubernetes manifests, GitHub Actions, docs, and agent notes.",
     output: [
       "apps/",
       "packages/",
-      "infra/cloudflare/",
       "infra/terraform/",
+      "infra/terraform/env/dev/main.tf",
+      "infra/k8s/base/deployment.yaml",
+      "infra/k8s/base/service.yaml",
+      "infra/k8s/overlays/dev/kustomization.yaml",
       ".github/workflows/build.yml",
       ".github/workflows/test.yml",
       ".github/workflows/deploy.yml",
@@ -147,19 +144,23 @@ export const commandExamples: CommandExample[] = [
     components: [
       {
         label: "Applications",
-        detail: "apps/ is the place for deployable services and frontends.",
+        detail: "apps/ holds deployable projects.",
       },
       {
         label: "Shared packages",
-        detail: "packages/ gives agents an obvious boundary for reusable code.",
+        detail: "packages/ holds reusable code.",
       },
       {
         label: "Infrastructure",
-        detail: "infra/ captures Cloudflare, Terraform, and deployment intent.",
+        detail: "Terraform envs target AWS resources.",
+      },
+      {
+        label: "Kubernetes runtime",
+        detail: "Kustomize manifests render deploy shape.",
       },
       {
         label: "CI contract",
-        detail: ".github/workflows files define build, test, and deploy lanes.",
+        detail: "Workflows define build/test/deploy.",
       },
     ],
   },
@@ -168,7 +169,7 @@ export const commandExamples: CommandExample[] = [
     label: "Rust CLI",
     title: "Generate a command-line tool",
     command: "kickstart create cli ops-tool --lang rust",
-    summary: "Creates a Rust command-line project with Cargo metadata, source entrypoint, test directory, Makefile, README, and architecture notes.",
+    summary: "Creates a Rust CLI with Cargo metadata, source entrypoint, test folder, Makefile, README, and architecture notes.",
     output: [
       "Cargo.toml",
       "src/main.rs",
@@ -180,15 +181,15 @@ export const commandExamples: CommandExample[] = [
     components: [
       {
         label: "CLI entrypoint",
-        detail: "src/main.rs owns command execution.",
+        detail: "src/main.rs owns execution.",
       },
       {
         label: "Cargo project",
-        detail: "Cargo.toml defines package metadata and dependencies.",
+        detail: "Cargo.toml defines metadata.",
       },
       {
         label: "Review notes",
-        detail: "architecture/README.md explains generated structure.",
+        detail: "architecture/ explains structure.",
       },
     ],
   },
@@ -196,54 +197,31 @@ export const commandExamples: CommandExample[] = [
 
 export const isPoints: PositioningPoint[] = [
   {
-    title: "Opinionated scaffold factory",
-    body: "It turns a stack profile into a deterministic starter repo.",
+    title: "Scaffold factory",
+    body: "Turns a stack profile into a deterministic starter repo.",
   },
   {
-    title: "Agent-readable contract",
-    body: "It writes layout, docs, validation commands, and boundaries an agent can inspect before editing.",
+    title: "Agent contract",
+    body: "Writes layout, docs, commands, and boundaries.",
   },
   {
     title: "Repeatable bootstrap",
-    body: "The same intent produces the same starting shape, which makes review and iteration less noisy.",
+    body: "Same input, same starting shape.",
   },
 ];
 
 export const isNotPoints: PositioningPoint[] = [
   {
     title: "Universal create-app",
-    body: "It is intentionally narrow and stack-specific instead of trying to support every ecosystem.",
+    body: "It is intentionally narrow.",
   },
   {
     title: "Product architect",
-    body: "It does not design the domain model, threat model, APIs, or business logic.",
+    body: "It does not design the domain model.",
   },
   {
     title: "Runtime platform",
-    body: "It may create Docker, Worker, or Kubernetes files, but dependency services still need explicit local/deploy setup.",
-  },
-];
-
-export const contractRows: ContractRow[] = [
-  {
-    axis: "Project kind",
-    choice: "service, frontend, library, CLI, monorepo",
-    reason: "Start from the kind of thing being built, not a bag of files.",
-  },
-  {
-    axis: "Stack profile",
-    choice: "Python, TypeScript, Rust, C++, SQL",
-    reason: "Keep generated projects inside the ecosystems this scaffold is meant to maintain well.",
-  },
-  {
-    axis: "Runtime surface",
-    choice: "Docker, Cloudflare Workers, Kubernetes where relevant",
-    reason: "Generate runnable surfaces only when they fit the project shape.",
-  },
-  {
-    axis: "Review contract",
-    choice: "tests, typecheck, docs, CI, release artifacts",
-    reason: "A scaffold is useful when humans and agents can prove the generated shape works.",
+    body: "It does not run every dependency for you.",
   },
 ];
 

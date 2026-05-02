@@ -1,7 +1,6 @@
 import {
   changelogEntries,
   commandExamples,
-  contractRows,
   defaultProjectMeta,
   isNotPoints,
   isPoints,
@@ -42,19 +41,6 @@ function renderPositioningPoints(points: PositioningPoint[]): string {
           <h3>${escapeHtml(point.title)}</h3>
           <p>${escapeHtml(point.body)}</p>
         </article>`,
-    )
-    .join("");
-}
-
-function renderContractRows(): string {
-  return contractRows
-    .map(
-      (row) => `
-        <tr>
-          <th>${escapeHtml(row.axis)}</th>
-          <td>${escapeHtml(row.choice)}</td>
-          <td>${escapeHtml(row.reason)}</td>
-        </tr>`,
     )
     .join("");
 }
@@ -134,80 +120,32 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
     <header class="shell topbar">
       <div>
         <a class="brand" href="/" aria-label="Kickstart home">Kickstart:</a>
-        <span class="status">v${escapeHtml(meta.latestVersion)} / Cloudflare Worker site</span>
       </div>
       <nav aria-label="Main navigation">
+        <a href="#examples">[Example]</a>
         <a href="#positioning">[Position]</a>
-        <a href="#contract">[Contract]</a>
-        <a href="#generate">[Examples]</a>
         <a href="#release">[Release]</a>
-        <a href="#boundary">[Boundary]</a>
         <a href="${escapeHtml(meta.repositoryUrl)}">[GitHub]</a>
       </nav>
     </header>
 
     <main>
       <section class="hero shell" aria-labelledby="hero-title">
-        <p class="kicker">Opinionated scaffolds for agent-assisted projects.</p>
-        <h1 id="hero-title">Reviewable starter repos.</h1>
-        <p class="intro">
-          Kickstart turns project intent into files, commands, tests, docs, and agent-readable boundaries.
-        </p>
-        <div class="release-strip" aria-label="Project status">
-          <span>version</span>
-          <strong>v${escapeHtml(meta.latestVersion)}</strong>
-          <a href="${escapeHtml(meta.releaseUrl)}">Release notes</a>
-          <a href="${escapeHtml(meta.repositoryUrl)}">GitHub repository</a>
-        </div>
-      </section>
-
-      <section id="positioning" class="shell split-section">
-        <div class="section-index">[Position]</div>
-        <div>
-          <h2>A scaffold contract, not a software generator.</h2>
-          <p class="section-lead">
-            Useful for blank-repo setup. Not a substitute for architecture, domain modeling, or deployment operations.
+        <div class="hero-copy">
+          <p class="kicker">Opinionated scaffolds for agent-assisted projects.</p>
+          <h1 id="hero-title">Kickstart</h1>
+          <p class="tagline">Starter repos for humans and agents.</p>
+          <p class="intro">
+            Files, commands, tests, docs, and boundaries from one project intent.
           </p>
-          <div class="positioning-grid">
-            <div>
-              <h3 class="positioning-heading">It is</h3>
-              <div class="argument-list">
-${renderPositioningPoints(isPoints)}
-              </div>
-            </div>
-            <div>
-              <h3 class="positioning-heading">It is not</h3>
-              <div class="argument-list">
-${renderPositioningPoints(isNotPoints)}
-              </div>
-            </div>
+          <div class="hero-links" aria-label="Project links">
+            <span>v${escapeHtml(meta.latestVersion)}</span>
+            <a href="${escapeHtml(meta.releaseUrl)}">Release notes</a>
+            <a href="${escapeHtml(meta.repositoryUrl)}">GitHub</a>
           </div>
         </div>
-      </section>
 
-      <section id="contract" class="shell split-section">
-        <div class="section-index">[Contract]</div>
-        <div>
-          <h2>Kickstart encodes the project shape once.</h2>
-          <p class="section-lead">
-            A generated project should state its shape, stack profile, runtime files, and validation commands.
-          </p>
-          <table class="contract-table">
-            <tbody>
-${renderContractRows()}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="generate" class="shell split-section">
-        <div class="section-index">[Generate]</div>
-        <div>
-          <h2>One command should produce something inspectable.</h2>
-          <p class="section-lead">
-            Examples show concrete files and the parts they create.
-          </p>
-          <div class="command-panel">
+        <div id="examples" class="command-panel hero-panel">
             <div class="picker" role="tablist" aria-label="Project examples">
               ${renderCommandButtons()}
             </div>
@@ -232,36 +170,46 @@ ${renderComponentMap(firstExample.components)}
                 </div>
               </div>
             </div>
+        </div>
+      </section>
+
+      <section id="positioning" class="shell compact-section positioning-section">
+        <div class="section-head">
+          <div class="section-index">[Position]</div>
+          <h2>Useful setup. Not architecture.</h2>
+        </div>
+        <div>
+          <div class="positioning-grid">
+            <div>
+              <h3 class="positioning-heading">It is</h3>
+              <div class="argument-list">
+${renderPositioningPoints(isPoints)}
+              </div>
+            </div>
+            <div>
+              <h3 class="positioning-heading">It is not</h3>
+              <div class="argument-list">
+${renderPositioningPoints(isNotPoints)}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="release" class="shell split-section">
-        <div class="section-index">[Release]</div>
+      <section id="release" class="shell compact-section boundary">
+        <div class="section-head">
+          <div class="section-index">[Release]</div>
+          <h2>v${escapeHtml(meta.latestVersion)}</h2>
+        </div>
         <div>
-          <h2>Release v${escapeHtml(meta.latestVersion)}</h2>
-          <p class="section-lead">
-            CI reads the version from repository metadata and deploys this Worker site from committed source.
-          </p>
           <div class="release-actions">
-            <a href="${escapeHtml(meta.repositoryUrl)}">Open GitHub</a>
-            <a href="${escapeHtml(meta.releaseUrl)}">View release</a>
+            <a href="${escapeHtml(meta.releaseUrl)}">Release notes</a>
+            <a href="${escapeHtml(meta.repositoryUrl)}">GitHub</a>
             <a href="${escapeHtml(meta.repositoryUrl)}/releases">All releases</a>
           </div>
           <div class="changelog" aria-label="Small changelog">
 ${renderChangelog(meta)}
           </div>
-        </div>
-      </section>
-
-      <section id="boundary" class="shell split-section boundary">
-        <div class="section-index">[Boundary]</div>
-        <div>
-          <h2>Specific beats universal.</h2>
-          <p class="section-lead">
-            Kickstart stays narrow so Python, TypeScript, Rust, C++, SQL, Docker, Cloudflare Workers, Kubernetes, tests, and docs can stay coherent.
-          </p>
-          <p class="closing-line">The contract is simple: generate less uncertainty.</p>
         </div>
       </section>
     </main>

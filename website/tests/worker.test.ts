@@ -26,7 +26,7 @@ describe("Kickstart website worker", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");
-    expect(await response.text()).toContain("Reviewable starter repos");
+    expect(await response.text()).toContain("Starter repos for humans and agents");
   });
 
   it("renders version and repository metadata from Worker vars", async () => {
@@ -42,22 +42,22 @@ describe("Kickstart website worker", () => {
     const html = await response.text();
 
     expect(response.status).toBe(200);
-    expect(html).toContain("Release v0.5.0");
+    expect(html).toContain("v0.5.0");
     expect(html).toContain("https://github.com/example/kickstart");
     expect(html).toContain("https://github.com/example/kickstart/releases/tag/v0.5.0");
   });
 
-  it("renders the scaffold contract", async () => {
-    const request = new Request("https://example.test/contract") as Parameters<typeof worker.fetch>[0];
+  it("renders the first-screen example", async () => {
+    const request = new Request("https://example.test/examples") as Parameters<typeof worker.fetch>[0];
 
     const response = await worker.fetch(request, defaultEnv);
 
     const html = await response.text();
 
     expect(response.status).toBe(200);
-    expect(html).toContain("Kickstart encodes the project shape once");
-    expect(html).toContain("Docker, Cloudflare Workers, Kubernetes where relevant");
-    expect(html).toContain("tests, typecheck, docs, CI, release artifacts");
+    expect(html).toContain("Starter repos for humans and agents");
+    expect(html).toContain("Generate an API service with clients");
+    expect(html).toContain("component map");
   });
 
   it("states what Kickstart is and is not", async () => {
@@ -68,8 +68,8 @@ describe("Kickstart website worker", () => {
     const html = await response.text();
 
     expect(response.status).toBe(200);
-    expect(html).toContain("A scaffold contract, not a software generator");
-    expect(html).toContain("Opinionated scaffold factory");
+    expect(html).toContain("Useful setup. Not architecture");
+    expect(html).toContain("Scaffold factory");
     expect(html).toContain("Product architect");
   });
 
@@ -87,10 +87,13 @@ describe("Kickstart website worker", () => {
     const request = new Request("https://example.test/assets/site.js") as Parameters<typeof worker.fetch>[0];
 
     const response = await worker.fetch(request, defaultEnv);
+    const script = await response.text();
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/javascript");
-    expect(await response.text()).toContain("navigator.clipboard");
+    expect(script).toContain("navigator.clipboard");
+    expect(script).toContain('"output":"./Dockerfile\\n./Makefile');
+    expect(script).not.toContain('"output":"./Dockerfile\\\\n./Makefile');
   });
 
   it("falls back to the SPA for client-side routes", async () => {
@@ -112,7 +115,7 @@ describe("Kickstart website worker", () => {
     expect(response.status).toBe(200);
     expect(html).toContain("src/clients/cache.py");
     expect(html).toContain("Redis client");
-    expect(html).toContain("dependency containers are not generated yet");
+    expect(html).toContain("services are explicit");
     expect(html).toContain("component map");
   });
 });

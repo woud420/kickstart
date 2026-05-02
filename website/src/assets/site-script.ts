@@ -6,7 +6,7 @@ const examples = Object.fromEntries(
     {
       command: example.command,
       components: example.components,
-      output: example.output.map((file) => `./${file}`).join("\\n"),
+      output: example.output.map((file) => `./${file}`).join("\n"),
       summary: example.summary,
       title: example.title,
     },
