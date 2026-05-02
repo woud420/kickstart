@@ -25,5 +25,7 @@ jobs:
       - name: Terraform plan
         run: make tf-plan ENV={% raw %}${{ inputs.environment }}{% endraw %}
 
+{% if uses_kubernetes %}
       - name: Render manifests
         run: make k8s-render ENV={% raw %}${{ inputs.environment }}{% endraw %}
+{% endif %}

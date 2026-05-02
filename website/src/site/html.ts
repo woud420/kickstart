@@ -58,7 +58,7 @@ function currentReleaseEntry(meta: ProjectMeta): ChangelogEntry {
   return {
     version: meta.latestVersion,
     title: "Current release",
-    body: "Release notes, Python packages, and Linux/macOS binaries are published from GitHub Releases for this tag.",
+    body: "GitHub Releases carry release notes, optional Python package publishing, and Linux/macOS binary assets for this tag.",
   };
 }
 

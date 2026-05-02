@@ -1,6 +1,6 @@
-# Kickstart
+# kickstart
 
-Kickstart is a scaffolding tool for generating project structure, CLIs, services, frontends, libraries, and infrastructure workspaces.
+kickstart is a scaffolding tool for generating project structure, CLIs, services, frontends, libraries, and infrastructure workspaces.
 
 The goal is to eliminate the repeated setup work that humans and agents otherwise redo at the start of every project: directories, templates, Docker/Kubernetes/Cloudflare files, typed language defaults, basic docs, and standard commands.
 
@@ -55,7 +55,7 @@ poetry run kickstart create service edge-rs --lang rust --runtime cloudflare-wor
 poetry run kickstart create frontend web
 poetry run kickstart create lib core-lib --lang python
 poetry run kickstart create cli ops-tool --lang rust
-poetry run kickstart create mono platform --cloud cloudflare --runtime cloudflare-workers --knowledge none
+poetry run kickstart create mono platform --cloud aws --runtime kubernetes --knowledge none
 ```
 
 ## More Docs
@@ -73,4 +73,4 @@ make package
 make binary
 ```
 
-Kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 standalone binaries for each supported Python minor.
+kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 standalone binaries for each supported Python minor.

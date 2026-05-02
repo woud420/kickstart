@@ -3,6 +3,7 @@ import sys
 import os
 from pathlib import Path
 
+
 def test_help_output(tmp_path):
     repo_root = Path(__file__).resolve().parents[2]
     env = os.environ.copy()
@@ -17,6 +18,5 @@ def test_help_output(tmp_path):
     )
 
     assert result.returncode == 0
-    assert "Kickstart" in result.stdout
+    assert "kickstart" in result.stdout
     assert "create" in result.stdout
-

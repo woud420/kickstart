@@ -136,10 +136,10 @@ export const commandExamples: CommandExample[] = [
       ".github/workflows/test.yml",
       ".github/workflows/deploy.yml",
       "docs/architecture/context.md",
-      "docs/agents/recommended.md",
+      "docs/agents/recommended-agents.md",
       "package.json",
       "turbo.json",
-      "tsconfig.base.json",
+      "config/tsconfig/base.json",
     ],
     components: [
       {
@@ -229,7 +229,7 @@ export const changelogEntries: ChangelogEntry[] = [
   {
     version: "0.4.0",
     title: "Modern Python stack and release binaries",
-    body: "Updated dependency metadata, added real lint/typecheck/test/build commands, and built installable Linux and macOS binaries in CI.",
+    body: "Updated dependency metadata, added real lint/typecheck/test/build commands, and configured installable Linux and macOS binaries in CI.",
   },
   {
     version: "0.4.0",

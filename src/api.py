@@ -1,4 +1,4 @@
-"""Public API for Kickstart generators."""
+"""Public API for kickstart generators."""
 
 from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator

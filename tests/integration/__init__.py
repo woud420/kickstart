@@ -1,1 +1,1 @@
-"""Integration tests for Kickstart project creation workflows."""
+"""Integration tests for kickstart project creation workflows."""

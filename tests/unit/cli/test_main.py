@@ -20,7 +20,7 @@ def test_version_command(runner):
     result = runner.invoke(app, ["version"])
     
     assert result.exit_code == 0
-    assert "Kickstart v1.0.0" in result.stdout
+    assert "kickstart v1.0.0" in result.stdout
 
 
 @patch('src.cli.main.check_for_update')
@@ -433,7 +433,7 @@ def test_config_default_language_used_in_interactive(mock_prompt, mock_load_conf
 
 def test_typer_app_creation():
     """Test that the Typer app is created with correct help text."""
-    assert app.info.help == "Kickstart: Full-stack project scaffolding CLI"
+    assert app.info.help == "kickstart: Full-stack project scaffolding CLI"
 
 
 def test_command_registration():

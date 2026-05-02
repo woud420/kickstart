@@ -1,6 +1,6 @@
 # Human Guide
 
-Kickstart creates project scaffolds so the first hour of setup is repeatable instead of hand-built.
+kickstart creates project scaffolds so the first hour of setup is repeatable instead of hand-built.
 
 ## Project Types
 
@@ -71,4 +71,4 @@ When adding a new scaffold option, add generated-output tests for the affected p
 
 ## Project Tooling
 
-Kickstart supports Python `>=3.12,<3.15`. Use `make check` before committing. Use `make package` for wheel/source builds and `make binary` for a local standalone binary.
+kickstart supports Python `>=3.12,<3.15`. Use `make check` before committing. Use `make package` for wheel/source builds and `make binary` for a local standalone binary.

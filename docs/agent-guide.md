@@ -1,6 +1,6 @@
 # Agent Guide
 
-Purpose: Kickstart generates repeatable project scaffolds so agents do not recreate setup logic from scratch.
+Purpose: kickstart generates repeatable project scaffolds so agents do not recreate setup logic from scratch.
 
 ## Generation Contract
 

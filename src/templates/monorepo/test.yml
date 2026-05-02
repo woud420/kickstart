@@ -15,9 +15,16 @@ jobs:
       - name: Validate expected docs
         run: make docs-check
 
+{% if uses_kubernetes %}
       - name: Render Kubernetes manifests
         run: make k8s-render ENV=dev
 
+{% endif %}
+{% if uses_cloudflare_workers %}
+      - name: Validate Cloudflare Worker notes
+        run: make cf-worker-notes
+
+{% endif %}
       - name: Validate Terraform syntax
         uses: hashicorp/setup-terraform@v3
         with:

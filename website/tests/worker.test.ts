@@ -103,6 +103,10 @@ describe("kickstart website worker", () => {
     expect(script).toContain('"output":"./Dockerfile\\n./Makefile');
     expect(script).not.toContain('"output":"./Dockerfile\\\\n./Makefile');
     expect(script).toContain("kickstart create mono platform --cloud aws --runtime kubernetes --knowledge none");
+    expect(script).toContain("docs/agents/recommended-agents.md");
+    expect(script).not.toContain("docs/agents/recommended.md");
+    expect(script).toContain("config/tsconfig/base.json");
+    expect(script).not.toContain("tsconfig.base.json");
     expect(script).not.toContain("kickstart create mono platform --cloud cloudflare --runtime cloudflare-workers");
   });
 

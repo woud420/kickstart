@@ -1,6 +1,6 @@
 # Contributing
 
-Kickstart should stay small, typed, and easy to inspect.
+kickstart should stay small, typed, and easy to inspect.
 
 ## Principles
 

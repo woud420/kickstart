@@ -6,7 +6,7 @@ PYTEST := $(POETRY) run python -c "import pytest, sys; raise SystemExit(pytest.m
 help:
 	@echo "Usage:"
 	@echo "  make setup            Install project dependencies"
-	@echo "  make run              Show the Kickstart CLI help"
+	@echo "  make run              Show the kickstart CLI help"
 	@echo "  make tests            Run the full test suite"
 	@echo "  make test-unit        Run unit tests"
 	@echo "  make test-integration Run integration tests"

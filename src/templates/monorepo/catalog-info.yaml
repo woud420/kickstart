@@ -2,7 +2,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: {{ monorepo_name }}
-  description: Kickstart-generated application workspace
+  description: kickstart-generated application workspace
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:

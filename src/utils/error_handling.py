@@ -1,4 +1,4 @@
-"""Centralized error handling utilities for Kickstart generators.
+"""Centralized error handling utilities for kickstart generators.
 
 This module provides standardized error handling patterns, custom exceptions,
 decorators, and utilities to eliminate duplication across the codebase.
@@ -22,7 +22,7 @@ T = TypeVar("T")
 
 # Custom Exceptions
 class KickstartError(Exception):
-    """Base exception for all Kickstart-related errors."""
+    """Base exception for all kickstart-related errors."""
 
     def __init__(self, message: str, context: ErrorContext | None = None) -> None:
         super().__init__(message)

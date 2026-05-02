@@ -1,6 +1,6 @@
 # Agent Contributing
 
-This file is for coding agents modifying Kickstart.
+This file is for coding agents modifying kickstart.
 
 ## Operating Rules
 

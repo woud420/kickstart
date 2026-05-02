@@ -1,4 +1,4 @@
-# Kickstart Website
+# kickstart website
 
 Small single-page website served by a TypeScript Cloudflare Worker.
 

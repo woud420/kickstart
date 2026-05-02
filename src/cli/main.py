@@ -1,4 +1,4 @@
-"""Kickstart command line interface."""
+"""kickstart command line interface."""
 
 import logging
 from typing import Optional, cast
@@ -24,13 +24,13 @@ from src.utils.updater import check_for_update
 
 logger = logging.getLogger(__name__)
 
-app: typer.Typer = typer.Typer(help="Kickstart: Full-stack project scaffolding CLI")
+app: typer.Typer = typer.Typer(help="kickstart: Full-stack project scaffolding CLI")
 
 
 @app.command()
 def version() -> None:
     """Show the current version."""
-    print(f"[bold cyan]Kickstart v{__version__}[/]")
+    print(f"[bold cyan]kickstart v{__version__}[/]")
 
 
 @app.command()
