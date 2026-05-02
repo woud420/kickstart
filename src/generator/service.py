@@ -1,10 +1,20 @@
+from collections.abc import Sequence
 from pathlib import Path
 import logging
 from src.generator.base import BaseGenerator
+from src.generator.language_setup import (
+    ContentFile,
+    cpp_service_content_files,
+    go_service_content_files,
+    rust_service_content_files,
+    typescript_service_content_files,
+    typescript_service_templates,
+)
 from src.utils.logger import success, warn
 from src.utils.github import create_repo
 from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
+from src.stack.types import TemplateConfig
 from src.generator.layouts import python_package_directories, service_directories, worker_directories
 from src.generator.specs import ServiceSpec
 from src.generator.template_plan import TemplatePlan
@@ -344,7 +354,6 @@ class ServiceGenerator(BaseGenerator):
             from src.utils.logger import success
             success(f"Extensions added: {', '.join(extensions_added)}")
 
-
     def _create_rust_structure(self) -> None:
         """Create Rust-specific project structure.
         
@@ -354,14 +363,7 @@ class ServiceGenerator(BaseGenerator):
         - Cargo.toml with common dependencies
         - Proper crate structure
         """
-        # Create mod.rs files
-        for dir_path in ["src/api", "src/model", "tests/api", "tests/model"]:
-            self.write_content(f"{dir_path}/mod.rs", "// Module definitions\n")
-
-        # Create minimal main file
-        self.write_content("src/main.rs", "use actix_web::{web, App, HttpResponse, HttpServer};\n\n#[actix_web::main]\nasync fn main() -> std::io::Result<()> {\n    HttpServer::new(|| {\n        App::new()\n            .route(\"/\", web::get().to(|| async { HttpResponse::Ok().json(\"Hello World\") }))\n    })\n    .bind(\"127.0.0.1:8080\")?\n    .run()\n    .await\n}\n")
-
-        # Create Cargo.toml
+        self._write_content_files(rust_service_content_files())
         self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
 
     def _create_cpp_structure(self) -> None:
@@ -370,19 +372,7 @@ class ServiceGenerator(BaseGenerator):
         Sets up a C++ service with CMake, a small executable, and header files
         that match the generated source layout.
         """
-        self.write_content(
-            "src/api/routes.hpp",
-            "#pragma once\n\nnamespace api {\nclass Routes {\npublic:\n    Routes() = default;\n};\n}  // namespace api\n",
-        )
-        self.write_content(
-            "src/model/user.hpp",
-            "#pragma once\n\n#include <string>\n\nnamespace model {\nstruct User {\n    std::string id;\n    std::string email;\n};\n}  // namespace model\n",
-        )
-        self.write_content(
-            "src/main.cpp",
-            '#include <iostream>\n\nint main() {\n    std::cout << "Hello World" << std::endl;\n    return 0;\n}\n',
-        )
-
+        self._write_content_files(cpp_service_content_files())
         self.write_template("CMakeLists.txt", "cpp/CMakeLists.txt.tpl")
 
     def _create_go_structure(self) -> None:
@@ -394,32 +384,7 @@ class ServiceGenerator(BaseGenerator):
         - .gitkeep files for empty directories
         - Standard Go project layout
         """
-        # Create minimal files
-        self.write_content("src/api/.gitkeep", "")
-        self.write_content("src/model/.gitkeep", "")
-        self.write_content("tests/api/.gitkeep", "")
-        self.write_content("tests/model/.gitkeep", "")
-
-        # Create main.go
-        self.write_content(
-            "src/main.go",
-            """package main
-
-import (
-    "fmt"
-    "net/http"
-)
-
-func main() {
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintln(w, `{"message": "Hello World"}`)
-    })
-    fmt.Println("Listening on :8080...")
-    http.ListenAndServe(":8080", nil)
-}
-"""
-        )
-        # go.mod
+        self._write_content_files(go_service_content_files())
         self.write_template("go.mod", "go/go.mod.tpl")
 
     def _create_typescript_structure(self) -> None:
@@ -428,15 +393,18 @@ func main() {
         Sets up a Fastify service with strict TypeScript, environment parsing,
         a health route, and a small test harness.
         """
-        for target_path, template_path in [
-            ("src/main.ts", "typescript/src/main.ts.tpl"),
-            ("src/config/env.ts", "typescript/src/config/env.ts.tpl"),
-            ("src/routes/health.ts", "typescript/src/routes/health.ts.tpl"),
-            ("tests/health.test.ts", "typescript/tests/health.test.ts.tpl"),
-        ]:
-            self.write_template(target_path, template_path)
+        self._write_template_configs(typescript_service_templates())
+        self._write_content_files(typescript_service_content_files())
 
-        self.write_content(".env.example", "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n")
+    def _write_content_files(self, files: Sequence[ContentFile]) -> None:
+        """Write direct content files from a typed setup plan."""
+        for file in files:
+            self.write_content(file.target, file.content)
+
+    def _write_template_configs(self, templates: Sequence[TemplateConfig]) -> None:
+        """Write template files from typed template configs."""
+        for template in templates:
+            self.write_template(template.target, template.template, **template.vars)
 
     def _create_helm_chart(self) -> None:
         """Create Helm chart structure and files.
