@@ -1,40 +1,59 @@
-import logging
-import typer
-from typing import Any, Optional, Dict, Tuple
+"""Kickstart command line interface."""
 
+import logging
+from typing import Optional, cast
+
+import typer
 from rich import print
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Confirm, Prompt
 
 from src import __version__
-from src.utils.config import load_config
 from src.api import (
-    create_service,
+    create_cli,
     create_frontend,
     create_lib,
-    create_cli,
     create_monorepo,
+    create_service,
 )
+from src.cli.dispatch import ProjectCreators, dispatch_project_creation
+from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
+from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
+from src.utils.config import load_config
+from src.utils.types import GeneratorConfig
 from src.utils.updater import check_for_update
 
 logger = logging.getLogger(__name__)
 
 app: typer.Typer = typer.Typer(help="Kickstart: Full-stack project scaffolding CLI")
 
+
 @app.command()
 def version() -> None:
     """Show the current version."""
     print(f"[bold cyan]Kickstart v{__version__}[/]")
+
 
 @app.command()
 def upgrade() -> None:
     """Upgrade to the latest version."""
     check_for_update()
 
+
 @app.command()
 def completion(shell: str = typer.Argument(..., help="bash | zsh | fish | powershell")) -> None:
     """Generate shell completion script."""
-    # Note: Typer completion API may vary by version
     typer.echo("Completion not implemented")
+
+
+def _project_creators() -> ProjectCreators:
+    return ProjectCreators(
+        service=create_service,
+        frontend=create_frontend,
+        lib=create_lib,
+        cli=create_cli,
+        monorepo=create_monorepo,
+    )
+
 
 def _prompt_for_missing_args(
     project_type: Optional[str],
@@ -43,7 +62,7 @@ def _prompt_for_missing_args(
     lang: str,
     gh: bool,
     helm: bool,
-    config: Dict[str, Any],
+    config: GeneratorConfig,
     database: Optional[str] = None,
     cache: Optional[str] = None,
     auth: Optional[str] = None,
@@ -51,75 +70,29 @@ def _prompt_for_missing_args(
     cloud: str = "multi",
     knowledge: str = "both",
     runtime: Optional[str] = None,
-) -> Tuple[str, str, Optional[str], str, bool, bool, Optional[str], Optional[str], Optional[str], Optional[str], str, str, Optional[str]]:
-    """Prompt user for any missing arguments in interactive mode.
-
-    Args:
-        project_type: Type of project to create
-        name: Project name
-        root: Root directory
-        lang: Programming language
-        gh: Whether to create GitHub repo
-        helm: Whether to use Helm scaffolding
-        config: Configuration dictionary
-
-    Returns:
-        Tuple of (project_type, name, root, lang, gh, helm) with all values filled
-    """
-    # Track if we're in interactive mode
-    interactive_mode = not project_type or not name
-
-    # Handle case where project_type is provided but root is not
-    if project_type and root is None:
-        root = Prompt.ask("Where should the project be created?")
-
-    # Interactive wizard if project_type not provided
-    if not project_type:
-        typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
-        project_type = Prompt.ask(
-            "What do you want to create?",
-            choices=["service", "frontend", "lib", "cli", "mono"]
-        )
-        name = Prompt.ask("Project name?")
-        if root is None:
-            root = Prompt.ask("Where should the project be created?")
-        lang = Prompt.ask("Language", default=config.get("default_language", "python"))
-        gh = Confirm.ask("Create GitHub repo?", default=False)
-        if project_type in ["mono", "service"]:
-            helm = Confirm.ask("Use Helm scaffolding?", default=False)
-
-    # Prompt for extensions if creating a service and they weren't provided
-    # Only prompt in interactive mode
-    if project_type == "service" and lang == "python" and interactive_mode:
-        if database is None:
-            database_options = ["none", "postgres", "mysql", "sqlite"]
-            database = Prompt.ask("Database extension", choices=database_options, default="none")
-            if database == "none":
-                database = None
-
-        if cache is None:
-            cache_options = ["none", "redis", "memcached"]
-            cache = Prompt.ask("Cache extension", choices=cache_options, default="none")
-            if cache == "none":
-                cache = None
-
-        if auth is None:
-            auth_options = ["none", "jwt", "oauth"]
-            auth = Prompt.ask("Authentication extension", choices=auth_options, default="none")
-            if auth == "none":
-                auth = None
-
-        if framework is None:
-            framework_options = ["fastapi", "minimal"]
-            framework = Prompt.ask("HTTP framework", choices=framework_options, default="fastapi")
-            if framework == "fastapi":
-                framework = None  # None means FastAPI default
-
-    # Ensure required values are set
-    assert project_type is not None, "project_type should be set by now"
-    assert name is not None, "name should be set by now"
-    
-    return project_type, name, root, lang, gh, helm, database, cache, auth, framework, cloud, knowledge, runtime
+) -> ResolvedCreateArgs:
+    """Prompt user for any missing arguments in interactive mode."""
+    options = prompt_for_missing_args(
+        CreateCommandOptions(
+            project_type=project_type,
+            name=name,
+            root=root,
+            lang=lang,
+            gh=gh,
+            helm=helm,
+            database=database,
+            cache=cache,
+            auth=auth,
+            framework=framework,
+            cloud=cloud,
+            knowledge=knowledge,
+            runtime=runtime,
+        ),
+        config,
+        prompt=cast(PromptReader, Prompt),
+        confirm=cast(ConfirmReader, Confirm),
+    )
+    return options.as_tuple()
 
 
 def _dispatch_project_creation(
@@ -129,7 +102,7 @@ def _dispatch_project_creation(
     lang: str,
     gh: bool,
     helm: bool,
-    config: Dict[str, Any],
+    config: GeneratorConfig,
     database: Optional[str] = None,
     cache: Optional[str] = None,
     auth: Optional[str] = None,
@@ -138,51 +111,26 @@ def _dispatch_project_creation(
     knowledge: str = "both",
     runtime: Optional[str] = None,
 ) -> None:
-    """Dispatch to the appropriate project creation function.
-    
-    Args:
-        project_type: Type of project to create
-        name: Project name
-        root: Root directory
-        lang: Programming language  
-        gh: Whether to create GitHub repo
-        helm: Whether to use Helm scaffolding
-        config: Configuration dictionary
-    """
-    service_kwargs: Dict[str, Any] = {"helm": helm, "root": root}
-    if database is not None and database != "none":
-        service_kwargs["database"] = database
-    if cache is not None and cache != "none":
-        service_kwargs["cache"] = cache
-    if auth is not None and auth != "none":
-        service_kwargs["auth"] = auth
-    if framework is not None and framework != "fastapi":
-        service_kwargs["framework"] = framework
-    if runtime is not None:
-        service_kwargs["runtime"] = runtime
-
-    monorepo_kwargs: Dict[str, Any] = {"helm": helm, "root": root}
-    if cloud != "multi":
-        monorepo_kwargs["cloud"] = cloud
-    if knowledge != "both":
-        monorepo_kwargs["knowledge"] = knowledge
-    if runtime is not None:
-        monorepo_kwargs["runtime"] = runtime
-
-    # Dispatch table for cleaner code and easier extension
-    project_creators = {
-        "service": lambda: create_service(name, lang, gh, config, **service_kwargs),
-        "frontend": lambda: create_frontend(name, gh, config, root=root),
-        "lib": lambda: create_lib(name, lang, gh, config, root=root),
-        "cli": lambda: create_cli(name, lang, gh, config, root=root),
-        "mono": lambda: create_monorepo(name, gh, config, **monorepo_kwargs),
-    }
-    
-    creator = project_creators.get(project_type)
-    if creator:
-        creator()
-    else:
-        print(f"[bold red]❌ Type '{project_type}' not supported.[/]")
+    """Dispatch to the appropriate project creation function."""
+    dispatch_project_creation(
+        CreateOptions(
+            project_type=project_type,
+            name=name,
+            root=root,
+            lang=lang,
+            gh=gh,
+            helm=helm,
+            database=database,
+            cache=cache,
+            auth=auth,
+            framework=framework,
+            cloud=cloud,
+            knowledge=knowledge,
+            runtime=runtime,
+        ),
+        config,
+        _project_creators(),
+    )
 
 
 @app.command()
@@ -196,7 +144,11 @@ def create(
     database: Optional[str] = typer.Option(None, "--database", help="Database extension (postgres, mysql, sqlite)"),
     cache: Optional[str] = typer.Option(None, "--cache", help="Cache extension (redis, memcached)"),
     auth: Optional[str] = typer.Option(None, "--auth", help="Authentication extension (jwt, oauth)"),
-    framework: Optional[str] = typer.Option(None, "--framework", help="HTTP framework (minimal for standard library, default is FastAPI)"),
+    framework: Optional[str] = typer.Option(
+        None,
+        "--framework",
+        help="HTTP framework (minimal for standard library, default is FastAPI)",
+    ),
     cloud: str = typer.Option("multi", "--cloud", help="Monorepo cloud target (aws, gcp, cloudflare, multi, none)"),
     knowledge: str = typer.Option("both", "--knowledge", help="Knowledge base scaffold (none, obsidian, backstage, both)"),
     runtime: Optional[str] = typer.Option(
@@ -205,36 +157,34 @@ def create(
         help="Runtime target. Services: container or cloudflare-workers. Monorepos: kubernetes, cloudflare-workers, hybrid.",
     )
 ) -> None:
-    """Create a new service, lib, CLI, frontend, or mono repo.
-    
-    This command supports both non-interactive and interactive modes:
-    - Non-interactive: Provide all required arguments via CLI flags
-    - Interactive: Launch a wizard to guide you through project creation
-    
-    Args:
-        project_type: Type of project (service, frontend, lib, cli, mono)
-        name: Name of the project
-        root: Root directory where project will be created
-        lang: Programming language for the project
-        gh: Create a GitHub repository
-        helm: Add Helm scaffolding (for services and monorepos only)
-    """
+    """Create a new service, lib, CLI, frontend, or mono repo."""
     try:
-        config: Dict[str, Any] = load_config()
-
-        # Prompt for any missing arguments
-        project_type, name, root, lang, gh, helm, database, cache, auth, framework, cloud, knowledge, runtime = _prompt_for_missing_args(
-            project_type, name, root, lang, gh, helm, config, database, cache, auth, framework, cloud, knowledge, runtime
+        config: GeneratorConfig = load_config()
+        options = prompt_for_missing_args(
+            CreateCommandOptions(
+                project_type=project_type,
+                name=name,
+                root=root,
+                lang=lang,
+                gh=gh,
+                helm=helm,
+                database=database,
+                cache=cache,
+                auth=auth,
+                framework=framework,
+                cloud=cloud,
+                knowledge=knowledge,
+                runtime=runtime,
+            ),
+            config,
+            prompt=cast(PromptReader, Prompt),
+            confirm=cast(ConfirmReader, Confirm),
         )
+        dispatch_project_creation(options, config, _project_creators())
 
-        # Dispatch to appropriate creation function
-        _dispatch_project_creation(
-            project_type, name, root, lang, gh, helm, config, database, cache, auth, framework, cloud, knowledge, runtime
-        )
-        
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
-    except Exception as e:
-        print(f"[bold red]❌ Failed to create project: {e}[/]")
+    except Exception as exc:
+        print(f"[bold red]❌ Failed to create project: {exc}[/]")
         logger.exception("Project creation failed")
-        raise typer.Exit(code=1) from e
+        raise typer.Exit(code=1) from exc
