@@ -1,5 +1,6 @@
 from pathlib import Path
 from src.generator.base import BaseGenerator
+from src.generator.layouts import cli_directories, library_directories
 from src.generator.specs import CliSpec, LibrarySpec
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
@@ -19,7 +20,7 @@ class LibraryGenerator(BaseGenerator):
         self.lang_template_dir = self.template_dir / self.lang
 
     def create(self) -> None:
-        directories: list[str] = ["src", "tests", "docs", "architecture"]
+        directories = library_directories()
         
         template_configs: list[dict[str, str]] = [
             {"target": ".gitignore", "template": f"{self.lang}/gitignore.tpl"},
@@ -57,7 +58,7 @@ class CLIGenerator(LibraryGenerator):
         self.spec = spec
 
     def create(self) -> None:
-        directories: list[str] = ["src", "tests", "docs", "architecture"]
+        directories = cli_directories()
         
         template_configs: list[dict[str, str]] = [
             {"target": ".gitignore", "template": f"{self.lang}/gitignore.tpl"},

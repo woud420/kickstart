@@ -63,11 +63,11 @@ class BaseGenerator:
             return False
         return True
 
-    def create_directories(self, directories: list[str]) -> bool:
+    def create_directories(self, directories: Sequence[str]) -> bool:
         """Create multiple directories under the project root.
 
         Args:
-            directories: List of directory paths relative to project root
+            directories: Directory paths relative to project root
 
         Returns:
             True if all directories were created successfully, False otherwise
@@ -140,11 +140,11 @@ class BaseGenerator:
         """Get common template variables."""
         return {"service_name": self.name}
 
-    def init_basic_structure(self, dirs: list[str]) -> bool:
+    def init_basic_structure(self, dirs: Sequence[str]) -> bool:
         """Create the base directory structure for a new project.
         
         Args:
-            dirs: List of directories to create
+            dirs: Directories to create
             
         Returns:
             True if all directories were created successfully, False otherwise
@@ -208,7 +208,7 @@ class BaseGenerator:
             create_repo_fn()
 
     def execute_create_flow(self, 
-                          directories: list[str],
+                          directories: Sequence[str],
                           template_configs: Sequence[TemplateConfigMapping],
                           architecture_title: str,
                           success_message: str,
@@ -218,7 +218,7 @@ class BaseGenerator:
         """Execute the common create flow for generators.
         
         Args:
-            directories: List of directories to create
+            directories: Directories to create
             template_configs: List of template configurations
             architecture_title: Title for architecture documentation
             success_message: Success message to log

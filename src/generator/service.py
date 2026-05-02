@@ -5,6 +5,7 @@ from src.utils.logger import success, warn
 from src.utils.github import create_repo
 from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
+from src.generator.layouts import python_package_directories, service_directories, worker_directories
 from src.generator.specs import ServiceSpec
 from src.utils.types import GeneratorConfig
 from src.utils.error_handling import (
@@ -131,16 +132,7 @@ class ServiceGenerator(BaseGenerator):
         if not self.lang_template_dir.exists():
             raise LanguageNotSupportedError(f"No templates found for language: {self.lang}")
 
-        # Define project structure
-        directories: list[str] = [
-            # New improved structure using src/model/, src/api/, src/routes/, src/handler/, src/clients/
-            "src/model", "src/api", "src/routes", "src/handler", "src/clients",
-            "src/config",
-            "tests/unit/model", "tests/unit/api", "tests/unit/routes",
-            "tests/integration/api", "tests/integration/clients",
-            "tests/fixtures",
-            "docs"
-        ]
+        directories = service_directories()
 
         template_configs = profile.template_configs()
 
@@ -172,7 +164,7 @@ class ServiceGenerator(BaseGenerator):
         if not worker_template_dir.exists():
             raise LanguageNotSupportedError(f"No Cloudflare Worker templates found for language: {self.lang}")
 
-        directories = ["src", "tests", "docs"]
+        directories = worker_directories()
         template_configs = self._cloudflare_worker_template_configs()
 
         architecture_title = f"{self.name} Cloudflare Worker Architecture Notes"
@@ -252,14 +244,7 @@ class ServiceGenerator(BaseGenerator):
         - Type hints and proper error handling
         """
         # Create __init__.py files for all Python packages
-        python_packages = [
-            "src", "src/model", "src/api", "src/routes", "src/handler", "src/clients", "src/config",
-            "tests", "tests/unit", "tests/unit/model", "tests/unit/api", "tests/unit/routes",
-            "tests/integration", "tests/integration/api", "tests/integration/clients",
-            "tests/fixtures"
-        ]
-        
-        for package_path in python_packages:
+        for package_path in python_package_directories():
             self.write_content(f"{package_path}/__init__.py", "")
         
         # Choose templates based on framework

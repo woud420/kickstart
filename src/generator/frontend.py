@@ -1,4 +1,5 @@
 from src.generator.base import BaseGenerator
+from src.generator.layouts import frontend_directories
 from src.generator.specs import FrontendSpec
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
@@ -15,7 +16,7 @@ class FrontendGenerator(BaseGenerator):
         self.gh = spec.gh
 
     def create(self) -> None:
-        directories: list[str] = ["src", "public", "tests", "architecture"]
+        directories = frontend_directories()
         
         template_configs: list[dict[str, str]] = [
             {"target": "index.html", "template": "index.html.tpl"},

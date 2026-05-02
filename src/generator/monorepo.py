@@ -1,6 +1,7 @@
 from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
 from src.stack.profile import stack_registry, MonorepoSelection
+from src.generator.layouts import monorepo_directories
 from src.generator.specs import MonorepoSpec
 from src.utils.types import GeneratorConfig, TemplateValue
 
@@ -49,33 +50,7 @@ class MonorepoGenerator(BaseGenerator):
     def create(self) -> None:
         selection = self._selection()
 
-        directories: list[str] = [
-            "apps",
-            "packages",
-            "config/eslint",
-            "config/tsconfig",
-            "infra/docker",
-            "infra/terraform/modules/example_module",
-            "infra/terraform/modules/service_runtime",
-            *[f"infra/terraform/env/{env}" for env in stack_registry.environments],
-            ".github/workflows",
-            "architecture",
-            "frontend",
-            "libs",
-            "services",
-            "data/postgres",
-            "knowledge",
-            "docs/adr",
-            "docs/agents",
-            "docs/architecture",
-            "docs/data",
-            "docs/knowledge",
-            "docs/runbooks",
-            "reports",
-            "scripts",
-        ]
-        if selection.uses_cloudflare_workers:
-            directories.append("infra/cloudflare/workers")
+        directories = monorepo_directories(selection)
         
         template_vars = self._template_vars()
         template_configs = selection.template_configs(template_vars)
