@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
 import logging
 from jinja2 import Environment, FileSystemLoader, DictLoader, Template
 from jinja2.exceptions import TemplateError, TemplateNotFound
+from src.utils.types import MutableRenderVars, RenderValue, RenderVars
 
 logger = logging.getLogger(__name__)
 
@@ -10,15 +10,15 @@ logger = logging.getLogger(__name__)
 class TemplateEngine:
     """High-performance Jinja2 template engine with caching and error handling."""
     
-    def __init__(self, template_dirs: Optional[list[Path]] = None):
+    def __init__(self, template_dirs: list[Path] | None = None):
         """Initialize the template engine.
         
         Args:
             template_dirs: List of directories to search for templates
         """
         self.template_dirs = template_dirs or []
-        self._env: Optional[Environment] = None
-        self._template_cache: Dict[str, Template] = {}
+        self._env: Environment | None = None
+        self._template_cache: dict[str, Template] = {}
     
     @property
     def env(self) -> Environment:
@@ -63,7 +63,7 @@ class TemplateEngine:
         # Join words together
         return ''.join(words) if words else 'Service'
     
-    def render_template(self, template_path: Path | str, variables: Dict[str, Any]) -> str:
+    def render_template(self, template_path: Path | str, variables: RenderVars) -> str:
         """Render a template file with the given variables.
         
         Args:
@@ -98,7 +98,7 @@ class TemplateEngine:
             logger.error(f"Template encoding error in {template_path}: {e}")
             raise TemplateError(f"Template encoding error: {e}") from e
     
-    def render_string(self, template_content: str, variables: Dict[str, Any]) -> str:
+    def render_string(self, template_content: str, variables: RenderVars) -> str:
         """Render a template string with the given variables.
         
         Args:
@@ -120,7 +120,7 @@ class TemplateEngine:
 
 
 # Global template engine instance
-_template_engine: Optional[TemplateEngine] = None
+_template_engine: TemplateEngine | None = None
 
 
 def get_template_engine() -> TemplateEngine:
@@ -131,7 +131,7 @@ def get_template_engine() -> TemplateEngine:
     return _template_engine
 
 
-def write_file(path: Path, template: Path | str, **vars: Any) -> None:
+def write_file(path: Path, template: Path | str, **vars: RenderValue) -> None:
     """Write a template file to the specified path with variable substitution.
 
     This function supports both Jinja2 templating (recommended) and legacy
@@ -146,6 +146,8 @@ def write_file(path: Path, template: Path | str, **vars: Any) -> None:
         OSError: If file cannot be written
         TemplateError: If template rendering fails
     """
+    render_vars = _with_legacy_variable_aliases(vars)
+
     try:
         # Ensure parent directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -159,24 +161,24 @@ def write_file(path: Path, template: Path | str, **vars: Any) -> None:
 
                 # Get relative template path for Jinja2
                 relative_path = template.relative_to(template_base_dir)
-                content = engine.render_template(str(relative_path), vars)
+                content = engine.render_template(str(relative_path), render_vars)
                 logger.debug(f"Successfully rendered Jinja2 template: {template}")
             except (TemplateError, FileNotFoundError) as e:
                 # Fallback to legacy placeholder replacement
                 logger.warning(f"Jinja2 templating failed for {template}, falling back to legacy: {e}")
                 content = template.read_text(encoding='utf-8')
-                content = _legacy_replace(content, vars)
+                content = _legacy_replace(content, render_vars)
         else:
             # Template content as string
             try:
                 # Try Jinja2 templating first
                 engine = get_template_engine()
-                content = engine.render_string(template, vars)
+                content = engine.render_string(template, render_vars)
                 logger.debug("Successfully rendered Jinja2 string template")
             except TemplateError as e:
                 # Fallback to legacy placeholder replacement
                 logger.warning(f"Jinja2 string templating failed, falling back to legacy: {e}")
-                content = _legacy_replace(template, vars)
+                content = _legacy_replace(template, render_vars)
 
         # Write the rendered content
         path.write_text(content, encoding='utf-8')
@@ -210,7 +212,7 @@ def _find_template_base_dir(template_path: Path) -> Path:
     return template_path.parent
 
 
-def _legacy_replace(content: str, variables: Dict[str, Any]) -> str:
+def _legacy_replace(content: str, variables: RenderVars) -> str:
     """Legacy placeholder replacement for backward compatibility.
     
     Replaces placeholders in the format {{VARIABLE_NAME}} with values.
@@ -228,3 +230,10 @@ def _legacy_replace(content: str, variables: Dict[str, Any]) -> str:
         content = content.replace(f"{{{{{key}}}}}", str(value))
     return content
 
+
+def _with_legacy_variable_aliases(variables: RenderVars) -> MutableRenderVars:
+    """Add uppercase aliases for legacy ``{{NAME}}`` templates."""
+    aliases = dict(variables)
+    for key, value in variables.items():
+        aliases.setdefault(str(key).upper(), value)
+    return aliases

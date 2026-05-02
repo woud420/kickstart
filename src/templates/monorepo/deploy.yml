@@ -1,1 +1,29 @@
 name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options: [dev, staging, prod]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: {% raw %}${{ inputs.environment }}{% endraw %}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform plan
+        run: make tf-plan ENV={% raw %}${{ inputs.environment }}{% endraw %}
+
+      - name: Render manifests
+        run: make k8s-render ENV={% raw %}${{ inputs.environment }}{% endraw %}

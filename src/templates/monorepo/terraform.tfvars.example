@@ -1,0 +1,14 @@
+clouds = [{% for provider in clouds %}"{{ provider }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+
+{% if include_aws %}
+aws_region     = "us-east-1"
+{% endif %}
+{% if include_gcp %}
+gcp_project_id = "replace-me"
+gcp_region     = "us-central1"
+{% endif %}
+
+{% if include_cloudflare %}
+cloudflare_account_id = "replace-me"
+cloudflare_zone_id    = "replace-me"
+{% endif %}

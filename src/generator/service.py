@@ -1,12 +1,27 @@
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
 import logging
 from src.generator.base import BaseGenerator
+from src.generator.language_setup import (
+    ContentFile,
+    cpp_service_content_files,
+    go_service_content_files,
+    rust_service_content_files,
+    typescript_service_content_files,
+    typescript_service_templates,
+)
+from src.generator.template_plans import python_service_core_template_plan
 from src.utils.logger import success, warn
 from src.utils.github import create_repo
 from src.utils.extension_manager import ExtensionManager
+from src.stack.profile import stack_registry
+from src.stack.types import TemplateConfig
+from src.generator.layouts import python_package_directories, service_directories, worker_directories
+from src.generator.specs import ServiceSpec
+from src.generator.template_plan import TemplatePlan
+from src.utils.types import GeneratorConfig
 from src.utils.error_handling import (
-    safe_operation_context, LanguageNotSupportedError, validate_language_support
+    safe_operation_context, LanguageNotSupportedError
 )
 
 logger = logging.getLogger(__name__)
@@ -20,13 +35,14 @@ class ServiceGenerator(BaseGenerator):
     and optional Helm charts for Kubernetes deployment.
     
     Attributes:
-        lang: Programming language for the service (python, rust, go, cpp)
+        lang: Programming language for the service (python, rust, typescript, cpp, go)
         gh: Whether to create a GitHub repository
         helm: Whether to include Helm chart scaffolding
         lang_template_dir: Path to language-specific templates
     """
     
     lang: str
+    runtime: str
     gh: bool
     helm: bool
     database: str | None
@@ -35,25 +51,27 @@ class ServiceGenerator(BaseGenerator):
     framework: str | None
     lang_template_dir: Path
     extension_manager: ExtensionManager
+    spec: ServiceSpec
 
     def __init__(
         self,
         name: str,
         lang: str,
         gh: bool,
-        config: dict[str, Any],
+        config: GeneratorConfig,
         helm: bool = False,
         root: str | None = None,
         database: str | None = None,
         cache: str | None = None,
         auth: str | None = None,
-        framework: str | None = None
+        framework: str | None = None,
+        runtime: str = "container",
     ) -> None:
         """Initialize the ServiceGenerator.
         
         Args:
             name: Name of the service to create
-            lang: Programming language (python, rust, go, cpp)
+            lang: Programming language (python, rust, typescript/ts, cpp, go)
             gh: Whether to create a GitHub repository
             config: Configuration dictionary with user preferences
             helm: Whether to include Helm chart scaffolding
@@ -62,20 +80,40 @@ class ServiceGenerator(BaseGenerator):
             cache: Cache extension (redis, memcached)
             auth: Authentication extension (jwt, oauth)
             framework: HTTP framework (None for FastAPI default, minimal for standard library)
+            runtime: Runtime target (container or cloudflare-workers)
             
         Raises:
             ValueError: If unsupported language is specified
         """
-        super().__init__(name, config, root)
-        self.lang = lang
-        self.gh = gh
-        self.helm = helm
-        self.database = database
-        self.cache = cache
-        self.auth = auth
-        self.framework = framework
-        self.lang_template_dir = self.template_dir / lang
+        spec = ServiceSpec.from_options(
+            name=name,
+            language=lang,
+            gh=gh,
+            config=config,
+            helm=helm,
+            root=root,
+            database=database,
+            cache=cache,
+            auth=auth,
+            framework=framework,
+            runtime=runtime,
+        )
+        super().__init__(spec.name, spec.config, spec.root)
+        self.spec = spec
+        self.lang = spec.language
+        self.runtime = spec.runtime
+        self.gh = spec.gh
+        self.helm = spec.helm
+        self.database = spec.database
+        self.cache = spec.cache
+        self.auth = spec.auth
+        self.framework = spec.framework
+        self.lang_template_dir = self.template_dir / self.lang
         self.extension_manager = ExtensionManager()
+
+    def _normalize_runtime(self, runtime: str) -> str:
+        """Normalize runtime aliases to canonical service runtime ids."""
+        return stack_registry.normalize_service_runtime(runtime)
 
     def create(self) -> None:
         """Create a complete microservice project.
@@ -96,38 +134,30 @@ class ServiceGenerator(BaseGenerator):
         Raises:
             LanguageNotSupportedError: If unsupported language is specified
         """
-        # Validate language support
-        supported_languages = ["python", "rust", "go", "cpp"]
-        validate_language_support(self.lang, supported_languages)
+        profile = stack_registry.service_selection(self.lang, self.runtime, helm=self.helm)
+
+        if profile.runtime == "cloudflare-workers":
+            self._create_cloudflare_worker_project()
+            return
 
         # Check if templates exist for the language
         if not self.lang_template_dir.exists():
             raise LanguageNotSupportedError(f"No templates found for language: {self.lang}")
 
-        # Define project structure
-        directories: list[str] = [
-            # New improved structure using src/model/, src/api/, src/routes/, src/handler/, src/clients/
-            "src/model", "src/api", "src/routes", "src/handler", "src/clients",
-            "src/config",
-            "tests/unit/model", "tests/unit/api", "tests/unit/routes",
-            "tests/integration/api", "tests/integration/clients",
-            "tests/fixtures",
-            "docs"
-        ]
+        directories = service_directories()
 
-        # Use template registry for cleaner template management
-        template_configs: list[dict[str, str]] = self.template_registry.get_template_configs_for_service(self.lang)
+        template_plan = TemplatePlan.from_templates(profile.templates)
 
         # Configuration for the common create flow
         architecture_title: str = f"{self.name} Architecture Notes"
         success_message: str = f"{self.lang.title()} service '{self.name}' created successfully in '{self.project}'!"
-        def github_create_fn() -> Any:
+        def github_create_fn() -> bool | None:
             return create_repo(self.name) if self.gh else None
 
         # Execute common create flow with service-specific setup
         success = self.execute_create_flow(
             directories=directories,
-            template_configs=template_configs,
+            template_plan=template_plan,
             architecture_title=architecture_title,
             success_message=success_message,
             language_setup_fn=self._setup_service_specific,
@@ -137,6 +167,43 @@ class ServiceGenerator(BaseGenerator):
 
         if not success:
             warn(f"Failed to create {self.lang} service '{self.name}'")
+
+    def _create_cloudflare_worker_project(self) -> None:
+        """Create a Cloudflare Worker service project."""
+        stack_registry.service_selection(self.lang, self.runtime, helm=self.helm)
+
+        worker_template_dir = self.template_dir / "cloudflare-workers" / self.lang
+        if not worker_template_dir.exists():
+            raise LanguageNotSupportedError(f"No Cloudflare Worker templates found for language: {self.lang}")
+
+        directories = worker_directories()
+        template_plan = self._cloudflare_worker_template_plan()
+
+        architecture_title = f"{self.name} Cloudflare Worker Architecture Notes"
+        success_message = f"{self.lang.title()} Cloudflare Worker '{self.name}' created successfully in '{self.project}'!"
+
+        def github_create_fn() -> bool | None:
+            return create_repo(self.name) if self.gh else None
+
+        success = self.execute_create_flow(
+            directories=directories,
+            template_plan=template_plan,
+            architecture_title=architecture_title,
+            success_message=success_message,
+            github_create_fn=github_create_fn if self.gh else None,
+        )
+
+        if not success:
+            warn(f"Failed to create {self.lang} Cloudflare Worker '{self.name}'")
+
+    def _cloudflare_worker_template_configs(self) -> list[dict[str, str]]:
+        """Return template mappings for Cloudflare Worker services."""
+        return stack_registry.service_template_configs(self.lang, "cloudflare-workers")
+
+    def _cloudflare_worker_template_plan(self) -> TemplatePlan:
+        """Return a typed template plan for Cloudflare Worker services."""
+        selection = stack_registry.service_selection(self.lang, "cloudflare-workers")
+        return TemplatePlan.from_templates(selection.templates)
     
     def _setup_service_specific(self) -> bool:
         """Setup service-specific files and structure.
@@ -163,6 +230,8 @@ class ServiceGenerator(BaseGenerator):
                 self._create_cpp_structure()
             elif self.lang == "go":
                 self._create_go_structure()
+            elif self.lang == "typescript":
+                self._create_typescript_structure()
             else:
                 raise LanguageNotSupportedError(f"Unsupported language: {self.lang}")
 
@@ -192,123 +261,27 @@ class ServiceGenerator(BaseGenerator):
         - Type hints and proper error handling
         """
         # Create __init__.py files for all Python packages
-        python_packages = [
-            "src", "src/model", "src/api", "src/routes", "src/handler", "src/clients", "src/config",
-            "tests", "tests/unit", "tests/unit/model", "tests/unit/api", "tests/unit/routes",
-            "tests/integration", "tests/integration/api", "tests/integration/clients",
-            "tests/fixtures"
-        ]
-        
-        for package_path in python_packages:
+        for package_path in python_package_directories():
             self.write_content(f"{package_path}/__init__.py", "")
-        
-        # Choose templates based on framework
-        if self.framework == "minimal":
-            # Use minimal HTTP server framework (standard library only)
-            core_templates = [
-                # Core application files
-                ("src/main.py", "python/extensions/minimal/core/main.py.tpl"),
 
-                # Minimal requirements (standard library only)
-                ("requirements.txt", "python/extensions/minimal/core/requirements.txt.tpl"),
-            ]
-        else:
-            # Use FastAPI framework (default)
-            core_templates = [
-                # Core application files
-                ("src/main.py", "python/core/main.py.tpl"),
-
-                # Model layer (all data-related code)
-                ("src/model/__init__.py", "python/core/model/__init__.py.tpl"),
-                ("src/model/entities.py", "python/core/model/entities.py.tpl"),
-                ("src/model/dto.py", "python/core/model/dto.py.tpl"),
-                ("src/model/repository.py", "python/core/model/repository.py.tpl"),
-
-                # API layer (business logic)
-                ("src/api/__init__.py", "python/core/api/__init__.py.tpl"),
-                ("src/api/services.py", "python/core/api/services.py.tpl"),
-
-                # Routes layer (HTTP routing)
-                ("src/routes/__init__.py", "python/core/routes/__init__.py.tpl"),
-                ("src/routes/users.py", "python/core/routes/users.py.tpl"),
-                ("src/routes/health.py", "python/core/routes/health.py.tpl"),
-
-                # Configuration
-                ("src/config/__init__.py", "python/core/config/__init__.py.tpl"),
-                ("src/config/settings.py", "python/core/config/settings.py.tpl"),
-
-                # Core requirements (FastAPI by default)
-                ("requirements.txt", "python/core/requirements.txt.tpl"),
-            ]
-        
-        for target_path, template_path in core_templates:
-            self.write_template(target_path, template_path)
+        for template in python_service_core_template_plan(self.framework).entries():
+            self.write_template(template.target, template.template, **template.vars)
         
         # Add extensions based on flags (only for FastAPI framework)
         if self.framework != "minimal":
             self._add_python_extensions()
         
         # Create environment example
-        self.write_content(".env.example", """# Application Settings
-APP_NAME={{service_name}}
-APP_VERSION=1.0.0
-ENVIRONMENT=development
-DEBUG=true
-HOST=0.0.0.0
-PORT=8000
-
-# Database Settings (PostgreSQL)
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your_password_here
-DB_NAME={{service_name}}_db
-
-# Redis Settings (optional)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-
-# Security Settings
-SECRET_KEY=your_secret_key_here_at_least_32_characters_long
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
-
-# External Services
-EMAIL_ENABLED=false
-EMAIL_BACKEND=console
-
-# Feature Flags
-FEATURE_USER_REGISTRATION=true
-FEATURE_EMAIL_NOTIFICATIONS=false
-""")
+        self.write_content(".env.example", self._read_template_text("python/core/env.example.tpl"))
         
         # Create basic migration file as example
-        self.write_content("migrations/001_initial.sql", """-- Initial database schema
--- This is an example migration file
-
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    full_name VARCHAR(100) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_login_at TIMESTAMP WITH TIME ZONE,
-    deactivated_at TIMESTAMP WITH TIME ZONE,
-    profile_data JSONB DEFAULT '{}'::jsonb
-);
-
--- Create indexes
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
-""")
+        self.write_content("migrations/001_initial.sql", self._read_template_text("python/core/migrations/001_initial.sql.tpl"))
         
         self.create_directories(["migrations"])
+
+    def _read_template_text(self, template_path: str) -> str:
+        """Read source text from a scaffold template."""
+        return (self.template_dir / template_path).read_text(encoding="utf-8")
 
     def _add_python_extensions(self) -> None:
         """Add extension functionality based on flags.
@@ -343,7 +316,6 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
             from src.utils.logger import success
             success(f"Extensions added: {', '.join(extensions_added)}")
 
-
     def _create_rust_structure(self) -> None:
         """Create Rust-specific project structure.
         
@@ -353,33 +325,16 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
         - Cargo.toml with common dependencies
         - Proper crate structure
         """
-        # Create mod.rs files
-        for dir_path in ["src/api", "src/model", "tests/api", "tests/model"]:
-            self.write_content(f"{dir_path}/mod.rs", "// Module definitions\n")
-
-        # Create minimal main file
-        self.write_content("src/main.rs", "use actix_web::{web, App, HttpResponse, HttpServer};\n\n#[actix_web::main]\nasync fn main() -> std::io::Result<()> {\n    HttpServer::new(|| {\n        App::new()\n            .route(\"/\", web::get().to(|| async { HttpResponse::Ok().json(\"Hello World\") }))\n    })\n    .bind(\"127.0.0.1:8080\")?\n    .run()\n    .await\n}\n")
-
-        # Create Cargo.toml
+        self._write_content_files(rust_service_content_files())
         self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
 
     def _create_cpp_structure(self) -> None:
         """Create C++-specific project structure.
-        
-        Sets up a C++ microservice with:
-        - Header files with proper namespace organization
-        - Basic main.cpp with console output
-        - CMakeLists.txt for build configuration
-        - Modern C++ project structure
-        """
-        # Create minimal header files
-        self.write_content("src/api/routes.hpp", "#pragma once\n\nnamespace api {\n    class Routes {\n    public:\n        Routes() = default;\n    };\n}\n")
-        self.write_content("src/model/user.hpp", "#pragma once\n\nnamespace model {\n    // Add your models here\n}\n")
-        
-        # Create minimal main file
-        self.write_content("src/main.cpp", "#include <iostream>\n\nint main() {\n    std::cout << \"Hello World\" << std::endl;\n    return 0;\n}\n")
 
-        # Create CMakeLists.txt
+        Sets up a C++ service with CMake, a small executable, and header files
+        that match the generated source layout.
+        """
+        self._write_content_files(cpp_service_content_files())
         self.write_template("CMakeLists.txt", "cpp/CMakeLists.txt.tpl")
 
     def _create_go_structure(self) -> None:
@@ -391,33 +346,27 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
         - .gitkeep files for empty directories
         - Standard Go project layout
         """
-        # Create minimal files
-        self.write_content("src/api/.gitkeep", "")
-        self.write_content("src/model/.gitkeep", "")
-        self.write_content("tests/api/.gitkeep", "")
-        self.write_content("tests/model/.gitkeep", "")
-
-        # Create main.go
-        self.write_content(
-            "src/main.go",
-            """package main
-
-import (
-    "fmt"
-    "net/http"
-)
-
-func main() {
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintln(w, `{"message": "Hello World"}`)
-    })
-    fmt.Println("Listening on :8080...")
-    http.ListenAndServe(":8080", nil)
-}
-"""
-        )
-        # go.mod
+        self._write_content_files(go_service_content_files())
         self.write_template("go.mod", "go/go.mod.tpl")
+
+    def _create_typescript_structure(self) -> None:
+        """Create TypeScript-specific service structure.
+
+        Sets up a Fastify service with strict TypeScript, environment parsing,
+        a health route, and a small test harness.
+        """
+        self._write_template_configs(typescript_service_templates())
+        self._write_content_files(typescript_service_content_files())
+
+    def _write_content_files(self, files: Sequence[ContentFile]) -> None:
+        """Write direct content files from a typed setup plan."""
+        for file in files:
+            self.write_content(file.target, file.content)
+
+    def _write_template_configs(self, templates: Sequence[TemplateConfig]) -> None:
+        """Write template files from typed template configs."""
+        for template in templates:
+            self.write_template(template.target, template.template, **template.vars)
 
     def _create_helm_chart(self) -> None:
         """Create Helm chart structure and files.
@@ -442,5 +391,3 @@ func main() {
             self.write_template(f"helm/{self.name}/{file}", template)
 
         success("Helm chart scaffolded")
-
-

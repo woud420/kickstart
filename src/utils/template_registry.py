@@ -5,9 +5,11 @@ replacing hardcoded template paths with a configurable, extensible system.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Any
+from typing import Mapping
 from dataclasses import dataclass
 import logging
+from src.stack.profile import stack_registry
+from src.utils.types import TemplateValue
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +29,80 @@ class TemplateInfo:
     name: str
     path: str
     description: str
-    variables: Set[str]
-    language: Optional[str] = None
-    project_type: Optional[str] = None
+    variables: set[str]
+    language: str | None = None
+    project_type: str | None = None
+
+
+@dataclass(frozen=True)
+class TemplateMetadata:
+    """Display metadata for a template registry entry."""
+
+    name: str
+    description: str
+    variables: set[str]
+
+
+COMMON_SERVICE_TEMPLATES = (
+    TemplateInfo(
+        name="readme",
+        path="{language}/README.md.tpl",
+        description="Project README with documentation",
+        variables={"service_name", "description", "language"},
+    ),
+    TemplateInfo(
+        name="gitignore",
+        path="{language}/gitignore.tpl",
+        description="Language-specific .gitignore file",
+        variables={"service_name"},
+    ),
+    TemplateInfo(
+        name="dockerfile",
+        path="{language}/Dockerfile.tpl",
+        description="Docker container configuration",
+        variables={"service_name", "port"},
+    ),
+    TemplateInfo(
+        name="makefile",
+        path="{language}/Makefile.tpl",
+        description="Build automation with Make",
+        variables={"service_name"},
+    ),
+)
+
+SERVICE_TEMPLATE_METADATA = {
+    "requirements.txt": TemplateMetadata("requirements", "Python dependencies", {"service_name"}),
+    "pyproject.toml": TemplateMetadata("pyproject", "Python project configuration", {"service_name", "description"}),
+    "Cargo.toml": TemplateMetadata("cargo", "Rust project configuration", {"service_name", "description"}),
+    "go.mod": TemplateMetadata("gomod", "Go module definition", {"service_name"}),
+    "package.json": TemplateMetadata("package", "Bun package manifest", {"service_name"}),
+    "tsconfig.json": TemplateMetadata("tsconfig", "TypeScript compiler configuration", {"service_name"}),
+    "tsconfig.build.json": TemplateMetadata(
+        "tsconfig_build",
+        "TypeScript build compiler configuration",
+        {"service_name"},
+    ),
+    "bunfig.toml": TemplateMetadata("bunfig", "Bun configuration", {"service_name"}),
+    "CMakeLists.txt": TemplateMetadata("cmake", "CMake build configuration", {"service_name"}),
+}
+
+HELM_TEMPLATE_METADATA = {
+    "infra/helm/example-service/Chart.yaml": TemplateMetadata(
+        "helm_chart",
+        "Helm chart metadata",
+        {"service_name", "version"},
+    ),
+    "infra/helm/example-service/values.yaml": TemplateMetadata(
+        "helm_values",
+        "Helm chart default values",
+        {"service_name"},
+    ),
+    "infra/helm/example-service/templates/deployment.yaml": TemplateMetadata(
+        "helm_deployment",
+        "Kubernetes deployment template",
+        {"service_name", "image", "port"},
+    ),
+}
 
 
 class TemplateRegistry:
@@ -46,125 +119,57 @@ class TemplateRegistry:
             base_template_dir: Base directory containing all templates
         """
         self.base_template_dir = base_template_dir
-        self._templates: Dict[str, TemplateInfo] = {}
-        self._language_templates: Dict[str, Dict[str, TemplateInfo]] = {}
-        self._project_templates: Dict[str, Dict[str, TemplateInfo]] = {}
+        self._templates: dict[str, TemplateInfo] = {}
+        self._language_templates: dict[str, dict[str, TemplateInfo]] = {}
+        self._project_templates: dict[str, dict[str, TemplateInfo]] = {}
         self._initialize_default_templates()
     
     def _initialize_default_templates(self) -> None:
         """Initialize the registry with default template configurations."""
-        # Common templates for all project types
-        common_templates = [
-            TemplateInfo(
-                name="readme",
-                path="{language}/README.md.tpl",
-                description="Project README with documentation",
-                variables={"service_name", "description", "language"}
-            ),
-            TemplateInfo(
-                name="gitignore",
-                path="{language}/gitignore.tpl",
-                description="Language-specific .gitignore file",
-                variables={"service_name"}
-            ),
-            TemplateInfo(
-                name="dockerfile",
-                path="{language}/Dockerfile.tpl",
-                description="Docker container configuration",
-                variables={"service_name", "port"}
-            ),
-            TemplateInfo(
-                name="makefile",
-                path="{language}/Makefile.tpl",
-                description="Build automation with Make",
-                variables={"service_name"}
-            ),
-        ]
-        
-        # Python-specific templates
-        python_templates = [
-            TemplateInfo(
-                name="requirements",
-                path="python/requirements.txt.tpl",
-                description="Python dependencies",
-                variables={"service_name"},
-                language="python"
-            ),
-            TemplateInfo(
-                name="pyproject",
-                path="python/pyproject.toml.tpl",
-                description="Python project configuration",
-                variables={"service_name", "description"},
-                language="python"
-            ),
-        ]
-        
-        # Rust-specific templates
-        rust_templates = [
-            TemplateInfo(
-                name="cargo",
-                path="rust/Cargo.toml.tpl",
-                description="Rust project configuration",
-                variables={"service_name", "description"},
-                language="rust"
-            ),
-        ]
-        
-        # Go-specific templates
-        go_templates = [
-            TemplateInfo(
-                name="gomod",
-                path="go/go.mod.tpl",
-                description="Go module definition",
-                variables={"service_name"},
-                language="go"
-            ),
-        ]
-        
-        # C++-specific templates
-        cpp_templates = [
-            TemplateInfo(
-                name="cmake",
-                path="cpp/CMakeLists.txt.tpl",
-                description="CMake build configuration",
-                variables={"service_name"},
-                language="cpp"
-            ),
-        ]
-        
-        # Helm templates
-        helm_templates = [
-            TemplateInfo(
-                name="helm_chart",
-                path="monorepo/helm/Chart.yaml",
-                description="Helm chart metadata",
-                variables={"service_name", "version"},
-                project_type="helm"
-            ),
-            TemplateInfo(
-                name="helm_values",
-                path="monorepo/helm/values.yaml",
-                description="Helm chart default values",
-                variables={"service_name"},
-                project_type="helm"
-            ),
-            TemplateInfo(
-                name="helm_deployment",
-                path="monorepo/helm/deployment.yaml",
-                description="Kubernetes deployment template",
-                variables={"service_name", "image", "port"},
-                project_type="helm"
-            ),
-        ]
-        
-        # Register all templates
-        all_templates = (
-            common_templates + python_templates + rust_templates + 
-            go_templates + cpp_templates + helm_templates
-        )
-        
-        for template in all_templates:
+        for template in COMMON_SERVICE_TEMPLATES:
             self.register_template(template)
+
+        self._register_stack_service_templates()
+        self._register_stack_helm_templates()
+
+    def _register_stack_service_templates(self) -> None:
+        """Register language templates from the stack profile registry."""
+        for language, profile in stack_registry.languages.items():
+            if "container" not in profile.service_runtimes:
+                continue
+
+            selection = stack_registry.service_selection(language, "container")
+            for template in selection.templates:
+                metadata = SERVICE_TEMPLATE_METADATA.get(template.target)
+                if metadata is None:
+                    continue
+
+                self.register_template(
+                    TemplateInfo(
+                        name=metadata.name,
+                        path=template.template,
+                        description=metadata.description,
+                        variables=metadata.variables,
+                        language=language,
+                    )
+                )
+
+    def _register_stack_helm_templates(self) -> None:
+        """Register Helm template metadata from the stack profile registry."""
+        for template in stack_registry.helm_template_configs():
+            metadata = HELM_TEMPLATE_METADATA.get(template.target)
+            if metadata is None:
+                continue
+
+            self.register_template(
+                TemplateInfo(
+                    name=metadata.name,
+                    path=f"monorepo/{template.template}",
+                    description=metadata.description,
+                    variables=metadata.variables,
+                    project_type="helm",
+                )
+            )
     
     def register_template(self, template: TemplateInfo) -> None:
         """Register a new template in the registry.
@@ -184,7 +189,7 @@ class TemplateRegistry:
                 self._project_templates[template.project_type] = {}
             self._project_templates[template.project_type][template.name] = template
     
-    def get_template(self, name: str, language: Optional[str] = None) -> Optional[TemplateInfo]:
+    def get_template(self, name: str, language: str | None = None) -> TemplateInfo | None:
         """Get template information by name.
         
         Args:
@@ -202,7 +207,7 @@ class TemplateRegistry:
         # Fall back to global lookup
         return self._templates.get(name)
     
-    def get_templates_for_language(self, language: str) -> Dict[str, TemplateInfo]:
+    def get_templates_for_language(self, language: str) -> dict[str, TemplateInfo]:
         """Get all templates available for a specific language.
         
         Args:
@@ -233,7 +238,7 @@ class TemplateRegistry:
         
         return templates
     
-    def get_templates_for_project_type(self, project_type: str) -> Dict[str, TemplateInfo]:
+    def get_templates_for_project_type(self, project_type: str) -> dict[str, TemplateInfo]:
         """Get all templates available for a specific project type.
         
         Args:
@@ -244,7 +249,7 @@ class TemplateRegistry:
         """
         return self._project_templates.get(project_type, {})
     
-    def resolve_template_path(self, template: TemplateInfo, **context: Any) -> Path:
+    def resolve_template_path(self, template: TemplateInfo, **context: TemplateValue) -> Path:
         """Resolve the full filesystem path for a template.
         
         Args:
@@ -257,7 +262,7 @@ class TemplateRegistry:
         resolved_path = template.path.format(**context)
         return self.base_template_dir / resolved_path
     
-    def validate_template_variables(self, template: TemplateInfo, variables: Dict[str, Any]) -> List[str]:
+    def validate_template_variables(self, template: TemplateInfo, variables: Mapping[str, TemplateValue]) -> list[str]:
         """Validate that all required template variables are provided.
         
         Args:
@@ -272,7 +277,7 @@ class TemplateRegistry:
         missing_vars = required_vars - provided_vars
         return list(missing_vars)
     
-    def get_template_configs_for_service(self, language: str) -> List[Dict[str, str]]:
+    def get_template_configs_for_service(self, language: str) -> list[dict[str, str]]:
         """Get standard template configurations for a service project.
         
         Args:
@@ -281,54 +286,9 @@ class TemplateRegistry:
         Returns:
             List of template configurations (target -> template mappings)
         """
-        configs = []
-        templates = self.get_templates_for_language(language)
-        
-        # Standard mappings for service projects
-        standard_mappings = {
-            "readme": "README.md",
-            "gitignore": ".gitignore", 
-            "dockerfile": "Dockerfile",
-            "makefile": "Makefile",
-        }
-        
-        # Language-specific mappings
-        language_mappings = {
-            "python": {
-                "requirements": "requirements.txt",
-                "pyproject": "pyproject.toml",
-            },
-            "rust": {
-                "cargo": "Cargo.toml",
-            },
-            "go": {
-                "gomod": "go.mod",
-            },
-            "cpp": {
-                "cmake": "CMakeLists.txt",
-            },
-        }
-        
-        # Add standard templates
-        for template_name, target_file in standard_mappings.items():
-            if template_name in templates:
-                configs.append({
-                    "target": target_file,
-                    "template": templates[template_name].path
-                })
-        
-        # Add language-specific templates
-        if language in language_mappings:
-            for template_name, target_file in language_mappings[language].items():
-                if template_name in templates:
-                    configs.append({
-                        "target": target_file,
-                        "template": templates[template_name].path
-                    })
-        
-        return configs
+        return stack_registry.service_template_configs(language, "container")
     
-    def list_available_languages(self) -> List[str]:
+    def list_available_languages(self) -> list[str]:
         """Get list of all supported languages.
         
         Returns:
@@ -346,10 +306,10 @@ class TemplateRegistry:
 
 
 # Global registry instance
-_registry: Optional[TemplateRegistry] = None
+_registry: TemplateRegistry | None = None
 
 
-def get_template_registry(base_template_dir: Optional[Path] = None) -> TemplateRegistry:
+def get_template_registry(base_template_dir: Path | None = None) -> TemplateRegistry:
     """Get the global template registry instance.
     
     Args:

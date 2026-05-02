@@ -1,9 +1,11 @@
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable, Sequence
 import logging
+from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
 from src.utils.fs import write_file
 from src.utils.logger import success, warn
 from src.utils.template_registry import get_template_registry, TemplateRegistry
+from src.utils.types import GeneratorConfig, TemplateValue
 from src.utils.error_handling import (
     ErrorCollector, batch_operation_wrapper, handle_file_operations,
     handle_template_operations, safe_operation_context,
@@ -27,12 +29,12 @@ class BaseGenerator:
     """
     
     name: str
-    config: dict[str, Any]
+    config: GeneratorConfig
     project: Path
     template_dir: Path
     template_registry: TemplateRegistry
     
-    def __init__(self, name: str, config: dict[str, Any], root: str | None = None) -> None:
+    def __init__(self, name: str, config: GeneratorConfig, root: str | None = None) -> None:
         """Initialize the base generator.
         
         Args:
@@ -52,16 +54,20 @@ class BaseGenerator:
         Return ``True`` when it doesn't exist; otherwise log a warning and
         return ``False``.
         """
-        if self.project.exists():
-            warn(f"Directory '{self.project}' already exists.")
+        try:
+            if self.project.exists():
+                warn(f"Directory '{self.project}' already exists.")
+                return False
+        except OSError as exc:
+            warn(f"Cannot access project directory '{self.project}': {exc}")
             return False
         return True
 
-    def create_directories(self, directories: list[str]) -> bool:
+    def create_directories(self, directories: Sequence[str]) -> bool:
         """Create multiple directories under the project root.
 
         Args:
-            directories: List of directory paths relative to project root
+            directories: Directory paths relative to project root
 
         Returns:
             True if all directories were created successfully, False otherwise
@@ -85,7 +91,7 @@ class BaseGenerator:
         return not collector.has_errors()
 
     @handle_template_operations(default_return=False, log_errors=True)
-    def write_template(self, target: str, template_path: str, **vars: Any) -> bool:
+    def write_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
         """Write a template file to the project.
 
         Args:
@@ -106,7 +112,8 @@ class BaseGenerator:
         if isinstance(resolved_template_path, Path) and not resolved_template_path.exists():
             raise TemplateError(f"Template file not found: {template_path}")
 
-        write_file(self.project / target, resolved_template_path, service_name=self.name, **vars)
+        template_vars = {"service_name": self.name, **vars}
+        write_file(self.project / target, resolved_template_path, **template_vars)
         logger.debug(f"Successfully wrote template {template_path} to {target}")
         return True
 
@@ -121,7 +128,7 @@ class BaseGenerator:
         Returns:
             True if file was written successfully, False otherwise
         """
-        write_file(self.project / target, content)
+        write_file(self.project / target, content, service_name=self.name)
         logger.debug(f"Successfully wrote content to {target}")
         return True
 
@@ -133,11 +140,11 @@ class BaseGenerator:
         """Get common template variables."""
         return {"service_name": self.name}
 
-    def init_basic_structure(self, dirs: list[str]) -> bool:
+    def init_basic_structure(self, dirs: Sequence[str]) -> bool:
         """Create the base directory structure for a new project.
         
         Args:
-            dirs: List of directories to create
+            dirs: Directories to create
             
         Returns:
             True if all directories were created successfully, False otherwise
@@ -157,33 +164,30 @@ class BaseGenerator:
             return False
         return self.write_content("architecture/README.md", f"# {title}\n")
 
-    def write_templates_from_config(self, template_configs: list[dict[str, str]]) -> bool:
-        """Write multiple template files from configuration list.
+    def write_templates_from_plan(self, template_plan: TemplatePlan) -> bool:
+        """Write multiple template files from a typed plan.
 
         Args:
-            template_configs: List of dicts with 'target' and 'template' keys
+            template_plan: Typed template render plan
 
         Returns:
             True if all templates were written successfully, False otherwise
         """
-        def write_single_template(config: dict[str, str]) -> bool:
-            """Write a single template with validation."""
-            if 'target' not in config or 'template' not in config:
-                raise ValueError(f"Invalid template config: missing 'target' or 'template' key: {config}")
-
-            return self.write_template(config['target'], config['template'])
+        def write_single_template(entry: TemplatePlanEntry) -> bool:
+            """Write a single template entry."""
+            return self.write_template(entry.target, entry.template, **entry.vars)
 
         # Use batch operation wrapper for standardized error collection
         collector = batch_operation_wrapper(
-            items=template_configs,
+            items=template_plan.entries(),
             operation_func=write_single_template,
             operation_name="Template writing",
-            item_name_func=lambda c: f"{c.get('target', 'unknown')} (from {c.get('template', 'unknown')})"
+            item_name_func=lambda entry: f"{entry.target} (from {entry.template})"
         )
 
         return not collector.has_errors()
 
-    def create_with_github(self, success_message: str, create_repo_fn: Callable[[], Any] | None = None) -> None:
+    def create_with_github(self, success_message: str, create_repo_fn: Callable[[], bool | None] | None = None) -> None:
         """Create project and optionally create GitHub repository.
         
         Args:
@@ -195,18 +199,18 @@ class BaseGenerator:
             create_repo_fn()
 
     def execute_create_flow(self, 
-                          directories: list[str],
-                          template_configs: list[dict[str, str]],
+                          directories: Sequence[str],
+                          template_plan: TemplatePlan,
                           architecture_title: str,
                           success_message: str,
                           language_setup_fn: Callable[[], bool] | None = None,
                           additional_setup_fn: Callable[[], bool] | None = None,
-                          github_create_fn: Callable[[], Any] | None = None) -> bool:
+                          github_create_fn: Callable[[], bool | None] | None = None) -> bool:
         """Execute the common create flow for generators.
         
         Args:
-            directories: List of directories to create
-            template_configs: List of template configurations
+            directories: Directories to create
+            template_plan: Typed template render plan
             architecture_title: Title for architecture documentation
             success_message: Success message to log
             language_setup_fn: Optional function for language-specific setup
@@ -232,7 +236,7 @@ class BaseGenerator:
         error_collector.increment_total()
 
         # Write template files
-        if not self.write_templates_from_config(template_configs):
+        if not self.write_templates_from_plan(template_plan):
             error_collector.add_error("Failed to write template files")
         else:
             error_collector.increment_success()

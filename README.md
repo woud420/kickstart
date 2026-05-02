@@ -1,157 +1,76 @@
-# 🚀 Kickstart
+# Kickstart
 
-Project scaffolding CLI that generates production-ready applications with best practices and modern tooling.
+Kickstart is a scaffolding tool for generating project structure, CLIs, services, frontends, libraries, and infrastructure workspaces.
 
-## Installation
+The goal is to eliminate the repeated setup work that humans and agents otherwise redo at the start of every project: directories, templates, Docker/Kubernetes/Cloudflare files, typed language defaults, basic docs, and standard commands.
+
+## Get Started
 
 ```bash
-# Via pip
-pip install kickstart-cli
-
-# From source
-git clone https://github.com/yourusername/kickstart.git
-cd kickstart
 poetry install
-poetry run kickstart --help
+make run
 ```
 
-## Quick Start
-
-### Create a Python Service (FastAPI)
-```bash
-kickstart create service my-api --lang python
-```
-
-### Add Extensions
-```bash
-# With PostgreSQL database
-kickstart create service my-api --lang python --database postgres
-
-# With Redis cache
-kickstart create service my-api --lang python --cache redis
-
-# With JWT authentication
-kickstart create service my-api --lang python --auth jwt
-
-# All together
-kickstart create service my-api --lang python --database postgres --cache redis --auth jwt
-```
-
-### Project Structure (Python Service)
-```
-my-api/
-├── src/
-│   ├── main.py              # Application entry point
-│   ├── api/                 # Business logic layer
-│   ├── model/               # Data layer
-│   │   ├── entities/        # Domain models
-│   │   ├── dto/             # Data transfer objects
-│   │   └── repository/      # Data access patterns
-│   ├── routes/              # HTTP routing
-│   ├── handler/             # Request handlers
-│   ├── clients/             # External service clients
-│   └── config/              # Configuration
-├── tests/                   # Test suite
-├── Dockerfile               # Multi-stage Docker build
-├── docker-compose.yml       # Local development setup
-├── requirements.txt         # Python dependencies
-├── Makefile                 # Common tasks
-└── README.md               # Project documentation
-```
-
-## Supported Project Types
-
-### Services (Backend APIs)
-```bash
-kickstart create service <name> --lang [python|go|rust|cpp]
-```
-- **Python**: FastAPI by default
-- **Go**: Gin framework
-- **Rust**: Actix-web
-- **C++**: Modern C++20 with CMake
-
-### Frontend Applications
-```bash
-kickstart create frontend <name>
-```
-React 18 with TypeScript, Vite, TailwindCSS
-
-### Libraries
-```bash
-kickstart create lib <name> --lang [python|go|rust]
-```
-
-### CLI Tools
-```bash
-kickstart create cli <name> --lang [python|go|rust]
-```
-
-### Monorepo Infrastructure
-```bash
-kickstart create mono <name> [--helm]
-```
-
-## Advanced Usage
-
-### Interactive Mode
-```bash
-kickstart create
-# Follow the prompts
-```
-
-### Component Manifest
-```yaml
-# components.yaml
-services:
-  - name: user-service
-    lang: python
-    database: postgres
-    auth: jwt
-
-  - name: payment-service
-    lang: go
-    database: mysql
-
-frontends:
-  - name: web-dashboard
-```
+Create a service:
 
 ```bash
-kickstart --manifest components.yaml
+poetry run kickstart create service my-api --lang python
 ```
 
-### GitHub Integration
+Create a Cloudflare Worker:
+
 ```bash
-export GITHUB_TOKEN=your_token_here
-kickstart create service my-api --gh
+poetry run kickstart create service edge-api --lang typescript --runtime cloudflare-workers
 ```
 
-### Shell Completion
+Create a TypeScript infrastructure monorepo:
+
 ```bash
-# Bash
-kickstart completion bash >> ~/.bashrc
-
-# Zsh
-kickstart completion zsh >> ~/.zshrc
+poetry run kickstart create mono product-stack
 ```
+
+## What It Generates
+
+- `service`: Python, TypeScript, Rust, C++, or Go backend service structure.
+- `frontend`: React, TypeScript, Vite, and Bun frontend app.
+- `lib`: Python or Rust library project.
+- `cli`: Python or Rust CLI project.
+- `mono`: TypeScript/Bun/Turbo workspace with infrastructure, docs, and optional cloud/runtime profiles.
+
+## Major Choices
+
+- Preferred stack: Rust, TypeScript, Python, SQL, and C++.
+- Go is supported as a tolerated service target; Python and Rust are the first-class library/CLI targets.
+- Service runtimes: containers by default, Cloudflare Workers when requested.
+- Monorepo cloud targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
+- Monorepo runtime targets: `kubernetes`, `cloudflare-workers`, or `hybrid`.
+- Knowledge systems default to `none`; use `--knowledge obsidian`, `--knowledge backstage`, or `--knowledge both` only when wanted.
+
+## Common Commands
+
+```bash
+poetry run kickstart create service my-api --lang python --database postgres --cache redis --auth jwt
+poetry run kickstart create service api-rs --lang rust
+poetry run kickstart create service edge-rs --lang rust --runtime cloudflare-workers
+poetry run kickstart create frontend web
+poetry run kickstart create lib core-lib --lang python
+poetry run kickstart create cli ops-tool --lang rust
+poetry run kickstart create mono platform --cloud cloudflare --runtime cloudflare-workers --knowledge none
+```
+
+## More Docs
+
+- [Human Guide](docs/human-guide.md): options, project types, and how to build on top.
+- [Agent Guide](docs/agent-guide.md): compact, LLM-oriented generation contract.
+- [Contributing](docs/contributing.md): how humans should change the repo.
+- [Agent Contributing](docs/agent-contributing.md): how agents should safely modify the repo.
 
 ## Development
 
 ```bash
-# Clone and install
-git clone https://github.com/yourusername/kickstart.git
-cd kickstart
-poetry install
-
-# Run
-poetry run kickstart --help
-
-# Test
-poetry run pytest
-
-# Type check
-poetry run mypy src/
-
-# Lint
-poetry run ruff check src/
+make check
+make package
+make binary
 ```
+
+Kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 standalone binaries for each supported Python minor.

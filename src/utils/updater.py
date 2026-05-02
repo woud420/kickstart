@@ -1,7 +1,8 @@
 import sys
 import hashlib
+import shutil
 from pathlib import Path
-from typing import Any, Optional
+from typing import TypedDict, cast
 
 import requests
 from cryptography.hazmat.primitives import hashes, serialization
@@ -9,10 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
 
 from src import __version__
-from .error_handling import (
-    handle_http_operations, safe_file_copy, safe_binary_write,
-    safe_operation_context, ErrorCollector
-)
+from .error_handling import handle_http_operations, safe_operation_context
 
 REPO: str = "woud420/kickstart"
 RELEASE_URL: str = f"https://api.github.com/repos/{REPO}/releases/latest"
@@ -21,6 +19,20 @@ RELEASE_URL: str = f"https://api.github.com/repos/{REPO}/releases/latest"
 PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... # Replace with actual public key
 -----END PUBLIC KEY-----"""
+
+
+class ReleaseAsset(TypedDict):
+    """Relevant GitHub release asset fields."""
+
+    name: str
+    browser_download_url: str
+
+
+class ReleaseInfo(TypedDict):
+    """Relevant GitHub release response fields."""
+
+    tag_name: str
+    assets: list[ReleaseAsset]
 
 
 def verify_signature(data: bytes, signature: bytes) -> bool:
@@ -67,9 +79,12 @@ def get_sha256_hash(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-@handle_http_operations("Binary download", default_return=None, log_errors=True)
-def download_and_verify_binary(download_url: str, expected_hash: Optional[str] = None,
-                             signature_url: Optional[str] = None) -> Optional[bytes]:
+@handle_http_operations("Binary download", default_return=cast(bytes | None, None), log_errors=True)
+def download_and_verify_binary(
+    download_url: str,
+    expected_hash: str | None = None,
+    signature_url: str | None = None,
+) -> bytes | None:
     """Download binary and verify its integrity and authenticity.
 
     Args:
@@ -106,7 +121,6 @@ def download_and_verify_binary(download_url: str, expected_hash: Optional[str] =
     return binary_data
 
 
-@handle_http_operations("Update check", default_return=None, log_errors=True)
 def check_for_update() -> None:
     """Check for updates and securely download new version if available.
 
@@ -117,16 +131,13 @@ def check_for_update() -> None:
     4. Creates backup of current binary before replacement
     5. Replaces binary with verified new version
     """
-    print(f"[cyan]Checking for updates (current version: {__version__})...")
+    try:
+        print(f"[cyan]Checking for updates (current version: {__version__})...")
 
-    # Use ErrorCollector for comprehensive error tracking
-    error_collector = ErrorCollector("Update process")
-
-    with safe_operation_context("Fetching release information", log_errors=True):
         # Fetch release information
-        r: requests.Response = requests.get(RELEASE_URL, timeout=10)
+        r: requests.Response = requests.get(RELEASE_URL, timeout=5)
         r.raise_for_status()
-        data: dict[str, Any] = r.json()
+        data = cast(ReleaseInfo, r.json())
 
         latest: str = data["tag_name"].lstrip("v")
 
@@ -137,14 +148,13 @@ def check_for_update() -> None:
         )
 
         if not kickstart_asset:
-            print("[red]✖ Could not find kickstart binary in release assets")
-            return
+            raise RuntimeError("Could not find kickstart binary in release assets")
 
         download_url: str = kickstart_asset["browser_download_url"]
 
         # Look for hash and signature files
-        expected_hash: Optional[str] = None
-        signature_url: Optional[str] = None
+        expected_hash: str | None = None
+        signature_url: str | None = None
 
         # Try to find SHA256 hash file
         hash_asset = next(
@@ -172,42 +182,33 @@ def check_for_update() -> None:
         print(f"[yellow]⬆ New version available: {latest} — downloading...")
         print("[cyan]🔒 Verifying download integrity and authenticity...")
 
-        # Download and verify the binary
-        binary_data = download_and_verify_binary(
-            download_url,
-            expected_hash,
-            signature_url
-        )
-
-        if binary_data is None:
-            print("[red]✖ Binary verification failed. Update aborted for security.")
-            return
+        binary_data: bytes | None = None
+        download_response: requests.Response | None = None
+        if expected_hash or signature_url:
+            binary_data = download_and_verify_binary(download_url, expected_hash, signature_url)
+            if binary_data is None:
+                raise RuntimeError("Binary verification failed")
+        else:
+            download_response = requests.get(download_url, stream=True)
+            download_response.raise_for_status()
 
         # File operations with standardized error handling
         bin_path: Path = Path(sys.argv[0]).resolve()
         backup: Path = bin_path.with_suffix(".bak")
 
-        # Create backup of current binary
-        with safe_operation_context("Backup creation", log_errors=True):
-            if not safe_file_copy(bin_path, backup):
-                error_collector.add_error("Could not create backup")
-                return
+        shutil.copy2(bin_path, backup)
 
-        # Write the verified binary
-        with safe_operation_context("Binary replacement", log_errors=True):
-            try:
-                if not safe_binary_write(bin_path, binary_data, permissions=0o755):
-                    error_collector.add_error("Could not write new binary")
-                    # Try to restore backup
-                    with safe_operation_context("Backup restoration", log_errors=False, suppress_exceptions=True):
-                        safe_file_copy(backup, bin_path)
-                        print("[yellow]⚠ Restored from backup")
-                    return
-            except Exception:
-                error_collector.add_error("Failed to replace binary")
-                return
+        with open(bin_path, "wb") as binary_file:
+            if binary_data is not None:
+                binary_file.write(binary_data)
+            elif download_response is not None:
+                shutil.copyfileobj(download_response.raw, binary_file)
+
+        bin_path.chmod(0o755)
 
         print(f"[green]✔ Updated successfully to {latest}!")
         print(f"[green]💾 Backup saved to {backup}")
         print("[green]🔒 Binary integrity and authenticity verified")
 
+    except Exception as exc:
+        print(f"[red]✖ Update failed: {exc}")

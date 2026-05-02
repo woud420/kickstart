@@ -1,6 +1,5 @@
 import pytest
 import json
-import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open, call
 from requests.exceptions import RequestException, HTTPError, Timeout

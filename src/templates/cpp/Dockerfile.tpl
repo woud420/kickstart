@@ -1,15 +1,17 @@
-FROM gcc:latest as builder
+FROM gcc:14 AS builder
 
-WORKDIR /usr/src/{{service_name}}
+WORKDIR /usr/src/{{ service_name }}
 COPY . .
 
-RUN mkdir build && cd build && \
-    cmake .. && \
-    make
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends cmake make \
+    && rm -rf /var/lib/apt/lists/*
 
-FROM debian:bullseye-slim
+RUN cmake -S . -B build && cmake --build build --config Release
 
-WORKDIR /usr/local/bin/{{service_name}}
-COPY --from=builder /usr/src/{{service_name}}/build/{{service_name}} .
+FROM debian:bookworm-slim
 
-CMD ["./{{service_name}}"] 
+WORKDIR /usr/local/bin/{{ service_name }}
+COPY --from=builder /usr/src/{{ service_name }}/build/{{ service_name }} .
+
+CMD ["./{{ service_name }}"]

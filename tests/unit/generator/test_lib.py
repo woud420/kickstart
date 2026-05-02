@@ -81,7 +81,7 @@ def test_library_create_python_success_with_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "tests", "architecture"
+        "src", "tests", "docs", "architecture"
     ])
     
     # Verify common template files are written
@@ -162,7 +162,7 @@ def test_cli_create_python_success_with_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "tests", "architecture"
+        "src", "tests", "docs", "architecture"
     ])
     
     # Verify common template files are written
@@ -175,7 +175,7 @@ def test_cli_create_python_success_with_gh(
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
     # Verify Python CLI main file is written
-    expected_main_content = 'import sys\nprint("Hello from CLI")\nsys.exit(0)\n'
+    expected_main_content = 'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n'
     mock_write_content.assert_called_once_with("src/main.py", expected_main_content)
     
     mock_create_architecture_docs.assert_called_once_with("test-cli CLI Docs")
@@ -299,7 +299,7 @@ def test_library_python_vs_rust_differences():
 def test_cli_python_vs_rust_differences():
     """Test the differences between Python and Rust CLI generation."""
     test_cases = [
-        ("python", "python/pyproject.cli.toml.tpl", "src/main.py", 'import sys\nprint("Hello from CLI")\nsys.exit(0)\n'),
+        ("python", "python/pyproject.cli.toml.tpl", "src/main.py", 'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n'),
         ("rust", "rust/Cargo.cli.toml.tpl", "src/main.rs", 'fn main() {\n    println!("Hello from CLI!");\n}\n')
     ]
     
@@ -320,7 +320,6 @@ def test_cli_python_vs_rust_differences():
             assert config_call in mock_write_template.call_args_list
             
             # Check that the correct main file is written with correct content
-            main_call = call(main_file, main_content)
             mock_write_content.assert_called_once_with(main_file, main_content)
 
 
@@ -381,7 +380,7 @@ def test_library_vs_cli_success_message_difference():
 
 def test_common_directory_structure():
     """Test that both library and CLI generators create the same directory structure."""
-    expected_directories = ["src", "tests", "architecture"]
+    expected_directories = ["src", "tests", "docs", "architecture"]
     
     # Test library
     with patch.object(LibraryGenerator, 'create_project', return_value=True), \

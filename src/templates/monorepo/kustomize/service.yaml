@@ -1,1 +1,12 @@
+apiVersion: v1
 kind: Service
+metadata:
+  name: {{ monorepo_name }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ monorepo_name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,7 +1,8 @@
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, call
 from src.generator.service import ServiceGenerator
+from src.utils.error_handling import LanguageNotSupportedError
 
 
 @pytest.fixture
@@ -27,6 +28,7 @@ def service_generator_with_root():
 def test_service_generator_initialization(service_generator):
     assert service_generator.name == "test-service"
     assert service_generator.lang == "python"
+    assert service_generator.runtime == "container"
     assert service_generator.gh is False
     assert service_generator.helm is False
     assert service_generator.config == {"key": "value"}
@@ -88,7 +90,7 @@ def test_create_success_python_with_helm_and_gh(
         call("Dockerfile", "python/Dockerfile.tpl"),
         call("Makefile", "python/Makefile.tpl")
     ]
-    mock_write_template.assert_has_calls(expected_template_calls)
+    mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
     mock_create_architecture_docs.assert_called_once_with("test-service Architecture Notes")
     mock_write_content.assert_called_once_with(".env.example", "EXAMPLE_ENV_VAR=value\n")
@@ -114,9 +116,10 @@ def test_create_warns_when_language_template_missing(mock_create_project, mock_w
     mock_create_project.return_value = True
     generator.lang_template_dir = tmp_path / "nonexistent"  # Directory doesn't exist
     
-    generator.create()
-    
-    mock_warn.assert_called_once_with("No templates for language: nonexistent")
+    with pytest.raises(LanguageNotSupportedError):
+        generator.create()
+
+    mock_warn.assert_not_called()
 
 
 @patch.object(ServiceGenerator, 'create_directories')
@@ -154,7 +157,7 @@ def test_create_python_structure(mock_write_content, mock_write_template, mock_c
     ]
     
     for expected_call in expected_template_calls:
-        mock_write_template.assert_any_call(*expected_call)
+        mock_write_template.assert_any_call(*expected_call.args)
     
     # Verify directories are created
     mock_create_directories.assert_called_with(["migrations"])
@@ -181,8 +184,9 @@ def test_create_python_structure_writes_env_example(mock_write_content, mock_wri
     assert "SECRET_KEY=" in env_content
 
 
+@patch.object(ServiceGenerator, 'write_template')
 @patch.object(ServiceGenerator, 'write_content')
-def test_create_rust_structure(mock_write_content, service_generator):
+def test_create_rust_structure(mock_write_content, mock_write_template, service_generator):
     generator = ServiceGenerator("test-service", "rust", False, {})
     generator._create_rust_structure()
     
@@ -199,40 +203,47 @@ def test_create_rust_structure(mock_write_content, service_generator):
     expected_main_call = call("src/main.rs", expected_main_content)
     
     mock_write_content.assert_has_calls(expected_mod_calls + [expected_main_call], any_order=True)
-
-
-@patch.object(ServiceGenerator, 'write_template')
-def test_create_rust_structure_writes_cargo_toml(mock_write_template, service_generator):
-    generator = ServiceGenerator("test-service", "rust", False, {})
-    generator._create_rust_structure()
-    
     mock_write_template.assert_called_once_with("Cargo.toml", "rust/Cargo.toml.tpl")
 
 
 @patch.object(ServiceGenerator, 'write_content')
-def test_create_cpp_structure(mock_write_content, service_generator):
-    generator = ServiceGenerator("test-service", "cpp", False, {})
-    generator._create_cpp_structure()
+@patch.object(ServiceGenerator, 'write_template')
+def test_create_rust_structure_writes_cargo_toml(mock_write_template, mock_write_content, service_generator):
+    generator = ServiceGenerator("test-service", "rust", False, {})
+    generator._create_rust_structure()
     
-    expected_calls = [
-        call("src/api/routes.hpp", "#pragma once\n\nnamespace api {\n    class Routes {\n    public:\n        Routes() = default;\n    };\n}\n"),
-        call("src/model/user.hpp", "#pragma once\n\nnamespace model {\n    // Add your models here\n}\n"),
-        call("src/main.cpp", "#include <iostream>\n\nint main() {\n    std::cout << \"Hello World\" << std::endl;\n    return 0;\n}\n")
-    ]
-    
-    mock_write_content.assert_has_calls(expected_calls, any_order=True)
+    mock_write_template.assert_called_once_with("Cargo.toml", "rust/Cargo.toml.tpl")
+    assert mock_write_content.call_count > 0
 
 
 @patch.object(ServiceGenerator, 'write_template')
-def test_create_cpp_structure_writes_cmake(mock_write_template, service_generator):
+@patch.object(ServiceGenerator, 'write_content')
+def test_create_cpp_structure(mock_write_content, mock_write_template, service_generator):
     generator = ServiceGenerator("test-service", "cpp", False, {})
     generator._create_cpp_structure()
-    
+
+    expected_calls = [
+        call(
+            "src/api/routes.hpp",
+            "#pragma once\n\nnamespace api {\nclass Routes {\npublic:\n    Routes() = default;\n};\n}  // namespace api\n",
+        ),
+        call(
+            "src/model/user.hpp",
+            "#pragma once\n\n#include <string>\n\nnamespace model {\nstruct User {\n    std::string id;\n    std::string email;\n};\n}  // namespace model\n",
+        ),
+        call(
+            "src/main.cpp",
+            '#include <iostream>\n\nint main() {\n    std::cout << "Hello World" << std::endl;\n    return 0;\n}\n',
+        ),
+    ]
+
+    mock_write_content.assert_has_calls(expected_calls, any_order=True)
     mock_write_template.assert_called_once_with("CMakeLists.txt", "cpp/CMakeLists.txt.tpl")
 
 
+@patch.object(ServiceGenerator, 'write_template')
 @patch.object(ServiceGenerator, 'write_content')
-def test_create_go_structure(mock_write_content, service_generator):
+def test_create_go_structure(mock_write_content, mock_write_template, service_generator):
     generator = ServiceGenerator("test-service", "go", False, {})
     generator._create_go_structure()
     
@@ -261,14 +272,17 @@ func main() {
     ]
     
     mock_write_content.assert_has_calls(expected_calls, any_order=True)
+    mock_write_template.assert_called_once_with("go.mod", "go/go.mod.tpl")
 
 
+@patch.object(ServiceGenerator, 'write_content')
 @patch.object(ServiceGenerator, 'write_template')
-def test_create_go_structure_writes_go_mod(mock_write_template, service_generator):
+def test_create_go_structure_writes_go_mod(mock_write_template, mock_write_content, service_generator):
     generator = ServiceGenerator("test-service", "go", False, {})
     generator._create_go_structure()
     
     mock_write_template.assert_called_once_with("go.mod", "go/go.mod.tpl")
+    assert mock_write_content.call_count > 0
 
 
 @patch('src.generator.service.success')
@@ -383,9 +397,107 @@ def test_unsupported_language_does_not_call_structure_method(tmp_path):
         generator.lang_template_dir = tmp_path / "unsupported"
         generator.lang_template_dir.mkdir()
         
-        generator.create()
+        with pytest.raises(LanguageNotSupportedError):
+            generator.create()
         
         mock_python.assert_not_called()
         mock_rust.assert_not_called()
         mock_cpp.assert_not_called()
         mock_go.assert_not_called()
+
+
+@patch.object(ServiceGenerator, 'write_content')
+@patch.object(ServiceGenerator, 'write_template')
+def test_create_typescript_structure(mock_write_template, mock_write_content, service_generator):
+    generator = ServiceGenerator("test-service", "typescript", False, {})
+    generator._create_typescript_structure()
+
+    expected_calls = [
+        call("src/main.ts", "typescript/src/main.ts.tpl"),
+        call("src/config/env.ts", "typescript/src/config/env.ts.tpl"),
+        call("src/routes/health.ts", "typescript/src/routes/health.ts.tpl"),
+        call("tests/health.test.ts", "typescript/tests/health.test.ts.tpl"),
+    ]
+
+    mock_write_template.assert_has_calls(expected_calls, any_order=True)
+    mock_write_content.assert_called_once_with(".env.example", "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n")
+
+
+def test_typescript_alias_normalizes_to_template_directory():
+    generator = ServiceGenerator("test-service", "ts", False, {})
+
+    assert generator.lang == "typescript"
+    assert generator.lang_template_dir == generator.template_dir / "typescript"
+
+
+def test_typescript_service_template_configs_include_bun_config():
+    generator = ServiceGenerator("test-service", "typescript", False, {})
+
+    configs = generator.template_registry.get_template_configs_for_service("typescript")
+
+    assert {"target": "bunfig.toml", "template": "typescript/bunfig.toml.tpl"} in configs
+
+
+def test_cloudflare_worker_runtime_alias_normalizes():
+    generator = ServiceGenerator("test-service", "ts", False, {}, runtime="cf-worker")
+
+    assert generator.lang == "typescript"
+    assert generator.runtime == "cloudflare-workers"
+
+
+def test_cloudflare_worker_template_configs_for_typescript():
+    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
+
+    configs = generator._cloudflare_worker_template_configs()
+
+    assert {"target": "wrangler.toml", "template": "cloudflare-workers/typescript/wrangler.toml.tpl"} in configs
+    assert {"target": "src/index.ts", "template": "cloudflare-workers/typescript/src/index.ts.tpl"} in configs
+    assert {"target": "tests/worker.test.ts", "template": "cloudflare-workers/typescript/tests/worker.test.ts.tpl"} in configs
+
+
+def test_cloudflare_worker_template_configs_for_rust():
+    generator = ServiceGenerator("edge-rust", "rust", False, {}, runtime="cloudflare-workers")
+
+    configs = generator._cloudflare_worker_template_configs()
+
+    assert {"target": "wrangler.toml", "template": "cloudflare-workers/rust/wrangler.toml.tpl"} in configs
+    assert {"target": "Cargo.toml", "template": "cloudflare-workers/rust/Cargo.toml.tpl"} in configs
+    assert {"target": "src/lib.rs", "template": "cloudflare-workers/rust/src/lib.rs.tpl"} in configs
+
+
+@patch.object(ServiceGenerator, 'execute_create_flow')
+def test_create_cloudflare_worker_uses_worker_flow(mock_execute_create_flow, tmp_path):
+    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
+    generator.template_dir = tmp_path
+    worker_templates = tmp_path / "cloudflare-workers" / "typescript"
+    worker_templates.mkdir(parents=True)
+    mock_execute_create_flow.return_value = True
+
+    generator.create()
+
+    mock_execute_create_flow.assert_called_once()
+    kwargs = mock_execute_create_flow.call_args.kwargs
+    assert kwargs["directories"] == ["src", "tests", "docs"]
+    assert kwargs["architecture_title"] == "edge-api Cloudflare Worker Architecture Notes"
+    assert kwargs["success_message"] == "Typescript Cloudflare Worker 'edge-api' created successfully in 'edge-api'!"
+
+
+def test_cloudflare_worker_rejects_helm():
+    generator = ServiceGenerator("edge-api", "typescript", False, {}, helm=True, runtime="cloudflare-workers")
+
+    with pytest.raises(ValueError, match="does not support Helm"):
+        generator.create()
+
+
+def test_cloudflare_worker_rejects_unsupported_language():
+    generator = ServiceGenerator("edge-api", "cpp", False, {}, runtime="cloudflare-workers")
+
+    with pytest.raises(LanguageNotSupportedError):
+        generator.create()
+
+
+def test_service_rejects_unknown_runtime():
+    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="lambda")
+
+    with pytest.raises(ValueError, match="Unsupported service runtime"):
+        generator.create()

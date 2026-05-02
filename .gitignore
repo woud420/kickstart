@@ -3,4 +3,12 @@ __pycache__/
 *.log
 .venv/
 kickstart
+build/
+dist/
+*.egg-info/
+*.spec
 *.tar.gz
+.pytest_cache/
+.ruff_cache/
+
+reports/*

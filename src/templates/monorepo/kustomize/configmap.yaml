@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ monorepo_name }}-config
+data:
+  APP_ENV: "production"
+  PORT: "8080"
+  CLOUD_TARGET: "{{ cloud }}"
+  KNOWLEDGE_BASE: "{{ knowledge }}"

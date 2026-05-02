@@ -1,10 +1,12 @@
 import toml
 from pathlib import Path
-from typing import Any
+from typing import cast
+
+from src.utils.types import ConfigValue
 
 
-def load_config() -> dict[str, Any]:
-    config: dict[str, Any] = {}
+def load_config() -> dict[str, ConfigValue]:
+    config: dict[str, ConfigValue] = {}
     paths = [
         Path.cwd() / ".kickstart.toml",
         Path.home() / ".kickstartrc",
@@ -12,5 +14,5 @@ def load_config() -> dict[str, Any]:
     ]
     for path in paths:
         if path.exists():
-            config.update(toml.load(path))
+            config.update(cast(dict[str, ConfigValue], toml.load(path)))
     return config

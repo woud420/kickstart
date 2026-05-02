@@ -1,1 +1,40 @@
+apiVersion: apps/v1
 kind: Deployment
+metadata:
+  name: {% raw %}{{ include "example-service.fullname" . }}{% endraw %}
+  labels:
+    app.kubernetes.io/name: {% raw %}{{ include "example-service.name" . }}{% endraw %}
+spec:
+  replicas: {% raw %}{{ .Values.replicaCount }}{% endraw %}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {% raw %}{{ include "example-service.name" . }}{% endraw %}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {% raw %}{{ include "example-service.name" . }}{% endraw %}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: "{% raw %}{{ .Values.image.repository }}:{{ .Values.image.tag }}{% endraw %}"
+          imagePullPolicy: {% raw %}{{ .Values.image.pullPolicy }}{% endraw %}
+          ports:
+            - name: http
+              containerPort: {% raw %}{{ .Values.service.targetPort }}{% endraw %}
+          envFrom:
+            - configMapRef:
+                name: {% raw %}{{ include "example-service.fullname" . }}{% endraw %}-config
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            {% raw %}{{- toYaml .Values.resources | nindent 12 }}{% endraw %}

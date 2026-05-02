@@ -1,1 +1,24 @@
-replicaCount: 1
+replicaCount: 2
+
+image:
+  repository: {{ service_name }}
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+env:
+  APP_ENV: production
+  PORT: "8080"
+  CLOUD_TARGET: "{{ cloud | default('multi') }}"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from typer.testing import CliRunner
 from src.cli.main import app
 
@@ -112,13 +112,13 @@ def test_create_cli_with_args(mock_load_config, mock_create_cli, runner, mock_co
     
     result = runner.invoke(app, [
         "create", "cli", "test-cli",
-        "--lang", "java",
+        "--lang", "rust",
         "--root", "/tmp"
     ])
     
     assert result.exit_code == 0
     mock_create_cli.assert_called_once_with(
-        "test-cli", "java", False, mock_config, root="/tmp"
+        "test-cli", "rust", False, mock_config, root="/tmp"
     )
 
 
@@ -138,6 +138,81 @@ def test_create_monorepo_with_args(mock_load_config, mock_create_monorepo, runne
     assert result.exit_code == 0
     mock_create_monorepo.assert_called_once_with(
         "test-mono", True, mock_config, helm=True, root="/tmp"
+    )
+
+
+@patch('src.cli.main.create_monorepo')
+@patch('src.cli.main.load_config')
+def test_create_monorepo_with_cloud_and_knowledge(mock_load_config, mock_create_monorepo, runner, mock_config):
+    """Test creating a monorepo with workflow profile options."""
+    mock_load_config.return_value = mock_config
+
+    result = runner.invoke(app, [
+        "create", "mono", "test-mono",
+        "--root", "/tmp",
+        "--cloud", "cloudflare",
+        "--knowledge", "obsidian",
+    ])
+
+    assert result.exit_code == 0
+    mock_create_monorepo.assert_called_once_with(
+        "test-mono",
+        False,
+        mock_config,
+        helm=False,
+        root="/tmp",
+        cloud="cloudflare",
+        knowledge="obsidian",
+    )
+
+
+@patch('src.cli.main.create_service')
+@patch('src.cli.main.load_config')
+def test_create_service_with_runtime(mock_load_config, mock_create_service, runner, mock_config):
+    """Test creating a service with an explicit runtime target."""
+    mock_load_config.return_value = mock_config
+
+    result = runner.invoke(app, [
+        "create", "service", "edge-api",
+        "--lang", "typescript",
+        "--runtime", "cloudflare-workers",
+        "--root", "/tmp",
+    ])
+
+    assert result.exit_code == 0
+    mock_create_service.assert_called_once_with(
+        "edge-api",
+        "typescript",
+        False,
+        mock_config,
+        helm=False,
+        root="/tmp",
+        runtime="cloudflare-workers",
+    )
+
+
+@patch('src.cli.main.create_monorepo')
+@patch('src.cli.main.load_config')
+def test_create_monorepo_with_runtime(mock_load_config, mock_create_monorepo, runner, mock_config):
+    """Test creating a monorepo with an explicit runtime target."""
+    mock_load_config.return_value = mock_config
+
+    result = runner.invoke(app, [
+        "create", "mono", "edge-stack",
+        "--cloud", "cloudflare",
+        "--runtime", "cloudflare-workers",
+        "--root", "/tmp",
+    ])
+
+    assert result.exit_code == 0
+    mock_create_monorepo.assert_called_once_with(
+        "edge-stack",
+        False,
+        mock_config,
+        helm=False,
+        root="/tmp",
+        cloud="cloudflare",
+        runtime="cloudflare-workers",
     )
 
 
@@ -264,7 +339,7 @@ def test_helm_option_only_for_service_and_mono():
     with patch('src.cli.main.load_config') as mock_load_config, \
          patch('src.cli.main.Prompt') as mock_prompt, \
          patch('src.cli.main.Confirm') as mock_confirm, \
-         patch('src.cli.main.create_frontend') as mock_create:
+         patch('src.cli.main.create_frontend'):
         
         mock_load_config.return_value = {"default_language": "python"}
         mock_prompt.ask.side_effect = ["frontend", "test", "/tmp", "python"]
@@ -284,7 +359,7 @@ def test_helm_option_only_for_service_and_mono():
 def test_interactive_helm_prompt_for_service(mock_confirm, mock_prompt, mock_load_config, runner):
     """Test that helm is prompted for service type in interactive mode."""
     mock_load_config.return_value = {"default_language": "python"}
-    mock_prompt.ask.side_effect = ["service", "test-service", "/tmp", "python"]
+    mock_prompt.ask.side_effect = ["service", "test-service", "/tmp", "python", "none", "none", "none", "fastapi"]
     mock_confirm.ask.side_effect = [False, True]  # gh=False, helm=True
     
     with patch('src.cli.main.create_service') as mock_create_service:
@@ -342,7 +417,7 @@ def test_config_default_language_used_in_interactive(mock_prompt, mock_load_conf
     mock_prompt.ask.side_effect = ["lib", "test-lib", "/tmp", "rust"]  # Last rust is the prompted default
     
     with patch('src.cli.main.Confirm') as mock_confirm, \
-         patch('src.cli.main.create_lib') as mock_create_lib:
+         patch('src.cli.main.create_lib'):
         
         mock_confirm.ask.return_value = False
         
