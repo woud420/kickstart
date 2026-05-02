@@ -1,6 +1,8 @@
 import pytest
 from pathlib import Path
+import json
 from src.generator.base import BaseGenerator
+from src.generator.scaffold_contract import ScaffoldContract
 from unittest.mock import patch
 
 @pytest.fixture
@@ -46,9 +48,24 @@ def test_init_basic_structure(base_generator, tmp_path):
 def test_create_architecture_docs(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path):
         base_generator.create_architecture_docs("My Docs")
-        arch = tmp_path / "architecture/README.md"
+        arch = tmp_path / "docs/architecture/README.md"
         assert arch.exists()
         assert arch.read_text() == "# My Docs\n"
+
+def test_create_scaffold_contract_docs(base_generator, tmp_path):
+    with patch.object(base_generator, 'project', tmp_path):
+        contract = ScaffoldContract(project_kind="service", runtime="container", deploy="docker")
+
+        base_generator.create_scaffold_contract_docs(contract)
+
+        assert (tmp_path / "AGENTS.md").exists()
+        assert (tmp_path / "docs/contracts/README.md").exists()
+        assert (tmp_path / "docs/operations/README.md").exists()
+        assert (tmp_path / "docs/decisions/README.md").exists()
+        manifest = json.loads((tmp_path / ".kickstart/scaffold.json").read_text())
+        assert manifest["project"] == {"name": "test-project", "type": "service"}
+        assert manifest["options"]["runtime"] == "container"
+        assert manifest["options"]["deploy"] == "docker"
 
 @patch('src.generator.base.write_file')
 def test_write_template(mock_write_file, base_generator, tmp_path):

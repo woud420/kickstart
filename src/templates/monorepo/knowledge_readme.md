@@ -20,7 +20,7 @@ Obsidian settings were not generated. Re-run with `--knowledge obsidian` or `--k
 
 ## Suggested Docs
 
-- ADRs in `docs/adr/`
+- Decisions in `docs/decisions/`
 - Architecture diagrams in `docs/architecture/`
 - Data decisions in `docs/data/`
 - Operational procedures in `docs/runbooks/`

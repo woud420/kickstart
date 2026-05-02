@@ -17,6 +17,7 @@ from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
 from src.stack.types import TemplateConfig
 from src.generator.layouts import python_package_directories, service_directories, worker_directories
+from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.specs import ServiceSpec
 from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig
@@ -159,6 +160,11 @@ class ServiceGenerator(BaseGenerator):
             directories=directories,
             template_plan=template_plan,
             architecture_title=architecture_title,
+            scaffold_contract=ScaffoldContract(
+                project_kind="service",
+                runtime=profile.runtime,
+                deploy="docker+helm" if self.helm else "docker",
+            ),
             success_message=success_message,
             language_setup_fn=self._setup_service_specific,
             additional_setup_fn=self._setup_helm_if_requested,
@@ -189,6 +195,12 @@ class ServiceGenerator(BaseGenerator):
             directories=directories,
             template_plan=template_plan,
             architecture_title=architecture_title,
+            scaffold_contract=ScaffoldContract(
+                project_kind="worker",
+                runtime="cloudflare-workers",
+                deploy="cloudflare-workers",
+                cloud="cloudflare",
+            ),
             success_message=success_message,
             github_create_fn=github_create_fn if self.gh else None,
         )

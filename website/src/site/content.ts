@@ -20,22 +20,23 @@ export interface PositioningPoint {
 
 export interface ProjectMeta {
   latestVersion: string;
+  supportedFrom: string;
   repositoryUrl: string;
   releaseUrl: string;
-  releaseLabel: string;
 }
 
-export interface ChangelogEntry {
+export interface ReleaseNote {
   version: string;
   title: string;
   body: string;
+  highlights: string[];
 }
 
 export const defaultProjectMeta: ProjectMeta = {
   latestVersion: "0.4.0",
+  supportedFrom: "0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
   releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.0",
-  releaseLabel: "Release",
 };
 
 export const commandExamples: CommandExample[] = [
@@ -62,7 +63,12 @@ export const commandExamples: CommandExample[] = [
       "migrations/001_initial.sql",
       "tests/unit/",
       "tests/integration/",
-      "architecture/README.md",
+      "AGENTS.md",
+      ".kickstart/scaffold.json",
+      "docs/architecture/README.md",
+      "docs/contracts/README.md",
+      "docs/operations/README.md",
+      "docs/decisions/README.md",
     ],
     components: [
       {
@@ -101,7 +107,11 @@ export const commandExamples: CommandExample[] = [
       "tests/worker.test.ts",
       "README.md",
       "Makefile",
-      "architecture/README.md",
+      "AGENTS.md",
+      ".kickstart/scaffold.json",
+      "docs/architecture/README.md",
+      "docs/contracts/README.md",
+      "docs/operations/README.md",
     ],
     components: [
       {
@@ -135,7 +145,13 @@ export const commandExamples: CommandExample[] = [
       ".github/workflows/build.yml",
       ".github/workflows/test.yml",
       ".github/workflows/deploy.yml",
+      "AGENTS.md",
+      ".kickstart/scaffold.json",
+      "docs/architecture/README.md",
       "docs/architecture/context.md",
+      "docs/contracts/README.md",
+      "docs/operations/README.md",
+      "docs/decisions/0001-stack-profile.md",
       "docs/agents/recommended-agents.md",
       "package.json",
       "turbo.json",
@@ -169,14 +185,18 @@ export const commandExamples: CommandExample[] = [
     label: "rust cli",
     title: "rust cli",
     command: "kickstart create cli ops-tool --lang rust",
-    summary: "Writes a Rust CLI with Cargo metadata, source entrypoint, tests, Makefile, README, and architecture notes.",
+    summary: "Writes a Rust CLI with Cargo metadata, source entrypoint, tests, Makefile, README, docs, and an agent scaffold contract.",
     output: [
       "Cargo.toml",
       "src/main.rs",
       "tests/",
       "Makefile",
       "README.md",
-      "architecture/README.md",
+      "AGENTS.md",
+      ".kickstart/scaffold.json",
+      "docs/architecture/README.md",
+      "docs/contracts/README.md",
+      "docs/operations/README.md",
     ],
     components: [
       {
@@ -189,7 +209,7 @@ export const commandExamples: CommandExample[] = [
       },
       {
         label: "Review notes",
-        detail: "architecture/ explains structure.",
+        detail: "docs/ explains structure, contracts, and operations.",
       },
     ],
   },
@@ -225,20 +245,15 @@ export const isNotPoints: PositioningPoint[] = [
   },
 ];
 
-export const changelogEntries: ChangelogEntry[] = [
+export const releaseNotes: ReleaseNote[] = [
   {
     version: "0.4.0",
-    title: "Modern Python stack and release binaries",
-    body: "Updated dependency metadata, added real lint/typecheck/test/build commands, and configured installable Linux and macOS binaries in CI.",
-  },
-  {
-    version: "0.4.0",
-    title: "Cloudflare as a first-class target",
-    body: "Added Cloudflare cloud/runtime scaffolding, including TypeScript and Rust Worker project generation.",
-  },
-  {
-    version: "0.4.0",
-    title: "Agent-readable scaffold structure",
-    body: "Split specs, layouts, stack registry, template plans, and docs so humans and agents can inspect the generation contract.",
+    title: "First supported baseline",
+    body: "v0.4.0 is the first supported kickstart release line.",
+    highlights: [
+      "Modern Python metadata, validation commands, and Linux/macOS binary release workflow.",
+      "Cloudflare cloud/runtime scaffolding, including TypeScript and Rust Workers.",
+      "Typed specs, layout plans, stack registry, template plans, and agent-readable scaffold docs.",
+    ],
   },
 ];

@@ -2,6 +2,7 @@ from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
 from src.stack.profile import stack_registry, MonorepoSelection
 from src.generator.layouts import monorepo_directories
+from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.specs import MonorepoSpec
 from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig, TemplateValue
@@ -69,6 +70,13 @@ class MonorepoGenerator(BaseGenerator):
             directories=directories,
             template_plan=template_plan,
             architecture_title=architecture_title,
+            scaffold_contract=ScaffoldContract(
+                project_kind="monorepo",
+                runtime=selection.runtime,
+                deploy=selection.deployment_tool,
+                cloud=selection.cloud,
+                knowledge_adapter=selection.knowledge,
+            ),
             success_message=success_message,
             additional_setup_fn=self._setup_monorepo_specific,
             github_create_fn=github_create_fn if self.gh else None

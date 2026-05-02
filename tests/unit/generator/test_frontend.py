@@ -18,6 +18,11 @@ def frontend_generator_with_gh():
 def frontend_generator_with_root():
     return FrontendGenerator("test-frontend", False, {"key": "value"}, root="/tmp")
 
+@pytest.fixture(autouse=True)
+def mock_scaffold_contract_docs():
+    with patch.object(FrontendGenerator, "create_scaffold_contract_docs", return_value=True):
+        yield
+
 
 def test_frontend_generator_initialization(frontend_generator):
     assert frontend_generator.name == "test-frontend"
@@ -51,7 +56,8 @@ def test_create_success_with_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "public", "tests", "architecture"
+        "src", "public", "tests", ".kickstart", "docs/architecture",
+        "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
     # Verify template files are written
@@ -92,7 +98,8 @@ def test_create_success_without_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "public", "tests", "architecture"
+        "src", "public", "tests", ".kickstart", "docs/architecture",
+        "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
     # Verify template files are written
@@ -135,7 +142,10 @@ def test_template_directory_is_react():
 
 def test_project_structure_directories():
     """Test that the correct directory structure is created."""
-    expected_directories = ["src", "public", "tests", "architecture"]
+    expected_directories = [
+        "src", "public", "tests", ".kickstart", "docs/architecture",
+        "docs/contracts", "docs/operations", "docs/decisions"
+    ]
     
     with patch.object(FrontendGenerator, 'create_project', return_value=True), \
          patch.object(FrontendGenerator, 'write_template'), \

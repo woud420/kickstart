@@ -9,14 +9,19 @@ Inputs:
 - project type: `service`, `frontend`, `lib`, `cli`, `mono`
 - name
 - root directory
-- language, runtime, cloud, knowledge, and extension options
+- language, runtime, deploy, cloud, knowledge adapter, and extension options
 
 Outputs:
 
 - directories
 - rendered templates
 - direct content files
-- architecture docs
+- `AGENTS.md`
+- `docs/architecture/`
+- `docs/contracts/`
+- `docs/operations/`
+- `docs/decisions/`
+- `.kickstart/scaffold.json`
 - optional GitHub repository creation
 
 Do not infer unsupported options. Use existing registries and typed plans.
@@ -27,6 +32,7 @@ Do not infer unsupported options. Use existing registries and typed plans.
 - CLI dispatch: `src/cli/`
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
+- Scaffold contract: `src/generator/scaffold_contract.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`
 - Stack registry: `src/stack/`
@@ -38,9 +44,11 @@ Do not infer unsupported options. Use existing registries and typed plans.
 - service runtime: `container`
 - monorepo cloud: `multi`
 - monorepo runtime: `kubernetes`
-- monorepo knowledge: `none`
+- monorepo knowledge adapter: `none`
 - GitHub creation: off
 - Helm: off
+
+Generated docs are baseline output. The `--knowledge` option only controls external metadata such as Obsidian or Backstage files.
 
 ## Safe Change Rule
 

@@ -49,7 +49,12 @@ tf-validate:
 	cd infra/terraform/env/$(ENV) && $(TERRAFORM) validate
 
 docs-check:
-	test -f docs/adr/0001-stack-profile.md
+	test -f AGENTS.md
+	test -f .kickstart/scaffold.json
+	test -f docs/architecture/README.md
+	test -f docs/contracts/README.md
+	test -f docs/operations/README.md
+	test -f docs/decisions/0001-stack-profile.md
 	test -f docs/agents/recommended-agents.md
 	test -f docs/knowledge/README.md
 {% if uses_cloudflare_workers %}

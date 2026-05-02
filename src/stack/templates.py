@@ -45,7 +45,7 @@ def monorepo_templates(
         TemplateConfig("infra/terraform/providers.tf", "terraform_providers.tf"),
         TemplateConfig("infra/terraform/modules/service_runtime/main.tf", "terraform_module_service_runtime.tf"),
         TemplateConfig("data/postgres/schema.sql", "postgres_schema.sql"),
-        TemplateConfig("docs/adr/0001-stack-profile.md", "adr_stack_profile.md"),
+        TemplateConfig("docs/decisions/0001-stack-profile.md", "adr_stack_profile.md"),
         *agent_workflow_template_configs(),
         TemplateConfig("docs/architecture/context.md", "architecture_context.md"),
         TemplateConfig("docs/data/README.md", "data_readme.md"),

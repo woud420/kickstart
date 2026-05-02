@@ -76,7 +76,11 @@ class TestServiceCreation:
         expected_dirs = [
             "src", "src/api", "src/model",
             "tests", "tests/unit/api", "tests/unit/model",
-            "architecture"
+            "docs/architecture",
+            "docs/contracts",
+            "docs/operations",
+            "docs/decisions",
+            ".kickstart",
         ]
         for expected_dir in expected_dirs:
             assert (project_path / expected_dir).exists(), f"Missing directory: {expected_dir}"
@@ -100,9 +104,11 @@ class TestServiceCreation:
         assert "app = create_app()" in main_py_content
         
         # Verify architecture docs
-        arch_readme = project_path / "architecture/README.md"
+        arch_readme = project_path / "docs/architecture/README.md"
         assert arch_readme.exists()
         assert service_name in arch_readme.read_text()
+        assert (project_path / "AGENTS.md").exists()
+        assert (project_path / ".kickstart/scaffold.json").exists()
     
     def test_rust_service_creation_with_helm(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test Rust service creation with Helm charts."""
@@ -236,7 +242,16 @@ class TestFrontendCreation:
         
         # Verify frontend directory structure
         assert project_path.exists()
-        expected_dirs = ["src", "public", "tests", "architecture"]
+        expected_dirs = [
+            "src",
+            "public",
+            "tests",
+            "docs/architecture",
+            "docs/contracts",
+            "docs/operations",
+            "docs/decisions",
+            ".kickstart",
+        ]
         for expected_dir in expected_dirs:
             assert (project_path / expected_dir).exists()
 
@@ -262,7 +277,15 @@ class TestLibraryCreation:
         
         # Verify library structure
         assert project_path.exists()
-        expected_dirs = ["src", "tests", "docs", "architecture"]
+        expected_dirs = [
+            "src",
+            "tests",
+            "docs/architecture",
+            "docs/contracts",
+            "docs/operations",
+            "docs/decisions",
+            ".kickstart",
+        ]
         for expected_dir in expected_dirs:
             assert (project_path / expected_dir).exists()
 
@@ -288,7 +311,17 @@ class TestMonorepoCreation:
         
         # Verify monorepo structure
         assert project_path.exists()
-        expected_dirs = ["services", "libs", "frontend", "docs", "architecture", "infra"]
+        expected_dirs = [
+            "services",
+            "libs",
+            "frontend",
+            "docs/architecture",
+            "docs/contracts",
+            "docs/operations",
+            "docs/decisions",
+            ".kickstart",
+            "infra",
+        ]
         for expected_dir in expected_dirs:
             assert (project_path / expected_dir).exists()
 
@@ -504,7 +537,7 @@ class TestTemplateRendering:
         project_path = temp_project_dir / service_name
         
         # Check that service name appears in architecture docs
-        arch_file = project_path / "architecture/README.md"
+        arch_file = project_path / "docs/architecture/README.md"
         if arch_file.exists():
             content = arch_file.read_text()
             assert service_name in content

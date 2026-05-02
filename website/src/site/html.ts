@@ -1,13 +1,13 @@
 import {
-  changelogEntries,
   commandExamples,
   defaultProjectMeta,
   isNotPoints,
   isPoints,
-  type ChangelogEntry,
   type GeneratedComponent,
   type PositioningPoint,
   type ProjectMeta,
+  type ReleaseNote,
+  releaseNotes,
 } from "./content";
 
 const firstExample = commandExamples[0] ?? {
@@ -54,35 +54,54 @@ function renderCommandButtons(): string {
     .join("");
 }
 
-function currentReleaseEntry(meta: ProjectMeta): ChangelogEntry {
+function currentReleaseNote(meta: ProjectMeta): ReleaseNote {
   return {
     version: meta.latestVersion,
     title: "Current release",
     body: "GitHub Releases carry release notes, optional Python package publishing, and Linux/macOS binary assets for this tag.",
+    highlights: [
+      "Installable Linux and macOS assets are attached to GitHub Releases.",
+      "Website metadata is resolved from release configuration at deploy time.",
+    ],
   };
 }
 
-function changelogFor(meta: ProjectMeta): ChangelogEntry[] {
-  if (changelogEntries.some((entry) => entry.version === meta.latestVersion)) {
-    return changelogEntries;
+function releaseNotesFor(meta: ProjectMeta): ReleaseNote[] {
+  if (releaseNotes.some((entry) => entry.version === meta.latestVersion)) {
+    return releaseNotes;
   }
 
-  return [currentReleaseEntry(meta), ...changelogEntries];
+  return [currentReleaseNote(meta), ...releaseNotes];
 }
 
-function renderChangelog(meta: ProjectMeta): string {
-  return changelogFor(meta)
+function renderReleaseHighlights(highlights: string[]): string {
+  return highlights.map((highlight) => `<li>${escapeHtml(highlight)}</li>`).join("");
+}
+
+function renderReleaseNotes(meta: ProjectMeta): string {
+  return releaseNotesFor(meta)
     .map(
       (entry) => `
-        <article class="change">
-          <div class="change-version">v${escapeHtml(entry.version)}</div>
+        <article class="release-note">
+          <div class="release-note-version">v${escapeHtml(entry.version)}</div>
           <div>
             <h3>${escapeHtml(entry.title)}</h3>
             <p>${escapeHtml(entry.body)}</p>
+            <ul class="release-highlights">
+              ${renderReleaseHighlights(entry.highlights)}
+            </ul>
           </div>
         </article>`,
     )
     .join("");
+}
+
+function releaseMetaText(meta: ProjectMeta): string {
+  if (meta.latestVersion === meta.supportedFrom) {
+    return `v${meta.latestVersion} is the first supported release.`;
+  }
+
+  return `Current: v${meta.latestVersion}. Supported from v${meta.supportedFrom}.`;
 }
 
 function renderComponentMap(components: GeneratedComponent[]): string {
@@ -139,9 +158,8 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
             Files, commands, tests, docs, and boundaries from one project intent.
           </p>
           <div class="hero-links" aria-label="Project links">
-            <span>v${escapeHtml(meta.latestVersion)}</span>
-            <a href="${escapeHtml(meta.releaseUrl)}">Release notes</a>
-            <a href="${escapeHtml(meta.repositoryUrl)}">GitHub</a>
+            <a href="${escapeHtml(meta.repositoryUrl)}">github</a>
+            <a href="${escapeHtml(meta.releaseUrl)}">release</a>
           </div>
         </div>
 
@@ -199,16 +217,17 @@ ${renderPositioningPoints(isNotPoints)}
       <section id="release" class="shell compact-section boundary">
         <div class="section-head">
           <div class="section-index">[release]</div>
-          <h2>v${escapeHtml(meta.latestVersion)}</h2>
+          <h2>Current release</h2>
         </div>
         <div>
+          <p class="release-meta">${escapeHtml(releaseMetaText(meta))}</p>
           <div class="release-actions">
             <a href="${escapeHtml(meta.releaseUrl)}">release notes</a>
             <a href="${escapeHtml(meta.repositoryUrl)}">github</a>
             <a href="${escapeHtml(meta.repositoryUrl)}/releases">all releases</a>
           </div>
-          <div class="changelog" aria-label="Small changelog">
-${renderChangelog(meta)}
+          <div class="release-notes" aria-label="Release notes">
+${renderReleaseNotes(meta)}
           </div>
         </div>
       </section>

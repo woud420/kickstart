@@ -1,5 +1,6 @@
 from src.generator.base import BaseGenerator
 from src.generator.layouts import frontend_directories
+from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.specs import FrontendSpec
 from src.generator.template_plans import frontend_template_plan
 from src.utils.github import create_repo
@@ -30,6 +31,11 @@ class FrontendGenerator(BaseGenerator):
             directories=directories,
             template_plan=template_plan,
             architecture_title=architecture_title,
+            scaffold_contract=ScaffoldContract(
+                project_kind="frontend",
+                runtime="static-spa",
+                deploy="docker",
+            ),
             success_message=success_message,
             github_create_fn=github_create_fn if self.gh else None
         )

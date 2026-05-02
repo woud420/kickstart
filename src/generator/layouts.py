@@ -3,6 +3,17 @@
 from src.stack.profile import MonorepoSelection, stack_registry
 
 
+def scaffold_contract_directories() -> list[str]:
+    """Return docs and metadata directories generated for every project."""
+    return [
+        ".kickstart",
+        "docs/architecture",
+        "docs/contracts",
+        "docs/operations",
+        "docs/decisions",
+    ]
+
+
 def service_directories() -> list[str]:
     """Return the base directory layout for container service projects."""
     return [
@@ -18,13 +29,13 @@ def service_directories() -> list[str]:
         "tests/integration/api",
         "tests/integration/clients",
         "tests/fixtures",
-        "docs",
+        *scaffold_contract_directories(),
     ]
 
 
 def worker_directories() -> list[str]:
     """Return the base directory layout for Cloudflare Worker services."""
-    return ["src", "tests", "docs"]
+    return ["src", "tests", *scaffold_contract_directories()]
 
 
 def python_package_directories() -> list[str]:
@@ -61,15 +72,13 @@ def monorepo_directories(selection: MonorepoSelection) -> list[str]:
         "infra/terraform/modules/service_runtime",
         *(f"infra/terraform/env/{env}" for env in stack_registry.environments),
         ".github/workflows",
-        "architecture",
         "frontend",
         "libs",
         "services",
         "data/postgres",
         "knowledge",
-        "docs/adr",
+        *scaffold_contract_directories(),
         "docs/agents",
-        "docs/architecture",
         "docs/data",
         "docs/knowledge",
         "docs/runbooks",
@@ -83,14 +92,14 @@ def monorepo_directories(selection: MonorepoSelection) -> list[str]:
 
 def frontend_directories() -> list[str]:
     """Return the base directory layout for frontend projects."""
-    return ["src", "public", "tests", "architecture"]
+    return ["src", "public", "tests", *scaffold_contract_directories()]
 
 
 def library_directories() -> list[str]:
     """Return the base directory layout for library projects."""
-    return ["src", "tests", "docs", "architecture"]
+    return ["src", "tests", *scaffold_contract_directories()]
 
 
 def cli_directories() -> list[str]:
     """Return the base directory layout for CLI projects."""
-    return ["src", "tests", "docs", "architecture"]
+    return ["src", "tests", *scaffold_contract_directories()]

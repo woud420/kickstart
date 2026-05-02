@@ -64,13 +64,15 @@ def test_create_aws_kubernetes_docs_match_selected_profile():
         )
 
         readme = (base / "README.md").read_text()
-        adr = (base / "docs/adr/0001-stack-profile.md").read_text()
+        adr = (base / "docs/decisions/0001-stack-profile.md").read_text()
         knowledge = (base / "knowledge/README.md").read_text()
         build_workflow = (base / ".github/workflows/build.yml").read_text()
         test_workflow = (base / ".github/workflows/test.yml").read_text()
         deploy_workflow = (base / ".github/workflows/deploy.yml").read_text()
 
         assert (base / "docs/agents/recommended-agents.md").exists()
+        assert (base / "AGENTS.md").exists()
+        assert (base / ".kickstart/scaffold.json").exists()
         assert (base / "config/tsconfig/base.json").exists()
         assert "CLOUDFLARE_API_TOKEN" not in readme
         assert "Cloudflare support covers" not in adr
@@ -99,7 +101,7 @@ def test_create_cloudflare_workers_docs_match_runtime_profile():
         )
 
         readme = (base / "README.md").read_text()
-        adr = (base / "docs/adr/0001-stack-profile.md").read_text()
+        adr = (base / "docs/decisions/0001-stack-profile.md").read_text()
         architecture = (base / "docs/architecture/context.md").read_text()
         test_workflow = (base / ".github/workflows/test.yml").read_text()
         deploy_workflow = (base / ".github/workflows/deploy.yml").read_text()

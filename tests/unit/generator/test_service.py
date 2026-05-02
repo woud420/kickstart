@@ -24,6 +24,11 @@ def service_generator_with_gh():
 def service_generator_with_root():
     return ServiceGenerator("test-service", "python", False, {"key": "value"}, root="/tmp")
 
+@pytest.fixture(autouse=True)
+def mock_scaffold_contract_docs():
+    with patch.object(ServiceGenerator, "create_scaffold_contract_docs", return_value=True):
+        yield
+
 
 def test_service_generator_initialization(service_generator):
     assert service_generator.name == "test-service"
@@ -80,7 +85,11 @@ def test_create_success_python_with_helm_and_gh(
         "tests/unit/model", "tests/unit/api", "tests/unit/routes", 
         "tests/integration/api", "tests/integration/clients",
         "tests/fixtures",
-        "docs"
+        ".kickstart",
+        "docs/architecture",
+        "docs/contracts",
+        "docs/operations",
+        "docs/decisions",
     ])
     
     # Verify template files are written
@@ -477,8 +486,19 @@ def test_create_cloudflare_worker_uses_worker_flow(mock_execute_create_flow, tmp
 
     mock_execute_create_flow.assert_called_once()
     kwargs = mock_execute_create_flow.call_args.kwargs
-    assert kwargs["directories"] == ["src", "tests", "docs"]
+    assert kwargs["directories"] == [
+        "src",
+        "tests",
+        ".kickstart",
+        "docs/architecture",
+        "docs/contracts",
+        "docs/operations",
+        "docs/decisions",
+    ]
     assert kwargs["architecture_title"] == "edge-api Cloudflare Worker Architecture Notes"
+    assert kwargs["scaffold_contract"].runtime == "cloudflare-workers"
+    assert kwargs["scaffold_contract"].deploy == "cloudflare-workers"
+    assert kwargs["scaffold_contract"].cloud == "cloudflare"
     assert kwargs["success_message"] == "Typescript Cloudflare Worker 'edge-api' created successfully in 'edge-api'!"
 
 

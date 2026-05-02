@@ -2,19 +2,19 @@ import { readFileSync } from "node:fs";
 
 interface ReleaseConfig {
   output: string;
-  releaseLabel: string;
   releaseUrl: string;
   repositoryUrl: string;
   serviceName: string;
+  supportedFrom: string;
   version: string;
 }
 
 const defaultConfig: ReleaseConfig = {
   output: "wrangler.release.toml",
-  releaseLabel: "Release",
   releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
   serviceName: "kickstart-site",
+  supportedFrom: "0.4.0",
   version: "0.4.0",
 };
 
@@ -71,10 +71,10 @@ export function resolveReleaseConfig(
 
   return {
     output: argumentValue(args, "--output") ?? defaultConfig.output,
-    releaseLabel: argumentValue(args, "--release-label") ?? defaultConfig.releaseLabel,
     releaseUrl,
     repositoryUrl,
     serviceName: argumentValue(args, "--service-name") ?? defaultConfig.serviceName,
+    supportedFrom: trimVersionPrefix(argumentValue(args, "--supported-from") ?? defaultConfig.supportedFrom),
     version,
   };
 }
@@ -87,9 +87,9 @@ compatibility_date = "2026-05-02"
 [vars]
 SERVICE_NAME = ${tomlString(config.serviceName)}
 PROJECT_VERSION = ${tomlString(config.version)}
+SUPPORTED_FROM_VERSION = ${tomlString(config.supportedFrom)}
 REPOSITORY_URL = ${tomlString(config.repositoryUrl)}
 RELEASE_URL = ${tomlString(config.releaseUrl)}
-RELEASE_LABEL = ${tomlString(config.releaseLabel)}
 `;
 }
 

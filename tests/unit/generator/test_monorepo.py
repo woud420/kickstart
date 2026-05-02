@@ -24,15 +24,17 @@ def _expected_monorepo_dirs():
         "infra/terraform/env/staging",
         "infra/terraform/env/prod",
         ".github/workflows",
-        "architecture",
         "frontend",
         "libs",
         "services",
         "data/postgres",
         "knowledge",
-        "docs/adr",
-        "docs/agents",
+        ".kickstart",
         "docs/architecture",
+        "docs/contracts",
+        "docs/operations",
+        "docs/decisions",
+        "docs/agents",
         "docs/data",
         "docs/knowledge",
         "docs/runbooks",
@@ -59,6 +61,11 @@ def monorepo_generator_with_gh():
 @pytest.fixture
 def monorepo_generator_with_root():
     return MonorepoGenerator("test-monorepo", False, {"key": "value"}, root="/tmp")
+
+@pytest.fixture(autouse=True)
+def mock_scaffold_contract_docs():
+    with patch.object(MonorepoGenerator, "create_scaffold_contract_docs", return_value=True):
+        yield
 
 
 def test_monorepo_generator_initialization(monorepo_generator):
@@ -169,7 +176,7 @@ def test_create_success_with_kustomize_and_gh(
         (".github/workflows/build.yml", "build.yml"),
         (".github/workflows/test.yml", "test.yml"),
         (".github/workflows/deploy.yml", "deploy.yml"),
-        ("docs/adr/0001-stack-profile.md", "adr_stack_profile.md"),
+        ("docs/decisions/0001-stack-profile.md", "adr_stack_profile.md"),
         ("docs/agents/recommended-agents.md", "agents_recommended.md"),
         ("knowledge/README.md", "knowledge_root_readme.md"),
         ("package.json", "package.json.tpl"),

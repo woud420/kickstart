@@ -44,7 +44,8 @@ poetry run kickstart create mono product-stack
 - Service runtimes: containers by default, Cloudflare Workers when requested.
 - Monorepo cloud targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
 - Monorepo runtime targets: `kubernetes`, `cloudflare-workers`, or `hybrid`.
-- Knowledge systems default to `none`; use `--knowledge obsidian`, `--knowledge backstage`, or `--knowledge both` only when wanted.
+- Generated docs and `.kickstart/scaffold.json` are always created for agents and humans.
+- Knowledge adapters default to `none`; use `--knowledge obsidian`, `--knowledge backstage`, or `--knowledge both` only for external metadata.
 
 ## Common Commands
 
@@ -62,6 +63,7 @@ poetry run kickstart create mono platform --cloud aws --runtime kubernetes --kno
 
 - [Human Guide](docs/human-guide.md): options, project types, and how to build on top.
 - [Agent Guide](docs/agent-guide.md): compact, LLM-oriented generation contract.
+- [Scaffold Contract](docs/scaffold-contract.md): always-generated docs, metadata, and option vocabulary.
 - [Contributing](docs/contributing.md): how humans should change the repo.
 - [Agent Contributing](docs/agent-contributing.md): how agents should safely modify the repo.
 

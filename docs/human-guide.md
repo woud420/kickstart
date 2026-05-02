@@ -51,12 +51,14 @@ Runtime profile:
 - `cloudflare-workers`: Wrangler-oriented Worker runtime notes
 - `hybrid`: Kubernetes plus Cloudflare Workers
 
-Knowledge profile:
+Knowledge adapter:
 
 - `none`: default; no Backstage or Obsidian metadata
 - `obsidian`: adds Obsidian vault settings
 - `backstage`: adds Backstage catalog/template files
 - `both`: adds both knowledge-system integrations
+
+Generated project docs are not optional. Every project gets `AGENTS.md`, `docs/architecture/`, `docs/contracts/`, `docs/operations/`, `docs/decisions/`, and `.kickstart/scaffold.json`.
 
 ## Building On Top
 
@@ -65,6 +67,7 @@ Prefer extending the typed plan layers before adding generator branches:
 - Directory plans live in `src/generator/layouts.py`.
 - Template plans live in `src/generator/template_plans.py`.
 - Service language setup plans live in `src/generator/language_setup.py`.
+- The generated scaffold contract lives in `src/generator/scaffold_contract.py`.
 - Stack choices live in `src/stack/`.
 
 When adding a new scaffold option, add generated-output tests for the affected project type before refactoring that path.

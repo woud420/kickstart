@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Callable, Sequence
 import logging
+from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
 from src.utils.fs import write_file
 from src.utils.logger import success, warn
@@ -152,7 +153,7 @@ class BaseGenerator:
         return self.create_directories(dirs)
 
     def create_architecture_docs(self, title: str) -> bool:
-        """Create the architecture documentation directory and README.
+        """Create the canonical architecture documentation directory and README.
         
         Args:
             title: Title for the architecture documentation
@@ -160,9 +161,60 @@ class BaseGenerator:
         Returns:
             True if architecture docs were created successfully, False otherwise
         """
-        if not self.create_directories(["architecture"]):
+        if not self.create_directories(["docs/architecture"]):
             return False
-        return self.write_content("architecture/README.md", f"# {title}\n")
+        return self.write_content("docs/architecture/README.md", f"# {title}\n")
+
+    def create_scaffold_contract_docs(self, contract: ScaffoldContract) -> bool:
+        """Create agent-facing docs and the machine-readable scaffold manifest."""
+        if not self.create_directories(
+            [
+                ".kickstart",
+                "docs/contracts",
+                "docs/operations",
+                "docs/decisions",
+            ]
+        ):
+            return False
+
+        docs = {
+            "AGENTS.md": self._agent_map_content(),
+            "docs/contracts/README.md": self._contracts_content(contract),
+            "docs/operations/README.md": self._operations_content(contract),
+            "docs/decisions/README.md": self._decisions_content(),
+            ".kickstart/scaffold.json": contract.manifest_json(self.name),
+        }
+        return all(self.write_content(target, content) for target, content in docs.items())
+
+    def _agent_map_content(self) -> str:
+        return (
+            "# Agent Map\n\n"
+            "- Start with `README.md` for project intent and first commands.\n"
+            "- Use `docs/architecture/` for structure and boundaries.\n"
+            "- Use `docs/contracts/` for public and external surfaces.\n"
+            "- Use `docs/operations/` for local dev, validation, and deployment notes.\n"
+            "- Use `docs/decisions/` for durable design decisions.\n"
+            "- Read `.kickstart/scaffold.json` before changing generated conventions.\n"
+        )
+
+    def _contracts_content(self, contract: ScaffoldContract) -> str:
+        return (
+            "# Contracts\n\n"
+            f"Document {contract.contract_subjects} here.\n"
+        )
+
+    def _operations_content(self, contract: ScaffoldContract) -> str:
+        return (
+            "# Operations\n\n"
+            f"Document {contract.operations_subjects} here.\n"
+        )
+
+    def _decisions_content(self) -> str:
+        return (
+            "# Decisions\n\n"
+            "Record architecture and implementation decisions here. Keep entries short, dated, and "
+            "linked to the generated scaffold contract when relevant.\n"
+        )
 
     def write_templates_from_plan(self, template_plan: TemplatePlan) -> bool:
         """Write multiple template files from a typed plan.
@@ -202,6 +254,7 @@ class BaseGenerator:
                           directories: Sequence[str],
                           template_plan: TemplatePlan,
                           architecture_title: str,
+                          scaffold_contract: ScaffoldContract,
                           success_message: str,
                           language_setup_fn: Callable[[], bool] | None = None,
                           additional_setup_fn: Callable[[], bool] | None = None,
@@ -212,6 +265,7 @@ class BaseGenerator:
             directories: Directories to create
             template_plan: Typed template render plan
             architecture_title: Title for architecture documentation
+            scaffold_contract: Agent and machine-readable scaffold metadata
             success_message: Success message to log
             language_setup_fn: Optional function for language-specific setup
             additional_setup_fn: Optional function for additional setup
@@ -246,6 +300,14 @@ class BaseGenerator:
         with safe_operation_context("Architecture documentation creation", log_errors=True):
             if not self.create_architecture_docs(architecture_title):
                 error_collector.add_error("Failed to create architecture documentation")
+            else:
+                error_collector.increment_success()
+        error_collector.increment_total()
+
+        # Create the generated scaffold contract
+        with safe_operation_context("Scaffold contract documentation creation", log_errors=True):
+            if not self.create_scaffold_contract_docs(scaffold_contract):
+                error_collector.add_error("Failed to create scaffold contract documentation")
             else:
                 error_collector.increment_success()
         error_collector.increment_total()

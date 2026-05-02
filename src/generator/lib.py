@@ -2,6 +2,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from src.generator.base import BaseGenerator
 from src.generator.layouts import cli_directories, library_directories
+from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.specs import CliSpec, LibrarySpec
 from src.generator.template_plan import TemplatePlan
 from src.generator.template_plans import cli_template_plan, library_template_plan
@@ -27,6 +28,7 @@ class LibraryGenerator(BaseGenerator):
             directories=library_directories(),
             template_plan=library_template_plan(self.lang),
             architecture_title=f"{self.name} Library Docs",
+            scaffold_contract=ScaffoldContract(project_kind="library", runtime="library"),
             success_message=f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!",
             language_setup_fn=self._setup_language_specific_files,
         )
@@ -36,6 +38,7 @@ class LibraryGenerator(BaseGenerator):
         directories: Sequence[str],
         template_plan: TemplatePlan,
         architecture_title: str,
+        scaffold_contract: ScaffoldContract,
         success_message: str,
         language_setup_fn: Callable[[], bool],
     ) -> None:
@@ -47,6 +50,7 @@ class LibraryGenerator(BaseGenerator):
             directories=directories,
             template_plan=template_plan,
             architecture_title=architecture_title,
+            scaffold_contract=scaffold_contract,
             success_message=success_message,
             language_setup_fn=language_setup_fn,
             github_create_fn=github_create_fn if self.gh else None,
@@ -71,6 +75,7 @@ class CLIGenerator(LibraryGenerator):
             directories=cli_directories(),
             template_plan=cli_template_plan(self.lang),
             architecture_title=f"{self.name} CLI Docs",
+            scaffold_contract=ScaffoldContract(project_kind="cli", runtime="cli"),
             success_message=f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!",
             language_setup_fn=self._setup_cli_specific_files,
         )

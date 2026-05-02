@@ -202,7 +202,7 @@ h2 {
 
 .argument,
 .positioning-point,
-.change {
+.release-note {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   gap: 28px;
@@ -212,7 +212,7 @@ h2 {
 
 .argument h3,
 .positioning-point h3,
-.change h3 {
+.release-note h3 {
   margin-bottom: 4px;
   font-family: var(--font-body);
   font-size: 18px;
@@ -222,7 +222,7 @@ h2 {
 
 .argument p,
 .positioning-point p,
-.change p {
+.release-note p {
   margin-bottom: 0;
   color: var(--muted);
 }
@@ -250,7 +250,7 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 12px 18px;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
   font-family: var(--font-mono);
   font-size: 13px;
 }
@@ -263,15 +263,32 @@ h2 {
   content: "]";
 }
 
-.changelog {
+.release-meta {
+  max-width: 620px;
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.release-notes {
   border-top: 1px solid var(--ink);
 }
 
-.change-version {
+.release-note-version {
   color: var(--accent);
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 800;
+}
+
+.release-highlights {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.release-highlights li + li {
+  margin-top: 6px;
 }
 
 .command-panel {
@@ -483,7 +500,7 @@ footer a {
   .compact-section,
   .argument,
   .positioning-point,
-  .change {
+  .release-note {
     grid-template-columns: 1fr;
     gap: 18px;
   }

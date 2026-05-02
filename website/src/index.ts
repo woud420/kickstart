@@ -6,9 +6,9 @@ import { renderSiteHtml } from "./site/html";
 interface Env {
   SERVICE_NAME?: string;
   PROJECT_VERSION?: string;
+  SUPPORTED_FROM_VERSION?: string;
   REPOSITORY_URL?: string;
   RELEASE_URL?: string;
-  RELEASE_LABEL?: string;
 }
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
@@ -36,12 +36,13 @@ function stripVersionPrefix(version: string): string {
 
 function resolveProjectMeta(env: Env): ProjectMeta {
   const latestVersion = stripVersionPrefix(env.PROJECT_VERSION ?? defaultProjectMeta.latestVersion);
+  const supportedFrom = stripVersionPrefix(env.SUPPORTED_FROM_VERSION ?? defaultProjectMeta.supportedFrom);
   const repositoryUrl = env.REPOSITORY_URL ?? defaultProjectMeta.repositoryUrl;
 
   return {
     latestVersion,
+    supportedFrom,
     repositoryUrl,
-    releaseLabel: env.RELEASE_LABEL ?? defaultProjectMeta.releaseLabel,
     releaseUrl: env.RELEASE_URL ?? `${repositoryUrl}/releases/tag/v${latestVersion}`,
   };
 }

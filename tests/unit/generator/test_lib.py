@@ -28,6 +28,12 @@ def library_generator_with_root():
 def cli_generator():
     return CLIGenerator("test-cli", "python", False, {"key": "value"})
 
+@pytest.fixture(autouse=True)
+def mock_scaffold_contract_docs():
+    with patch.object(LibraryGenerator, "create_scaffold_contract_docs", return_value=True), \
+         patch.object(CLIGenerator, "create_scaffold_contract_docs", return_value=True):
+        yield
+
 
 @pytest.fixture
 def cli_generator_rust():
@@ -81,7 +87,8 @@ def test_library_create_python_success_with_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "tests", "docs", "architecture"
+        "src", "tests", ".kickstart", "docs/architecture",
+        "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
     # Verify common template files are written
@@ -162,7 +169,8 @@ def test_cli_create_python_success_with_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "tests", "docs", "architecture"
+        "src", "tests", ".kickstart", "docs/architecture",
+        "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
     # Verify common template files are written
@@ -380,7 +388,10 @@ def test_library_vs_cli_success_message_difference():
 
 def test_common_directory_structure():
     """Test that both library and CLI generators create the same directory structure."""
-    expected_directories = ["src", "tests", "docs", "architecture"]
+    expected_directories = [
+        "src", "tests", ".kickstart", "docs/architecture",
+        "docs/contracts", "docs/operations", "docs/decisions"
+    ]
     
     # Test library
     with patch.object(LibraryGenerator, 'create_project', return_value=True), \
