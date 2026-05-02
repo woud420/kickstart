@@ -10,6 +10,7 @@ from src.generator.language_setup import (
     typescript_service_content_files,
     typescript_service_templates,
 )
+from src.generator.template_plans import python_service_core_template_plan
 from src.utils.logger import success, warn
 from src.utils.github import create_repo
 from src.utils.extension_manager import ExtensionManager
@@ -262,48 +263,9 @@ class ServiceGenerator(BaseGenerator):
         # Create __init__.py files for all Python packages
         for package_path in python_package_directories():
             self.write_content(f"{package_path}/__init__.py", "")
-        
-        # Choose templates based on framework
-        if self.framework == "minimal":
-            # Use minimal HTTP server framework (standard library only)
-            core_templates = [
-                # Core application files
-                ("src/main.py", "python/extensions/minimal/core/main.py.tpl"),
 
-                # Minimal requirements (standard library only)
-                ("requirements.txt", "python/extensions/minimal/core/requirements.txt.tpl"),
-            ]
-        else:
-            # Use FastAPI framework (default)
-            core_templates = [
-                # Core application files
-                ("src/main.py", "python/core/main.py.tpl"),
-
-                # Model layer (all data-related code)
-                ("src/model/__init__.py", "python/core/model/__init__.py.tpl"),
-                ("src/model/entities.py", "python/core/model/entities.py.tpl"),
-                ("src/model/dto.py", "python/core/model/dto.py.tpl"),
-                ("src/model/repository.py", "python/core/model/repository.py.tpl"),
-
-                # API layer (business logic)
-                ("src/api/__init__.py", "python/core/api/__init__.py.tpl"),
-                ("src/api/services.py", "python/core/api/services.py.tpl"),
-
-                # Routes layer (HTTP routing)
-                ("src/routes/__init__.py", "python/core/routes/__init__.py.tpl"),
-                ("src/routes/users.py", "python/core/routes/users.py.tpl"),
-                ("src/routes/health.py", "python/core/routes/health.py.tpl"),
-
-                # Configuration
-                ("src/config/__init__.py", "python/core/config/__init__.py.tpl"),
-                ("src/config/settings.py", "python/core/config/settings.py.tpl"),
-
-                # Core requirements (FastAPI by default)
-                ("requirements.txt", "python/core/requirements.txt.tpl"),
-            ]
-        
-        for target_path, template_path in core_templates:
-            self.write_template(target_path, template_path)
+        for template in python_service_core_template_plan(self.framework).entries():
+            self.write_template(template.target, template.template, **template.vars)
         
         # Add extensions based on flags (only for FastAPI framework)
         if self.framework != "minimal":
