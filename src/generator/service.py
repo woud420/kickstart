@@ -300,66 +300,16 @@ class ServiceGenerator(BaseGenerator):
             self._add_python_extensions()
         
         # Create environment example
-        self.write_content(".env.example", """# Application Settings
-APP_NAME={{service_name}}
-APP_VERSION=1.0.0
-ENVIRONMENT=development
-DEBUG=true
-HOST=0.0.0.0
-PORT=8000
-
-# Database Settings (PostgreSQL)
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your_password_here
-DB_NAME={{service_name}}_db
-
-# Redis Settings (optional)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-
-# Security Settings
-SECRET_KEY=your_secret_key_here_at_least_32_characters_long
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
-
-# External Services
-EMAIL_ENABLED=false
-EMAIL_BACKEND=console
-
-# Feature Flags
-FEATURE_USER_REGISTRATION=true
-FEATURE_EMAIL_NOTIFICATIONS=false
-""")
+        self.write_content(".env.example", self._read_template_text("python/core/env.example.tpl"))
         
         # Create basic migration file as example
-        self.write_content("migrations/001_initial.sql", """-- Initial database schema
--- This is an example migration file
-
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    full_name VARCHAR(100) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_login_at TIMESTAMP WITH TIME ZONE,
-    deactivated_at TIMESTAMP WITH TIME ZONE,
-    profile_data JSONB DEFAULT '{}'::jsonb
-);
-
--- Create indexes
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
-""")
+        self.write_content("migrations/001_initial.sql", self._read_template_text("python/core/migrations/001_initial.sql.tpl"))
         
         self.create_directories(["migrations"])
+
+    def _read_template_text(self, template_path: str) -> str:
+        """Read source text from a scaffold template."""
+        return (self.template_dir / template_path).read_text(encoding="utf-8")
 
     def _add_python_extensions(self) -> None:
         """Add extension functionality based on flags.
