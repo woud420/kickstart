@@ -34,6 +34,77 @@ class TemplateInfo:
     project_type: str | None = None
 
 
+@dataclass(frozen=True)
+class TemplateMetadata:
+    """Display metadata for a template registry entry."""
+
+    name: str
+    description: str
+    variables: set[str]
+
+
+COMMON_SERVICE_TEMPLATES = (
+    TemplateInfo(
+        name="readme",
+        path="{language}/README.md.tpl",
+        description="Project README with documentation",
+        variables={"service_name", "description", "language"},
+    ),
+    TemplateInfo(
+        name="gitignore",
+        path="{language}/gitignore.tpl",
+        description="Language-specific .gitignore file",
+        variables={"service_name"},
+    ),
+    TemplateInfo(
+        name="dockerfile",
+        path="{language}/Dockerfile.tpl",
+        description="Docker container configuration",
+        variables={"service_name", "port"},
+    ),
+    TemplateInfo(
+        name="makefile",
+        path="{language}/Makefile.tpl",
+        description="Build automation with Make",
+        variables={"service_name"},
+    ),
+)
+
+SERVICE_TEMPLATE_METADATA = {
+    "requirements.txt": TemplateMetadata("requirements", "Python dependencies", {"service_name"}),
+    "pyproject.toml": TemplateMetadata("pyproject", "Python project configuration", {"service_name", "description"}),
+    "Cargo.toml": TemplateMetadata("cargo", "Rust project configuration", {"service_name", "description"}),
+    "go.mod": TemplateMetadata("gomod", "Go module definition", {"service_name"}),
+    "package.json": TemplateMetadata("package", "Bun package manifest", {"service_name"}),
+    "tsconfig.json": TemplateMetadata("tsconfig", "TypeScript compiler configuration", {"service_name"}),
+    "tsconfig.build.json": TemplateMetadata(
+        "tsconfig_build",
+        "TypeScript build compiler configuration",
+        {"service_name"},
+    ),
+    "bunfig.toml": TemplateMetadata("bunfig", "Bun configuration", {"service_name"}),
+    "CMakeLists.txt": TemplateMetadata("cmake", "CMake build configuration", {"service_name"}),
+}
+
+HELM_TEMPLATE_METADATA = {
+    "infra/helm/example-service/Chart.yaml": TemplateMetadata(
+        "helm_chart",
+        "Helm chart metadata",
+        {"service_name", "version"},
+    ),
+    "infra/helm/example-service/values.yaml": TemplateMetadata(
+        "helm_values",
+        "Helm chart default values",
+        {"service_name"},
+    ),
+    "infra/helm/example-service/templates/deployment.yaml": TemplateMetadata(
+        "helm_deployment",
+        "Kubernetes deployment template",
+        {"service_name", "image", "port"},
+    ),
+}
+
+
 class TemplateRegistry:
     """Registry for managing project templates.
     
@@ -55,150 +126,50 @@ class TemplateRegistry:
     
     def _initialize_default_templates(self) -> None:
         """Initialize the registry with default template configurations."""
-        # Common templates for all project types
-        common_templates = [
-            TemplateInfo(
-                name="readme",
-                path="{language}/README.md.tpl",
-                description="Project README with documentation",
-                variables={"service_name", "description", "language"}
-            ),
-            TemplateInfo(
-                name="gitignore",
-                path="{language}/gitignore.tpl",
-                description="Language-specific .gitignore file",
-                variables={"service_name"}
-            ),
-            TemplateInfo(
-                name="dockerfile",
-                path="{language}/Dockerfile.tpl",
-                description="Docker container configuration",
-                variables={"service_name", "port"}
-            ),
-            TemplateInfo(
-                name="makefile",
-                path="{language}/Makefile.tpl",
-                description="Build automation with Make",
-                variables={"service_name"}
-            ),
-        ]
-        
-        # Python-specific templates
-        python_templates = [
-            TemplateInfo(
-                name="requirements",
-                path="python/requirements.txt.tpl",
-                description="Python dependencies",
-                variables={"service_name"},
-                language="python"
-            ),
-            TemplateInfo(
-                name="pyproject",
-                path="python/pyproject.toml.tpl",
-                description="Python project configuration",
-                variables={"service_name", "description"},
-                language="python"
-            ),
-        ]
-        
-        # Rust-specific templates
-        rust_templates = [
-            TemplateInfo(
-                name="cargo",
-                path="rust/Cargo.toml.tpl",
-                description="Rust project configuration",
-                variables={"service_name", "description"},
-                language="rust"
-            ),
-        ]
-        
-        # Go-specific templates
-        go_templates = [
-            TemplateInfo(
-                name="gomod",
-                path="go/go.mod.tpl",
-                description="Go module definition",
-                variables={"service_name"},
-                language="go"
-            ),
-        ]
-
-        # TypeScript-specific templates
-        typescript_templates = [
-            TemplateInfo(
-                name="package",
-                path="typescript/package.json.tpl",
-                description="Bun package manifest",
-                variables={"service_name"},
-                language="typescript"
-            ),
-            TemplateInfo(
-                name="tsconfig",
-                path="typescript/tsconfig.json.tpl",
-                description="TypeScript compiler configuration",
-                variables={"service_name"},
-                language="typescript"
-            ),
-            TemplateInfo(
-                name="tsconfig_build",
-                path="typescript/tsconfig.build.json.tpl",
-                description="TypeScript build compiler configuration",
-                variables={"service_name"},
-                language="typescript"
-            ),
-            TemplateInfo(
-                name="bunfig",
-                path="typescript/bunfig.toml.tpl",
-                description="Bun configuration",
-                variables={"service_name"},
-                language="typescript"
-            ),
-        ]
-
-        # C++-specific templates
-        cpp_templates = [
-            TemplateInfo(
-                name="cmake",
-                path="cpp/CMakeLists.txt.tpl",
-                description="CMake build configuration",
-                variables={"service_name"},
-                language="cpp"
-            ),
-        ]
-        
-        # Helm templates
-        helm_templates = [
-            TemplateInfo(
-                name="helm_chart",
-                path="monorepo/helm/Chart.yaml",
-                description="Helm chart metadata",
-                variables={"service_name", "version"},
-                project_type="helm"
-            ),
-            TemplateInfo(
-                name="helm_values",
-                path="monorepo/helm/values.yaml",
-                description="Helm chart default values",
-                variables={"service_name"},
-                project_type="helm"
-            ),
-            TemplateInfo(
-                name="helm_deployment",
-                path="monorepo/helm/deployment.yaml",
-                description="Kubernetes deployment template",
-                variables={"service_name", "image", "port"},
-                project_type="helm"
-            ),
-        ]
-        
-        # Register all templates
-        all_templates = (
-            common_templates + python_templates + rust_templates + 
-            go_templates + typescript_templates + cpp_templates + helm_templates
-        )
-        
-        for template in all_templates:
+        for template in COMMON_SERVICE_TEMPLATES:
             self.register_template(template)
+
+        self._register_stack_service_templates()
+        self._register_stack_helm_templates()
+
+    def _register_stack_service_templates(self) -> None:
+        """Register language templates from the stack profile registry."""
+        for language, profile in stack_registry.languages.items():
+            if "container" not in profile.service_runtimes:
+                continue
+
+            selection = stack_registry.service_selection(language, "container")
+            for template in selection.templates:
+                metadata = SERVICE_TEMPLATE_METADATA.get(template.target)
+                if metadata is None:
+                    continue
+
+                self.register_template(
+                    TemplateInfo(
+                        name=metadata.name,
+                        path=template.template,
+                        description=metadata.description,
+                        variables=metadata.variables,
+                        language=language,
+                    )
+                )
+
+    def _register_stack_helm_templates(self) -> None:
+        """Register Helm template metadata from the stack profile registry."""
+        for template in stack_registry.helm_template_configs():
+            metadata = HELM_TEMPLATE_METADATA.get(template.target)
+            if metadata is None:
+                continue
+
+            self.register_template(
+                TemplateInfo(
+                    name=metadata.name,
+                    path=f"monorepo/{template.template}",
+                    description=metadata.description,
+                    variables=metadata.variables,
+                    project_type="helm",
+                )
+            )
     
     def register_template(self, template: TemplateInfo) -> None:
         """Register a new template in the registry.
