@@ -1,7 +1,9 @@
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from src.generator.base import BaseGenerator
 from src.generator.layouts import cli_directories, library_directories
 from src.generator.specs import CliSpec, LibrarySpec
+from src.generator.template_plan import TemplatePlan
 from src.generator.template_plans import cli_template_plan, library_template_plan
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
@@ -21,22 +23,33 @@ class LibraryGenerator(BaseGenerator):
         self.lang_template_dir = self.template_dir / self.lang
 
     def create(self) -> None:
-        directories = library_directories()
-        template_plan = library_template_plan(self.lang)
-        
-        architecture_title: str = f"{self.name} Library Docs"
-        success_message: str = f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!"
+        self._create_package_project(
+            directories=library_directories(),
+            template_plan=library_template_plan(self.lang),
+            architecture_title=f"{self.name} Library Docs",
+            success_message=f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!",
+            language_setup_fn=self._setup_language_specific_files,
+        )
 
+    def _create_package_project(
+        self,
+        directories: Sequence[str],
+        template_plan: TemplatePlan,
+        architecture_title: str,
+        success_message: str,
+        language_setup_fn: Callable[[], bool],
+    ) -> None:
+        """Create a package-like project using the shared generator flow."""
         def github_create_fn() -> bool | None:
             return create_repo(self.name) if self.gh else None
-        
+
         self.execute_create_flow(
             directories=directories,
             template_plan=template_plan,
             architecture_title=architecture_title,
             success_message=success_message,
-            language_setup_fn=self._setup_language_specific_files,
-            github_create_fn=github_create_fn if self.gh else None
+            language_setup_fn=language_setup_fn,
+            github_create_fn=github_create_fn if self.gh else None,
         )
     
     def _setup_language_specific_files(self) -> bool:
@@ -54,22 +67,12 @@ class CLIGenerator(LibraryGenerator):
         self.spec = spec
 
     def create(self) -> None:
-        directories = cli_directories()
-        template_plan = cli_template_plan(self.lang)
-        
-        architecture_title: str = f"{self.name} CLI Docs"
-        success_message: str = f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!"
-
-        def github_create_fn() -> bool | None:
-            return create_repo(self.name) if self.gh else None
-        
-        self.execute_create_flow(
-            directories=directories,
-            template_plan=template_plan,
-            architecture_title=architecture_title,
-            success_message=success_message,
+        self._create_package_project(
+            directories=cli_directories(),
+            template_plan=cli_template_plan(self.lang),
+            architecture_title=f"{self.name} CLI Docs",
+            success_message=f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!",
             language_setup_fn=self._setup_cli_specific_files,
-            github_create_fn=github_create_fn if self.gh else None
         )
     
     def _setup_cli_specific_files(self) -> bool:
