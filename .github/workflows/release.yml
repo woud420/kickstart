@@ -3,19 +3,16 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'  # Triggers on version tags like v0.3.1, v1.0.0, etc.
+      - "v*.*.*"
 
 env:
-  PYTHON_VERSION: '3.12'
-  POETRY_VERSION: '1.7.0'
+  PYTHON_VERSION: "3.14"
+  POETRY_VERSION: "2.3.3"
 
 jobs:
-  release:
-    name: Build and Release
+  verify:
+    name: Verify Release Inputs
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # Needed to create releases
-      id-token: write  # Needed for trusted publishing to PyPI
 
     steps:
       - name: Checkout code
@@ -33,49 +30,130 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run checks
+        run: make check
+
+  package:
+    name: Build Python Package
+    runs-on: ubuntu-latest
+    needs: verify
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - name: Install dependencies
         run: poetry install --no-interaction
 
       - name: Build package
-        run: |
-          poetry build
-          echo "Built packages:"
-          ls -la dist/
+        run: make package
 
-      - name: Build standalone binary with PyInstaller
+      - name: Publish to PyPI
+        if: ${{ !contains(github.ref_name, 'rc') && !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'alpha') }}
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          poetry run pip install pyinstaller
-          poetry run pyinstaller \
-            --name kickstart \
-            --onefile \
-            --add-data "src/templates:templates" \
-            --hidden-import typer \
-            --hidden-import rich \
-            --hidden-import requests \
-            --hidden-import toml \
-            --hidden-import jinja2 \
-            --collect-all src \
-            src/cli/main.py
+          if [ -n "$POETRY_PYPI_TOKEN_PYPI" ]; then
+            poetry publish --no-interaction
+          else
+            echo "PYPI_API_TOKEN not set, skipping PyPI publish"
+          fi
 
-          # Rename binary with platform suffix
-          mv dist/kickstart dist/kickstart-linux-amd64
-          echo "Built binary:"
-          ls -la dist/kickstart-*
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          retention-days: 7
 
-      - name: Build macOS binary (cross-compile attempt)
+  binary:
+    name: Build ${{ matrix.python-version }} Binary on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12", "3.13", "3.14"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Build standalone binary
+        run: make binary
+
+      - name: Name binary artifact
+        env:
+          PYTHON_MINOR: ${{ matrix.python-version }}
         run: |
-          # Note: True cross-compilation to macOS from Linux is complex
-          # This is a placeholder - for real macOS builds, use a macOS runner
-          echo "macOS binary would be built on macOS runner"
+          platform="$(echo "${RUNNER_OS}-${RUNNER_ARCH}" | tr '[:upper:]' '[:lower:]')"
+          mv dist/kickstart "dist/kickstart-${platform}-py${PYTHON_MINOR}"
+          "dist/kickstart-${platform}-py${PYTHON_MINOR}" version
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ runner.os }}-${{ runner.arch }}-py${{ matrix.python-version }}
+          path: dist/kickstart-*
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [package, binary]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: artifacts/python-package
+
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: artifacts/binaries
+          merge-multiple: true
 
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -84,133 +162,16 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
           generate_release_notes: true
           files: |
-            dist/*.whl
-            dist/*.tar.gz
-            dist/kickstart-*
+            artifacts/python-package/*.whl
+            artifacts/python-package/*.tar.gz
+            artifacts/binaries/kickstart-*
           body: |
             ## Installation
 
-            ### Via pip (recommended)
+            Install from PyPI when published:
+
             ```bash
             pip install kickstart
             ```
 
-            ### Standalone Binary
-            Download the appropriate binary for your platform from the assets below.
-
-            ### From Source
-            ```bash
-            pip install dist/kickstart-*.whl
-            ```
-
-            ## What's Changed
-            Auto-generated release notes below:
-
-      - name: Publish to PyPI
-        if: ${{ !contains(github.ref_name, 'rc') && !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'alpha') }}
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          # Only publish to PyPI for non-prerelease versions
-          # Requires PYPI_API_TOKEN secret to be set in repository settings
-          if [ -n "$POETRY_PYPI_TOKEN_PYPI" ]; then
-            poetry publish --no-interaction
-          else
-            echo "⚠️ PYPI_API_TOKEN not set, skipping PyPI publish"
-          fi
-
-  build-macos:
-    name: Build macOS Binary
-    runs-on: macos-latest
-    needs: release
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Build macOS binary
-        run: |
-          poetry run pip install pyinstaller
-          poetry run pyinstaller \
-            --name kickstart \
-            --onefile \
-            --add-data "src/templates:templates" \
-            --hidden-import typer \
-            --hidden-import rich \
-            --hidden-import requests \
-            --hidden-import toml \
-            --hidden-import jinja2 \
-            --collect-all src \
-            src/cli/main.py
-
-          # Rename binary with platform suffix
-          mv dist/kickstart dist/kickstart-darwin-amd64
-          echo "Built binary:"
-          ls -la dist/kickstart-*
-
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: dist/kickstart-darwin-amd64
-
-  build-windows:
-    name: Build Windows Binary
-    runs-on: windows-latest
-    needs: release
-    if: false  # Disabled since you're not interested in Windows support
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Build Windows binary
-        run: |
-          poetry run pip install pyinstaller
-          poetry run pyinstaller `
-            --name kickstart `
-            --onefile `
-            --add-data "src/templates;templates" `
-            --hidden-import typer `
-            --hidden-import rich `
-            --hidden-import requests `
-            --hidden-import toml `
-            --hidden-import jinja2 `
-            --collect-all src `
-            src/cli/main.py
-
-          # Rename binary with platform suffix
-          Move-Item dist/kickstart.exe dist/kickstart-windows-amd64.exe
-          Get-ChildItem dist/kickstart-*
-
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: dist/kickstart-windows-amd64.exe
+            Standalone binaries are attached for Linux and macOS across the supported Python minor versions.

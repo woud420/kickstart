@@ -2,14 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop, 'feature/**']
+    branches: [main, master, develop, "feature/**", "codex/**"]
   pull_request:
     branches: [main, master, develop]
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.12'
-  POETRY_VERSION: '1.7.0'
+  PYTHON_VERSION: "3.14"
+  POETRY_VERSION: "2.3.3"
 
 jobs:
   lint:
@@ -34,34 +34,32 @@ jobs:
 
       - name: Load cached venv
         id: cached-poetry-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
-
-      - name: Install project
         run: poetry install --no-interaction
 
-      - name: Run mypy
-        run: |
-          poetry run mypy src/ --ignore-missing-imports --no-strict-optional
+      - name: Validate package metadata
+        run: poetry check
 
-      - name: Run ruff
-        run: |
-          poetry run pip install ruff
-          poetry run ruff check src/
+      - name: Run lint
+        run: make lint
+
+      - name: Run typecheck
+        run: make typecheck
 
   test:
-    name: Test Python 3.12 on ${{ matrix.os }}
+    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12", "3.13", "3.14"]
 
     steps:
       - name: Checkout code
@@ -70,7 +68,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
@@ -81,21 +79,17 @@ jobs:
 
       - name: Load cached venv
         id: cached-poetry-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-3.12-${{ hashFiles('**/poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
-
-      - name: Install project
         run: poetry install --no-interaction
 
       - name: Run tests
-        run: |
-          poetry run pytest tests/ -v --tb=short || echo "No tests found"
+        run: make tests
 
       - name: Test CLI execution
         run: |
@@ -136,7 +130,6 @@ jobs:
             --auth jwt \
             --framework fastapi
 
-          # Verify generated files exist
           test -f /tmp/test-python-service/src/main.py
           test -f /tmp/test-python-service/requirements.txt
           test -f /tmp/test-python-service/Dockerfile
@@ -148,7 +141,6 @@ jobs:
             --root /tmp \
             --lang go
 
-          # Verify generated files exist
           test -f /tmp/test-go-service/src/main.go
           test -f /tmp/test-go-service/go.mod
           test -f /tmp/test-go-service/Dockerfile
@@ -159,7 +151,6 @@ jobs:
             --root /tmp \
             --lang python
 
-          # Verify generated files exist
           test -f /tmp/test-library/setup.py || test -f /tmp/test-library/pyproject.toml
 
       - name: Test CLI generation
@@ -168,20 +159,22 @@ jobs:
             --root /tmp \
             --lang python
 
-          # Verify generated files exist
           test -d /tmp/test-cli-tool
 
       - name: Verify template syntax
         run: |
-          # Check that generated Python files are syntactically valid
           python -m py_compile /tmp/test-python-service/src/main.py
-          python -m py_compile /tmp/test-python-service/src/api/__init__.py || true
-          python -m py_compile /tmp/test-python-service/src/model/__init__.py || true
+          python -m py_compile /tmp/test-python-service/src/api/__init__.py
+          python -m py_compile /tmp/test-python-service/src/model/__init__.py
 
   build-test:
-    name: Build Test
-    runs-on: ubuntu-latest
+    name: Package & Binary on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     needs: [lint, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
       - name: Checkout code
@@ -196,29 +189,27 @@ jobs:
         uses: snok/install-poetry@v1
         with:
           version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - name: Install dependencies
         run: poetry install --no-interaction
 
       - name: Build package
-        run: |
-          poetry build
-          ls -la dist/
+        run: make package
 
-      - name: Check package contents
-        run: |
-          poetry run pip install twine
-          poetry run twine check dist/*
+      - name: Build standalone binary
+        run: make binary
 
-      - name: Test installation
-        run: |
-          pip install dist/*.whl
-          kickstart version
-          kickstart --help
+      - name: Check binary
+        run: ./dist/kickstart version
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: python-package
-          path: dist/
+          name: kickstart-${{ runner.os }}-${{ runner.arch }}-py${{ env.PYTHON_VERSION }}
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/kickstart
           retention-days: 7

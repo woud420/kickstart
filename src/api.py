@@ -75,7 +75,7 @@ def create_monorepo(
     helm: bool = False,
     root: str | None = None,
     cloud: str = "multi",
-    knowledge: str = "both",
+    knowledge: str = "none",
     runtime: str = "kubernetes",
 ) -> None:
     """Create an infrastructure monorepo."""

@@ -26,7 +26,7 @@ class MonorepoGenerator(BaseGenerator):
         helm: bool = False,
         root: str | None = None,
         cloud: str = "multi",
-        knowledge: str = "both",
+        knowledge: str = "none",
         runtime: str = "kubernetes",
     ) -> None:
         spec = MonorepoSpec.from_options(

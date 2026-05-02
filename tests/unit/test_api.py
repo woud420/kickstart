@@ -148,7 +148,7 @@ def test_create_monorepo_basic(mock_monorepo_generator):
         helm=False,
         root=None,
         cloud="multi",
-        knowledge="both",
+        knowledge="none",
         runtime="kubernetes",
     )
     mock_generator_instance.create.assert_called_once()
@@ -168,7 +168,7 @@ def test_create_monorepo_with_helm_and_root(mock_monorepo_generator):
         helm=True,
         root="/monorepo/path",
         cloud="multi",
-        knowledge="both",
+        knowledge="none",
         runtime="kubernetes",
     )
     mock_generator_instance.create.assert_called_once()
@@ -237,7 +237,7 @@ def test_create_monorepo_with_runtime(mock_monorepo_generator):
         helm=False,
         root=None,
         cloud="cloudflare",
-        knowledge="both",
+        knowledge="none",
         runtime="cloudflare-workers",
     )
     mock_generator_instance.create.assert_called_once()
@@ -375,6 +375,6 @@ def test_optional_parameters_default_behavior():
             helm=False,
             root=None,
             cloud="multi",
-            knowledge="both",
+            knowledge="none",
             runtime="kubernetes",
         )

@@ -97,7 +97,7 @@ class StackProfileRegistry:
     def monorepo_selection(
         self,
         cloud: str = "multi",
-        knowledge: str = "both",
+        knowledge: str = "none",
         runtime: str = "kubernetes",
         *,
         helm: bool = False,

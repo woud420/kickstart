@@ -102,7 +102,7 @@ def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, c
         monorepo_kwargs: MonorepoCreateKwargs = {"helm": options.helm, "root": options.root}
         if options.cloud != "multi":
             monorepo_kwargs["cloud"] = options.cloud
-        if options.knowledge != "both":
+        if options.knowledge != "none":
             monorepo_kwargs["knowledge"] = options.knowledge
         if options.runtime is not None:
             monorepo_kwargs["runtime"] = options.runtime

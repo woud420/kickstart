@@ -69,7 +69,7 @@ class MonorepoSpec:
     helm: bool = False
     root: str | None = None
     cloud: str = "multi"
-    knowledge: str = "both"
+    knowledge: str = "none"
     runtime: str = "kubernetes"
 
     @classmethod
@@ -82,7 +82,7 @@ class MonorepoSpec:
         helm: bool = False,
         root: str | None = None,
         cloud: str = "multi",
-        knowledge: str = "both",
+        knowledge: str = "none",
         runtime: str = "kubernetes",
     ) -> "MonorepoSpec":
         """Create a monorepo spec from public constructor options."""

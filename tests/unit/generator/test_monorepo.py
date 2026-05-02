@@ -66,7 +66,7 @@ def test_monorepo_generator_initialization(monorepo_generator):
     assert monorepo_generator.helm is False
     assert monorepo_generator.gh is False
     assert monorepo_generator.cloud == "multi"
-    assert monorepo_generator.knowledge == "both"
+    assert monorepo_generator.knowledge == "none"
     assert monorepo_generator.runtime == "kubernetes"
     assert monorepo_generator.config == {"key": "value"}
     assert monorepo_generator.template_dir.name == "monorepo"
@@ -176,7 +176,6 @@ def test_create_success_with_kustomize_and_gh(
         ("turbo.json", "turbo.json.tpl"),
         ("bunfig.toml", "bunfig.toml.tpl"),
         ("config/tsconfig/base.json", "tsconfig_base.json.tpl"),
-        ("catalog-info.yaml", "catalog-info.yaml"),
     ]
 
     for target, template in expected_templates:

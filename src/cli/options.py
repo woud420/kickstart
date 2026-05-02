@@ -36,7 +36,7 @@ class CreateCommandOptions:
     auth: str | None = None
     framework: str | None = None
     cloud: str = "multi"
-    knowledge: str = "both"
+    knowledge: str = "none"
     runtime: str | None = None
 
 
@@ -55,7 +55,7 @@ class CreateOptions:
     auth: str | None = None
     framework: str | None = None
     cloud: str = "multi"
-    knowledge: str = "both"
+    knowledge: str = "none"
     runtime: str | None = None
 
     def as_tuple(self) -> ResolvedCreateArgs:

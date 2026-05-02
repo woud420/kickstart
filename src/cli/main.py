@@ -68,7 +68,7 @@ def _prompt_for_missing_args(
     auth: Optional[str] = None,
     framework: Optional[str] = None,
     cloud: str = "multi",
-    knowledge: str = "both",
+    knowledge: str = "none",
     runtime: Optional[str] = None,
 ) -> ResolvedCreateArgs:
     """Prompt user for any missing arguments in interactive mode."""
@@ -108,7 +108,7 @@ def _dispatch_project_creation(
     auth: Optional[str] = None,
     framework: Optional[str] = None,
     cloud: str = "multi",
-    knowledge: str = "both",
+    knowledge: str = "none",
     runtime: Optional[str] = None,
 ) -> None:
     """Dispatch to the appropriate project creation function."""
@@ -150,7 +150,7 @@ def create(
         help="HTTP framework (minimal for standard library, default is FastAPI)",
     ),
     cloud: str = typer.Option("multi", "--cloud", help="Monorepo cloud target (aws, gcp, cloudflare, multi, none)"),
-    knowledge: str = typer.Option("both", "--knowledge", help="Knowledge base scaffold (none, obsidian, backstage, both)"),
+    knowledge: str = typer.Option("none", "--knowledge", help="Knowledge system scaffold (none, obsidian, backstage, both)"),
     runtime: Optional[str] = typer.Option(
         None,
         "--runtime",
@@ -188,3 +188,12 @@ def create(
         print(f"[bold red]❌ Failed to create project: {exc}[/]")
         logger.exception("Project creation failed")
         raise typer.Exit(code=1) from exc
+
+
+def main() -> None:
+    """Run the Typer application when executed as a script."""
+    app()
+
+
+if __name__ == "__main__":
+    main()
