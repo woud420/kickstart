@@ -2,8 +2,7 @@ from pathlib import Path
 from src.generator.base import BaseGenerator
 from src.generator.layouts import cli_directories, library_directories
 from src.generator.specs import CliSpec, LibrarySpec
-from src.generator.template_plan import TemplatePlan
-from src.stack.types import TemplateConfig
+from src.generator.template_plans import cli_template_plan, library_template_plan
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
 
@@ -23,14 +22,7 @@ class LibraryGenerator(BaseGenerator):
 
     def create(self) -> None:
         directories = library_directories()
-        
-        template_plan = TemplatePlan.from_templates(
-            [
-                TemplateConfig(".gitignore", f"{self.lang}/gitignore.tpl"),
-                TemplateConfig("Makefile", f"{self.lang}/Makefile.tpl"),
-                TemplateConfig("README.md", f"{self.lang}/README.md.tpl"),
-            ]
-        )
+        template_plan = library_template_plan(self.lang)
         
         architecture_title: str = f"{self.name} Library Docs"
         success_message: str = f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!"
@@ -63,14 +55,7 @@ class CLIGenerator(LibraryGenerator):
 
     def create(self) -> None:
         directories = cli_directories()
-        
-        template_plan = TemplatePlan.from_templates(
-            [
-                TemplateConfig(".gitignore", f"{self.lang}/gitignore.tpl"),
-                TemplateConfig("Makefile", f"{self.lang}/Makefile.tpl"),
-                TemplateConfig("README.md", f"{self.lang}/README.md.tpl"),
-            ]
-        )
+        template_plan = cli_template_plan(self.lang)
         
         architecture_title: str = f"{self.name} CLI Docs"
         success_message: str = f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!"

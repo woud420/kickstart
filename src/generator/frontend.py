@@ -1,8 +1,7 @@
 from src.generator.base import BaseGenerator
 from src.generator.layouts import frontend_directories
 from src.generator.specs import FrontendSpec
-from src.generator.template_plan import TemplatePlan
-from src.stack.types import TemplateConfig
+from src.generator.template_plans import frontend_template_plan
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
 
@@ -19,22 +18,7 @@ class FrontendGenerator(BaseGenerator):
 
     def create(self) -> None:
         directories = frontend_directories()
-        
-        template_plan = TemplatePlan.from_templates(
-            [
-                TemplateConfig("index.html", "index.html.tpl"),
-                TemplateConfig(".gitignore", "gitignore.tpl"),
-                TemplateConfig("Dockerfile", "Dockerfile.tpl"),
-                TemplateConfig("Makefile", "Makefile.tpl"),
-                TemplateConfig("README.md", "README.md.tpl"),
-                TemplateConfig("package.json", "package.json.tpl"),
-                TemplateConfig("tsconfig.json", "tsconfig.json.tpl"),
-                TemplateConfig("vite.config.ts", "vite.config.ts.tpl"),
-                TemplateConfig("src/App.tsx", "src/App.tsx.tpl"),
-                TemplateConfig("src/main.tsx", "src/main.tsx.tpl"),
-                TemplateConfig("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
-            ]
-        )
+        template_plan = frontend_template_plan()
         
         architecture_title: str = f"{self.name} Frontend Docs"
         success_message: str = f"Frontend app '{self.name}' created successfully in '{self.project}'!"
