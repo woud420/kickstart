@@ -168,7 +168,14 @@ WORKER_LANGUAGES = ("typescript", "rust")
 PACKAGE_LANGUAGES = ("python", "rust")
 
 
-def build_plans(count: int, seed: int) -> tuple[ProjectPlan, ...]:
+def build_plans(
+    count: int,
+    seed: int,
+    *,
+    max_components_per_project: int = 9,
+    max_system_depth: int = 1,
+    include_known_gaps: bool = True,
+) -> tuple[ProjectPlan, ...]:
     """Build deterministic imagined project plans."""
     rng = random.Random(seed)
     domains = list(DOMAINS)
@@ -179,7 +186,14 @@ def build_plans(count: int, seed: int) -> tuple[ProjectPlan, ...]:
         domain = domains[(index - 1) % len(domains)]
         scale = _scale_for_index(index)
         slug = f"eval-{index:03d}-{domain.replace(' ', '-')}"
-        components = _components_for_project(index, scale, rng)
+        components = _components_for_project(
+            index,
+            scale,
+            rng,
+            max_components_per_project=max_components_per_project,
+            max_system_depth=max_system_depth,
+            include_known_gaps=include_known_gaps,
+        )
         plans.append(
             ProjectPlan(
                 index=index,
@@ -215,14 +229,115 @@ def _organization_for(scale: ProjectScale) -> str:
     return "system monorepo with multiple services, edge paths, packages, and tools"
 
 
-def _components_for_project(index: int, scale: ProjectScale, rng: random.Random) -> tuple[ComponentPlan, ...]:
+def _components_for_project(
+    index: int,
+    scale: ProjectScale,
+    rng: random.Random,
+    *,
+    max_components_per_project: int,
+    max_system_depth: int,
+    include_known_gaps: bool,
+) -> tuple[ComponentPlan, ...]:
     if scale == "micro":
-        return (_micro_component(index, rng),)
+        components = (_micro_component(index, rng),)
+    elif scale == "small":
+        components = _small_components(index, rng)
+    elif scale == "medium":
+        components = _system_components(index, rng, service_count=2, include_frontend=index % 3 != 0)
+    else:
+        components = _system_components(
+            index,
+            rng,
+            service_count=3,
+            include_frontend=True,
+            include_gap=include_known_gaps and index % 5 == 0,
+        )
+
+    return _expand_components_for_limits(
+        index,
+        scale,
+        rng,
+        components,
+        max_components_per_project=max_components_per_project,
+        max_system_depth=max_system_depth,
+    )
+
+
+def _expand_components_for_limits(
+    index: int,
+    scale: ProjectScale,
+    rng: random.Random,
+    components: tuple[ComponentPlan, ...],
+    *,
+    max_components_per_project: int,
+    max_system_depth: int,
+) -> tuple[ComponentPlan, ...]:
+    """Expand a plan for wider eval profiles while preserving default shape."""
+    if max_components_per_project <= 9 and max_system_depth <= 1:
+        return components
+
+    desired_count = _desired_component_count(index, scale, max_components_per_project)
+    expanded = list(components[:max_components_per_project])
+
+    if (
+        max_system_depth >= 2
+        and scale in {"medium", "large"}
+        and any(component.kind == "system" and component.root_slot == "." for component in expanded)
+        and len(expanded) < desired_count
+    ):
+        expanded.append(_nested_system_component(index))
+
+    while len(expanded) < desired_count:
+        expanded.append(_extra_component(index, len(expanded) + 1, rng))
+
+    return tuple(expanded[:max_components_per_project])
+
+
+def _desired_component_count(index: int, scale: ProjectScale, max_components_per_project: int) -> int:
+    """Return a deterministic target count for an eval project."""
+    if scale == "micro":
+        return 1
     if scale == "small":
-        return _small_components(index, rng)
+        return min(max_components_per_project, 2 + (index % 4))
     if scale == "medium":
-        return _system_components(index, rng, service_count=2, include_frontend=index % 3 != 0)
-    return _system_components(index, rng, service_count=3, include_frontend=True, include_gap=index % 5 == 0)
+        return min(max_components_per_project, 4 + (index % 7))
+    return min(max_components_per_project, 6 + (index % 10))
+
+
+def _nested_system_component(index: int) -> ComponentPlan:
+    """Return a second-level system component inside a generated system."""
+    cloud, runtime, helm, knowledge = SYSTEM_ARCHETYPES[(index + 3) % len(SYSTEM_ARCHETYPES)]
+    args = ["create", "mono", "subsystem", "--cloud", cloud, "--runtime", runtime, "--knowledge", knowledge]
+    if helm:
+        args.append("--helm")
+    return ComponentPlan(
+        "system",
+        f"subsystem-{(index % 3) + 1}",
+        tuple(args),
+        "systems",
+        f"nested {runtime} system boundary targeting {cloud}",
+    )
+
+
+def _extra_component(index: int, position: int, rng: random.Random) -> ComponentPlan:
+    """Return an additional component for wide eval profiles."""
+    name_suffix = f"extra-{position}"
+    choice = (index + position) % 5
+    if choice == 0:
+        return _service_component(f"svc-{name_suffix}", rng, helm=False)
+    if choice == 1:
+        return _worker_component(f"edge-{name_suffix}", rng)
+    if choice == 2:
+        return _library_component(f"shared-{name_suffix}", rng)
+    if choice == 3:
+        return _cli_component(f"ops-{name_suffix}", rng)
+    return ComponentPlan(
+        "frontend",
+        f"web-{name_suffix}",
+        ("create", "frontend", f"web-{name_suffix}"),
+        "apps",
+        "additional frontend surface",
+    )
 
 
 def _micro_component(index: int, rng: random.Random) -> ComponentPlan:
@@ -359,7 +474,7 @@ def evaluate(plans: tuple[ProjectPlan, ...], repo_root: Path, output_root: Path)
     results: list[ProjectResult] = []
     for plan in plans:
         project_root = output_root / plan.slug
-        if not _has_system(plan):
+        if not _has_top_level_system(plan):
             project_root.mkdir(parents=True)
 
         component_results: list[ComponentResult] = []
@@ -385,13 +500,15 @@ def evaluate(plans: tuple[ProjectPlan, ...], repo_root: Path, output_root: Path)
     return tuple(results)
 
 
-def _has_system(plan: ProjectPlan) -> bool:
-    return any(component.kind == "system" for component in plan.components)
+def _has_top_level_system(plan: ProjectPlan) -> bool:
+    return any(component.kind == "system" and component.root_slot == "." for component in plan.components)
 
 
 def _component_root(output_root: Path, project_root: Path, component: ComponentPlan) -> Path:
     if component.kind == "system":
-        return output_root
+        if component.root_slot == ".":
+            return output_root
+        return project_root / component.root_slot
     if component.root_slot == ".":
         return project_root
     return project_root / component.root_slot
@@ -399,15 +516,22 @@ def _component_root(output_root: Path, project_root: Path, component: ComponentP
 
 def _target_path(output_root: Path, root: Path, plan: ProjectPlan, component: ComponentPlan) -> Path:
     if component.kind == "system":
-        return output_root / plan.slug
+        return root / _system_component_name(plan, component)
     return root / component.name
 
 
 def _command_with_root(plan: ProjectPlan, component: ComponentPlan, root: Path) -> tuple[str, ...]:
     args = list(component.args)
     if component.kind == "system":
-        args[2] = plan.slug
+        args[2] = _system_component_name(plan, component)
     return (sys.executable, "kickstart.py", *args, "--root", str(root))
+
+
+def _system_component_name(plan: ProjectPlan, component: ComponentPlan) -> str:
+    """Return the generated directory name for a system component."""
+    if component.root_slot == ".":
+        return plan.slug
+    return component.name
 
 
 def _run_command(command: tuple[str, ...], repo_root: Path) -> subprocess.CompletedProcess[str]:
@@ -637,7 +761,7 @@ def write_report(path: Path, results: tuple[ProjectResult, ...], output_root: Pa
     issue_components = sum(1 for result in results for component in result.components if component.issues)
 
     lines = [
-        "# 120 Project Scaffold Eval",
+        f"# {len(results)} Project Scaffold Eval",
         "",
         f"- Output root: `{output_root}`",
         f"- Projects: {len(results)}",
@@ -703,12 +827,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run a broad kickstart scaffold matrix eval.")
     parser.add_argument("--count", type=int, default=120)
     parser.add_argument("--seed", type=int, default=20260502)
+    parser.add_argument("--max-components-per-project", type=int, default=9)
+    parser.add_argument("--max-system-depth", type=int, default=1)
+    parser.add_argument("--exclude-known-gaps", action="store_true")
     parser.add_argument("--output-root", type=Path, default=Path("/private/tmp/kickstart-scaffold-matrix"))
     parser.add_argument("--report", type=Path, default=Path("reports/scaffold-eval-120.md"))
     args = parser.parse_args()
 
+    if args.max_components_per_project < 1:
+        parser.error("--max-components-per-project must be at least 1")
+    if args.max_system_depth < 1:
+        parser.error("--max-system-depth must be at least 1")
+
     repo_root = Path(__file__).resolve().parents[1]
-    plans = build_plans(args.count, args.seed)
+    plans = build_plans(
+        args.count,
+        args.seed,
+        max_components_per_project=args.max_components_per_project,
+        max_system_depth=args.max_system_depth,
+        include_known_gaps=not args.exclude_known_gaps,
+    )
     results = evaluate(plans, repo_root, args.output_root)
     write_report(args.report, results, args.output_root)
 
