@@ -4,9 +4,10 @@ from src.generator.base import BaseGenerator
 from src.generator.language_setup import (
     cpp_service_content_files,
     go_service_content_files,
+    go_service_content_templates,
     python_init_content_files,
     python_service_content_files,
-    rust_service_content_files,
+    rust_service_content_templates,
     typescript_service_content_files,
     typescript_service_templates,
 )
@@ -455,8 +456,8 @@ class ServiceGenerator(BaseGenerator):
         """
         include_redis_cache = self.cache == "redis"
         include_jwt_auth = self.auth == "jwt"
-        self.write_content_files(
-            rust_service_content_files(
+        self.write_template_content_files(
+            rust_service_content_templates(
                 include_redis_cache=include_redis_cache,
                 include_jwt_auth=include_jwt_auth,
             )
@@ -500,6 +501,7 @@ class ServiceGenerator(BaseGenerator):
         - Standard Go project layout
         """
         self.write_content_files(go_service_content_files())
+        self.write_template_content_files(go_service_content_templates())
         self.write_template("go.mod", "go/go.mod.tpl")
 
     def _create_typescript_structure(self) -> None:

@@ -1,3 +1,3 @@
 module {{ package_name }}
 
-go 1.22
+go 1.26

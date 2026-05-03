@@ -6,7 +6,11 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.generator.language_setup import typescript_service_templates
+from src.generator.language_setup import (
+    go_service_content_templates,
+    rust_service_content_templates,
+    typescript_service_templates,
+)
 from src.generator.lib import CLI_LANGUAGE_SETUP, LIBRARY_LANGUAGE_SETUP
 from src.generator.template_plans import (
     cli_template_plan,
@@ -159,6 +163,17 @@ def _active_templates() -> set[str]:
 
     for framework in (None, "minimal"):
         active.update(entry.template for entry in python_service_core_template_plan(framework).entries())
+
+    active.update(template.template for template in go_service_content_templates())
+    for include_redis_cache in (False, True):
+        for include_jwt_auth in (False, True):
+            active.update(
+                template.template
+                for template in rust_service_content_templates(
+                    include_redis_cache=include_redis_cache,
+                    include_jwt_auth=include_jwt_auth,
+                )
+            )
 
     active.update(template.template for template in typescript_service_templates(include_postgres_database=True))
 

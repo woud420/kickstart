@@ -7,7 +7,7 @@ from src.generator.file_plan import ContentFile
 from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
 from src.stack.types import TemplateConfig
-from src.utils.fs import write_file
+from src.utils.fs import get_template_engine, write_file
 from src.utils.logger import success, warn
 from src.utils.template_registry import get_template_registry, TemplateRegistry
 from src.utils.types import GeneratorConfig, TemplateValue, TemplateVars
@@ -165,6 +165,25 @@ class BaseGenerator:
             template_vars = dict(base_vars or {})
             template_vars.update(template.vars)
             if self.write_template(template.target, template.template, **template_vars) is False:
+                success = False
+        return success
+
+    def write_template_content_files(self, templates: Sequence[TemplateConfig]) -> bool:
+        """Write template files through the direct-content path.
+
+        This keeps generated source code in template files while preserving call
+        sites that intentionally write rendered source as direct content.
+        """
+        success = True
+        for template in templates:
+            template_vars: dict[str, TemplateValue] = {
+                "service_name": self.name,
+                "package_name": self._package_name(),
+            }
+            template_vars.update(template.vars)
+            source = (self.template_dir / template.template).read_text(encoding="utf-8")
+            content = get_template_engine().render_string(source, template_vars)
+            if self.write_content(template.target, content) is False:
                 success = False
         return success
 
