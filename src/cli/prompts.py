@@ -71,17 +71,17 @@ def prompt_for_missing_args(
 
     if project_type == "service" and lang == "python" and interactive_mode:
         if database is None:
-            database = prompt.ask("Database extension", choices=["none", "postgres", "mysql", "sqlite"], default="none")
+            database = prompt.ask("Database extension", choices=["none", "postgres"], default="none")
             if database == "none":
                 database = None
 
         if cache is None:
-            cache = prompt.ask("Cache extension", choices=["none", "redis", "memcached"], default="none")
+            cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
             if cache == "none":
                 cache = None
 
         if auth is None:
-            auth = prompt.ask("Authentication extension", choices=["none", "jwt", "oauth"], default="none")
+            auth = prompt.ask("Authentication extension", choices=["none", "jwt"], default="none")
             if auth == "none":
                 auth = None
 

@@ -18,6 +18,7 @@ from src.api import (
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
+from src.utils.error_handling import KickstartError
 from src.utils.config import load_config
 from src.utils.types import GeneratorConfig
 from src.utils.updater import check_for_update
@@ -141,9 +142,21 @@ def create(
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)"),
-    database: Optional[str] = typer.Option(None, "--database", help="Database extension (postgres, mysql, sqlite)"),
-    cache: Optional[str] = typer.Option(None, "--cache", help="Cache extension (redis, memcached)"),
-    auth: Optional[str] = typer.Option(None, "--auth", help="Authentication extension (jwt, oauth)"),
+    database: Optional[str] = typer.Option(
+        None,
+        "--database",
+        help="Database extension (implemented: postgres for Python/FastAPI services)",
+    ),
+    cache: Optional[str] = typer.Option(
+        None,
+        "--cache",
+        help="Cache extension (implemented: redis for Python/FastAPI services)",
+    ),
+    auth: Optional[str] = typer.Option(
+        None,
+        "--auth",
+        help="Authentication extension (implemented: jwt for Python/FastAPI services)",
+    ),
     framework: Optional[str] = typer.Option(
         None,
         "--framework",
@@ -184,8 +197,11 @@ def create(
 
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
+    except KickstartError as exc:
+        print(f"[bold red]Failed to create project: {exc}[/]")
+        raise typer.Exit(code=1) from exc
     except Exception as exc:
-        print(f"[bold red]❌ Failed to create project: {exc}[/]")
+        print(f"[bold red]Failed to create project: {exc}[/]")
         logger.exception("Project creation failed")
         raise typer.Exit(code=1) from exc
 

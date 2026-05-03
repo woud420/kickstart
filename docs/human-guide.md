@@ -27,11 +27,13 @@ Execution model:
 - `container`: default service runtime
 - `cloudflare-workers`: TypeScript or Rust Worker scaffold
 
-Python extensions:
+Implemented service extensions:
 
 - `--database postgres`
 - `--cache redis`
 - `--auth jwt`
+
+These currently apply to Python/FastAPI container services only. Other language/runtime/framework combinations fail loudly until their templates are implemented.
 
 ## Library And CLI Options
 

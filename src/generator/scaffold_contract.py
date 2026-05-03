@@ -35,6 +35,16 @@ class ScaffoldProviderManifest(TypedDict):
     targets: list[str]
 
 
+class ScaffoldServiceExtensionsManifest(TypedDict, total=False):
+    database: str
+    cache: str
+    auth: str
+
+
+class ScaffoldCapabilitiesManifest(TypedDict, total=False):
+    service_extensions: ScaffoldServiceExtensionsManifest
+
+
 class ScaffoldLifecycleManifest(TypedDict, total=False):
     install: str
     test: str
@@ -66,6 +76,7 @@ class ScaffoldOptionSemanticsManifest(TypedDict):
     runtime_platforms: str
     artifacts: str
     provider_targets: str
+    capabilities: str
     lifecycle: str
     composition: str
     knowledge_adapter: str
@@ -78,6 +89,7 @@ class ScaffoldManifest(TypedDict):
     execution: ScaffoldExecutionManifest
     artifacts: ScaffoldArtifactsManifest
     provider: ScaffoldProviderManifest
+    capabilities: ScaffoldCapabilitiesManifest
     lifecycle: ScaffoldLifecycleManifest
     knowledge_adapter: str
     docs: ScaffoldDocsManifest
@@ -153,6 +165,26 @@ class ScaffoldLifecycle:
 
 
 @dataclass(frozen=True)
+class ScaffoldServiceExtensions:
+    """Service extensions selected for a generated scaffold."""
+
+    database: str | None = None
+    cache: str | None = None
+    auth: str | None = None
+
+    def manifest(self) -> ScaffoldServiceExtensionsManifest:
+        """Return JSON-ready extension fields without empty values."""
+        manifest: ScaffoldServiceExtensionsManifest = {}
+        if self.database is not None:
+            manifest["database"] = self.database
+        if self.cache is not None:
+            manifest["cache"] = self.cache
+        if self.auth is not None:
+            manifest["auth"] = self.auth
+        return manifest
+
+
+@dataclass(frozen=True)
 class ScaffoldContract:
     """Explicit contract for generated project shape and option vocabulary."""
 
@@ -161,6 +193,7 @@ class ScaffoldContract:
     runtime_platforms: tuple[str, ...]
     artifacts: ScaffoldArtifacts = field(default_factory=ScaffoldArtifacts)
     lifecycle: ScaffoldLifecycle | None = None
+    service_extensions: ScaffoldServiceExtensions = field(default_factory=ScaffoldServiceExtensions)
     provider_targets: tuple[str, ...] = ()
     knowledge_adapter: str = "none"
     repo_layout: RepoLayout = "single-project"
@@ -182,6 +215,7 @@ class ScaffoldContract:
             },
             "artifacts": self.artifacts.manifest(),
             "provider": {"targets": list(self.provider_targets)},
+            "capabilities": self._capabilities_manifest(),
             "lifecycle": self._lifecycle().manifest(),
             "knowledge_adapter": self.knowledge_adapter,
             "docs": {
@@ -198,6 +232,7 @@ class ScaffoldContract:
                 "runtime_platforms": "where generated runtime artifacts are meant to run",
                 "artifacts": "files and tool configs emitted by the scaffold",
                 "provider_targets": "infrastructure providers targeted by generated IaC or platform config",
+                "capabilities": "selected optional capabilities that have generated code and validation support",
                 "lifecycle": "project-local commands that agents and humans can run to install, test, and check the scaffold",
                 "composition": "system-only metadata for discovering contained project manifests",
                 "knowledge_adapter": "external knowledge integration metadata",
@@ -223,6 +258,13 @@ class ScaffoldContract:
             )
             return system_manifest
         return manifest
+
+    def _capabilities_manifest(self) -> ScaffoldCapabilitiesManifest:
+        """Return generated optional capability metadata."""
+        service_extensions = self.service_extensions.manifest()
+        if service_extensions:
+            return {"service_extensions": service_extensions}
+        return {}
 
     def manifest_json(self, project_name: str) -> str:
         """Return stable, pretty JSON for `.kickstart/scaffold.json`."""

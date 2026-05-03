@@ -1,10 +1,7 @@
 """Main application entry point.
 
-This is a minimal HTTP server using only Python standard library.
-For enhanced functionality, use progressive enhancement flags:
-- --database postgres (adds database support)
-- --cache redis (adds caching support)  
-- --auth jwt (adds authentication support)
+This is a minimal HTTP server using only the Python standard library.
+Use the default FastAPI scaffold for currently implemented service extensions.
 """
 
 import json

@@ -18,6 +18,7 @@ Resolved metadata in `.kickstart/scaffold.json`:
 - runtime platforms
 - emitted artifacts
 - provider targets
+- selected capabilities, such as implemented service extensions
 - knowledge adapter
 
 Outputs:
@@ -46,6 +47,8 @@ Do not infer unsupported options. Use existing registries and typed plans.
 - Language setup plans: `src/generator/language_setup.py`
 - Stack registry: `src/stack/`
 - Templates: `src/templates/`
+
+Implemented service extensions are intentionally narrow. As of this contract, `postgres`, `redis`, and `jwt` are supported for Python/FastAPI container services only. Do not pass unsupported extension options and assume they were generated.
 
 ## Defaults
 
