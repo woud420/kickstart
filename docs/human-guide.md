@@ -33,7 +33,12 @@ Implemented service extensions:
 - `--cache redis`
 - `--auth jwt`
 
-These currently apply to Python/FastAPI container services only. Other language/runtime/framework combinations fail loudly until their templates are implemented.
+Support is intentionally narrow:
+
+- Python/FastAPI container services support Postgres, Redis, and JWT.
+- Rust container services support Redis.
+
+Other language/runtime/framework combinations fail loudly until their templates are implemented.
 
 ## Library And CLI Options
 
