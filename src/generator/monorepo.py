@@ -14,6 +14,7 @@ class MonorepoGenerator(BaseGenerator):
     knowledge: str
     runtime: str
     spec: MonorepoSpec
+    selection: MonorepoSelection
 
     VALID_CLOUDS = set(stack_registry.clouds)
     VALID_KNOWLEDGE = set(stack_registry.knowledge)
@@ -47,10 +48,16 @@ class MonorepoGenerator(BaseGenerator):
         self.cloud = spec.cloud
         self.knowledge = spec.knowledge
         self.runtime = spec.runtime
+        self.selection = stack_registry.monorepo_selection(
+            self.cloud,
+            self.knowledge,
+            self.runtime,
+            helm=self.helm,
+        )
         self.template_dir = self.template_dir / "monorepo"
 
     def create(self) -> None:
-        selection = self._selection()
+        selection = self.selection
 
         directories = monorepo_directories(selection)
         
@@ -107,7 +114,7 @@ class MonorepoGenerator(BaseGenerator):
 
     def _selection(self) -> MonorepoSelection:
         """Return the validated stack selection for this monorepo."""
-        return stack_registry.monorepo_selection(self.cloud, self.knowledge, self.runtime, helm=self.helm)
+        return self.selection
 
     def _clouds(self) -> list[str]:
         """Return concrete cloud providers to scaffold."""
@@ -163,7 +170,7 @@ class MonorepoGenerator(BaseGenerator):
         )
 
     def _template_vars(self) -> dict[str, TemplateValue]:
-        selection = self._selection()
+        selection = self.selection
         return {
             "monorepo_name": self.name,
             "service_name": self.name,
@@ -189,8 +196,7 @@ class MonorepoGenerator(BaseGenerator):
         self.create_directories(["infra/helm/example-service/templates"])
 
         template_vars = self._template_vars()
-        for template in stack_registry.helm_template_configs():
-            self.write_template(template.target, template.template, **template_vars)
+        self.write_template_configs(stack_registry.helm_template_configs(), template_vars)
 
     def _create_kustomize_structure(self) -> None:
         """Create Kustomize structure and files."""
@@ -200,8 +206,7 @@ class MonorepoGenerator(BaseGenerator):
         ])
 
         template_vars = self._template_vars()
-        for template in stack_registry.kustomize_template_configs():
-            self.write_template(template.target, template.template, **template_vars)
+        self.write_template_configs(stack_registry.kustomize_template_configs(), template_vars)
 
         for env in stack_registry.environments:
             self.write_template(

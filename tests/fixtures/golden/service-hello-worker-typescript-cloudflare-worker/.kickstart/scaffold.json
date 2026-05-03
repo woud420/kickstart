@@ -2,6 +2,7 @@
   "artifacts": {
     "worker": "wrangler"
   },
+  "capabilities": {},
   "docs": {
     "agent_map": "AGENTS.md",
     "architecture": "docs/architecture/",
@@ -28,6 +29,7 @@
   },
   "option_semantics": {
     "artifacts": "files and tool configs emitted by the scaffold",
+    "capabilities": "selected optional capabilities that have generated code and validation support",
     "composition": "system-only metadata for discovering contained project manifests",
     "execution_models": "how generated code is meant to execute",
     "knowledge_adapter": "external knowledge integration metadata",

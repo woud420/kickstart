@@ -6,11 +6,14 @@ Use the default FastAPI scaffold for currently implemented service extensions.
 
 import json
 import logging
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
-from typing import Dict, Any
-import os
+from typing import TypeAlias
+
+JsonValue: TypeAlias = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
+JsonObject: TypeAlias = dict[str, JsonValue]
 
 # Configure logging
 logging.basicConfig(
@@ -25,7 +28,7 @@ logger = logging.getLogger(__name__)
 class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
     """HTTP request handler for {{service_name}} service."""
     
-    def do_GET(self):
+    def do_GET(self) -> None:
         """Handle GET requests."""
         parsed_path = urlparse(self.path)
         path = parsed_path.path
@@ -45,13 +48,9 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
         elif path.startswith("/api/v1"):
             self._handle_api_request(path)
         else:
-            self._send_json_response(404, {
-                "success": False,
-                "message": "Endpoint not found",
-                "error_code": "NOT_FOUND"
-            })
+            self._send_error_response(404, "Endpoint not found", "NOT_FOUND")
     
-    def do_POST(self):
+    def do_POST(self) -> None:
         """Handle POST requests."""
         parsed_path = urlparse(self.path)
         path = parsed_path.path
@@ -59,13 +58,9 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/v1"):
             self._handle_api_request(path)
         else:
-            self._send_json_response(404, {
-                "success": False,
-                "message": "Endpoint not found",
-                "error_code": "NOT_FOUND"
-            })
+            self._send_error_response(404, "Endpoint not found", "NOT_FOUND")
     
-    def _handle_health_check(self):
+    def _handle_health_check(self) -> None:
         """Handle health check endpoint."""
         health_data = {
             "healthy": True,
@@ -77,9 +72,8 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
         }
         self._send_json_response(200, health_data)
     
-    def _handle_api_request(self, path: str):
+    def _handle_api_request(self, path: str) -> None:
         """Handle API requests."""
-        # Remove /api/v1 prefix
         api_path = path[7:] if path.startswith("/api/v1") else path
         
         if api_path == "/users" or api_path == "/users/":
@@ -92,15 +86,10 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
             if self.command == "GET":
                 self._handle_get_user(user_id)
         else:
-            self._send_json_response(404, {
-                "success": False,
-                "message": "API endpoint not found",
-                "error_code": "ENDPOINT_NOT_FOUND"
-            })
+            self._send_error_response(404, "API endpoint not found", "ENDPOINT_NOT_FOUND")
     
-    def _handle_get_users(self):
+    def _handle_get_users(self) -> None:
         """Handle GET /users request."""
-        # Mock data - replace with actual implementation
         users = [
             {"id": "1", "username": "user1", "email": "user1@example.com"},
             {"id": "2", "username": "user2", "email": "user2@example.com"}
@@ -111,9 +100,8 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
             "count": len(users)
         })
     
-    def _handle_get_user(self, user_id: str):
+    def _handle_get_user(self, user_id: str) -> None:
         """Handle GET /users/{id} request."""
-        # Mock data - replace with actual implementation
         if user_id in ["1", "2"]:
             user = {
                 "id": user_id,
@@ -127,20 +115,15 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
                 "data": user
             })
         else:
-            self._send_json_response(404, {
-                "success": False,
-                "message": "User not found",
-                "error_code": "USER_NOT_FOUND"
-            })
+            self._send_error_response(404, "User not found", "USER_NOT_FOUND")
     
-    def _handle_create_user(self):
+    def _handle_create_user(self) -> None:
         """Handle POST /users request."""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8'))
             
-            # Mock creation - replace with actual implementation
             user = {
                 "id": "3",
                 "username": data.get("username"),
@@ -155,20 +138,20 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
                 "data": user
             })
         except json.JSONDecodeError:
-            self._send_json_response(400, {
-                "success": False,
-                "message": "Invalid JSON data",
-                "error_code": "INVALID_JSON"
-            })
+            self._send_error_response(400, "Invalid JSON data", "INVALID_JSON")
         except Exception as e:
             logger.error(f"Error creating user: {e}")
-            self._send_json_response(500, {
-                "success": False,
-                "message": "Internal server error",
-                "error_code": "INTERNAL_ERROR"
-            })
+            self._send_error_response(500, "Internal server error", "INTERNAL_ERROR")
+
+    def _send_error_response(self, status_code: int, message: str, error_code: str) -> None:
+        """Send a standard API error response."""
+        self._send_json_response(status_code, {
+            "success": False,
+            "message": message,
+            "error_code": error_code,
+        })
     
-    def _send_json_response(self, status_code: int, data: Dict[str, Any]):
+    def _send_json_response(self, status_code: int, data: JsonObject) -> None:
         """Send JSON response."""
         self.send_response(status_code)
         self.send_header('Content-Type', 'application/json')
@@ -180,12 +163,12 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
         response_json = json.dumps(data, indent=2)
         self.wfile.write(response_json.encode('utf-8'))
     
-    def log_message(self, format, *args):
+    def log_message(self, format: str, *args: object) -> None:
         """Override to use our logger."""
         logger.info(f"{self.address_string()} - {format % args}")
 
 
-def run_server():
+def run_server() -> None:
     """Run the HTTP server."""
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))
@@ -208,7 +191,7 @@ def run_server():
         httpd.server_close()
 
 
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> JsonObject:
     """Perform application health check."""
     return {
         "healthy": True,

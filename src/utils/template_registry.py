@@ -9,7 +9,7 @@ from typing import Mapping
 from dataclasses import dataclass
 import logging
 from src.stack.profile import stack_registry
-from src.utils.types import TemplateValue
+from src.utils.types import TemplatePathConfig, TemplateValue
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +216,7 @@ class TemplateRegistry:
         Returns:
             Dictionary of template name to template info
         """
-        templates = {}
+        templates: dict[str, TemplateInfo] = {}
         
         # Add language-specific templates
         if language in self._language_templates:
@@ -277,7 +277,7 @@ class TemplateRegistry:
         missing_vars = required_vars - provided_vars
         return list(missing_vars)
     
-    def get_template_configs_for_service(self, language: str) -> list[dict[str, str]]:
+    def get_template_configs_for_service(self, language: str) -> list[TemplatePathConfig]:
         """Get standard template configurations for a service project.
         
         Args:

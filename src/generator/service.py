@@ -1,12 +1,13 @@
-from collections.abc import Sequence
 from pathlib import Path
 import logging
 from src.generator.base import BaseGenerator
 from src.generator.language_setup import (
-    ContentFile,
     cpp_service_content_files,
     go_service_content_files,
-    rust_service_content_files,
+    go_service_content_templates,
+    python_init_content_files,
+    python_service_content_files,
+    rust_service_content_templates,
     typescript_service_content_files,
     typescript_service_templates,
 )
@@ -17,11 +18,17 @@ from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
 from src.stack.types import TemplateConfig
 from src.generator.layouts import python_package_directories, service_directories, worker_directories
-from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract, ScaffoldServiceExtensions
+from src.generator.scaffold_contract import (
+    ScaffoldArtifacts,
+    ScaffoldContract,
+    ScaffoldLifecycle,
+    ScaffoldServiceExtensions,
+)
 from src.generator.service_capabilities import ServiceExtensionSelection, validate_service_extensions
 from src.generator.specs import ServiceSpec
 from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig
+from src.utils.types import TemplatePathConfig
 from src.utils.error_handling import (
     safe_operation_context, LanguageNotSupportedError
 )
@@ -78,9 +85,9 @@ class ServiceGenerator(BaseGenerator):
             config: Configuration dictionary with user preferences
             helm: Whether to include Helm chart scaffolding
             root: Root directory for project creation (optional)
-            database: Database extension (postgres, mysql, sqlite)
-            cache: Cache extension (redis, memcached)
-            auth: Authentication extension (jwt, oauth)
+            database: Database extension (implemented: postgres for Python/FastAPI and TypeScript container services)
+            cache: Cache extension (implemented: redis for Python/FastAPI and Rust container services)
+            auth: Authentication extension (implemented: jwt for Python/FastAPI and Rust container services)
             framework: HTTP framework (None for FastAPI default, minimal for standard library)
             runtime: Runtime target (container or cloudflare-workers)
             
@@ -235,6 +242,7 @@ class ServiceGenerator(BaseGenerator):
                 runtime_platforms=("cloudflare-workers",),
                 artifacts=ScaffoldArtifacts(worker="wrangler"),
                 provider_targets=("cloudflare",),
+                lifecycle=self._cloudflare_worker_lifecycle(),
             ),
             success_message=success_message,
             github_create_fn=github_create_fn if self.gh else None,
@@ -243,7 +251,7 @@ class ServiceGenerator(BaseGenerator):
         if not success:
             warn(f"Failed to create {self.lang} Cloudflare Worker '{self.name}'")
 
-    def _cloudflare_worker_template_configs(self) -> list[dict[str, str]]:
+    def _cloudflare_worker_template_configs(self) -> list[TemplatePathConfig]:
         """Return template mappings for Cloudflare Worker services."""
         return stack_registry.service_template_configs(self.lang, "cloudflare-workers")
 
@@ -251,6 +259,20 @@ class ServiceGenerator(BaseGenerator):
         """Return a typed template plan for Cloudflare Worker services."""
         selection = stack_registry.service_selection(self.lang, "cloudflare-workers")
         return TemplatePlan.from_templates(selection.templates)
+
+    def _cloudflare_worker_lifecycle(self) -> ScaffoldLifecycle | None:
+        """Return profile-specific lifecycle metadata for Worker services."""
+        if self.lang != "rust":
+            return None
+
+        return ScaffoldLifecycle(
+            install="make install",
+            test="make test",
+            check="make check",
+            build="make build",
+            dev="make dev",
+            deploy="make deploy",
+        )
 
     def _is_typescript_cloudflare_worker(self) -> bool:
         """Return True when generating the TypeScript Cloudflare Worker profile."""
@@ -389,23 +411,20 @@ class ServiceGenerator(BaseGenerator):
         - Clean architecture with proper separation of concerns
         - Type hints and proper error handling
         """
-        # Create __init__.py files for all Python packages
-        for package_path in python_package_directories():
-            self.write_content(f"{package_path}/__init__.py", "")
+        self.write_content_files(python_init_content_files(python_package_directories()))
 
-        for template in python_service_core_template_plan(self.framework).entries():
-            self.write_template(template.target, template.template, **template.vars)
+        self.write_templates_from_plan(python_service_core_template_plan(self.framework))
         
         # Add extensions based on flags (only for FastAPI framework)
         if self.framework != "minimal":
             self._add_python_extensions()
         
-        # Create environment example
-        self.write_content(".env.example", self._read_template_text("python/core/env.example.tpl"))
-        
-        # Create basic migration file as example
-        self.write_content("migrations/001_initial.sql", self._read_template_text("python/core/migrations/001_initial.sql.tpl"))
-        self.write_content("tests/test_smoke.py", "def test_generated_scaffold() -> None:\n    assert True\n")
+        self.write_content_files(
+            python_service_content_files(
+                env_content=self._read_template_text("python/core/env.example.tpl"),
+                migration_content=self._read_template_text("python/core/migrations/001_initial.sql.tpl"),
+            )
+        )
         
         self.create_directories(["migrations"])
 
@@ -457,8 +476,8 @@ class ServiceGenerator(BaseGenerator):
         """
         include_redis_cache = self.cache == "redis"
         include_jwt_auth = self.auth == "jwt"
-        self._write_content_files(
-            rust_service_content_files(
+        self.write_template_content_files(
+            rust_service_content_templates(
                 include_redis_cache=include_redis_cache,
                 include_jwt_auth=include_jwt_auth,
             )
@@ -476,7 +495,7 @@ class ServiceGenerator(BaseGenerator):
                 env_content += f"JWT_SECRET=change-me-change-me\nJWT_ISSUER={self.name}\n"
             self.write_content(".env.example", env_content)
 
-        cargo_vars = {}
+        cargo_vars: dict[str, str] = {}
         if include_redis_cache:
             cargo_vars["cache"] = "redis"
         if include_jwt_auth:
@@ -489,7 +508,7 @@ class ServiceGenerator(BaseGenerator):
         Sets up a C++ service with CMake, a small executable, and header files
         that match the generated source layout.
         """
-        self._write_content_files(cpp_service_content_files())
+        self.write_content_files(cpp_service_content_files())
         self.write_template("CMakeLists.txt", "cpp/CMakeLists.txt.tpl")
 
     def _create_go_structure(self) -> None:
@@ -501,7 +520,8 @@ class ServiceGenerator(BaseGenerator):
         - .gitkeep files for empty directories
         - Standard Go project layout
         """
-        self._write_content_files(go_service_content_files())
+        self.write_content_files(go_service_content_files())
+        self.write_template_content_files(go_service_content_templates())
         self.write_template("go.mod", "go/go.mod.tpl")
 
     def _create_typescript_structure(self) -> None:
@@ -511,23 +531,13 @@ class ServiceGenerator(BaseGenerator):
         a health route, and a small test harness.
         """
         include_postgres_database = self.database == "postgres"
-        self._write_template_configs(typescript_service_templates(include_postgres_database=include_postgres_database))
-        self._write_content_files(typescript_service_content_files(include_postgres_database=include_postgres_database))
+        self.write_template_configs(typescript_service_templates(include_postgres_database=include_postgres_database))
+        self.write_content_files(typescript_service_content_files(include_postgres_database=include_postgres_database))
         if include_postgres_database:
             self.write_template("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
             self.write_template("package.json", "typescript/package.json.tpl", database="postgres")
             self.create_directories(["migrations"])
             self.write_template("migrations/001_initial.sql", "typescript/extensions/database/migrations.sql.tpl")
-
-    def _write_content_files(self, files: Sequence[ContentFile]) -> None:
-        """Write direct content files from a typed setup plan."""
-        for file in files:
-            self.write_content(file.target, file.content)
-
-    def _write_template_configs(self, templates: Sequence[TemplateConfig]) -> None:
-        """Write template files from typed template configs."""
-        for template in templates:
-            self.write_template(template.target, template.template, **template.vars)
 
     def _create_helm_chart(self) -> None:
         """Create Helm chart structure and files.
@@ -543,8 +553,14 @@ class ServiceGenerator(BaseGenerator):
         chart_root = f"helm/{self.name}"
         self.create_directories([f"{chart_root}/templates"])
 
-        for template in stack_registry.helm_template_configs():
-            target = template.target.removeprefix("infra/helm/example-service/")
-            self.write_template(f"{chart_root}/{target}", f"monorepo/{template.template}")
+        service_chart_templates = tuple(
+            TemplateConfig(
+                target=f"{chart_root}/{template.target.removeprefix('infra/helm/example-service/')}",
+                template=f"monorepo/{template.template}",
+                vars=template.vars,
+            )
+            for template in stack_registry.helm_template_configs()
+        )
+        self.write_template_configs(service_chart_templates)
 
         success("Helm chart scaffolded")

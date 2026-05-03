@@ -1,37 +1,11 @@
 """Static language setup plans for service generators."""
 
-from dataclasses import dataclass
+from collections.abc import Sequence
 
+from src.generator.file_plan import ContentFile
 from src.stack.types import TemplateConfig
+from src.utils.types import TemplateVars
 
-
-@dataclass(frozen=True)
-class ContentFile:
-    """Direct file content to write during language setup."""
-
-    target: str
-    content: str
-
-
-RUST_MODULE_CONTENT = "// Module definitions\n"
-RUST_CLIENTS_MODULE_CONTENT = "pub mod cache;\n"
-RUST_HANDLER_MODULE_CONTENT = "pub mod auth;\n"
-
-RUST_MAIN_CONTENT = """use actix_web::{App, HttpResponse, HttpServer, web};
-
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
-        App::new().route(
-            "/",
-            web::get().to(|| async { HttpResponse::Ok().json("Hello World") }),
-        )
-    })
-    .bind("127.0.0.1:8080")?
-    .run()
-    .await
-}
-"""
 
 CPP_ROUTES_HEADER_CONTENT = """#pragma once
 
@@ -63,22 +37,6 @@ int main() {
 }
 """
 
-GO_MAIN_CONTENT = """package main
-
-import (
-    "fmt"
-    "net/http"
-)
-
-func main() {
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintln(w, `{"message": "Hello World"}`)
-    })
-    fmt.Println("Listening on :8080...")
-    http.ListenAndServe(":8080", nil)
-}
-"""
-
 TYPESCRIPT_ENV_EXAMPLE_CONTENT = """HOST=0.0.0.0
 PORT=8080
 LOG_LEVEL=info
@@ -87,35 +45,48 @@ LOG_LEVEL=info
 TYPESCRIPT_POSTGRES_ENV_EXAMPLE_CONTENT = (
     f"{TYPESCRIPT_ENV_EXAMPLE_CONTENT}DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n"
 )
+PYTHON_SMOKE_TEST_CONTENT = "def test_generated_scaffold() -> None:\n    assert True\n"
 
 
-def rust_service_content_files(
+def python_init_content_files(package_paths: Sequence[str]) -> tuple[ContentFile, ...]:
+    """Return Python package marker files for generated package directories."""
+    return tuple(ContentFile(f"{package_path}/__init__.py", "") for package_path in package_paths)
+
+
+def python_service_content_files(*, env_content: str, migration_content: str) -> tuple[ContentFile, ...]:
+    """Return direct content files for Python services."""
+    return (
+        ContentFile(".env.example", env_content),
+        ContentFile("migrations/001_initial.sql", migration_content),
+        ContentFile("tests/test_smoke.py", PYTHON_SMOKE_TEST_CONTENT),
+    )
+
+
+def rust_service_content_templates(
     *,
     include_redis_cache: bool = False,
     include_jwt_auth: bool = False,
-) -> tuple[ContentFile, ...]:
-    """Return direct content files for Rust services."""
-    module_lines = []
-    if include_redis_cache:
-        module_lines.append("mod clients;")
-    if include_jwt_auth:
-        module_lines.append("mod handler;")
-    main_content = RUST_MAIN_CONTENT
-    if module_lines:
-        main_content = "\n".join(module_lines) + f"\n\n{RUST_MAIN_CONTENT}"
-
-    files: tuple[ContentFile, ...] = (
-        ContentFile("src/api/mod.rs", RUST_MODULE_CONTENT),
-        ContentFile("src/model/mod.rs", RUST_MODULE_CONTENT),
-        ContentFile("tests/api/mod.rs", RUST_MODULE_CONTENT),
-        ContentFile("tests/model/mod.rs", RUST_MODULE_CONTENT),
-        ContentFile("src/main.rs", main_content),
+) -> tuple[TemplateConfig, ...]:
+    """Return source templates written as direct content for Rust services."""
+    templates: tuple[TemplateConfig, ...] = (
+        TemplateConfig("src/api/mod.rs", "rust/src/api/mod.rs.tpl"),
+        TemplateConfig("src/model/mod.rs", "rust/src/model/mod.rs.tpl"),
+        TemplateConfig("tests/api/mod.rs", "rust/tests/api/mod.rs.tpl"),
+        TemplateConfig("tests/model/mod.rs", "rust/tests/model/mod.rs.tpl"),
+        TemplateConfig(
+            "src/main.rs",
+            "rust/src/main.rs.tpl",
+            {
+                "include_redis_cache": include_redis_cache,
+                "include_jwt_auth": include_jwt_auth,
+            },
+        ),
     )
     if include_redis_cache:
-        files = (*files, ContentFile("src/clients/mod.rs", RUST_CLIENTS_MODULE_CONTENT))
+        templates = (*templates, TemplateConfig("src/clients/mod.rs", "rust/src/clients/mod.rs.tpl"))
     if include_jwt_auth:
-        files = (*files, ContentFile("src/handler/mod.rs", RUST_HANDLER_MODULE_CONTENT))
-    return files
+        templates = (*templates, TemplateConfig("src/handler/mod.rs", "rust/src/handler/mod.rs.tpl"))
+    return templates
 
 
 def cpp_service_content_files() -> tuple[ContentFile, ...]:
@@ -134,13 +105,22 @@ def go_service_content_files() -> tuple[ContentFile, ...]:
         ContentFile("src/model/.gitkeep", ""),
         ContentFile("tests/api/.gitkeep", ""),
         ContentFile("tests/model/.gitkeep", ""),
-        ContentFile("src/main.go", GO_MAIN_CONTENT),
+    )
+
+
+def go_service_content_templates() -> tuple[TemplateConfig, ...]:
+    """Return source templates written as direct content for Go services."""
+    return (
+        TemplateConfig("src/main.go", "go/src/main.go.tpl"),
+        TemplateConfig("src/api/health.go", "go/src/api/health.go.tpl"),
+        TemplateConfig("src/model/user.go", "go/src/model/user.go.tpl"),
+        TemplateConfig("tests/api/health_test.go", "go/tests/api/health_test.go.tpl"),
     )
 
 
 def typescript_service_templates(*, include_postgres_database: bool = False) -> tuple[TemplateConfig, ...]:
     """Return template files for TypeScript services."""
-    template_vars = {"database": "postgres"} if include_postgres_database else {}
+    template_vars: TemplateVars = {"database": "postgres"} if include_postgres_database else {}
     return (
         TemplateConfig("src/main.ts", "typescript/src/main.ts.tpl", template_vars),
         TemplateConfig("src/config/env.ts", "typescript/src/config/env.ts.tpl", template_vars),

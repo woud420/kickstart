@@ -1,7 +1,7 @@
 POETRY ?= poetry
 PYTEST := $(POETRY) run python -c "import pytest, sys; raise SystemExit(pytest.main(sys.argv[1:]))"
 
-.PHONY: help setup install run tests test-unit test-integration typecheck lint format format-check check package binary build clean
+.PHONY: help setup install run tests test-unit test-integration typecheck lint format format-check type-hygiene template-audit check package binary build clean
 
 help:
 	@echo "Usage:"
@@ -14,6 +14,8 @@ help:
 	@echo "  make lint             Run Ruff lint checks"
 	@echo "  make format           Format source and tests with Ruff"
 	@echo "  make format-check     Check Ruff formatting without changing files"
+	@echo "  make type-hygiene     Check for loose Any/object-style type annotations"
+	@echo "  make template-audit   Check template wiring inventory"
 	@echo "  make check            Run lint, typecheck, and tests"
 	@echo "  make package          Build wheel and source distribution"
 	@echo "  make binary           Build a local standalone binary with PyInstaller"
@@ -47,7 +49,13 @@ format:
 format-check:
 	@$(POETRY) run ruff format --check src tests
 
-check: lint typecheck tests
+type-hygiene:
+	@PYTHONPATH=$(CURDIR) $(POETRY) run python scripts/type_hygiene_audit.py
+
+template-audit:
+	@PYTHONPATH=$(CURDIR) $(POETRY) run python scripts/template_wiring_audit.py --strict
+
+check: lint typecheck type-hygiene template-audit tests
 
 package:
 	@$(POETRY) build

@@ -8,39 +8,25 @@ types (database, cache, auth) with configuration-driven approach.
 """
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 import logging
+from src.stack.types import TemplateConfig
 from src.utils.types import TemplateValue
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
 class ExtensionConfig:
     """Configuration for a specific extension."""
 
-    def __init__(
-        self,
-        name: str,
-        extension_type: str,
-        templates: list[tuple[str, str]],
-        requirements_file: str,
-        directories: list[str] | None = None
-    ) -> None:
-        """Initialize extension configuration.
-
-        Args:
-            name: Name of the extension (e.g., "postgres", "redis", "jwt")
-            extension_type: Type category (e.g., "database", "cache", "auth")
-            templates: List of (target_path, template_path) tuples
-            requirements_file: Path to requirements template file
-            directories: Optional directories to create
-        """
-        self.name = name
-        self.extension_type = extension_type
-        self.templates = templates
-        self.requirements_file = requirements_file
-        self.directories = directories or []
+    name: str
+    extension_type: str
+    templates: tuple[TemplateConfig, ...]
+    requirements_file: str
+    directories: tuple[str, ...] = ()
 
 
 class ExtensionWriter(Protocol):
@@ -79,8 +65,8 @@ class Extension:
         Returns:
             List of requirements to be added
         """
-        for target_path, template_path in self.config.templates:
-            writer.write_template(target_path, template_path)
+        for template in self.config.templates:
+            writer.write_template(template.target, template.template, **template.vars)
 
         if self.config.directories:
             writer.create_directories(self.config.directories)
@@ -145,12 +131,12 @@ class ExtensionManager:
         postgres_config = ExtensionConfig(
             name="postgres",
             extension_type="database",
-            templates=[
-                ("src/clients/database.py", "python/extensions/database/dao.py.tpl"),
-                ("migrations/001_initial.sql", "python/extensions/database/migrations.sql.tpl")
-            ],
+            templates=(
+                TemplateConfig("src/clients/database.py", "python/extensions/database/dao.py.tpl"),
+                TemplateConfig("migrations/001_initial.sql", "python/extensions/database/migrations.sql.tpl"),
+            ),
             requirements_file="python/extensions/database/requirements.txt.tpl",
-            directories=["migrations"]
+            directories=("migrations",),
         )
         self._register_extension(DatabaseExtension(postgres_config))
 
@@ -158,10 +144,10 @@ class ExtensionManager:
         redis_config = ExtensionConfig(
             name="redis",
             extension_type="cache",
-            templates=[
-                ("src/clients/cache.py", "python/extensions/cache/redis_client.py.tpl")
-            ],
-            requirements_file="python/extensions/cache/requirements.txt.tpl"
+            templates=(
+                TemplateConfig("src/clients/cache.py", "python/extensions/cache/redis_client.py.tpl"),
+            ),
+            requirements_file="python/extensions/cache/requirements.txt.tpl",
         )
         self._register_extension(CacheExtension(redis_config))
 
@@ -169,10 +155,10 @@ class ExtensionManager:
         jwt_config = ExtensionConfig(
             name="jwt",
             extension_type="auth",
-            templates=[
-                ("src/handler/auth.py", "python/extensions/auth/jwt_auth.py.tpl")
-            ],
-            requirements_file="python/extensions/auth/requirements.txt.tpl"
+            templates=(
+                TemplateConfig("src/handler/auth.py", "python/extensions/auth/jwt_auth.py.tpl"),
+            ),
+            requirements_file="python/extensions/auth/requirements.txt.tpl",
         )
         self._register_extension(AuthExtension(jwt_config))
 

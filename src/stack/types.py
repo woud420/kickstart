@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Mapping
 
-from src.utils.types import TemplateConfigDict, TemplateVars
+from src.utils.types import TemplateConfigDict, TemplatePathConfig, TemplateVars
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class TemplateConfig:
             config["vars"] = merged_vars
         return config
 
-    def as_plain_dict(self) -> dict[str, str]:
+    def as_plain_dict(self) -> TemplatePathConfig:
         """Return a simple target/template mapping for service generators."""
         return {"target": self.target, "template": self.template}
 
@@ -95,7 +95,7 @@ class ServiceSelection:
     templates: tuple[TemplateConfig, ...]
     smoke_commands: tuple[str, ...]
 
-    def template_configs(self) -> list[dict[str, str]]:
+    def template_configs(self) -> list[TemplatePathConfig]:
         """Return generator-compatible template configs."""
         return [template.as_plain_dict() for template in self.templates]
 
