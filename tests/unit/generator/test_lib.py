@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.lib import LibraryGenerator, CLIGenerator
+from src.utils.error_handling import LanguageNotSupportedError
 
 
 @pytest.fixture
@@ -243,8 +244,8 @@ def test_cli_create_fails_when_create_project_fails(mock_create_project, cli_gen
     mock_create_project.assert_called_once()
 
 
-def test_library_unsupported_language_no_specific_files():
-    """Test that unsupported languages don't write language-specific files."""
+def test_library_unsupported_language_fails_loudly():
+    """Test that unsupported library languages fail before partial generation."""
     with patch.object(LibraryGenerator, 'create_project', return_value=True), \
          patch.object(LibraryGenerator, 'init_basic_structure'), \
          patch.object(LibraryGenerator, 'create_architecture_docs'), \
@@ -252,22 +253,14 @@ def test_library_unsupported_language_no_specific_files():
          patch.object(LibraryGenerator, 'write_template') as mock_write_template:
         
         generator = LibraryGenerator("test", "unsupported", False, {})
-        generator.create()
-        
-        # Should write common files but no language-specific ones
-        expected_calls = [
-            call(".gitignore", "unsupported/gitignore.tpl"),
-            call("Makefile", "unsupported/Makefile.tpl"),
-            call("README.md", "unsupported/README.md.tpl")
-        ]
-        mock_write_template.assert_has_calls(expected_calls, any_order=True)
-        
-        # Should not write language-specific files
-        assert mock_write_template.call_count == 3
+        with pytest.raises(LanguageNotSupportedError, match="Supported library languages: python, rust"):
+            generator.create()
+
+        mock_write_template.assert_not_called()
 
 
-def test_cli_unsupported_language_no_specific_files():
-    """Test that unsupported languages in CLI don't write language-specific files."""
+def test_cli_unsupported_language_fails_loudly():
+    """Test that unsupported CLI languages fail before partial generation."""
     with patch.object(CLIGenerator, 'create_project', return_value=True), \
          patch.object(CLIGenerator, 'init_basic_structure'), \
          patch.object(CLIGenerator, 'create_architecture_docs'), \
@@ -276,19 +269,11 @@ def test_cli_unsupported_language_no_specific_files():
          patch.object(CLIGenerator, 'write_content') as mock_write_content:
         
         generator = CLIGenerator("test", "unsupported", False, {})
-        generator.create()
-        
-        # Should write common files but no language-specific ones
-        expected_calls = [
-            call(".gitignore", "unsupported/gitignore.tpl"),
-            call("Makefile", "unsupported/Makefile.tpl"),
-            call("README.md", "unsupported/README.md.tpl")
-        ]
-        mock_write_template.assert_has_calls(expected_calls, any_order=True)
+        with pytest.raises(LanguageNotSupportedError, match="Supported cli languages: python, rust"):
+            generator.create()
+
+        mock_write_template.assert_not_called()
         mock_write_content.assert_not_called()
-        
-        # Should only write common files
-        assert mock_write_template.call_count == 3
 
 
 def test_library_python_vs_rust_differences():

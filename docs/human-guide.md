@@ -43,7 +43,7 @@ Other language/runtime/framework combinations fail loudly until their templates 
 
 ## Library And CLI Options
 
-Python and Rust are the first-class library and CLI targets. Other language templates may exist, but should be treated as thinner scaffolds unless the generated output has explicit coverage.
+Python and Rust are the supported library and CLI targets. Other languages fail loudly until they have complete package setup, source files, and validation commands.
 
 ## System Options
 

@@ -1,6 +1,7 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 from src.generator.base import BaseGenerator
 from src.generator.file_plan import ContentFile
 from src.generator.layouts import cli_directories, library_directories
@@ -8,9 +9,14 @@ from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.generator.specs import CliSpec, LibrarySpec
 from src.generator.template_plan import TemplatePlan
 from src.generator.template_plans import cli_template_plan, library_template_plan
+from src.stack.profile import stack_registry
 from src.stack.types import TemplateConfig
+from src.utils.error_handling import LanguageNotSupportedError
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
+
+
+PackageKind = Literal["library", "cli"]
 
 
 @dataclass(frozen=True)
@@ -71,7 +77,13 @@ class LibraryGenerator(BaseGenerator):
     spec: LibrarySpec | CliSpec
     
     def __init__(self, name: str, lang: str, gh: bool, config: GeneratorConfig, root: str | None = None) -> None:
-        spec = LibrarySpec(name=name, language=lang, gh=gh, config=config, root=root)
+        spec = LibrarySpec(
+            name=name,
+            language=stack_registry.normalize_language(lang),
+            gh=gh,
+            config=config,
+            root=root,
+        )
         super().__init__(spec.name, spec.config, spec.root)
         self.spec = spec
         self.lang = spec.language
@@ -79,6 +91,7 @@ class LibraryGenerator(BaseGenerator):
         self.lang_template_dir = self.template_dir / self.lang
 
     def create(self) -> None:
+        self._validate_package_language("library")
         self._create_package_project(
             directories=library_directories(),
             template_plan=library_template_plan(self.lang),
@@ -129,13 +142,33 @@ class LibraryGenerator(BaseGenerator):
         self.write_template_configs(setup.templates)
         self.write_content_files(setup.content_files)
 
+    def _validate_package_language(self, package_kind: PackageKind) -> None:
+        """Fail loudly when a package target does not have a complete setup plan."""
+        profile = stack_registry.languages.get(self.lang)
+        supported = _supported_package_languages(package_kind)
+        is_supported = profile is not None and (profile.library if package_kind == "library" else profile.cli)
+        if is_supported:
+            return
+
+        label = "CLI" if package_kind == "cli" else "library"
+        raise LanguageNotSupportedError(
+            "{label} language '{language}' is not supported. Supported {package_kind} languages: {supported}.".format(
+                label=label,
+                language=self.lang,
+                package_kind=package_kind,
+                supported=", ".join(supported),
+            )
+        )
+
+
 class CLIGenerator(LibraryGenerator):
     def __init__(self, name: str, lang: str, gh: bool, config: GeneratorConfig, root: str | None = None) -> None:
-        spec = CliSpec(name=name, language=lang, gh=gh, config=config, root=root)
+        spec = CliSpec(name=name, language=stack_registry.normalize_language(lang), gh=gh, config=config, root=root)
         super().__init__(spec.name, spec.language, spec.gh, spec.config, spec.root)
         self.spec = spec
 
     def create(self) -> None:
+        self._validate_package_language("cli")
         self._create_package_project(
             directories=cli_directories(),
             template_plan=cli_template_plan(self.lang),
@@ -157,3 +190,21 @@ class CLIGenerator(LibraryGenerator):
 
 
 LibGenerator = LibraryGenerator
+
+
+def _supported_package_languages(package_kind: PackageKind) -> tuple[str, ...]:
+    """Return language ids with complete package setup for the package kind."""
+    return tuple(
+        sorted(
+            language
+            for language, profile in stack_registry.languages.items()
+            if _supports_package_kind(profile.library, profile.cli, package_kind)
+        )
+    )
+
+
+def _supports_package_kind(library: bool, cli: bool, package_kind: PackageKind) -> bool:
+    """Return whether a language profile supports the package kind."""
+    if package_kind == "library":
+        return library
+    return cli
