@@ -42,6 +42,7 @@ poetry run kickstart create mono product-stack
 - Preferred stack: Rust, TypeScript, Python, SQL, and C++.
 - Go is supported as a tolerated service target; Python and Rust are the first-class library/CLI targets.
 - Service execution models: containers by default, Cloudflare Workers when requested.
+- Implemented service extensions currently target Python/FastAPI container services: Postgres, Redis, and JWT.
 - System provider targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
 - System platform profiles: `kubernetes`, `cloudflare-workers`, or `hybrid`.
 - Dockerfiles are image artifacts; Helm and Kustomize are Kubernetes artifact styles; Wrangler is the Cloudflare Worker artifact path.
