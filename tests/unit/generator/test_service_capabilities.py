@@ -21,16 +21,91 @@ def test_python_fastapi_container_accepts_implemented_extensions() -> None:
     assert selection.auth == "jwt"
 
 
-@pytest.mark.parametrize("language", ["rust", "typescript"])
-def test_non_python_services_reject_current_python_only_extensions(language: str) -> None:
-    with pytest.raises(ExtensionError, match=rf"{language}/container/default"):
+def test_rust_container_accepts_redis_cache_extension() -> None:
+    selection = validate_service_extensions(
+        language="rust",
+        runtime="container",
+        framework=None,
+        database=None,
+        cache="redis",
+        auth=None,
+    )
+
+    assert selection.database is None
+    assert selection.cache == "redis"
+    assert selection.auth is None
+
+
+def test_rust_container_accepts_jwt_auth_extension() -> None:
+    selection = validate_service_extensions(
+        language="rust",
+        runtime="container",
+        framework=None,
+        database=None,
+        cache=None,
+        auth="jwt",
+    )
+
+    assert selection.database is None
+    assert selection.cache is None
+    assert selection.auth == "jwt"
+
+
+def test_typescript_container_accepts_postgres_database_extension() -> None:
+    selection = validate_service_extensions(
+        language="typescript",
+        runtime="container",
+        framework=None,
+        database="postgres",
+        cache=None,
+        auth=None,
+    )
+
+    assert selection.database == "postgres"
+    assert selection.cache is None
+    assert selection.auth is None
+
+
+def test_typescript_services_reject_redis_until_templates_exist() -> None:
+    with pytest.raises(ExtensionError, match="typescript/container/default"):
         validate_service_extensions(
-            language=language,
+            language="typescript",
             runtime="container",
             framework=None,
             database=None,
             cache="redis",
             auth=None,
+        )
+
+
+def test_typescript_services_reject_jwt_until_templates_exist() -> None:
+    with pytest.raises(ExtensionError, match="typescript/container/default"):
+        validate_service_extensions(
+            language="typescript",
+            runtime="container",
+            framework=None,
+            database=None,
+            cache=None,
+            auth="jwt",
+        )
+
+
+@pytest.mark.parametrize(
+    ("category", "kwargs"),
+    [
+        ("database", {"database": "postgres", "cache": None, "auth": None}),
+    ],
+)
+def test_rust_container_rejects_unimplemented_extension_categories(
+    category: str,
+    kwargs: dict[str, str | None],
+) -> None:
+    with pytest.raises(ExtensionError, match=rf"{category} extension '.+' is not supported"):
+        validate_service_extensions(
+            language="rust",
+            runtime="container",
+            framework=None,
+            **kwargs,
         )
 
 

@@ -131,11 +131,31 @@ def test_create_passes_service_extension_capabilities_to_manifest(mock_execute_c
     assert contract.service_extensions.auth == "jwt"
 
 
-@pytest.mark.parametrize("language", ["rust", "typescript"])
-def test_create_rejects_unsupported_service_extension_language(language):
+def test_create_rejects_unsupported_typescript_service_cache_extension():
+    language = "typescript"
     generator = ServiceGenerator("test-service", language, False, {}, cache="redis")
 
     with pytest.raises(ExtensionError, match="cache extension 'redis' is not supported"):
+        generator.create()
+
+
+def test_create_rejects_unsupported_typescript_service_auth_extension():
+    generator = ServiceGenerator("test-service", "typescript", False, {}, auth="jwt")
+
+    with pytest.raises(ExtensionError, match="auth extension 'jwt' is not supported"):
+        generator.create()
+
+
+@pytest.mark.parametrize(
+    ("option", "kwargs"),
+    [
+        ("database", {"database": "postgres"}),
+    ],
+)
+def test_create_rejects_unsupported_rust_service_extension_categories(option, kwargs):
+    generator = ServiceGenerator("test-service", "rust", False, {}, **kwargs)
+
+    with pytest.raises(ExtensionError, match=f"{option} extension '.+' is not supported"):
         generator.create()
 
 
@@ -254,11 +274,61 @@ def test_create_rust_structure(mock_write_content, mock_write_template, service_
     ]
     
     # Verify main.rs is created
-    expected_main_content = "use actix_web::{web, App, HttpResponse, HttpServer};\n\n#[actix_web::main]\nasync fn main() -> std::io::Result<()> {\n    HttpServer::new(|| {\n        App::new()\n            .route(\"/\", web::get().to(|| async { HttpResponse::Ok().json(\"Hello World\") }))\n    })\n    .bind(\"127.0.0.1:8080\")?\n    .run()\n    .await\n}\n"
+    expected_main_content = "use actix_web::{App, HttpResponse, HttpServer, web};\n\n#[actix_web::main]\nasync fn main() -> std::io::Result<()> {\n    HttpServer::new(|| {\n        App::new().route(\n            \"/\",\n            web::get().to(|| async { HttpResponse::Ok().json(\"Hello World\") }),\n        )\n    })\n    .bind(\"127.0.0.1:8080\")?\n    .run()\n    .await\n}\n"
     expected_main_call = call("src/main.rs", expected_main_content)
     
     mock_write_content.assert_has_calls(expected_mod_calls + [expected_main_call], any_order=True)
     mock_write_template.assert_called_once_with("Cargo.toml", "rust/Cargo.toml.tpl")
+
+
+@patch.object(ServiceGenerator, 'write_template')
+@patch.object(ServiceGenerator, 'write_content')
+def test_create_rust_structure_with_redis_cache(mock_write_content, mock_write_template, service_generator):
+    generator = ServiceGenerator("test-service", "rust", False, {}, cache="redis")
+    generator._create_rust_structure()
+
+    mock_write_content.assert_any_call("src/clients/mod.rs", "pub mod cache;\n")
+    mock_write_content.assert_any_call(
+        ".env.example",
+        "EXAMPLE_ENV_VAR=value\nREDIS_URL=redis://127.0.0.1:6379/0\n",
+    )
+    mock_write_template.assert_any_call("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
+    mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", cache="redis")
+
+
+@patch.object(ServiceGenerator, 'write_template')
+@patch.object(ServiceGenerator, 'write_content')
+def test_create_rust_structure_with_jwt_auth(mock_write_content, mock_write_template, service_generator):
+    generator = ServiceGenerator("test-service", "rust", False, {}, auth="jwt")
+    generator._create_rust_structure()
+
+    mock_write_content.assert_any_call("src/handler/mod.rs", "pub mod auth;\n")
+    mock_write_content.assert_any_call(
+        ".env.example",
+        "EXAMPLE_ENV_VAR=value\nJWT_SECRET=change-me-change-me\nJWT_ISSUER=test-service\n",
+    )
+    mock_write_template.assert_any_call("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
+    mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", auth="jwt")
+
+
+@patch.object(ServiceGenerator, 'write_template')
+@patch.object(ServiceGenerator, 'write_content')
+def test_create_rust_structure_with_redis_and_jwt(mock_write_content, mock_write_template, service_generator):
+    generator = ServiceGenerator("test-service", "rust", False, {}, cache="redis", auth="jwt")
+    generator._create_rust_structure()
+
+    mock_write_content.assert_any_call("src/clients/mod.rs", "pub mod cache;\n")
+    mock_write_content.assert_any_call("src/handler/mod.rs", "pub mod auth;\n")
+    mock_write_content.assert_any_call(
+        ".env.example",
+        "EXAMPLE_ENV_VAR=value\n"
+        "REDIS_URL=redis://127.0.0.1:6379/0\n"
+        "JWT_SECRET=change-me-change-me\n"
+        "JWT_ISSUER=test-service\n",
+    )
+    mock_write_template.assert_any_call("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
+    mock_write_template.assert_any_call("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
+    mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", cache="redis", auth="jwt")
 
 
 @patch.object(ServiceGenerator, 'write_content')
@@ -478,6 +548,32 @@ def test_create_typescript_structure(mock_write_template, mock_write_content, se
 
     mock_write_template.assert_has_calls(expected_calls, any_order=True)
     mock_write_content.assert_called_once_with(".env.example", "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n")
+
+
+@patch.object(ServiceGenerator, 'create_directories')
+@patch.object(ServiceGenerator, 'write_content')
+@patch.object(ServiceGenerator, 'write_template')
+def test_create_typescript_structure_with_postgres_database(
+    mock_write_template,
+    mock_write_content,
+    mock_create_directories,
+    service_generator,
+):
+    generator = ServiceGenerator("test-service", "typescript", False, {}, database="postgres")
+    generator._create_typescript_structure()
+
+    mock_write_template.assert_any_call("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
+    mock_write_template.assert_any_call("package.json", "typescript/package.json.tpl", database="postgres")
+    mock_write_template.assert_any_call(
+        "migrations/001_initial.sql",
+        "typescript/extensions/database/migrations.sql.tpl",
+    )
+    mock_write_content.assert_called_once_with(
+        ".env.example",
+        "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n"
+        "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n",
+    )
+    mock_create_directories.assert_called_once_with(["migrations"])
 
 
 def test_typescript_alias_normalizes_to_template_directory():

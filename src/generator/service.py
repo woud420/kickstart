@@ -455,8 +455,33 @@ class ServiceGenerator(BaseGenerator):
         - Cargo.toml with common dependencies
         - Proper crate structure
         """
-        self._write_content_files(rust_service_content_files())
-        self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
+        include_redis_cache = self.cache == "redis"
+        include_jwt_auth = self.auth == "jwt"
+        self._write_content_files(
+            rust_service_content_files(
+                include_redis_cache=include_redis_cache,
+                include_jwt_auth=include_jwt_auth,
+            )
+        )
+        if include_redis_cache:
+            self.write_template("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
+        if include_jwt_auth:
+            self.write_template("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
+
+        if include_redis_cache or include_jwt_auth:
+            env_content = "EXAMPLE_ENV_VAR=value\n"
+            if include_redis_cache:
+                env_content += "REDIS_URL=redis://127.0.0.1:6379/0\n"
+            if include_jwt_auth:
+                env_content += f"JWT_SECRET=change-me-change-me\nJWT_ISSUER={self.name}\n"
+            self.write_content(".env.example", env_content)
+
+        cargo_vars = {}
+        if include_redis_cache:
+            cargo_vars["cache"] = "redis"
+        if include_jwt_auth:
+            cargo_vars["auth"] = "jwt"
+        self.write_template("Cargo.toml", "rust/Cargo.toml.tpl", **cargo_vars)
 
     def _create_cpp_structure(self) -> None:
         """Create C++-specific project structure.
@@ -485,8 +510,14 @@ class ServiceGenerator(BaseGenerator):
         Sets up a Fastify service with strict TypeScript, environment parsing,
         a health route, and a small test harness.
         """
-        self._write_template_configs(typescript_service_templates())
-        self._write_content_files(typescript_service_content_files())
+        include_postgres_database = self.database == "postgres"
+        self._write_template_configs(typescript_service_templates(include_postgres_database=include_postgres_database))
+        self._write_content_files(typescript_service_content_files(include_postgres_database=include_postgres_database))
+        if include_postgres_database:
+            self.write_template("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
+            self.write_template("package.json", "typescript/package.json.tpl", database="postgres")
+            self.create_directories(["migrations"])
+            self.write_template("migrations/001_initial.sql", "typescript/extensions/database/migrations.sql.tpl")
 
     def _write_content_files(self, files: Sequence[ContentFile]) -> None:
         """Write direct content files from a typed setup plan."""

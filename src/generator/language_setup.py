@@ -14,14 +14,18 @@ class ContentFile:
 
 
 RUST_MODULE_CONTENT = "// Module definitions\n"
+RUST_CLIENTS_MODULE_CONTENT = "pub mod cache;\n"
+RUST_HANDLER_MODULE_CONTENT = "pub mod auth;\n"
 
-RUST_MAIN_CONTENT = """use actix_web::{web, App, HttpResponse, HttpServer};
+RUST_MAIN_CONTENT = """use actix_web::{App, HttpResponse, HttpServer, web};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
-        App::new()
-            .route("/", web::get().to(|| async { HttpResponse::Ok().json("Hello World") }))
+        App::new().route(
+            "/",
+            web::get().to(|| async { HttpResponse::Ok().json("Hello World") }),
+        )
     })
     .bind("127.0.0.1:8080")?
     .run()
@@ -80,16 +84,38 @@ PORT=8080
 LOG_LEVEL=info
 """
 
+TYPESCRIPT_POSTGRES_ENV_EXAMPLE_CONTENT = (
+    f"{TYPESCRIPT_ENV_EXAMPLE_CONTENT}DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n"
+)
 
-def rust_service_content_files() -> tuple[ContentFile, ...]:
+
+def rust_service_content_files(
+    *,
+    include_redis_cache: bool = False,
+    include_jwt_auth: bool = False,
+) -> tuple[ContentFile, ...]:
     """Return direct content files for Rust services."""
-    return (
+    module_lines = []
+    if include_redis_cache:
+        module_lines.append("mod clients;")
+    if include_jwt_auth:
+        module_lines.append("mod handler;")
+    main_content = RUST_MAIN_CONTENT
+    if module_lines:
+        main_content = "\n".join(module_lines) + f"\n\n{RUST_MAIN_CONTENT}"
+
+    files: tuple[ContentFile, ...] = (
         ContentFile("src/api/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("src/model/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("tests/api/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("tests/model/mod.rs", RUST_MODULE_CONTENT),
-        ContentFile("src/main.rs", RUST_MAIN_CONTENT),
+        ContentFile("src/main.rs", main_content),
     )
+    if include_redis_cache:
+        files = (*files, ContentFile("src/clients/mod.rs", RUST_CLIENTS_MODULE_CONTENT))
+    if include_jwt_auth:
+        files = (*files, ContentFile("src/handler/mod.rs", RUST_HANDLER_MODULE_CONTENT))
+    return files
 
 
 def cpp_service_content_files() -> tuple[ContentFile, ...]:
@@ -112,16 +138,18 @@ def go_service_content_files() -> tuple[ContentFile, ...]:
     )
 
 
-def typescript_service_templates() -> tuple[TemplateConfig, ...]:
+def typescript_service_templates(*, include_postgres_database: bool = False) -> tuple[TemplateConfig, ...]:
     """Return template files for TypeScript services."""
+    template_vars = {"database": "postgres"} if include_postgres_database else {}
     return (
-        TemplateConfig("src/main.ts", "typescript/src/main.ts.tpl"),
-        TemplateConfig("src/config/env.ts", "typescript/src/config/env.ts.tpl"),
-        TemplateConfig("src/routes/health.ts", "typescript/src/routes/health.ts.tpl"),
-        TemplateConfig("tests/health.test.ts", "typescript/tests/health.test.ts.tpl"),
+        TemplateConfig("src/main.ts", "typescript/src/main.ts.tpl", template_vars),
+        TemplateConfig("src/config/env.ts", "typescript/src/config/env.ts.tpl", template_vars),
+        TemplateConfig("src/routes/health.ts", "typescript/src/routes/health.ts.tpl", template_vars),
+        TemplateConfig("tests/health.test.ts", "typescript/tests/health.test.ts.tpl", template_vars),
     )
 
 
-def typescript_service_content_files() -> tuple[ContentFile, ...]:
+def typescript_service_content_files(*, include_postgres_database: bool = False) -> tuple[ContentFile, ...]:
     """Return direct content files for TypeScript services."""
-    return (ContentFile(".env.example", TYPESCRIPT_ENV_EXAMPLE_CONTENT),)
+    env_content = TYPESCRIPT_POSTGRES_ENV_EXAMPLE_CONTENT if include_postgres_database else TYPESCRIPT_ENV_EXAMPLE_CONTENT
+    return (ContentFile(".env.example", env_content),)

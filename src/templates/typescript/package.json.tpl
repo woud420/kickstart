@@ -17,12 +17,18 @@
   "dependencies": {
     "@fastify/helmet": "^12.0.1",
     "fastify": "^5.2.1",
+{% if database == "postgres" %}
+    "pg": "^8.13.1",
+{% endif %}
     "pino": "^9.6.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/bun": "^1.3.0",
     "@types/node": "^22.13.1",
+{% if database == "postgres" %}
+    "@types/pg": "^8.11.11",
+{% endif %}
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }

@@ -69,26 +69,43 @@ def prompt_for_missing_args(
         if project_type in ["mono", "service"]:
             helm = confirm.ask("Use Helm scaffolding?", default=False)
 
-    if project_type == "service" and lang == "python" and interactive_mode:
-        if database is None:
+    if project_type == "service" and interactive_mode:
+        if lang == "python":
+            if database is None:
+                database = prompt.ask("Database extension", choices=["none", "postgres"], default="none")
+                if database == "none":
+                    database = None
+
+            if cache is None:
+                cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
+                if cache == "none":
+                    cache = None
+
+            if auth is None:
+                auth = prompt.ask("Authentication extension", choices=["none", "jwt"], default="none")
+                if auth == "none":
+                    auth = None
+
+            if framework is None:
+                framework = prompt.ask("HTTP framework", choices=["fastapi", "minimal"], default="fastapi")
+                if framework == "fastapi":
+                    framework = None
+
+        if lang in ("typescript", "ts") and database is None:
             database = prompt.ask("Database extension", choices=["none", "postgres"], default="none")
             if database == "none":
                 database = None
 
-        if cache is None:
-            cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
-            if cache == "none":
-                cache = None
+        if lang == "rust":
+            if cache is None:
+                cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
+                if cache == "none":
+                    cache = None
 
-        if auth is None:
-            auth = prompt.ask("Authentication extension", choices=["none", "jwt"], default="none")
-            if auth == "none":
-                auth = None
-
-        if framework is None:
-            framework = prompt.ask("HTTP framework", choices=["fastapi", "minimal"], default="fastapi")
-            if framework == "fastapi":
-                framework = None
+            if auth is None:
+                auth = prompt.ask("Authentication extension", choices=["none", "jwt"], default="none")
+                if auth == "none":
+                    auth = None
 
     assert project_type is not None, "project_type should be set by now"
     assert name is not None, "name should be set by now"

@@ -199,6 +199,80 @@ class TestServiceCreation:
         assert manifest["execution"] == {"models": ["container"], "platforms": ["kubernetes"]}
         assert manifest["artifacts"] == {"image": "dockerfile", "kubernetes": "helm"}
 
+    def test_rust_service_redis_cache_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test Rust service generation with Redis cache support."""
+        service_name = "test-rust-redis-service"
+
+        generator = ServiceGenerator(
+            name=service_name,
+            lang="rust",
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+            cache="redis",
+        )
+        generator.create()
+
+        project_path = temp_project_dir / service_name
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+
+        assert manifest["capabilities"] == {"service_extensions": {"cache": "redis"}}
+        assert (project_path / "src/clients/mod.rs").read_text() == "pub mod cache;\n"
+        assert (project_path / "src/clients/cache.rs").exists()
+        assert "mod clients;" in (project_path / "src/main.rs").read_text()
+        assert "redis = " in (project_path / "Cargo.toml").read_text()
+        assert "REDIS_URL=redis://127.0.0.1:6379/0" in (project_path / ".env.example").read_text()
+
+    def test_rust_service_jwt_auth_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test Rust service generation with JWT auth support."""
+        service_name = "test-rust-jwt-service"
+
+        generator = ServiceGenerator(
+            name=service_name,
+            lang="rust",
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+            auth="jwt",
+        )
+        generator.create()
+
+        project_path = temp_project_dir / service_name
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+
+        assert manifest["capabilities"] == {"service_extensions": {"auth": "jwt"}}
+        assert (project_path / "src/handler/mod.rs").read_text() == "pub mod auth;\n"
+        assert (project_path / "src/handler/auth.rs").exists()
+        assert "mod handler;" in (project_path / "src/main.rs").read_text()
+        assert "jsonwebtoken = " in (project_path / "Cargo.toml").read_text()
+        assert "JWT_SECRET=change-me-change-me" in (project_path / ".env.example").read_text()
+
+    def test_typescript_service_postgres_database_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test TypeScript service generation with Postgres database support."""
+        service_name = "test-typescript-postgres-service"
+
+        generator = ServiceGenerator(
+            name=service_name,
+            lang="typescript",
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+            database="postgres",
+        )
+        generator.create()
+
+        project_path = temp_project_dir / service_name
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+
+        assert manifest["capabilities"] == {"service_extensions": {"database": "postgres"}}
+        assert (project_path / "src/clients/database.ts").exists()
+        assert (project_path / "migrations/001_initial.sql").exists()
+        assert '"pg": "^8.13.1"' in (project_path / "package.json").read_text()
+        assert "DATABASE_URL: z.string().url()" in (project_path / "src/config/env.ts").read_text()
+        assert "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres" in (
+            project_path / ".env.example"
+        ).read_text()
+
     def test_typescript_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test TypeScript Cloudflare Worker service creation."""
         service_name = "test-worker-service"

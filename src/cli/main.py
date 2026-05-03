@@ -145,17 +145,17 @@ def create(
     database: Optional[str] = typer.Option(
         None,
         "--database",
-        help="Database extension (implemented: postgres for Python/FastAPI services)",
+        help="Database extension (implemented: postgres for Python/FastAPI and TypeScript container services)",
     ),
     cache: Optional[str] = typer.Option(
         None,
         "--cache",
-        help="Cache extension (implemented: redis for Python/FastAPI services)",
+        help="Cache extension (implemented: redis for Python/FastAPI and Rust container services)",
     ),
     auth: Optional[str] = typer.Option(
         None,
         "--auth",
-        help="Authentication extension (implemented: jwt for Python/FastAPI services)",
+        help="Authentication extension (implemented: jwt for Python/FastAPI and Rust container services)",
     ),
     framework: Optional[str] = typer.Option(
         None,

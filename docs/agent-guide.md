@@ -48,7 +48,13 @@ Do not infer unsupported options. Use existing registries and typed plans.
 - Stack registry: `src/stack/`
 - Templates: `src/templates/`
 
-Implemented service extensions are intentionally narrow. As of this contract, `postgres`, `redis`, and `jwt` are supported for Python/FastAPI container services only. Do not pass unsupported extension options and assume they were generated.
+Implemented service extensions are intentionally narrow. As of this contract:
+
+- Python/FastAPI container services support `postgres`, `redis`, and `jwt`.
+- Rust container services support `redis` and `jwt`.
+- TypeScript container services support `postgres`.
+
+Do not pass unsupported extension options and assume they were generated.
 
 ## Defaults
 
