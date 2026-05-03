@@ -31,7 +31,7 @@ def create_service(name: str, lang: str, gh: bool, config: GeneratorConfig, *, h
         cache: Cache extension (redis, memcached)
         auth: Authentication extension (jwt, oauth)
         framework: HTTP framework (None for FastAPI default, minimal for standard library)
-        runtime: Runtime target (container or cloudflare-workers)
+        runtime: Service execution profile (container or cloudflare-workers)
     """
     generator = ServiceGenerator(
         name,
@@ -78,7 +78,7 @@ def create_monorepo(
     knowledge: str = "none",
     runtime: str = "kubernetes",
 ) -> None:
-    """Create an infrastructure monorepo."""
+    """Create a system monorepo."""
     generator = MonorepoGenerator(
         name,
         gh,

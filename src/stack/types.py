@@ -49,7 +49,7 @@ class RuntimeProfile:
     display_name: str
     aliases: tuple[str, ...] = ()
     service_languages: tuple[str, ...] = ()
-    deployment_tools: tuple[str, ...] = ()
+    artifact_tools: tuple[str, ...] = ()
     smoke_commands: tuple[str, ...] = ()
     uses_kubernetes: bool = False
     uses_cloudflare_workers: bool = False
@@ -77,8 +77,8 @@ class KnowledgeProfile:
 
 
 @dataclass(frozen=True)
-class DeploymentToolProfile:
-    """Deployment tool metadata."""
+class ArtifactToolProfile:
+    """Generated artifact tool metadata."""
 
     id: str
     display_name: str
@@ -91,7 +91,7 @@ class ServiceSelection:
 
     language: str
     runtime: str
-    deployment_tool: str
+    artifact_tool: str
     templates: tuple[TemplateConfig, ...]
     smoke_commands: tuple[str, ...]
 
@@ -108,8 +108,8 @@ class MonorepoSelection:
     clouds: tuple[str, ...]
     knowledge: str
     runtime: str
-    deployment_tool: str
-    deployment_label: str
+    artifact_tool: str
+    artifact_label: str
     runtime_label: str
     include_obsidian: bool
     include_backstage: bool
@@ -128,4 +128,4 @@ class MonorepoSelection:
         return [template.as_dict(base_vars) for template in self.templates]
 
 
-Profile = LanguageProfile | RuntimeProfile | CloudProfile | KnowledgeProfile | DeploymentToolProfile
+Profile = LanguageProfile | RuntimeProfile | CloudProfile | KnowledgeProfile | ArtifactToolProfile

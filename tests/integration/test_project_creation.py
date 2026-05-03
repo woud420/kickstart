@@ -7,6 +7,7 @@ to final project structure, ensuring all components work together correctly.
 import pytest
 import tempfile
 import shutil
+import json
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import patch
@@ -109,6 +110,14 @@ class TestServiceCreation:
         assert service_name in arch_readme.read_text()
         assert (project_path / "AGENTS.md").exists()
         assert (project_path / ".kickstart/scaffold.json").exists()
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        assert manifest["project"] == {
+            "name": service_name,
+            "kind": "service",
+            "repo_layout": "single-project",
+        }
+        assert manifest["execution"] == {"models": ["container"], "platforms": ["local"]}
+        assert manifest["artifacts"] == {"image": "dockerfile"}
     
     def test_rust_service_creation_with_helm(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test Rust service creation with Helm charts."""
@@ -147,6 +156,17 @@ class TestServiceCreation:
         assert (helm_path / "Chart.yaml").exists()
         assert (helm_path / "values.yaml").exists()
         assert (helm_path / "templates/deployment.yaml").exists()
+        assert (helm_path / "templates/service.yaml").exists()
+        assert (helm_path / "templates/configmap.yaml").exists()
+        assert (helm_path / "templates/_helpers.tpl").exists()
+
+        deployment_yaml = (helm_path / "templates/deployment.yaml").read_text()
+        assert 'name: {{ include "example-service.fullname" . }}' in deployment_yaml
+        assert "}}  labels" not in deployment_yaml
+        assert "}}spec" not in deployment_yaml
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        assert manifest["execution"] == {"models": ["container"], "platforms": ["kubernetes"]}
+        assert manifest["artifacts"] == {"image": "dockerfile", "kubernetes": "helm"}
 
     def test_typescript_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test TypeScript Cloudflare Worker service creation."""
@@ -169,6 +189,14 @@ class TestServiceCreation:
         assert (project_path / "src/index.ts").exists()
         assert (project_path / "tests/worker.test.ts").exists()
         assert not (project_path / "Dockerfile").exists()
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        assert manifest["project"]["kind"] == "worker"
+        assert manifest["execution"] == {
+            "models": ["cloudflare-worker"],
+            "platforms": ["cloudflare-workers"],
+        }
+        assert manifest["artifacts"] == {"worker": "wrangler"}
+        assert manifest["provider"] == {"targets": ["cloudflare"]}
 
         worker_source = (project_path / "src/index.ts").read_text()
         assert "ExportedHandler" in worker_source
@@ -437,7 +465,7 @@ class TestAPIFunctions:
 
         assert 'source  = "cloudflare/cloudflare"' in main_tf
         assert 'provider "cloudflare"' in main_tf
-        assert 'clouds = ["cloudflare"]' in tfvars
+        assert 'provider_targets = ["cloudflare"]' in tfvars
         assert "cloudflare_account_id" in variables_tf
         assert "aws_region" not in variables_tf
         assert "gcp_project_id" not in variables_tf

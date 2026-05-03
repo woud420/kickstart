@@ -149,12 +149,12 @@ def create(
         "--framework",
         help="HTTP framework (minimal for standard library, default is FastAPI)",
     ),
-    cloud: str = typer.Option("multi", "--cloud", help="Monorepo cloud target (aws, gcp, cloudflare, multi, none)"),
-    knowledge: str = typer.Option("none", "--knowledge", help="Knowledge system scaffold (none, obsidian, backstage, both)"),
+    cloud: str = typer.Option("multi", "--cloud", help="System provider target (aws, gcp, cloudflare, multi, none)"),
+    knowledge: str = typer.Option("none", "--knowledge", help="External knowledge adapter metadata (none, obsidian, backstage, both)"),
     runtime: Optional[str] = typer.Option(
         None,
         "--runtime",
-        help="Runtime target. Services: container or cloudflare-workers. Monorepos: kubernetes, cloudflare-workers, hybrid.",
+        help="Execution/platform profile. Services: container or cloudflare-workers. Systems: kubernetes, cloudflare-workers, hybrid.",
     )
 ) -> None:
     """Create a new service, lib, CLI, frontend, or mono repo."""

@@ -169,7 +169,7 @@ def test_create_monorepo_with_cloud_and_knowledge(mock_load_config, mock_create_
 @patch('src.cli.main.create_service')
 @patch('src.cli.main.load_config')
 def test_create_service_with_runtime(mock_load_config, mock_create_service, runner, mock_config):
-    """Test creating a service with an explicit runtime target."""
+    """Test creating a service with an explicit execution profile."""
     mock_load_config.return_value = mock_config
 
     result = runner.invoke(app, [
@@ -194,7 +194,7 @@ def test_create_service_with_runtime(mock_load_config, mock_create_service, runn
 @patch('src.cli.main.create_monorepo')
 @patch('src.cli.main.load_config')
 def test_create_monorepo_with_runtime(mock_load_config, mock_create_monorepo, runner, mock_config):
-    """Test creating a monorepo with an explicit runtime target."""
+    """Test creating a system monorepo with an explicit platform profile."""
     mock_load_config.return_value = mock_config
 
     result = runner.invoke(app, [

@@ -1,7 +1,7 @@
 terraform {
   required_version = ">= 1.7.0"
 
-{% if clouds %}
+{% if provider_targets %}
   required_providers {
 {% if include_aws %}
     aws = {
@@ -59,9 +59,9 @@ provider "cloudflare" {
 module "service_runtime" {
   source = "../../modules/service_runtime"
 
-  name        = local.name
-  environment = local.environment
-  clouds      = var.clouds
+  name             = local.name
+  environment      = local.environment
+  provider_targets = var.provider_targets
 }
 
 output "runtime_summary" {

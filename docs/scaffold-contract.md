@@ -17,11 +17,16 @@ There is no separate root architecture document. `docs/architecture/` is the can
 
 ## Option Vocabulary
 
-- `runtime`: how code executes, for example `container`, `cloudflare-workers`, `cli`, or `library`.
-- `deploy`: what deploy artifacts are emitted, for example `docker`, `docker+helm`, `kustomize`, `helm`, or `cloudflare-workers`.
-- `cloud`: provider or infrastructure target, for example `none`, `aws`, `gcp`, `cloudflare`, or `multi`.
+- `project.kind`: what kickstart generated, for example `service`, `worker`, `frontend`, `library`, `cli`, or `system`.
+- `project.repo_layout`: how generated projects are arranged, for example `single-project` or `monorepo`.
+- `execution.models`: how code runs, for example `container`, `cloudflare-worker`, `cloudflare-container`, `static-site`, `cli`, or `library`.
+- `execution.platforms`: where runtime artifacts are meant to run, for example `local`, `kubernetes`, `cloudflare-workers`, `cloudflare-containers`, `static-host`, or `none`.
+- `artifacts`: emitted files and tool configs, for example `image: dockerfile`, `kubernetes: kustomize`, `kubernetes: helm`, `worker: wrangler`, `iac: terraform`, or `ci: github-actions`.
+- `provider.targets`: infrastructure providers targeted by generated IaC or platform config, for example `aws`, `gcp`, or `cloudflare`.
 - `knowledge_adapter`: external knowledge integration metadata, for example `none`, `obsidian`, `backstage`, or `both`.
 
-Cloudflare Workers can appear in both `runtime` and `deploy`: it changes the code execution model and the deploy artifact. It is not treated as a Docker/Kubernetes container.
+Systems contain other project kinds and are currently generated through the `mono` command with `project.repo_layout: monorepo`.
+
+Docker is an image/build artifact. Kubernetes is a runtime platform for containers. Helm and Kustomize are Kubernetes artifact styles. Cloudflare Workers are a Cloudflare runtime platform, not a Docker or Kubernetes container. Cloudflare Containers are modeled separately as Worker-controlled container images when that scaffold is added.
 
 `--knowledge` controls external adapters only. It does not control whether generated docs exist; docs are part of the baseline scaffold contract.

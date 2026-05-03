@@ -1,6 +1,6 @@
 from src.generator.base import BaseGenerator
 from src.generator.layouts import frontend_directories
-from src.generator.scaffold_contract import ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.generator.specs import FrontendSpec
 from src.generator.template_plans import frontend_template_plan
 from src.utils.github import create_repo
@@ -33,8 +33,9 @@ class FrontendGenerator(BaseGenerator):
             architecture_title=architecture_title,
             scaffold_contract=ScaffoldContract(
                 project_kind="frontend",
-                runtime="static-spa",
-                deploy="docker",
+                execution_models=("static-site",),
+                runtime_platforms=("static-host",),
+                artifacts=ScaffoldArtifacts(static_site="vite", image="dockerfile"),
             ),
             success_message=success_message,
             github_create_fn=github_create_fn if self.gh else None

@@ -17,7 +17,7 @@ from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
 from src.stack.types import TemplateConfig
 from src.generator.layouts import python_package_directories, service_directories, worker_directories
-from src.generator.scaffold_contract import ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.generator.specs import ServiceSpec
 from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig
@@ -162,8 +162,12 @@ class ServiceGenerator(BaseGenerator):
             architecture_title=architecture_title,
             scaffold_contract=ScaffoldContract(
                 project_kind="service",
-                runtime=profile.runtime,
-                deploy="docker+helm" if self.helm else "docker",
+                execution_models=("container",),
+                runtime_platforms=("kubernetes",) if self.helm else ("local",),
+                artifacts=ScaffoldArtifacts(
+                    image="dockerfile",
+                    kubernetes="helm" if self.helm else None,
+                ),
             ),
             success_message=success_message,
             language_setup_fn=self._setup_service_specific,
@@ -197,9 +201,10 @@ class ServiceGenerator(BaseGenerator):
             architecture_title=architecture_title,
             scaffold_contract=ScaffoldContract(
                 project_kind="worker",
-                runtime="cloudflare-workers",
-                deploy="cloudflare-workers",
-                cloud="cloudflare",
+                execution_models=("cloudflare-worker",),
+                runtime_platforms=("cloudflare-workers",),
+                artifacts=ScaffoldArtifacts(worker="wrangler"),
+                provider_targets=("cloudflare",),
             ),
             success_message=success_message,
             github_create_fn=github_create_fn if self.gh else None,
@@ -391,15 +396,11 @@ class ServiceGenerator(BaseGenerator):
         
         The chart is created in helm/{service_name}/ directory.
         """
-        helm_path = self.project / "helm" / self.name
-        self.create_directories([str(helm_path / "templates")])
+        chart_root = f"helm/{self.name}"
+        self.create_directories([f"{chart_root}/templates"])
 
-        # Write Helm chart files
-        for file, template in {
-            "Chart.yaml": "monorepo/helm/Chart.yaml",
-            "values.yaml": "monorepo/helm/values.yaml",
-            "templates/deployment.yaml": "monorepo/helm/deployment.yaml"
-        }.items():
-            self.write_template(f"helm/{self.name}/{file}", template)
+        for template in stack_registry.helm_template_configs():
+            target = template.target.removeprefix("infra/helm/example-service/")
+            self.write_template(f"{chart_root}/{target}", f"monorepo/{template.template}")
 
         success("Helm chart scaffolded")

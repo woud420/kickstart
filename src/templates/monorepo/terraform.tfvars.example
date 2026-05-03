@@ -1,4 +1,4 @@
-clouds = [{% for provider in clouds %}"{{ provider }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+provider_targets = [{% for provider in provider_targets %}"{{ provider }}"{% if not loop.last %}, {% endif %}{% endfor %}]
 
 {% if include_aws %}
 aws_region     = "us-east-1"

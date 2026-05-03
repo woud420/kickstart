@@ -24,7 +24,7 @@ class StackProfileRegistry:
         self.monorepo_runtimes = dict(defaults.monorepo_runtimes)
         self.clouds = dict(defaults.clouds)
         self.knowledge = dict(defaults.knowledge)
-        self.deployment_tools = dict(defaults.deployment_tools)
+        self.artifact_tools = dict(defaults.artifact_tools)
 
     def normalize_language(self, language: str) -> str:
         """Normalize language aliases, preserving unknown values for later validation."""
@@ -81,11 +81,11 @@ class StackProfileRegistry:
         if helm and normalized_runtime == "cloudflare-workers":
             raise ValueError("Cloudflare Workers runtime does not support Helm service charts.")
 
-        deployment_tool = "helm" if helm and normalized_runtime == "container" else runtime_profile.deployment_tools[0]
+        artifact_tool = "helm" if helm and normalized_runtime == "container" else runtime_profile.artifact_tools[0]
         return ServiceSelection(
             language=normalized_language,
             runtime=normalized_runtime,
-            deployment_tool=deployment_tool,
+            artifact_tool=artifact_tool,
             templates=templates.service_templates(normalized_language, normalized_runtime),
             smoke_commands=language_profile.smoke_commands.get(normalized_runtime, ()),
         )
@@ -110,7 +110,7 @@ class StackProfileRegistry:
         cloud_profile = self.clouds.get(normalized_cloud)
         if cloud_profile is None:
             raise ValueError(
-                "Unsupported cloud target '{cloud}'. Use one of: {supported}".format(
+                "Unsupported provider target '{cloud}'. Use one of: {supported}".format(
                     cloud=cloud,
                     supported=", ".join(sorted(self.clouds)),
                 )
@@ -128,20 +128,20 @@ class StackProfileRegistry:
         runtime_profile = self.monorepo_runtimes.get(normalized_runtime)
         if runtime_profile is None:
             raise ValueError(
-                "Unsupported runtime target '{runtime}'. Use one of: {supported}".format(
+                "Unsupported monorepo platform profile '{runtime}'. Use one of: {supported}".format(
                     runtime=runtime,
                     supported=", ".join(sorted(self.monorepo_runtimes)),
                 )
             )
 
-        deployment_tool, deployment_label = self._monorepo_deployment(runtime_profile, helm=helm)
+        artifact_tool, artifact_label = self._monorepo_artifacts(runtime_profile, helm=helm)
         return MonorepoSelection(
             cloud=normalized_cloud,
             clouds=cloud_profile.providers,
             knowledge=normalized_knowledge,
             runtime=normalized_runtime,
-            deployment_tool=deployment_tool,
-            deployment_label=deployment_label,
+            artifact_tool=artifact_tool,
+            artifact_label=artifact_label,
             runtime_label=runtime_profile.display_name,
             include_obsidian=knowledge_profile.include_obsidian,
             include_backstage=knowledge_profile.include_backstage,
@@ -159,7 +159,7 @@ class StackProfileRegistry:
         """Return Helm chart template mappings."""
         return templates.helm_template_configs()
 
-    def _monorepo_deployment(self, runtime_profile: RuntimeProfile, *, helm: bool) -> tuple[str, str]:
+    def _monorepo_artifacts(self, runtime_profile: RuntimeProfile, *, helm: bool) -> tuple[str, str]:
         if runtime_profile.uses_kubernetes and runtime_profile.uses_cloudflare_workers:
             return ("helm+wrangler", "Helm and Wrangler") if helm else ("kustomize+wrangler", "Kustomize and Wrangler")
         if runtime_profile.uses_kubernetes:

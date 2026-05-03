@@ -6,19 +6,19 @@ variable "environment" {
   type = string
 }
 
-variable "clouds" {
+variable "provider_targets" {
   type = list(string)
 }
 
 locals {
-  edge_enabled = contains(var.clouds, "cloudflare")
+  edge_enabled = contains(var.provider_targets, "cloudflare")
 
   summary = {
-    name         = var.name
-    environment  = var.environment
-    clouds       = var.clouds
-    runtime      = "containerized-service"
-    edge_enabled = local.edge_enabled
+    name             = var.name
+    environment      = var.environment
+    provider_targets = var.provider_targets
+    runtime          = "containerized-service"
+    edge_enabled     = local.edge_enabled
   }
 }
 

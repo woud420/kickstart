@@ -188,9 +188,9 @@ def test_create_success_with_kustomize_and_gh(
     for target, template in expected_templates:
         assert _template_written(mock_write_template, target, template)
     
-    mock_create_architecture_docs.assert_called_once_with("test-monorepo Deployment Infra Docs")
+    mock_create_architecture_docs.assert_called_once_with("test-monorepo System Docs")
     mock_log_success.assert_called_once_with(
-        "Monorepo 'test-monorepo' scaffolded for Kubernetes with Kustomize support in 'test-monorepo'."
+        "System 'test-monorepo' scaffolded as a monorepo for Kubernetes with Kustomize artifacts in 'test-monorepo'."
     )
     mock_create_repo.assert_called_once_with("test-monorepo")
 
@@ -214,7 +214,7 @@ def test_create_success_with_helm(
 
     mock_create_helm_structure.assert_called_once()
     mock_log_success.assert_called_once_with(
-        "Monorepo 'test-monorepo' scaffolded for Kubernetes with Helm support in 'test-monorepo'."
+        "System 'test-monorepo' scaffolded as a monorepo for Kubernetes with Helm artifacts in 'test-monorepo'."
     )
     mock_create_repo.assert_not_called()
 
@@ -244,7 +244,7 @@ def test_create_success_with_cloudflare_workers_runtime(
     )
     mock_create_kustomize_structure.assert_not_called()
     mock_log_success.assert_called_once_with(
-        "Monorepo 'edge-stack' scaffolded for Cloudflare Workers with Wrangler support in 'edge-stack'."
+        "System 'edge-stack' scaffolded as a monorepo for Cloudflare Workers with Wrangler artifacts in 'edge-stack'."
     )
 
 

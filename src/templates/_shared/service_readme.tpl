@@ -34,7 +34,7 @@ tests/
 
 1. Install dependencies:
    ```bash
-   make setup
+   make install
    ```
 
 2. Run the service:

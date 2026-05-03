@@ -9,7 +9,16 @@ Inputs:
 - project type: `service`, `frontend`, `lib`, `cli`, `mono`
 - name
 - root directory
-- language, runtime, deploy, cloud, knowledge adapter, and extension options
+- language, execution/platform profile, provider target, knowledge adapter, and extension options
+
+Resolved metadata in `.kickstart/scaffold.json`:
+
+- project kind and repository layout
+- execution models
+- runtime platforms
+- emitted artifacts
+- provider targets
+- knowledge adapter
 
 Outputs:
 
@@ -42,9 +51,9 @@ Do not infer unsupported options. Use existing registries and typed plans.
 
 - service language: `python`
 - service runtime: `container`
-- monorepo cloud: `multi`
-- monorepo runtime: `kubernetes`
-- monorepo knowledge adapter: `none`
+- system provider target: `multi`
+- system platform profile: `kubernetes`
+- system knowledge adapter: `none`
 - GitHub creation: off
 - Helm: off
 

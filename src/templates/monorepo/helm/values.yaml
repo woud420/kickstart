@@ -13,7 +13,7 @@ service:
 env:
   APP_ENV: production
   PORT: "8080"
-  CLOUD_TARGET: "{{ cloud | default('multi') }}"
+  PROVIDER_TARGET: "{{ cloud | default('multi') }}"
 
 resources:
   requests:

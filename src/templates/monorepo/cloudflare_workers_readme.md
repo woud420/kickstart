@@ -1,6 +1,6 @@
 # Cloudflare Workers Runtime
 
-This workspace treats Cloudflare Workers as a runtime target, separate from Terraform cloud-provider resources.
+This workspace treats Cloudflare Workers as a runtime platform, separate from Terraform provider resources.
 
 ## Responsibilities
 

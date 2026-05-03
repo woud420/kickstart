@@ -5,5 +5,5 @@ metadata:
 data:
   APP_ENV: "production"
   PORT: "8080"
-  CLOUD_TARGET: "{{ cloud }}"
+  PROVIDER_TARGET: "{{ cloud }}"
   KNOWLEDGE_BASE: "{{ knowledge }}"

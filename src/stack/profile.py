@@ -2,8 +2,8 @@
 
 from src.stack.registry import StackProfileRegistry, stack_registry
 from src.stack.types import (
+    ArtifactToolProfile,
     CloudProfile,
-    DeploymentToolProfile,
     KnowledgeProfile,
     LanguageProfile,
     MonorepoSelection,
@@ -14,7 +14,7 @@ from src.stack.types import (
 
 __all__ = [
     "CloudProfile",
-    "DeploymentToolProfile",
+    "ArtifactToolProfile",
     "KnowledgeProfile",
     "LanguageProfile",
     "MonorepoSelection",

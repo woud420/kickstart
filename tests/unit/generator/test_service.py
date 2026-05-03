@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.service import ServiceGenerator
+from src.generator.scaffold_contract import ScaffoldArtifacts
 from src.utils.error_handling import LanguageNotSupportedError
 
 
@@ -304,14 +305,16 @@ def test_create_helm_chart(mock_create_directories, mock_write_template, mock_su
     generator._create_helm_chart()
     
     # Verify helm directory structure is created
-    expected_helm_path = tmp_path / "helm" / "test-service" / "templates"
-    mock_create_directories.assert_called_once_with([str(expected_helm_path)])
+    mock_create_directories.assert_called_once_with(["helm/test-service/templates"])
     
     # Verify helm template files are written
     expected_template_calls = [
         call("helm/test-service/Chart.yaml", "monorepo/helm/Chart.yaml"),
         call("helm/test-service/values.yaml", "monorepo/helm/values.yaml"),
-        call("helm/test-service/templates/deployment.yaml", "monorepo/helm/deployment.yaml")
+        call("helm/test-service/templates/deployment.yaml", "monorepo/helm/deployment.yaml"),
+        call("helm/test-service/templates/service.yaml", "monorepo/helm/service.yaml"),
+        call("helm/test-service/templates/configmap.yaml", "monorepo/helm/configmap.yaml"),
+        call("helm/test-service/templates/_helpers.tpl", "monorepo/helm/_helpers.tpl"),
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
@@ -496,9 +499,11 @@ def test_create_cloudflare_worker_uses_worker_flow(mock_execute_create_flow, tmp
         "docs/decisions",
     ]
     assert kwargs["architecture_title"] == "edge-api Cloudflare Worker Architecture Notes"
-    assert kwargs["scaffold_contract"].runtime == "cloudflare-workers"
-    assert kwargs["scaffold_contract"].deploy == "cloudflare-workers"
-    assert kwargs["scaffold_contract"].cloud == "cloudflare"
+    assert kwargs["scaffold_contract"].project_kind == "worker"
+    assert kwargs["scaffold_contract"].execution_models == ("cloudflare-worker",)
+    assert kwargs["scaffold_contract"].runtime_platforms == ("cloudflare-workers",)
+    assert kwargs["scaffold_contract"].artifacts == ScaffoldArtifacts(worker="wrangler")
+    assert kwargs["scaffold_contract"].provider_targets == ("cloudflare",)
     assert kwargs["success_message"] == "Typescript Cloudflare Worker 'edge-api' created successfully in 'edge-api'!"
 
 

@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess
 import sys
 import os
+import json
 
 
 def _run_create_mono(tmp: Path, *args: str) -> Path:
@@ -73,6 +74,15 @@ def test_create_aws_kubernetes_docs_match_selected_profile():
         assert (base / "docs/agents/recommended-agents.md").exists()
         assert (base / "AGENTS.md").exists()
         assert (base / ".kickstart/scaffold.json").exists()
+        manifest = json.loads((base / ".kickstart/scaffold.json").read_text())
+        assert manifest["project"] == {
+            "name": "aws-stack",
+            "kind": "system",
+            "repo_layout": "monorepo",
+        }
+        assert manifest["execution"] == {"models": ["container"], "platforms": ["kubernetes"]}
+        assert manifest["artifacts"]["kubernetes"] == "kustomize"
+        assert manifest["provider"] == {"targets": ["aws"]}
         assert (base / "config/tsconfig/base.json").exists()
         assert "CLOUDFLARE_API_TOKEN" not in readme
         assert "Cloudflare support covers" not in adr
@@ -108,6 +118,14 @@ def test_create_cloudflare_workers_docs_match_runtime_profile():
 
         assert (base / "infra/cloudflare/workers/README.md").exists()
         assert not (base / "infra/k8s/base/deployment.yaml").exists()
+        manifest = json.loads((base / ".kickstart/scaffold.json").read_text())
+        assert manifest["project"]["kind"] == "system"
+        assert manifest["execution"] == {
+            "models": ["cloudflare-worker"],
+            "platforms": ["cloudflare-workers"],
+        }
+        assert manifest["artifacts"]["worker"] == "wrangler"
+        assert manifest["provider"] == {"targets": ["cloudflare"]}
         assert "CLOUDFLARE_API_TOKEN" in readme
         assert "Kubernetes manifests" not in adr
         assert "Kubernetes packaging" not in adr

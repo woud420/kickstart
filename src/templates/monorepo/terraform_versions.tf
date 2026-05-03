@@ -1,7 +1,7 @@
 terraform {
   required_version = ">= 1.7.0"
 
-{% if clouds %}
+{% if provider_targets %}
   required_providers {
 {% if include_aws %}
     aws = {

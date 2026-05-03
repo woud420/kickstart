@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {% raw %}{{ include "example-service.fullname" . }}{% endraw %}
+  name: {{ '{{ include "example-service.fullname" . }}' }}
 spec:
-  type: {% raw %}{{ .Values.service.type }}{% endraw %}
+  type: {{ '{{ .Values.service.type }}' }}
   selector:
-    app.kubernetes.io/name: {% raw %}{{ include "example-service.name" . }}{% endraw %}
+    app.kubernetes.io/name: {{ '{{ include "example-service.name" . }}' }}
   ports:
     - name: http
-      port: {% raw %}{{ .Values.service.port }}{% endraw %}
+      port: {{ '{{ .Values.service.port }}' }}
       targetPort: http

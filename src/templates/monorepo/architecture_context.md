@@ -7,14 +7,14 @@ flowchart LR
   API -->|cache| Redis[(Redis)]
 {% if uses_kubernetes %}
   API -->|container| K8s[Kubernetes]
-  K8s -->|provisions| Cloud[{{ cloud_label }}]
+  K8s -->|provisions| Providers[{{ cloud_label }}]
 {% endif %}
 {% if uses_cloudflare_workers %}
   UI -->|edge route| Worker[Cloudflare Worker]
   Worker -->|calls| API
 {% endif %}
 {% if not uses_kubernetes %}
-  API -->|cloud resources| Cloud[{{ cloud_label }}]
+  API -->|provider resources| Providers[{{ cloud_label }}]
 {% endif %}
 
   classDef ui fill:#E0F7FA,stroke:#00ACC1,color:#006064;
@@ -27,7 +27,7 @@ flowchart LR
   class API{% if uses_cloudflare_workers %},Worker{% endif %} service;
   class DB db;
   class Redis cache;
-  class {% if uses_kubernetes %}K8s,{% endif %}Cloud infra;
+  class {% if uses_kubernetes %}K8s,{% endif %}Providers infra;
 ```
 
 Update this diagram when new services, queues, object stores, or external APIs are added.

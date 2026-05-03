@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from src.generator.base import BaseGenerator
 from src.generator.layouts import cli_directories, library_directories
-from src.generator.scaffold_contract import ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.generator.specs import CliSpec, LibrarySpec
 from src.generator.template_plan import TemplatePlan
 from src.generator.template_plans import cli_template_plan, library_template_plan
@@ -28,7 +28,12 @@ class LibraryGenerator(BaseGenerator):
             directories=library_directories(),
             template_plan=library_template_plan(self.lang),
             architecture_title=f"{self.name} Library Docs",
-            scaffold_contract=ScaffoldContract(project_kind="library", runtime="library"),
+            scaffold_contract=ScaffoldContract(
+                project_kind="library",
+                execution_models=("library",),
+                runtime_platforms=("none",),
+                artifacts=ScaffoldArtifacts(package=self.lang),
+            ),
             success_message=f"{self.lang.title()} library '{self.name}' created successfully in '{self.project}'!",
             language_setup_fn=self._setup_language_specific_files,
         )
@@ -75,7 +80,12 @@ class CLIGenerator(LibraryGenerator):
             directories=cli_directories(),
             template_plan=cli_template_plan(self.lang),
             architecture_title=f"{self.name} CLI Docs",
-            scaffold_contract=ScaffoldContract(project_kind="cli", runtime="cli"),
+            scaffold_contract=ScaffoldContract(
+                project_kind="cli",
+                execution_models=("cli",),
+                runtime_platforms=("local",),
+                artifacts=ScaffoldArtifacts(package=self.lang),
+            ),
             success_message=f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!",
             language_setup_fn=self._setup_cli_specific_files,
         )

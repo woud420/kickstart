@@ -2,7 +2,7 @@ from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
 from src.stack.profile import stack_registry, MonorepoSelection
 from src.generator.layouts import monorepo_directories
-from src.generator.scaffold_contract import ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.generator.specs import MonorepoSpec
 from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig, TemplateValue
@@ -57,10 +57,10 @@ class MonorepoGenerator(BaseGenerator):
         template_vars = self._template_vars()
         template_plan = TemplatePlan.from_templates(selection.templates, template_vars)
         
-        architecture_title: str = f"{self.name} Deployment Infra Docs"
+        architecture_title: str = f"{self.name} System Docs"
         success_message: str = (
-            f"Monorepo '{self.name}' scaffolded for {self._runtime_label()} "
-            f"with {self._deployment_label()} support in '{self.project}'."
+            f"System '{self.name}' scaffolded as a monorepo for {self._runtime_label()} "
+            f"with {self._artifact_label()} artifacts in '{self.project}'."
         )
         
         def github_create_fn() -> bool | None:
@@ -71,10 +71,12 @@ class MonorepoGenerator(BaseGenerator):
             template_plan=template_plan,
             architecture_title=architecture_title,
             scaffold_contract=ScaffoldContract(
-                project_kind="monorepo",
-                runtime=selection.runtime,
-                deploy=selection.deployment_tool,
-                cloud=selection.cloud,
+                project_kind="system",
+                repo_layout="monorepo",
+                execution_models=self._execution_models(selection),
+                runtime_platforms=self._runtime_platforms(selection),
+                artifacts=self._artifact_contract(selection),
+                provider_targets=selection.clouds,
                 knowledge_adapter=selection.knowledge,
             ),
             success_message=success_message,
@@ -126,8 +128,39 @@ class MonorepoGenerator(BaseGenerator):
     def _runtime_label(self) -> str:
         return self._selection().runtime_label
 
-    def _deployment_label(self) -> str:
-        return self._selection().deployment_label
+    def _artifact_label(self) -> str:
+        return self._selection().artifact_label
+
+    def _execution_models(self, selection: MonorepoSelection) -> tuple[str, ...]:
+        """Return execution models represented by this system scaffold."""
+        models: list[str] = []
+        if selection.uses_kubernetes:
+            models.append("container")
+        if selection.uses_cloudflare_workers:
+            models.append("cloudflare-worker")
+        return tuple(models)
+
+    def _runtime_platforms(self, selection: MonorepoSelection) -> tuple[str, ...]:
+        """Return runtime platforms represented by this system scaffold."""
+        platforms: list[str] = []
+        if selection.uses_kubernetes:
+            platforms.append("kubernetes")
+        if selection.uses_cloudflare_workers:
+            platforms.append("cloudflare-workers")
+        return tuple(platforms)
+
+    def _artifact_contract(self, selection: MonorepoSelection) -> ScaffoldArtifacts:
+        """Return emitted artifact categories for the system scaffold."""
+        kubernetes_artifact = None
+        if selection.uses_kubernetes:
+            kubernetes_artifact = selection.artifact_tool.removesuffix("+wrangler")
+        return ScaffoldArtifacts(
+            local="compose",
+            iac="terraform",
+            ci="github-actions",
+            kubernetes=kubernetes_artifact,
+            worker="wrangler" if selection.uses_cloudflare_workers else None,
+        )
 
     def _template_vars(self) -> dict[str, TemplateValue]:
         selection = self._selection()
@@ -136,6 +169,7 @@ class MonorepoGenerator(BaseGenerator):
             "service_name": self.name,
             "cloud": selection.cloud,
             "clouds": list(selection.clouds),
+            "provider_targets": list(selection.clouds),
             "cloud_label": selection.cloud_label,
             "runtime": selection.runtime,
             "runtime_label": selection.runtime_label,
@@ -147,7 +181,7 @@ class MonorepoGenerator(BaseGenerator):
             "knowledge": selection.knowledge,
             "include_backstage": selection.include_backstage,
             "include_obsidian": selection.include_obsidian,
-            "deployment_tool": selection.deployment_label.lower(),
+            "artifact_label": selection.artifact_label.lower(),
         }
 
     def _create_helm_structure(self) -> None:

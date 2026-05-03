@@ -1,8 +1,8 @@
 """Default stack profile registry data."""
 
 from src.stack.types import (
+    ArtifactToolProfile,
     CloudProfile,
-    DeploymentToolProfile,
     KnowledgeProfile,
     LanguageProfile,
     RuntimeProfile,
@@ -69,14 +69,14 @@ service_runtimes: dict[str, RuntimeProfile] = {
         display_name="Container",
         aliases=("docker", "containers"),
         service_languages=("python", "rust", "typescript", "cpp", "go"),
-        deployment_tools=("docker", "helm"),
+        artifact_tools=("docker", "helm"),
     ),
     "cloudflare-workers": RuntimeProfile(
         id="cloudflare-workers",
         display_name="Cloudflare Workers",
         aliases=("cloudflare-worker", "cf-worker", "cf-workers", "worker", "workers"),
         service_languages=("typescript", "rust"),
-        deployment_tools=("wrangler",),
+        artifact_tools=("wrangler",),
         uses_cloudflare_workers=True,
     ),
 }
@@ -86,7 +86,7 @@ monorepo_runtimes: dict[str, RuntimeProfile] = {
         id="kubernetes",
         display_name="Kubernetes",
         aliases=("k8s",),
-        deployment_tools=("kustomize", "helm"),
+        artifact_tools=("kustomize", "helm"),
         smoke_commands=("make install", "make test", "make k8s-render ENV=dev", "make tf-plan ENV=dev"),
         uses_kubernetes=True,
     ),
@@ -94,14 +94,14 @@ monorepo_runtimes: dict[str, RuntimeProfile] = {
         id="cloudflare-workers",
         display_name="Cloudflare Workers",
         aliases=("cloudflare-worker", "cf-worker", "cf-workers", "worker", "workers"),
-        deployment_tools=("wrangler",),
+        artifact_tools=("wrangler",),
         smoke_commands=("make install", "make test", "make cf-worker-notes", "make tf-plan ENV=dev"),
         uses_cloudflare_workers=True,
     ),
     "hybrid": RuntimeProfile(
         id="hybrid",
         display_name="Kubernetes and Cloudflare Workers",
-        deployment_tools=("kustomize", "helm", "wrangler"),
+        artifact_tools=("kustomize", "helm", "wrangler"),
         smoke_commands=(
             "make install",
             "make test",
@@ -154,9 +154,9 @@ knowledge: dict[str, KnowledgeProfile] = {
     ),
 }
 
-deployment_tools: dict[str, DeploymentToolProfile] = {
-    "docker": DeploymentToolProfile(id="docker", display_name="Docker"),
-    "kustomize": DeploymentToolProfile(id="kustomize", display_name="Kustomize"),
-    "helm": DeploymentToolProfile(id="helm", display_name="Helm"),
-    "wrangler": DeploymentToolProfile(id="wrangler", display_name="Wrangler"),
+artifact_tools: dict[str, ArtifactToolProfile] = {
+    "docker": ArtifactToolProfile(id="docker", display_name="Docker"),
+    "kustomize": ArtifactToolProfile(id="kustomize", display_name="Kustomize"),
+    "helm": ArtifactToolProfile(id="helm", display_name="Helm"),
+    "wrangler": ArtifactToolProfile(id="wrangler", display_name="Wrangler"),
 }

@@ -252,7 +252,7 @@ export const releaseNotes: ReleaseNote[] = [
     body: "v0.4.0 is the first supported kickstart release line.",
     highlights: [
       "Modern Python metadata, validation commands, and Linux/macOS binary release workflow.",
-      "Cloudflare cloud/runtime scaffolding, including TypeScript and Rust Workers.",
+      "Cloudflare provider and Worker scaffolding, including TypeScript and Rust Workers.",
       "Typed specs, layout plans, stack registry, template plans, and agent-readable scaffold docs.",
     ],
   },

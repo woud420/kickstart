@@ -1,6 +1,6 @@
 # kickstart
 
-kickstart is a scaffolding tool for generating project structure, CLIs, services, frontends, libraries, and infrastructure workspaces.
+kickstart is a scaffolding tool for generating project structure, services, workers, frontends, libraries, CLIs, and systems.
 
 The goal is to eliminate the repeated setup work that humans and agents otherwise redo at the start of every project: directories, templates, Docker/Kubernetes/Cloudflare files, typed language defaults, basic docs, and standard commands.
 
@@ -23,7 +23,7 @@ Create a Cloudflare Worker:
 poetry run kickstart create service edge-api --lang typescript --runtime cloudflare-workers
 ```
 
-Create a TypeScript infrastructure monorepo:
+Create a TypeScript system monorepo:
 
 ```bash
 poetry run kickstart create mono product-stack
@@ -35,15 +35,16 @@ poetry run kickstart create mono product-stack
 - `frontend`: React, TypeScript, Vite, and Bun frontend app.
 - `lib`: Python or Rust library project.
 - `cli`: Python or Rust CLI project.
-- `mono`: TypeScript/Bun/Turbo workspace with infrastructure, docs, and optional cloud/runtime profiles.
+- `mono`: TypeScript/Bun/Turbo system workspace containing apps, packages, services, infrastructure, and docs.
 
 ## Major Choices
 
 - Preferred stack: Rust, TypeScript, Python, SQL, and C++.
 - Go is supported as a tolerated service target; Python and Rust are the first-class library/CLI targets.
-- Service runtimes: containers by default, Cloudflare Workers when requested.
-- Monorepo cloud targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
-- Monorepo runtime targets: `kubernetes`, `cloudflare-workers`, or `hybrid`.
+- Service execution models: containers by default, Cloudflare Workers when requested.
+- System provider targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
+- System platform profiles: `kubernetes`, `cloudflare-workers`, or `hybrid`.
+- Dockerfiles are image artifacts; Helm and Kustomize are Kubernetes artifact styles; Wrangler is the Cloudflare Worker artifact path.
 - Generated docs and `.kickstart/scaffold.json` are always created for agents and humans.
 - Knowledge adapters default to `none`; use `--knowledge obsidian`, `--knowledge backstage`, or `--knowledge both` only for external metadata.
 

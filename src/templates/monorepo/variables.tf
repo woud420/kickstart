@@ -1,7 +1,7 @@
-variable "clouds" {
-  description = "Cloud providers enabled for this environment."
+variable "provider_targets" {
+  description = "Infrastructure providers enabled for this environment."
   type        = list(string)
-  default     = [{% for provider in clouds %}"{{ provider }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+  default     = [{% for provider in provider_targets %}"{{ provider }}"{% if not loop.last %}, {% endif %}{% endfor %}]
 }
 
 {% if include_aws %}
