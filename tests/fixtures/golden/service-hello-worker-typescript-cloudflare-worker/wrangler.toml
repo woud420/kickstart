@@ -1,0 +1,6 @@
+name = "hello-worker"
+main = "src/index.ts"
+compatibility_date = "2026-05-02"
+
+[vars]
+SERVICE_NAME = "hello-worker"
