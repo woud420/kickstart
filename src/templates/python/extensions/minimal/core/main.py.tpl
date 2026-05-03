@@ -6,11 +6,14 @@ Use the default FastAPI scaffold for currently implemented service extensions.
 
 import json
 import logging
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
-from typing import Dict, Any
-import os
+from typing import TypeAlias
+
+JsonValue: TypeAlias = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
+JsonObject: TypeAlias = dict[str, JsonValue]
 
 # Configure logging
 logging.basicConfig(
@@ -168,7 +171,7 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
                 "error_code": "INTERNAL_ERROR"
             })
     
-    def _send_json_response(self, status_code: int, data: Dict[str, Any]):
+    def _send_json_response(self, status_code: int, data: JsonObject):
         """Send JSON response."""
         self.send_response(status_code)
         self.send_header('Content-Type', 'application/json')
@@ -208,7 +211,7 @@ def run_server():
         httpd.server_close()
 
 
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> JsonObject:
     """Perform application health check."""
     return {
         "healthy": True,
