@@ -155,7 +155,7 @@ def create(
     auth: Optional[str] = typer.Option(
         None,
         "--auth",
-        help="Authentication extension (implemented: jwt for Python/FastAPI services)",
+        help="Authentication extension (implemented: jwt for Python/FastAPI and Rust container services)",
     ),
     framework: Optional[str] = typer.Option(
         None,

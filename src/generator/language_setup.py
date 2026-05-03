@@ -15,6 +15,7 @@ class ContentFile:
 
 RUST_MODULE_CONTENT = "// Module definitions\n"
 RUST_CLIENTS_MODULE_CONTENT = "pub mod cache;\n"
+RUST_HANDLER_MODULE_CONTENT = "pub mod auth;\n"
 
 RUST_MAIN_CONTENT = """use actix_web::{App, HttpResponse, HttpServer, web};
 
@@ -31,10 +32,6 @@ async fn main() -> std::io::Result<()> {
     .await
 }
 """
-
-RUST_MAIN_WITH_CLIENTS_CONTENT = f"""mod clients;
-
-{RUST_MAIN_CONTENT}"""
 
 CPP_ROUTES_HEADER_CONTENT = """#pragma once
 
@@ -92,10 +89,22 @@ TYPESCRIPT_POSTGRES_ENV_EXAMPLE_CONTENT = (
 )
 
 
-def rust_service_content_files(*, include_redis_cache: bool = False) -> tuple[ContentFile, ...]:
+def rust_service_content_files(
+    *,
+    include_redis_cache: bool = False,
+    include_jwt_auth: bool = False,
+) -> tuple[ContentFile, ...]:
     """Return direct content files for Rust services."""
-    main_content = RUST_MAIN_WITH_CLIENTS_CONTENT if include_redis_cache else RUST_MAIN_CONTENT
-    files = (
+    module_lines = []
+    if include_redis_cache:
+        module_lines.append("mod clients;")
+    if include_jwt_auth:
+        module_lines.append("mod handler;")
+    main_content = RUST_MAIN_CONTENT
+    if module_lines:
+        main_content = "\n".join(module_lines) + f"\n\n{RUST_MAIN_CONTENT}"
+
+    files: tuple[ContentFile, ...] = (
         ContentFile("src/api/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("src/model/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("tests/api/mod.rs", RUST_MODULE_CONTENT),
@@ -103,7 +112,9 @@ def rust_service_content_files(*, include_redis_cache: bool = False) -> tuple[Co
         ContentFile("src/main.rs", main_content),
     )
     if include_redis_cache:
-        return (*files, ContentFile("src/clients/mod.rs", RUST_CLIENTS_MODULE_CONTENT))
+        files = (*files, ContentFile("src/clients/mod.rs", RUST_CLIENTS_MODULE_CONTENT))
+    if include_jwt_auth:
+        files = (*files, ContentFile("src/handler/mod.rs", RUST_HANDLER_MODULE_CONTENT))
     return files
 
 
