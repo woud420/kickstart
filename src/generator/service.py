@@ -17,7 +17,8 @@ from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
 from src.stack.types import TemplateConfig
 from src.generator.layouts import python_package_directories, service_directories, worker_directories
-from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract, ScaffoldServiceExtensions
+from src.generator.service_capabilities import ServiceExtensionSelection, validate_service_extensions
 from src.generator.specs import ServiceSpec
 from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig
@@ -135,6 +136,7 @@ class ServiceGenerator(BaseGenerator):
         Raises:
             LanguageNotSupportedError: If unsupported language is specified
         """
+        extension_selection = self._validate_extension_selection()
         profile = stack_registry.service_selection(self.lang, self.runtime, helm=self.helm)
 
         if profile.runtime == "cloudflare-workers":
@@ -168,6 +170,7 @@ class ServiceGenerator(BaseGenerator):
                     image="dockerfile",
                     kubernetes="helm" if self.helm else None,
                 ),
+                service_extensions=self._scaffold_service_extensions(extension_selection),
             ),
             success_message=success_message,
             language_setup_fn=self._setup_service_specific,
@@ -177,6 +180,28 @@ class ServiceGenerator(BaseGenerator):
 
         if not success:
             warn(f"Failed to create {self.lang} service '{self.name}'")
+
+    def _validate_extension_selection(self) -> ServiceExtensionSelection:
+        """Validate database, cache, and auth extensions for this service."""
+        return validate_service_extensions(
+            language=self.lang,
+            runtime=self.runtime,
+            framework=self.framework,
+            database=self.database,
+            cache=self.cache,
+            auth=self.auth,
+        )
+
+    def _scaffold_service_extensions(
+        self,
+        selection: ServiceExtensionSelection,
+    ) -> ScaffoldServiceExtensions:
+        """Convert validated extension selections to manifest metadata."""
+        return ScaffoldServiceExtensions(
+            database=selection.database,
+            cache=selection.cache,
+            auth=selection.auth,
+        )
 
     def _create_cloudflare_worker_project(self) -> None:
         """Create a Cloudflare Worker service project."""

@@ -2,10 +2,7 @@
 # This creates a minimal HTTP server using only standard library
 
 # Standard library only - no external dependencies
-# For enhanced functionality, use extensions like:
-# --database postgres (adds asyncpg, psycopg2)
-# --cache redis (adds redis)
-# --auth jwt (adds python-jose, passlib)
+# Use the default FastAPI scaffold for currently implemented service extensions.
 
 # Development and testing (minimal set)
 pytest>=8.4,<9

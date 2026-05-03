@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch
 from typer.testing import CliRunner
 from src.cli.main import app
+from src.utils.error_handling import ExtensionError
 
 
 @pytest.fixture
@@ -463,6 +464,20 @@ def test_create_service_exception_propagation(mock_load_config, mock_create_serv
     # Typer should catch the exception and exit with non-zero code
     assert result.exit_code != 0
     assert "Test error" in result.stdout
+
+
+@patch('src.cli.main.create_service')
+@patch('src.cli.main.load_config')
+def test_create_service_validation_error_is_concise(mock_load_config, mock_create_service, runner):
+    """Test expected validation errors do not print tracebacks."""
+    mock_load_config.return_value = {}
+    mock_create_service.side_effect = ExtensionError("cache extension 'redis' is not supported")
+
+    result = runner.invoke(app, ["create", "service", "test", "--root", "/tmp", "--cache", "redis"])
+
+    assert result.exit_code != 0
+    assert "cache extension 'redis' is not supported" in result.stdout
+    assert "Traceback" not in result.stdout
 
 
 def test_completion_command_invalid_shell(runner):

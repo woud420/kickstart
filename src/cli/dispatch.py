@@ -110,4 +110,4 @@ def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, c
         creators.monorepo(options.name, options.gh, config, **monorepo_kwargs)
         return
 
-    print(f"[bold red]❌ Type '{options.project_type}' not supported.[/]")
+    print(f"[bold red]Type '{options.project_type}' not supported.[/]")

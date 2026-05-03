@@ -17,6 +17,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on master
+        run: |
+          git fetch origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "Release tags must point to commits already merged to master."
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5

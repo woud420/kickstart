@@ -23,7 +23,10 @@ There is no separate root architecture document. `docs/architecture/` is the can
 - `execution.platforms`: where runtime artifacts are meant to run, for example `local`, `kubernetes`, `cloudflare-workers`, `cloudflare-containers`, `static-host`, or `none`.
 - `artifacts`: emitted files and tool configs, for example `image: dockerfile`, `kubernetes: kustomize`, `kubernetes: helm`, `worker: wrangler`, `iac: terraform`, or `ci: github-actions`.
 - `provider.targets`: infrastructure providers targeted by generated IaC or platform config, for example `aws`, `gcp`, or `cloudflare`.
+- `capabilities`: optional generated capabilities with real code support, for example `service_extensions: { database: postgres, cache: redis, auth: jwt }`.
 - `knowledge_adapter`: external knowledge integration metadata, for example `none`, `obsidian`, `backstage`, or `both`.
+
+Implemented service extensions currently apply only to Python/FastAPI container services. Unsupported combinations fail instead of generating a partial or silent scaffold.
 
 Systems contain other project kinds and are currently generated through the `mono` command with `project.repo_layout: monorepo`.
 

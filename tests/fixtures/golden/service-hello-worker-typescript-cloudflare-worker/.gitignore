@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.tmp/
+.cache/
+.dev.vars
+.wrangler/
+bun.lockb
+bun-debug.log*
+.DS_Store

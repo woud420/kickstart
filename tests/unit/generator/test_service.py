@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.service import ServiceGenerator
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
-from src.utils.error_handling import LanguageNotSupportedError
+from src.utils.error_handling import ExtensionError, LanguageNotSupportedError
 
 
 @pytest.fixture
@@ -108,6 +108,51 @@ def test_create_success_python_with_helm_and_gh(
     mock_create_helm_chart.assert_called_once()
     mock_log_success.assert_called_once_with("Python service 'test-service' created successfully in 'test-service'!")
     mock_create_repo.assert_called_once_with("test-service")
+
+
+@patch.object(ServiceGenerator, 'execute_create_flow')
+def test_create_passes_service_extension_capabilities_to_manifest(mock_execute_create_flow):
+    generator = ServiceGenerator(
+        "test-service",
+        "python",
+        False,
+        {},
+        database="postgres",
+        cache="redis",
+        auth="jwt",
+    )
+    mock_execute_create_flow.return_value = True
+
+    generator.create()
+
+    contract = mock_execute_create_flow.call_args.kwargs["scaffold_contract"]
+    assert contract.service_extensions.database == "postgres"
+    assert contract.service_extensions.cache == "redis"
+    assert contract.service_extensions.auth == "jwt"
+
+
+@pytest.mark.parametrize("language", ["rust", "typescript"])
+def test_create_rejects_unsupported_service_extension_language(language):
+    generator = ServiceGenerator("test-service", language, False, {}, cache="redis")
+
+    with pytest.raises(ExtensionError, match="cache extension 'redis' is not supported"):
+        generator.create()
+
+
+@pytest.mark.parametrize(
+    ("option", "value", "kwargs"),
+    [
+        ("database", "mysql", {"database": "mysql"}),
+        ("database", "sqlite", {"database": "sqlite"}),
+        ("cache", "memcached", {"cache": "memcached"}),
+        ("auth", "oauth", {"auth": "oauth"}),
+    ],
+)
+def test_create_rejects_unimplemented_service_extension_values(option, value, kwargs):
+    generator = ServiceGenerator("test-service", "python", False, {}, **kwargs)
+
+    with pytest.raises(ExtensionError, match=f"{option} extension '{value}' is not implemented"):
+        generator.create()
 
 
 @patch.object(ServiceGenerator, 'create_project')

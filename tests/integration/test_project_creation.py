@@ -118,6 +118,37 @@ class TestServiceCreation:
         }
         assert manifest["execution"] == {"models": ["container"], "platforms": ["local"]}
         assert manifest["artifacts"] == {"image": "dockerfile"}
+        assert manifest["capabilities"] == {}
+
+    def test_python_service_extension_manifest(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test Python service extensions are recorded in the scaffold manifest."""
+        service_name = "test-python-service-extensions"
+
+        generator = ServiceGenerator(
+            name=service_name,
+            lang="python",
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+            database="postgres",
+            cache="redis",
+            auth="jwt",
+        )
+        generator.create()
+
+        project_path = temp_project_dir / service_name
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+
+        assert manifest["capabilities"] == {
+            "service_extensions": {
+                "auth": "jwt",
+                "cache": "redis",
+                "database": "postgres",
+            }
+        }
+        assert (project_path / "src/clients/database.py").exists()
+        assert (project_path / "src/clients/cache.py").exists()
+        assert (project_path / "src/handler/auth.py").exists()
     
     def test_rust_service_creation_with_helm(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test Rust service creation with Helm charts."""

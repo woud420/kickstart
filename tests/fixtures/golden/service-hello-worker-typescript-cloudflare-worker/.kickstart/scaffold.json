@@ -1,0 +1,51 @@
+{
+  "artifacts": {
+    "worker": "wrangler"
+  },
+  "docs": {
+    "agent_map": "AGENTS.md",
+    "architecture": "docs/architecture/",
+    "contracts": "docs/contracts/",
+    "decisions": "docs/decisions/",
+    "operations": "docs/operations/"
+  },
+  "execution": {
+    "models": [
+      "cloudflare-worker"
+    ],
+    "platforms": [
+      "cloudflare-workers"
+    ]
+  },
+  "generated_by": "kickstart",
+  "knowledge_adapter": "none",
+  "lifecycle": {
+    "check": "make check",
+    "deploy": "make deploy",
+    "dev": "make dev",
+    "install": "make install",
+    "test": "make test"
+  },
+  "option_semantics": {
+    "artifacts": "files and tool configs emitted by the scaffold",
+    "composition": "system-only metadata for discovering contained project manifests",
+    "execution_models": "how generated code is meant to execute",
+    "knowledge_adapter": "external knowledge integration metadata",
+    "lifecycle": "project-local commands that agents and humans can run to install, test, and check the scaffold",
+    "project_kind": "what kickstart generated",
+    "provider_targets": "infrastructure providers targeted by generated IaC or platform config",
+    "repo_layout": "how generated projects are arranged in the repository",
+    "runtime_platforms": "where generated runtime artifacts are meant to run"
+  },
+  "project": {
+    "kind": "worker",
+    "name": "hello-worker",
+    "repo_layout": "single-project"
+  },
+  "provider": {
+    "targets": [
+      "cloudflare"
+    ]
+  },
+  "schema_version": "2.0"
+}

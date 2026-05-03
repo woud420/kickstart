@@ -76,6 +76,7 @@ def test_create_scaffold_contract_docs(base_generator, tmp_path):
         assert manifest["execution"] == {"models": ["container"], "platforms": ["local"]}
         assert manifest["artifacts"] == {"image": "dockerfile"}
         assert manifest["provider"] == {"targets": []}
+        assert manifest["capabilities"] == {}
 
 @patch('src.generator.base.write_file')
 def test_write_template(mock_write_file, base_generator, tmp_path):
