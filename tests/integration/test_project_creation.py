@@ -219,19 +219,61 @@ class TestServiceCreation:
         assert (project_path / "package.json").exists()
         assert (project_path / "src/index.ts").exists()
         assert (project_path / "tests/worker.test.ts").exists()
+        assert (project_path / "AGENTS.md").exists()
+        assert (project_path / "docs/contracts/README.md").exists()
+        assert (project_path / "docs/operations/README.md").exists()
         assert not (project_path / "Dockerfile").exists()
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
-        assert manifest["project"]["kind"] == "worker"
+        assert manifest["project"] == {
+            "name": service_name,
+            "kind": "worker",
+            "repo_layout": "single-project",
+        }
         assert manifest["execution"] == {
             "models": ["cloudflare-worker"],
             "platforms": ["cloudflare-workers"],
         }
         assert manifest["artifacts"] == {"worker": "wrangler"}
         assert manifest["provider"] == {"targets": ["cloudflare"]}
+        assert manifest["lifecycle"] == {
+            "install": "make install",
+            "test": "make test",
+            "check": "make check",
+            "dev": "make dev",
+            "deploy": "make deploy",
+        }
 
         worker_source = (project_path / "src/index.ts").read_text()
         assert "ExportedHandler" in worker_source
         assert "/healthz" in worker_source
+
+        agents_doc = (project_path / "AGENTS.md").read_text()
+        assert "src/index.ts" in agents_doc
+        assert "tests/worker.test.ts" in agents_doc
+        assert "wrangler.toml" in agents_doc
+        assert "make check" in agents_doc
+        assert "make dev" in agents_doc
+        assert "make deploy" in agents_doc
+        assert ".kickstart/scaffold.json" in agents_doc
+
+        contracts_doc = (project_path / "docs/contracts/README.md").read_text()
+        assert "Scaffold identity" in contracts_doc
+        assert "Execution model: `cloudflare-worker`" in contracts_doc
+        assert "Verification contract" in contracts_doc
+        assert "tests/worker.test.ts" in contracts_doc
+
+        operations_doc = (project_path / "docs/operations/README.md").read_text()
+        assert "Lifecycle flow" in operations_doc
+        assert "1. Install dependencies: `make install`" in operations_doc
+        assert "2. Verify scaffold contract: `make check`" in operations_doc
+        assert "3. Run local worker runtime: `make dev`" in operations_doc
+        assert "4. Deploy to Cloudflare Workers: `make deploy`" in operations_doc
+
+        readme = (project_path / "README.md").read_text()
+        assert "Verification contract" in readme
+        assert "Lifecycle flow" in readme
+        assert "This profile is an explicit scaffold contract" in readme
+        assert "make check" in readme
 
     def test_rust_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test Rust Cloudflare Worker service creation."""

@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.service import ServiceGenerator
-from src.generator.scaffold_contract import ScaffoldArtifacts
+from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.utils.error_handling import ExtensionError, LanguageNotSupportedError
 
 
@@ -522,6 +522,48 @@ def test_cloudflare_worker_template_configs_for_rust():
     assert {"target": "src/lib.rs", "template": "cloudflare-workers/rust/src/lib.rs.tpl"} in configs
 
 
+def test_typescript_cloudflare_worker_agent_map_is_explicit():
+    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
+
+    content = generator._agent_map_content()
+
+    assert "src/index.ts" in content
+    assert "tests/worker.test.ts" in content
+    assert "wrangler.toml" in content
+    assert "make check" in content
+    assert "make dev" in content
+    assert "make deploy" in content
+    assert "Do not hand-edit generated contract files" in content
+    assert ".kickstart/scaffold.json" in content
+
+
+def test_typescript_cloudflare_worker_contract_and_operations_docs_are_explicit():
+    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
+    contract = ScaffoldContract(
+        project_kind="worker",
+        execution_models=("cloudflare-worker",),
+        runtime_platforms=("cloudflare-workers",),
+        artifacts=ScaffoldArtifacts(worker="wrangler"),
+        provider_targets=("cloudflare",),
+    )
+
+    contracts_content = generator._contracts_content(contract)
+    operations_content = generator._operations_content(contract)
+
+    assert "Scaffold identity" in contracts_content
+    assert "Execution model: `cloudflare-worker`" in contracts_content
+    assert "Verification contract" in contracts_content
+    assert "make check" in contracts_content
+    assert "tests/worker.test.ts" in contracts_content
+
+    assert "Lifecycle flow" in operations_content
+    assert "1. Install dependencies: `make install`" in operations_content
+    assert "2. Verify scaffold contract: `make check`" in operations_content
+    assert "3. Run local worker runtime: `make dev`" in operations_content
+    assert "4. Deploy to Cloudflare Workers: `make deploy`" in operations_content
+    assert "wrangler.toml" in operations_content
+
+
 @patch.object(ServiceGenerator, 'execute_create_flow')
 def test_create_cloudflare_worker_uses_worker_flow(mock_execute_create_flow, tmp_path):
     generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
@@ -549,7 +591,13 @@ def test_create_cloudflare_worker_uses_worker_flow(mock_execute_create_flow, tmp
     assert kwargs["scaffold_contract"].runtime_platforms == ("cloudflare-workers",)
     assert kwargs["scaffold_contract"].artifacts == ScaffoldArtifacts(worker="wrangler")
     assert kwargs["scaffold_contract"].provider_targets == ("cloudflare",)
-    assert kwargs["success_message"] == "Typescript Cloudflare Worker 'edge-api' created successfully in 'edge-api'!"
+    assert kwargs["success_message"].startswith(
+        "Typescript Cloudflare Worker 'edge-api' created successfully in 'edge-api'!"
+    )
+    assert "make check" in kwargs["success_message"]
+    assert "docs/contracts/README.md" in kwargs["success_message"]
+    assert "docs/operations/README.md" in kwargs["success_message"]
+    assert ".kickstart/scaffold.json" in kwargs["success_message"]
 
 
 def test_cloudflare_worker_rejects_helm():
