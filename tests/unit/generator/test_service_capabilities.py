@@ -23,7 +23,7 @@ def test_python_fastapi_container_accepts_implemented_extensions() -> None:
 
 @pytest.mark.parametrize("language", ["rust", "typescript"])
 def test_non_python_services_reject_current_python_only_extensions(language: str) -> None:
-    with pytest.raises(ExtensionError, match="cache extension 'redis' is not supported"):
+    with pytest.raises(ExtensionError, match=rf"{language}/container/default"):
         validate_service_extensions(
             language=language,
             runtime="container",

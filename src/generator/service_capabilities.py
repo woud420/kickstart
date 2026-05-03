@@ -40,8 +40,10 @@ _SERVICE_EXTENSION_SUPPORT: dict[tuple[str, str, str], ServiceExtensionSupport] 
 }
 
 
-def normalize_framework(framework: str | None) -> str:
-    """Return the canonical framework capability id."""
+def normalize_framework(*, language: str, framework: str | None) -> str:
+    """Return the canonical framework capability id for validation messages."""
+    if language != "python":
+        return framework or "default"
     if framework is None or framework == "fastapi":
         return "fastapi"
     return framework
@@ -62,7 +64,7 @@ def validate_service_extensions(
         cache=_normalize_optional(cache),
         auth=_normalize_optional(auth),
     )
-    framework_id = normalize_framework(framework)
+    framework_id = normalize_framework(language=language, framework=framework)
     support = _SERVICE_EXTENSION_SUPPORT.get((language, runtime, framework_id), ServiceExtensionSupport())
 
     _validate_category(
