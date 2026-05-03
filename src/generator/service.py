@@ -368,7 +368,16 @@ class ServiceGenerator(BaseGenerator):
         - Cargo.toml with common dependencies
         - Proper crate structure
         """
-        self._write_content_files(rust_service_content_files())
+        include_redis_cache = self.cache == "redis"
+        self._write_content_files(rust_service_content_files(include_redis_cache=include_redis_cache))
+        if include_redis_cache:
+            self.write_template("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
+            self.write_content(
+                ".env.example",
+                "EXAMPLE_ENV_VAR=value\nREDIS_URL=redis://127.0.0.1:6379/0\n",
+            )
+            self.write_template("Cargo.toml", "rust/Cargo.toml.tpl", cache="redis")
+            return
         self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
 
     def _create_cpp_structure(self) -> None:

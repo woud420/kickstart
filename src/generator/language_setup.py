@@ -14,20 +14,27 @@ class ContentFile:
 
 
 RUST_MODULE_CONTENT = "// Module definitions\n"
+RUST_CLIENTS_MODULE_CONTENT = "pub mod cache;\n"
 
-RUST_MAIN_CONTENT = """use actix_web::{web, App, HttpResponse, HttpServer};
+RUST_MAIN_CONTENT = """use actix_web::{App, HttpResponse, HttpServer, web};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
-        App::new()
-            .route("/", web::get().to(|| async { HttpResponse::Ok().json("Hello World") }))
+        App::new().route(
+            "/",
+            web::get().to(|| async { HttpResponse::Ok().json("Hello World") }),
+        )
     })
     .bind("127.0.0.1:8080")?
     .run()
     .await
 }
 """
+
+RUST_MAIN_WITH_CLIENTS_CONTENT = f"""mod clients;
+
+{RUST_MAIN_CONTENT}"""
 
 CPP_ROUTES_HEADER_CONTENT = """#pragma once
 
@@ -81,15 +88,19 @@ LOG_LEVEL=info
 """
 
 
-def rust_service_content_files() -> tuple[ContentFile, ...]:
+def rust_service_content_files(*, include_redis_cache: bool = False) -> tuple[ContentFile, ...]:
     """Return direct content files for Rust services."""
-    return (
+    main_content = RUST_MAIN_WITH_CLIENTS_CONTENT if include_redis_cache else RUST_MAIN_CONTENT
+    files = (
         ContentFile("src/api/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("src/model/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("tests/api/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("tests/model/mod.rs", RUST_MODULE_CONTENT),
-        ContentFile("src/main.rs", RUST_MAIN_CONTENT),
+        ContentFile("src/main.rs", main_content),
     )
+    if include_redis_cache:
+        return (*files, ContentFile("src/clients/mod.rs", RUST_CLIENTS_MODULE_CONTENT))
+    return files
 
 
 def cpp_service_content_files() -> tuple[ContentFile, ...]:

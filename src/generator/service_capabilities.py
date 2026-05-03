@@ -36,7 +36,10 @@ _SERVICE_EXTENSION_SUPPORT: dict[tuple[str, str, str], ServiceExtensionSupport] 
         databases=IMPLEMENTED_DATABASE_EXTENSIONS,
         caches=IMPLEMENTED_CACHE_EXTENSIONS,
         auth=IMPLEMENTED_AUTH_EXTENSIONS,
-    )
+    ),
+    ("rust", "container", "default"): ServiceExtensionSupport(
+        caches=IMPLEMENTED_CACHE_EXTENSIONS,
+    ),
 }
 
 
