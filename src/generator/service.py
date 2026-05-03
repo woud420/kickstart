@@ -190,7 +190,12 @@ class ServiceGenerator(BaseGenerator):
         template_plan = self._cloudflare_worker_template_plan()
 
         architecture_title = f"{self.name} Cloudflare Worker Architecture Notes"
-        success_message = f"{self.lang.title()} Cloudflare Worker '{self.name}' created successfully in '{self.project}'!"
+        success_message = (
+            f"{self.lang.title()} Cloudflare Worker '{self.name}' created successfully in "
+            f"'{self.project}'!\n"
+            "Verification: run `make check`, then review `docs/contracts/README.md`, "
+            "`docs/operations/README.md`, and `.kickstart/scaffold.json`."
+        )
 
         def github_create_fn() -> bool | None:
             return create_repo(self.name) if self.gh else None
@@ -221,6 +226,88 @@ class ServiceGenerator(BaseGenerator):
         """Return a typed template plan for Cloudflare Worker services."""
         selection = stack_registry.service_selection(self.lang, "cloudflare-workers")
         return TemplatePlan.from_templates(selection.templates)
+
+    def _is_typescript_cloudflare_worker(self) -> bool:
+        """Return True when generating the TypeScript Cloudflare Worker profile."""
+        return self.runtime == "cloudflare-workers" and self.lang == "typescript"
+
+    def _agent_map_content(self) -> str:
+        """Return profile-specific AGENTS guidance when available."""
+        if not self._is_typescript_cloudflare_worker():
+            return super()._agent_map_content()
+
+        return (
+            "# Agent Map\n\n"
+            "## Scope\n"
+            "- This scaffold is an explicit TypeScript Cloudflare Worker contract.\n"
+            "- Read `.kickstart/scaffold.json` before changing generated conventions.\n\n"
+            "## Code, tests, and config\n"
+            "- Worker code: `src/index.ts`\n"
+            "- Contract tests: `tests/worker.test.ts`\n"
+            "- Runtime config: `wrangler.toml`\n"
+            "- Tooling config: `package.json`, `tsconfig.json`, `Makefile`\n"
+            "- Local env template: `.dev.vars.example` (copy to `.dev.vars` for local secrets)\n\n"
+            "## Commands\n"
+            "- Verify contract: `make check`\n"
+            "- Local development: `make dev`\n"
+            "- Deploy: `make deploy`\n\n"
+            "## Deploy assumptions\n"
+            "- Wrangler is authenticated (`wrangler login` locally or `CLOUDFLARE_API_TOKEN` in CI).\n"
+            "- Cloudflare bindings and secrets are configured before `make deploy`.\n"
+            "- Keep `SERVICE_NAME` bindings aligned between `wrangler.toml`, `.dev.vars`, and tests.\n\n"
+            "## Do not hand-edit generated contract files\n"
+            "- `.kickstart/scaffold.json`\n"
+            "- `AGENTS.md`\n"
+            "- `docs/contracts/README.md`\n"
+            "- `docs/operations/README.md`\n\n"
+            "Regenerate with kickstart when scaffold conventions change.\n"
+        )
+
+    def _contracts_content(self, contract: ScaffoldContract) -> str:
+        """Return profile-specific contracts guidance when available."""
+        if not (self._is_typescript_cloudflare_worker() and contract.project_kind == "worker"):
+            return super()._contracts_content(contract)
+
+        return (
+            "# Contracts\n\n"
+            "## Scaffold identity\n"
+            "- Kind: `worker`\n"
+            "- Execution model: `cloudflare-worker`\n"
+            "- Runtime platform: `cloudflare-workers`\n"
+            "- Artifact: `wrangler`\n"
+            "- Provider target: `cloudflare`\n\n"
+            "See `.kickstart/scaffold.json` for the machine-readable source of truth.\n\n"
+            "## TypeScript Worker handler contract\n"
+            "- `src/index.ts` exports `default` and satisfies `ExportedHandler<Env>`.\n"
+            "- `Env` bindings in TypeScript are mirrored in `wrangler.toml` and `.dev.vars`.\n"
+            "- `/healthz` returns JSON health output and stays covered by tests.\n\n"
+            "## Verification contract\n"
+            "- Run `make check` before handoff.\n"
+            "- `make check` runs `make typecheck` and `make test`.\n"
+            "- `tests/worker.test.ts` validates the generated handler behavior.\n"
+        )
+
+    def _operations_content(self, contract: ScaffoldContract) -> str:
+        """Return profile-specific operations guidance when available."""
+        if not (self._is_typescript_cloudflare_worker() and contract.project_kind == "worker"):
+            return super()._operations_content(contract)
+
+        return (
+            "# Operations\n\n"
+            "## Lifecycle flow\n"
+            "1. Install dependencies: `make install`\n"
+            "2. Verify scaffold contract: `make check`\n"
+            "3. Run local worker runtime: `make dev`\n"
+            "4. Deploy to Cloudflare Workers: `make deploy`\n\n"
+            "## Verification files\n"
+            "- `Makefile` contains lifecycle command wrappers.\n"
+            "- `docs/contracts/README.md` describes runtime and handler constraints.\n"
+            "- `.kickstart/scaffold.json` records command and platform metadata.\n\n"
+            "## Deploy assumptions\n"
+            "- Wrangler authentication is available.\n"
+            "- Required bindings and secrets are configured before deploy.\n"
+            "- Deployment target details live in `wrangler.toml`.\n"
+        )
     
     def _setup_service_specific(self) -> bool:
         """Setup service-specific files and structure.
