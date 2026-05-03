@@ -118,6 +118,11 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.5"
+
       - name: Test Python service generation
         run: |
           poetry run kickstart create service test-python-service \
@@ -158,6 +163,60 @@ jobs:
             --lang python
 
           test -d /tmp/test-cli-tool
+
+      - name: Smoke test Cloudflare Worker flagship profile
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          worker_temp_root="$(mktemp -d /tmp/kickstart-cf-worker-smoke-XXXXXX)"
+          worker_project_name="test-cf-worker-flagship"
+          worker_project_path="${worker_temp_root}/${worker_project_name}"
+          worker_log_dir="${worker_temp_root}/logs"
+          generation_log_path="${worker_log_dir}/generate.log"
+
+          mkdir -p "${worker_log_dir}"
+
+          echo "Cloudflare Worker smoke temp root: ${worker_temp_root}"
+          echo "Generated Cloudflare Worker project path: ${worker_project_path}"
+          echo "Smoke log directory: ${worker_log_dir}"
+
+          if poetry run kickstart create service "${worker_project_name}" \
+            --root "${worker_temp_root}" \
+            --lang typescript \
+            --runtime cloudflare-workers >"${generation_log_path}" 2>&1; then
+            echo "Generation passed for Cloudflare Worker flagship profile."
+          else
+            exit_code=$?
+            echo "::error title=Cloudflare Worker generation failed::project=${worker_project_path}; command=poetry run kickstart create service ${worker_project_name} --root ${worker_temp_root} --lang typescript --runtime cloudflare-workers; exit_code=${exit_code}; log=${generation_log_path}"
+            echo "---- tail -n 80 ${generation_log_path} ----"
+            tail -n 80 "${generation_log_path}" || true
+            echo "---- end log tail ----"
+            exit "${exit_code}"
+          fi
+
+          run_smoke_command() {
+            local log_name="$1"
+            shift
+            local command_display="$*"
+            local log_path="${worker_log_dir}/${log_name}.log"
+
+            echo "Running command in generated project: ${command_display}"
+            if (cd "${worker_project_path}" && "$@") >"${log_path}" 2>&1; then
+              echo "Command passed: ${command_display}"
+            else
+              local exit_code=$?
+              echo "::error title=Cloudflare Worker smoke check failed::project=${worker_project_path}; command=${command_display}; exit_code=${exit_code}; log=${log_path}"
+              echo "---- tail -n 80 ${log_path} ----"
+              tail -n 80 "${log_path}" || true
+              echo "---- end log tail ----"
+              exit "${exit_code}"
+            fi
+          }
+
+          run_smoke_command make-install make install
+          run_smoke_command make-test make test
+          run_smoke_command make-check make check
 
       - name: Verify template syntax
         run: |
