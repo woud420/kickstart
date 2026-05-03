@@ -132,18 +132,18 @@ export const commandExamples: CommandExample[] = [
     label: "aws system",
     title: "aws kubernetes system",
     command: "kickstart create system platform --cloud aws --runtime kubernetes --knowledge none",
-    summary: "Writes a TypeScript/Bun system root with AWS Terraform, Kubernetes manifests, GitHub Actions, docs, and agent notes.",
+    summary: "Writes a language-neutral system root with AWS Terraform, Kubernetes manifests, GitHub Actions, docs, and agent notes.",
     output: [
       "apps/",
-      "packages/",
       "services/",
       "libs/",
+      "tools/",
       "infra/docker/docker-compose.yml",
       "infra/terraform/env/dev/main.tf",
-      "infra/terraform/modules/service_runtime/main.tf",
+      "infra/terraform/modules/",
       "infra/k8s/base/deployment.yaml",
       "infra/k8s/base/service.yaml",
-      "infra/k8s/overlays/dev/kustomization.yaml",
+      "infra/k8s/overlays/dev/",
       ".github/workflows/build.yml",
       ".github/workflows/test.yml",
       ".github/workflows/deploy.yml",
@@ -155,9 +155,6 @@ export const commandExamples: CommandExample[] = [
       "docs/operations/README.md",
       "docs/decisions/0001-stack-profile.md",
       "docs/agents/recommended-agents.md",
-      "config/tsconfig/base.json",
-      "package.json",
-      "turbo.json",
     ],
     components: [
       {
@@ -165,8 +162,8 @@ export const commandExamples: CommandExample[] = [
         detail: "apps/ and services/ hold deployable projects.",
       },
       {
-        label: "Shared packages",
-        detail: "packages/ and libs/ hold reusable code.",
+        label: "Reusable code",
+        detail: "libs/ holds shared code; tools/ holds automation and CLIs.",
       },
       {
         label: "Infrastructure",

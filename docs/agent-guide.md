@@ -18,6 +18,7 @@ Resolved metadata in `.kickstart/scaffold.json`:
 - runtime platforms
 - emitted artifacts
 - provider targets
+- system composition metadata, including workspace tooling
 - selected capabilities, such as implemented service extensions
 - knowledge adapter
 
@@ -62,6 +63,7 @@ Do not pass unsupported extension options and assume they were generated.
 - service runtime: `container`
 - system provider target: `multi`
 - system platform profile: `kubernetes`
+- system workspace tooling: `none`
 - system knowledge adapter: `none`
 - GitHub creation: off
 - Helm: off

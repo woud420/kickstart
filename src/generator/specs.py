@@ -71,6 +71,7 @@ class SystemSpec:
     cloud: str = "multi"
     knowledge: str = "none"
     runtime: str = "kubernetes"
+    workspace_tooling: str = "none"
 
     @classmethod
     def from_options(
@@ -84,6 +85,7 @@ class SystemSpec:
         cloud: str = "multi",
         knowledge: str = "none",
         runtime: str = "kubernetes",
+        workspace_tooling: str = "none",
     ) -> "SystemSpec":
         """Create a system spec from public constructor options."""
         return cls(
@@ -95,6 +97,7 @@ class SystemSpec:
             cloud=stack_registry.normalize_cloud(cloud),
             knowledge=stack_registry.normalize_knowledge(knowledge),
             runtime=stack_registry.normalize_system_runtime(runtime),
+            workspace_tooling=stack_registry.normalize_workspace_tooling(workspace_tooling),
         )
 
 

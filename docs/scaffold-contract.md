@@ -24,11 +24,12 @@ There is no separate root architecture document. `docs/architecture/` is the can
 - `artifacts`: emitted files and tool configs, for example `image: dockerfile`, `kubernetes: kustomize`, `kubernetes: helm`, `worker: wrangler`, `iac: terraform`, or `ci: github-actions`.
 - `provider.targets`: infrastructure providers targeted by generated IaC or platform config, for example `aws`, `gcp`, or `cloudflare`.
 - `capabilities`: optional generated capabilities with real code support, for example `service_extensions: { database: postgres, cache: redis, auth: jwt }`.
+- `composition.workspace_tooling`: system-only root workspace tooling, for example `none` or `bun-turbo`.
 - `knowledge_adapter`: external knowledge integration metadata, for example `none`, `obsidian`, `backstage`, or `both`.
 
 Implemented service extensions are intentionally narrow. Python/FastAPI container services support Postgres, Redis, and JWT. Rust container services support Redis and JWT. TypeScript container services support Postgres. Unsupported combinations fail instead of generating a partial or silent scaffold.
 
-Systems contain other project kinds and are generated through the `system` command with `project.repo_layout: monorepo`. The older `mono` project type remains a backwards-compatible alias.
+Systems contain other project kinds and are generated through the `system` command with `project.repo_layout: monorepo`. A system is language-neutral by default. Use `--workspace-tooling bun-turbo` when the root should also be a Bun/Turbo TypeScript workspace. The older `mono` and `monorepo` project types remain backwards-compatible aliases that preserve the historical Bun/Turbo default.
 
 Docker is an image/build artifact. Kubernetes is a runtime platform for containers. Helm and Kustomize are Kubernetes artifact styles. Cloudflare Workers are a Cloudflare runtime platform, not a Docker or Kubernetes container. Cloudflare Containers are modeled separately as Worker-controlled container images when that scaffold is added.
 

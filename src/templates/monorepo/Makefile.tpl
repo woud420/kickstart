@@ -3,7 +3,9 @@ ENV ?= dev
 KUSTOMIZE ?= kubectl kustomize
 {% endif %}
 TERRAFORM ?= terraform
+{% if uses_bun_turbo %}
 BUN ?= bun
+{% endif %}
 {% include "_shared/make_logging.mk.tpl" %}
 
 .PHONY: install dev test typecheck check build compose-up compose-down tf-init tf-plan tf-validate docs-check child-validation-note{% if uses_kubernetes %} k8s-render{% endif %}{% if uses_cloudflare_workers %} cf-worker-notes{% endif %}
@@ -77,5 +79,7 @@ docs-check:
 	@test -f infra/cloudflare/workers/README.md
 {% endif %}
 	@test -f knowledge/README.md
+{% if uses_bun_turbo %}
 	@test -f package.json
 	@test -f turbo.json
+{% endif %}

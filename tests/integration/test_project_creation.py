@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from src.api import create_service, create_frontend, create_lib, create_cli, create_monorepo
+from src.api import create_service, create_frontend, create_lib, create_cli, create_system, create_monorepo
 from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibGenerator
@@ -590,6 +590,27 @@ class TestAPIFunctions:
         assert project_path.exists()
         assert (project_path / "services").exists()
         assert (project_path / "infra/k8s/base/deployment.yaml").exists()
+
+    def test_create_system_api_is_workspace_neutral(self, temp_project_dir: Path, mock_config: GeneratorConfig):
+        """Test the create_system API function."""
+        system_name = "api-test-system"
+
+        create_system(
+            name=system_name,
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+            cloud="aws",
+        )
+
+        project_path = temp_project_dir / system_name
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+
+        assert project_path.exists()
+        assert (project_path / "services").exists()
+        assert (project_path / "tools").exists()
+        assert not (project_path / "package.json").exists()
+        assert manifest["composition"]["workspace_tooling"] == "none"
 
     def test_create_monorepo_api_with_cloudflare(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test that Cloudflare monorepos render Cloudflare Terraform only."""

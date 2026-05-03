@@ -10,7 +10,7 @@ kickstart creates project scaffolds so the first hour of setup is repeatable ins
 | Frontend | `kickstart create frontend NAME` | React/Vite/Bun apps |
 | Library | `kickstart create lib NAME --lang python` | Reusable packages |
 | CLI | `kickstart create cli NAME --lang rust` | Command-line tools |
-| System | `kickstart create system NAME` | TypeScript monorepo layout containing apps, packages, services, infrastructure, and docs |
+| System | `kickstart create system NAME` | Composition repo containing apps, services, libs, tools, infrastructure, docs, and agent metadata |
 
 ## Service Options
 
@@ -58,6 +58,11 @@ Platform profile:
 - `kubernetes`: Kustomize by default, Helm with `--helm`
 - `cloudflare-workers`: Wrangler-oriented Worker runtime notes
 - `hybrid`: Kubernetes plus Cloudflare Workers
+
+Workspace tooling:
+
+- `none`: default; no root language/package manager assumption
+- `bun-turbo`: emits root `package.json`, `turbo.json`, `bunfig.toml`, shared TypeScript config, and `packages/`
 
 Artifact model:
 

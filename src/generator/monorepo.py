@@ -14,6 +14,7 @@ class SystemGenerator(BaseGenerator):
     cloud: str
     knowledge: str
     runtime: str
+    workspace_tooling: str
     spec: SystemSpec
     selection: SystemSelection
 
@@ -31,6 +32,7 @@ class SystemGenerator(BaseGenerator):
         cloud: str = "multi",
         knowledge: str = "none",
         runtime: str = "kubernetes",
+        workspace_tooling: str = "none",
     ) -> None:
         spec = SystemSpec.from_options(
             name=name,
@@ -41,6 +43,7 @@ class SystemGenerator(BaseGenerator):
             cloud=cloud,
             knowledge=knowledge,
             runtime=runtime,
+            workspace_tooling=workspace_tooling,
         )
         super().__init__(spec.name, spec.config, spec.root)
         self.spec = spec
@@ -49,10 +52,12 @@ class SystemGenerator(BaseGenerator):
         self.cloud = spec.cloud
         self.knowledge = spec.knowledge
         self.runtime = spec.runtime
+        self.workspace_tooling = spec.workspace_tooling
         self.selection = stack_registry.system_selection(
             self.cloud,
             self.knowledge,
             self.runtime,
+            self.workspace_tooling,
             helm=self.helm,
         )
         self.template_dir = self.template_dir / "monorepo"
@@ -86,6 +91,7 @@ class SystemGenerator(BaseGenerator):
                 artifacts=self._artifact_contract(selection),
                 provider_targets=selection.clouds,
                 knowledge_adapter=selection.knowledge,
+                workspace_tooling=selection.workspace_tooling,
             ),
             success_message=success_message,
             additional_setup_fn=self._setup_system_specific,
@@ -182,6 +188,9 @@ class SystemGenerator(BaseGenerator):
             "cloud_label": selection.cloud_label,
             "runtime": selection.runtime,
             "runtime_label": selection.runtime_label,
+            "workspace_tooling": selection.workspace_tooling,
+            "workspace_tooling_label": selection.workspace_tooling_label,
+            "uses_bun_turbo": selection.uses_bun_turbo,
             "include_aws": "aws" in selection.clouds,
             "include_gcp": "gcp" in selection.clouds,
             "include_cloudflare": "cloudflare" in selection.clouds,
@@ -216,6 +225,33 @@ class SystemGenerator(BaseGenerator):
                 "kustomize/overlay-kustomization.yaml",
                 **{**template_vars, "environment": env},
             )
+class MonorepoGenerator(SystemGenerator):
+    """Legacy monorepo generator.
 
+    The legacy monorepo entry point keeps the historical Bun + Turbo workspace
+    default. The canonical system entry point is neutral by default.
+    """
 
-MonorepoGenerator = SystemGenerator
+    def __init__(
+        self,
+        name: str,
+        gh: bool,
+        config: GeneratorConfig,
+        helm: bool = False,
+        root: str | None = None,
+        cloud: str = "multi",
+        knowledge: str = "none",
+        runtime: str = "kubernetes",
+        workspace_tooling: str = "bun-turbo",
+    ) -> None:
+        super().__init__(
+            name,
+            gh,
+            config,
+            helm=helm,
+            root=root,
+            cloud=cloud,
+            knowledge=knowledge,
+            runtime=runtime,
+            workspace_tooling=workspace_tooling,
+        )

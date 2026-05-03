@@ -28,6 +28,7 @@ class StackProfileRegistry:
         self.clouds = dict(defaults.clouds)
         self.knowledge = dict(defaults.knowledge)
         self.artifact_tools = dict(defaults.artifact_tools)
+        self.workspace_tooling = dict(defaults.workspace_tooling)
 
     def normalize_language(self, language: str) -> str:
         """Normalize language aliases, preserving unknown values for later validation."""
@@ -52,6 +53,10 @@ class StackProfileRegistry:
     def normalize_knowledge(self, knowledge: str) -> str:
         """Normalize knowledge aliases, preserving unknown values for validation."""
         return self._normalize(knowledge, self.knowledge)
+
+    def normalize_workspace_tooling(self, workspace_tooling: str) -> str:
+        """Normalize system workspace tooling aliases, preserving unknown values for validation."""
+        return self._normalize(workspace_tooling, self.workspace_tooling)
 
     def service_selection(self, language: str, runtime: str = "container", *, helm: bool = False) -> ServiceSelection:
         """Validate and describe a service scaffold selection."""
@@ -106,6 +111,7 @@ class StackProfileRegistry:
         cloud: str = "multi",
         knowledge: str = "none",
         runtime: str = "kubernetes",
+        workspace_tooling: str = "none",
         *,
         helm: bool = False,
     ) -> SystemSelection:
@@ -113,6 +119,7 @@ class StackProfileRegistry:
         normalized_cloud = self.normalize_cloud(cloud)
         normalized_knowledge = self.normalize_knowledge(knowledge)
         normalized_runtime = self.normalize_system_runtime(runtime)
+        normalized_workspace_tooling = self.normalize_workspace_tooling(workspace_tooling)
 
         cloud_profile = self.clouds.get(normalized_cloud)
         if cloud_profile is None:
@@ -129,6 +136,15 @@ class StackProfileRegistry:
                 "Unsupported knowledge scaffold '{knowledge}'. Use one of: {supported}".format(
                     knowledge=knowledge,
                     supported=", ".join(sorted(self.knowledge)),
+                )
+            )
+
+        workspace_profile = self.workspace_tooling.get(normalized_workspace_tooling)
+        if workspace_profile is None:
+            raise ValueError(
+                "Unsupported system workspace tooling '{workspace_tooling}'. Use one of: {supported}".format(
+                    workspace_tooling=workspace_tooling,
+                    supported=", ".join(sorted(self.workspace_tooling)),
                 )
             )
 
@@ -150,11 +166,19 @@ class StackProfileRegistry:
             artifact_tool=artifact_tool,
             artifact_label=artifact_label,
             runtime_label=runtime_profile.display_name,
+            workspace_tooling=normalized_workspace_tooling,
+            workspace_tooling_label=workspace_profile.display_name,
+            uses_bun_turbo=workspace_profile.uses_bun_turbo,
             include_obsidian=knowledge_profile.include_obsidian,
             include_backstage=knowledge_profile.include_backstage,
             uses_kubernetes=runtime_profile.uses_kubernetes,
             uses_cloudflare_workers=runtime_profile.uses_cloudflare_workers,
-            templates=templates.system_templates(self.environments, knowledge_profile, runtime_profile),
+            templates=templates.system_templates(
+                self.environments,
+                knowledge_profile,
+                runtime_profile,
+                workspace_profile,
+            ),
             smoke_commands=runtime_profile.smoke_commands,
         )
 
@@ -163,11 +187,12 @@ class StackProfileRegistry:
         cloud: str = "multi",
         knowledge: str = "none",
         runtime: str = "kubernetes",
+        workspace_tooling: str = "bun-turbo",
         *,
         helm: bool = False,
     ) -> MonorepoSelection:
         """Validate and describe a legacy monorepo scaffold selection."""
-        return self.system_selection(cloud, knowledge, runtime, helm=helm)
+        return self.system_selection(cloud, knowledge, runtime, workspace_tooling, helm=helm)
 
     def kustomize_template_configs(self) -> tuple[TemplateConfig, ...]:
         """Return Kubernetes Kustomize template mappings."""

@@ -105,7 +105,8 @@ describe("kickstart website worker", () => {
     expect(script).toContain("kickstart create system platform --cloud aws --runtime kubernetes --knowledge none");
     expect(script).toContain("docs/agents/recommended-agents.md");
     expect(script).not.toContain("docs/agents/recommended.md");
-    expect(script).toContain("config/tsconfig/base.json");
+    expect(script).toContain("tools/");
+    expect(script).not.toContain("config/tsconfig/base.json");
     expect(script).not.toContain("tsconfig.base.json");
     expect(script).not.toContain("kickstart create system platform --cloud cloudflare --runtime cloudflare-workers");
   });

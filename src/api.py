@@ -12,6 +12,7 @@ __all__ = [
     "create_frontend",
     "create_lib",
     "create_cli",
+    "create_system",
     "create_monorepo",
 ]
 
@@ -78,6 +79,7 @@ def create_system(
     cloud: str = "multi",
     knowledge: str = "none",
     runtime: str = "kubernetes",
+    workspace_tooling: str = "none",
 ) -> None:
     """Create a system scaffold."""
     generator = SystemGenerator(
@@ -89,6 +91,7 @@ def create_system(
         cloud=cloud,
         knowledge=knowledge,
         runtime=runtime,
+        workspace_tooling=workspace_tooling,
     )
     generator.create()
 
@@ -103,6 +106,7 @@ def create_monorepo(
     cloud: str = "multi",
     knowledge: str = "none",
     runtime: str = "kubernetes",
+    workspace_tooling: str = "bun-turbo",
 ) -> None:
     """Create a system monorepo through the legacy API name."""
     generator = MonorepoGenerator(
@@ -114,5 +118,6 @@ def create_monorepo(
         cloud=cloud,
         knowledge=knowledge,
         runtime=runtime,
+        workspace_tooling=workspace_tooling,
     )
     generator.create()

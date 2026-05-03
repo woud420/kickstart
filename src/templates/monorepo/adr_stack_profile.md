@@ -8,7 +8,10 @@ Accepted for initial scaffold.
 
 This workspace starts from a polyglot application shape: Python, Rust, TypeScript, C++, and Go for services, Python and Rust for package/CLI tooling, SQL for durable data contracts, Docker for local parity, and Terraform for provider resources.
 
-TypeScript workspaces use Bun for package/runtime workflow and Turbo for task orchestration. Generated directories separate deployable `apps/`, reusable `packages/`, service runtimes, shared `config/`, and durable `knowledge/`.
+Generated directories separate deployable `apps/`, service runtimes, automation `tools/`, durable `knowledge/`, and shared infrastructure.
+{% if uses_bun_turbo %}
+The selected workspace tooling uses Bun for package/runtime workflow and Turbo for task orchestration. TypeScript packages live under `packages/` with shared config in `config/`.
+{% endif %}
 
 {% if uses_kubernetes and uses_cloudflare_workers -%}
 The scaffold targets {{ cloud_label }} with Kubernetes manifests for long-running services and Cloudflare Workers for edge runtime paths. Runtime artifact commands use {{ artifact_label }}.

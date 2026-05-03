@@ -1,7 +1,7 @@
 """Stack template mapping helpers."""
 
 from src.stack.agent_workflows import agent_workflow_template_configs
-from src.stack.types import KnowledgeProfile, RuntimeProfile, TemplateConfig
+from src.stack.types import KnowledgeProfile, RuntimeProfile, TemplateConfig, WorkspaceToolingProfile
 
 
 def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]:
@@ -37,6 +37,7 @@ def system_templates(
     environments: tuple[str, ...],
     knowledge_profile: KnowledgeProfile,
     runtime_profile: RuntimeProfile,
+    workspace_profile: WorkspaceToolingProfile,
 ) -> tuple[TemplateConfig, ...]:
     """Return system template mappings for selected stack profiles."""
     templates = [
@@ -51,11 +52,17 @@ def system_templates(
         TemplateConfig("docs/data/README.md", "data_readme.md"),
         TemplateConfig("docs/knowledge/README.md", "knowledge_readme.md"),
         TemplateConfig("knowledge/README.md", "knowledge_root_readme.md"),
-        TemplateConfig("package.json", "package.json.tpl"),
-        TemplateConfig("turbo.json", "turbo.json.tpl"),
-        TemplateConfig("bunfig.toml", "bunfig.toml.tpl"),
-        TemplateConfig("config/tsconfig/base.json", "tsconfig_base.json.tpl"),
     ]
+
+    if workspace_profile.uses_bun_turbo:
+        templates.extend(
+            [
+                TemplateConfig("package.json", "package.json.tpl"),
+                TemplateConfig("turbo.json", "turbo.json.tpl"),
+                TemplateConfig("bunfig.toml", "bunfig.toml.tpl"),
+                TemplateConfig("config/tsconfig/base.json", "tsconfig_base.json.tpl"),
+            ]
+        )
 
     for env in environments:
         templates.extend(

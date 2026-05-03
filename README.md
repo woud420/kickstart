@@ -23,10 +23,16 @@ Create a Cloudflare Worker:
 poetry run kickstart create service edge-api --lang typescript --runtime cloudflare-workers
 ```
 
-Create a TypeScript system:
+Create a system root:
 
 ```bash
 poetry run kickstart create system product-stack
+```
+
+Add Bun + Turbo workspace tooling when you want a TypeScript workspace at the system root:
+
+```bash
+poetry run kickstart create system product-stack --workspace-tooling bun-turbo
 ```
 
 ## What It Generates
@@ -35,7 +41,7 @@ poetry run kickstart create system product-stack
 - `frontend`: React, TypeScript, Vite, and Bun frontend app.
 - `lib`: Python or Rust library project.
 - `cli`: Python or Rust CLI project.
-- `system`: TypeScript/Bun/Turbo system workspace containing apps, packages, services, infrastructure, and docs.
+- `system`: language-neutral composition repo containing apps, services, libs, tools, infrastructure, docs, and agent metadata.
 
 ## Major Choices
 
@@ -45,6 +51,7 @@ poetry run kickstart create system product-stack
 - Implemented service extensions are intentionally narrow: Python/FastAPI container services support Postgres, Redis, and JWT; Rust container services support Redis and JWT; TypeScript container services support Postgres.
 - System provider targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
 - System platform profiles: `kubernetes`, `cloudflare-workers`, or `hybrid`.
+- System workspace tooling defaults to `none`; use `--workspace-tooling bun-turbo` for root `package.json`, Turbo, Bun, and shared TypeScript config.
 - Dockerfiles are image artifacts; Helm and Kustomize are Kubernetes artifact styles; Wrangler is the Cloudflare Worker artifact path.
 - Generated docs and `.kickstart/scaffold.json` are always created for agents and humans.
 - Knowledge adapters default to `none`; use `--knowledge obsidian`, `--knowledge backstage`, or `--knowledge both` only for external metadata.
@@ -60,6 +67,7 @@ poetry run kickstart create frontend web
 poetry run kickstart create lib core-lib --lang python
 poetry run kickstart create cli ops-tool --lang rust
 poetry run kickstart create system platform --cloud aws --runtime kubernetes --knowledge none
+poetry run kickstart create system web-platform --workspace-tooling bun-turbo
 ```
 
 ## More Docs

@@ -56,6 +56,7 @@ class ScaffoldLifecycleManifest(TypedDict, total=False):
 
 class ScaffoldCompositionManifest(TypedDict):
     status: str
+    workspace_tooling: str
     component_slots: list[str]
     child_manifest_globs: list[str]
     validation: str
@@ -197,6 +198,7 @@ class ScaffoldContract:
     provider_targets: tuple[str, ...] = ()
     knowledge_adapter: str = "none"
     repo_layout: RepoLayout = "single-project"
+    workspace_tooling: str = "none"
     schema_version: str = "2.0"
 
     def manifest(self, project_name: str) -> ScaffoldManifest:
@@ -243,6 +245,7 @@ class ScaffoldContract:
                 **manifest,
                 composition={
                     "status": "experimental",
+                    "workspace_tooling": self.workspace_tooling,
                     "component_slots": ["apps", "services", "libs", "tools"],
                     "child_manifest_globs": [
                         "apps/*/.kickstart/scaffold.json",

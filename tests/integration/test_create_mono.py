@@ -23,6 +23,23 @@ def _run_create_mono(tmp: Path, *args: str) -> Path:
     return root / project_name
 
 
+def _run_create_system(tmp: Path, *args: str) -> Path:
+    repo_root = Path(__file__).resolve().parents[2]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repo_root)
+    project_name = args[0]
+    root = Path(args[args.index("--root") + 1]) if "--root" in args else tmp
+
+    subprocess.run(
+        [sys.executable, str(repo_root / "kickstart.py"), "create", "system", *args],
+        cwd=tmp,
+        check=True,
+        env=env,
+    )
+
+    return root / project_name
+
+
 def test_create_monorepo_kustomize():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
@@ -31,6 +48,47 @@ def test_create_monorepo_kustomize():
         base = tmp / "infra-stack"
         assert (base / "infra/k8s/base/deployment.yaml").exists()
         assert (base / "Makefile").exists()
+
+
+def test_create_system_is_workspace_neutral_by_default():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        base = _run_create_system(tmp, "platform", "--root", str(tmp), "--cloud", "aws")
+
+        manifest = json.loads((base / ".kickstart/scaffold.json").read_text())
+        readme = (base / "README.md").read_text()
+
+        assert manifest["project"] == {
+            "name": "platform",
+            "kind": "system",
+            "repo_layout": "monorepo",
+        }
+        assert manifest["composition"]["workspace_tooling"] == "none"
+        assert not (base / "package.json").exists()
+        assert not (base / "turbo.json").exists()
+        assert not (base / "config/tsconfig/base.json").exists()
+        assert (base / "tools").exists()
+        assert "Workspace tooling: None" in readme
+
+
+def test_create_system_can_emit_bun_turbo_workspace_tooling():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        base = _run_create_system(
+            tmp,
+            "platform",
+            "--root",
+            str(tmp),
+            "--workspace-tooling",
+            "bun-turbo",
+        )
+
+        manifest = json.loads((base / ".kickstart/scaffold.json").read_text())
+
+        assert manifest["composition"]["workspace_tooling"] == "bun-turbo"
+        assert (base / "package.json").exists()
+        assert (base / "turbo.json").exists()
+        assert (base / "config/tsconfig/base.json").exists()
 
 
 def test_create_monorepo_kustomize_with_root():

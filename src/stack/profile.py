@@ -11,6 +11,7 @@ from src.stack.types import (
     ServiceSelection,
     SystemSelection,
     TemplateConfig,
+    WorkspaceToolingProfile,
 )
 
 __all__ = [
@@ -24,5 +25,6 @@ __all__ = [
     "StackProfileRegistry",
     "SystemSelection",
     "TemplateConfig",
+    "WorkspaceToolingProfile",
     "stack_registry",
 ]

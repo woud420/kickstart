@@ -64,17 +64,14 @@ def system_directories(selection: SystemSelection) -> list[str]:
     """Return the base directory layout for a system stack selection."""
     directories = [
         "apps",
-        "packages",
-        "config/eslint",
-        "config/tsconfig",
         "infra/docker",
         "infra/terraform/modules/example_module",
         "infra/terraform/modules/service_runtime",
         *(f"infra/terraform/env/{env}" for env in stack_registry.environments),
         ".github/workflows",
-        "frontend",
         "libs",
         "services",
+        "tools",
         "data/postgres",
         "knowledge",
         *scaffold_contract_directories(),
@@ -85,6 +82,14 @@ def system_directories(selection: SystemSelection) -> list[str]:
         "reports",
         "scripts",
     ]
+    if selection.uses_bun_turbo:
+        directories[1:1] = [
+            "packages",
+            "config/eslint",
+            "config/tsconfig",
+        ]
+        workflows_index = directories.index(".github/workflows") + 1
+        directories[workflows_index:workflows_index] = ["frontend"]
     if selection.uses_cloudflare_workers:
         return directories + ["infra/cloudflare/workers"]
     return directories

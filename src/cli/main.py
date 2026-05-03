@@ -14,6 +14,7 @@ from src.api import (
     create_lib,
     create_monorepo,
     create_service,
+    create_system,
 )
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
@@ -52,6 +53,7 @@ def _project_creators() -> ProjectCreators:
         frontend=create_frontend,
         lib=create_lib,
         cli=create_cli,
+        system=create_system,
         monorepo=create_monorepo,
     )
 
@@ -71,6 +73,7 @@ def _prompt_for_missing_args(
     cloud: str = "multi",
     knowledge: str = "none",
     runtime: Optional[str] = None,
+    workspace_tooling: Optional[str] = None,
 ) -> ResolvedCreateArgs:
     """Prompt user for any missing arguments in interactive mode."""
     options = prompt_for_missing_args(
@@ -88,6 +91,7 @@ def _prompt_for_missing_args(
             cloud=cloud,
             knowledge=knowledge,
             runtime=runtime,
+            workspace_tooling=workspace_tooling,
         ),
         config,
         prompt=cast(PromptReader, Prompt),
@@ -111,6 +115,7 @@ def _dispatch_project_creation(
     cloud: str = "multi",
     knowledge: str = "none",
     runtime: Optional[str] = None,
+    workspace_tooling: Optional[str] = None,
 ) -> None:
     """Dispatch to the appropriate project creation function."""
     dispatch_project_creation(
@@ -128,6 +133,7 @@ def _dispatch_project_creation(
             cloud=cloud,
             knowledge=knowledge,
             runtime=runtime,
+            workspace_tooling=workspace_tooling,
         ),
         config,
         _project_creators(),
@@ -168,7 +174,12 @@ def create(
         None,
         "--runtime",
         help="Execution/platform profile. Services: container or cloudflare-workers. Systems: kubernetes, cloudflare-workers, hybrid.",
-    )
+    ),
+    workspace_tooling: Optional[str] = typer.Option(
+        None,
+        "--workspace-tooling",
+        help="System root workspace tooling (none or bun-turbo).",
+    ),
 ) -> None:
     """Create a new service, lib, CLI, frontend, or system."""
     try:
@@ -188,6 +199,7 @@ def create(
                 cloud=cloud,
                 knowledge=knowledge,
                 runtime=runtime,
+                workspace_tooling=workspace_tooling,
             ),
             config,
             prompt=cast(PromptReader, Prompt),

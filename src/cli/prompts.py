@@ -49,6 +49,7 @@ def prompt_for_missing_args(
     cloud = options.cloud
     knowledge = options.knowledge
     runtime = options.runtime
+    workspace_tooling = options.workspace_tooling
     interactive_mode = not project_type or not name
 
     if project_type and root is None:
@@ -124,4 +125,5 @@ def prompt_for_missing_args(
         cloud=cloud,
         knowledge=knowledge,
         runtime=runtime,
+        workspace_tooling=workspace_tooling,
     )

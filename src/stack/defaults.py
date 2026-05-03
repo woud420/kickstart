@@ -6,6 +6,7 @@ from src.stack.types import (
     KnowledgeProfile,
     LanguageProfile,
     RuntimeProfile,
+    WorkspaceToolingProfile,
 )
 
 environments = ("dev", "staging", "prod")
@@ -160,4 +161,18 @@ artifact_tools: dict[str, ArtifactToolProfile] = {
     "kustomize": ArtifactToolProfile(id="kustomize", display_name="Kustomize"),
     "helm": ArtifactToolProfile(id="helm", display_name="Helm"),
     "wrangler": ArtifactToolProfile(id="wrangler", display_name="Wrangler"),
+}
+
+workspace_tooling: dict[str, WorkspaceToolingProfile] = {
+    "none": WorkspaceToolingProfile(
+        id="none",
+        display_name="None",
+        aliases=("neutral", "minimal", "no-workspace"),
+    ),
+    "bun-turbo": WorkspaceToolingProfile(
+        id="bun-turbo",
+        display_name="Bun + Turbo",
+        aliases=("bun", "turbo", "typescript", "ts", "ts-workspace"),
+        uses_bun_turbo=True,
+    ),
 }
