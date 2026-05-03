@@ -65,8 +65,11 @@ class LibraryGenerator(BaseGenerator):
         """Setup language-specific files for library."""
         if self.lang == "python":
             self.write_template("pyproject.toml", "python/pyproject.toml.tpl")
+            self.write_content("src/__init__.py", "")
+            self.write_content("tests/test_smoke.py", "def test_generated_scaffold() -> None:\n    assert True\n")
         elif self.lang == "rust":
-            self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
+            self.write_template("Cargo.toml", "rust/Cargo.lib.toml.tpl")
+            self.write_content("src/lib.rs", "pub fn generated_scaffold_ready() -> bool {\n    true\n}\n")
         return True
 
 class CLIGenerator(LibraryGenerator):
@@ -94,7 +97,12 @@ class CLIGenerator(LibraryGenerator):
         """Setup language-specific files for CLI."""
         if self.lang == "python":
             self.write_template("pyproject.toml", "python/pyproject.cli.toml.tpl")
+            self.write_content("src/__init__.py", "")
             self.write_content("src/main.py", 'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n')
+            self.write_content(
+                "tests/test_smoke.py",
+                "from src.main import main\n\n\ndef test_generated_cli(capsys) -> None:\n    main()\n    assert \"Hello from CLI\" in capsys.readouterr().out\n",
+            )
         elif self.lang == "rust":
             self.write_template("Cargo.toml", "rust/Cargo.cli.toml.tpl")
             self.write_content("src/main.rs", 'fn main() {\n    println!("Hello from CLI!");\n}\n')

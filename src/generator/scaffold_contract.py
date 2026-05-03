@@ -35,6 +35,22 @@ class ScaffoldProviderManifest(TypedDict):
     targets: list[str]
 
 
+class ScaffoldLifecycleManifest(TypedDict, total=False):
+    install: str
+    test: str
+    check: str
+    build: str
+    dev: str
+    deploy: str
+
+
+class ScaffoldCompositionManifest(TypedDict):
+    status: str
+    component_slots: list[str]
+    child_manifest_globs: list[str]
+    validation: str
+
+
 class ScaffoldDocsManifest(TypedDict):
     agent_map: str
     architecture: str
@@ -50,6 +66,8 @@ class ScaffoldOptionSemanticsManifest(TypedDict):
     runtime_platforms: str
     artifacts: str
     provider_targets: str
+    lifecycle: str
+    composition: str
     knowledge_adapter: str
 
 
@@ -60,9 +78,14 @@ class ScaffoldManifest(TypedDict):
     execution: ScaffoldExecutionManifest
     artifacts: ScaffoldArtifactsManifest
     provider: ScaffoldProviderManifest
+    lifecycle: ScaffoldLifecycleManifest
     knowledge_adapter: str
     docs: ScaffoldDocsManifest
     option_semantics: ScaffoldOptionSemanticsManifest
+
+
+class SystemScaffoldManifest(ScaffoldManifest):
+    composition: ScaffoldCompositionManifest
 
 
 @dataclass(frozen=True)
@@ -101,6 +124,35 @@ class ScaffoldArtifacts:
 
 
 @dataclass(frozen=True)
+class ScaffoldLifecycle:
+    """Lifecycle commands emitted by a scaffold."""
+
+    install: str | None = None
+    test: str | None = None
+    check: str | None = None
+    build: str | None = None
+    dev: str | None = None
+    deploy: str | None = None
+
+    def manifest(self) -> ScaffoldLifecycleManifest:
+        """Return JSON-ready lifecycle commands without empty values."""
+        manifest: ScaffoldLifecycleManifest = {}
+        if self.install is not None:
+            manifest["install"] = self.install
+        if self.test is not None:
+            manifest["test"] = self.test
+        if self.check is not None:
+            manifest["check"] = self.check
+        if self.build is not None:
+            manifest["build"] = self.build
+        if self.dev is not None:
+            manifest["dev"] = self.dev
+        if self.deploy is not None:
+            manifest["deploy"] = self.deploy
+        return manifest
+
+
+@dataclass(frozen=True)
 class ScaffoldContract:
     """Explicit contract for generated project shape and option vocabulary."""
 
@@ -108,6 +160,7 @@ class ScaffoldContract:
     execution_models: tuple[str, ...]
     runtime_platforms: tuple[str, ...]
     artifacts: ScaffoldArtifacts = field(default_factory=ScaffoldArtifacts)
+    lifecycle: ScaffoldLifecycle | None = None
     provider_targets: tuple[str, ...] = ()
     knowledge_adapter: str = "none"
     repo_layout: RepoLayout = "single-project"
@@ -115,7 +168,7 @@ class ScaffoldContract:
 
     def manifest(self, project_name: str) -> ScaffoldManifest:
         """Return the JSON-serializable scaffold manifest."""
-        return {
+        manifest: ScaffoldManifest = {
             "schema_version": self.schema_version,
             "generated_by": "kickstart",
             "project": {
@@ -129,6 +182,7 @@ class ScaffoldContract:
             },
             "artifacts": self.artifacts.manifest(),
             "provider": {"targets": list(self.provider_targets)},
+            "lifecycle": self._lifecycle().manifest(),
             "knowledge_adapter": self.knowledge_adapter,
             "docs": {
                 "agent_map": "AGENTS.md",
@@ -144,13 +198,71 @@ class ScaffoldContract:
                 "runtime_platforms": "where generated runtime artifacts are meant to run",
                 "artifacts": "files and tool configs emitted by the scaffold",
                 "provider_targets": "infrastructure providers targeted by generated IaC or platform config",
+                "lifecycle": "project-local commands that agents and humans can run to install, test, and check the scaffold",
+                "composition": "system-only metadata for discovering contained project manifests",
                 "knowledge_adapter": "external knowledge integration metadata",
             },
         }
+        if self.project_kind == "system":
+            system_manifest = SystemScaffoldManifest(
+                **manifest,
+                composition={
+                    "status": "experimental",
+                    "component_slots": ["apps", "services", "libs", "tools"],
+                    "child_manifest_globs": [
+                        "apps/*/.kickstart/scaffold.json",
+                        "services/*/.kickstart/scaffold.json",
+                        "libs/*/.kickstart/scaffold.json",
+                        "tools/*/.kickstart/scaffold.json",
+                    ],
+                    "validation": (
+                        "System roots validate scaffold files only. Validate contained projects "
+                        "by reading child manifests and running their lifecycle commands."
+                    ),
+                },
+            )
+            return system_manifest
+        return manifest
 
     def manifest_json(self, project_name: str) -> str:
         """Return stable, pretty JSON for `.kickstart/scaffold.json`."""
         return json.dumps(self.manifest(project_name), indent=2, sort_keys=True) + "\n"
+
+    def _lifecycle(self) -> ScaffoldLifecycle:
+        """Return lifecycle commands for this project kind."""
+        if self.lifecycle is not None:
+            return self.lifecycle
+
+        if self.project_kind == "system":
+            return ScaffoldLifecycle(
+                install="make install",
+                test="make test",
+                check="make check",
+            )
+
+        if self.project_kind in {"service", "frontend"}:
+            return ScaffoldLifecycle(
+                install="make install",
+                test="make test",
+                check="make check",
+                build="make build",
+                dev="make dev",
+            )
+
+        if self.project_kind == "worker":
+            return ScaffoldLifecycle(
+                install="make install",
+                test="make test",
+                check="make check",
+                dev="make dev",
+                deploy="make deploy",
+            )
+
+        return ScaffoldLifecycle(
+            install="make install",
+            test="make test",
+            check="make check",
+        )
 
     @property
     def contract_subjects(self) -> str:
@@ -174,6 +286,6 @@ class ScaffoldContract:
             "frontend": "local development, tests, builds, preview commands, and deploy notes",
             "library": "local development, tests, packaging, versioning, and release notes",
             "cli": "local development, tests, packaging, installation, and release notes",
-            "system": "workspace development, tests, infrastructure validation, deployment notes, and runbooks",
+            "system": "workspace composition, root scaffold checks, child project validation, infrastructure notes, and runbooks",
         }
         return subjects[self.project_kind]

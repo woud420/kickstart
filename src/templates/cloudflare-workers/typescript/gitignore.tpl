@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+.tmp/
+.cache/
 .dev.vars
 .wrangler/
 bun.lockb

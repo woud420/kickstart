@@ -1,5 +1,5 @@
 [package]
-name = "{{ service_name }}"
+name = "{{ package_name }}"
 version = "0.1.0"
 edition = "2021"
 

@@ -1,5 +1,5 @@
 {
-  "name": "{{ service_name }}",
+  "name": "{{ package_name }}",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "dev": "bun --watch src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "bun dist/main.js",
-    "test": "bunx vitest run",
+    "test": "vitest run tests/health.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

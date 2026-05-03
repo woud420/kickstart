@@ -8,10 +8,10 @@
 # --auth jwt (adds python-jose, passlib)
 
 # Development and testing (minimal set)
-pytest==7.4.3
-pytest-asyncio==0.21.1
+pytest>=8.4,<9
+pytest-asyncio>=1.3,<2
 
 # Code quality (optional but recommended)
-black==23.11.0
-ruff==0.1.6
-mypy==1.7.1
+black>=25.11,<26
+ruff>=0.14,<1
+mypy>=1.20,<2

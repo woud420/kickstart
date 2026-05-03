@@ -18,7 +18,7 @@ languages: dict[str, LanguageProfile] = {
         library=True,
         cli=True,
         smoke_commands={
-            "container": ("make install", "make test", "make typecheck"),
+            "container": ("make install", "make test", "make check"),
         },
     ),
     "rust": LanguageProfile(
@@ -28,7 +28,7 @@ languages: dict[str, LanguageProfile] = {
         library=True,
         cli=True,
         smoke_commands={
-            "container": ("make test", "make build"),
+            "container": ("make install", "make test", "make check", "make build"),
             "cloudflare-workers": ("make install", "make check", "make build"),
         },
     ),
@@ -38,8 +38,8 @@ languages: dict[str, LanguageProfile] = {
         aliases=("ts",),
         service_runtimes=("container", "cloudflare-workers"),
         smoke_commands={
-            "container": ("make install", "make typecheck", "make test", "make build"),
-            "cloudflare-workers": ("make install", "make typecheck", "make test"),
+            "container": ("make install", "make test", "make check", "make build"),
+            "cloudflare-workers": ("make install", "make test", "make check"),
         },
     ),
     "cpp": LanguageProfile(
@@ -48,7 +48,7 @@ languages: dict[str, LanguageProfile] = {
         aliases=("c++", "cxx"),
         service_runtimes=("container",),
         smoke_commands={
-            "container": ("make build", "make test"),
+            "container": ("make install", "make test", "make check", "make build"),
         },
     ),
     "go": LanguageProfile(
@@ -58,7 +58,7 @@ languages: dict[str, LanguageProfile] = {
         library=True,
         cli=True,
         smoke_commands={
-            "container": ("make test", "make build"),
+            "container": ("make install", "make test", "make check", "make build"),
         },
     ),
 }
@@ -87,7 +87,7 @@ monorepo_runtimes: dict[str, RuntimeProfile] = {
         display_name="Kubernetes",
         aliases=("k8s",),
         artifact_tools=("kustomize", "helm"),
-        smoke_commands=("make install", "make test", "make k8s-render ENV=dev", "make tf-plan ENV=dev"),
+        smoke_commands=("make install", "make test", "make check", "make k8s-render ENV=dev", "make tf-plan ENV=dev"),
         uses_kubernetes=True,
     ),
     "cloudflare-workers": RuntimeProfile(
@@ -95,7 +95,7 @@ monorepo_runtimes: dict[str, RuntimeProfile] = {
         display_name="Cloudflare Workers",
         aliases=("cloudflare-worker", "cf-worker", "cf-workers", "worker", "workers"),
         artifact_tools=("wrangler",),
-        smoke_commands=("make install", "make test", "make cf-worker-notes", "make tf-plan ENV=dev"),
+        smoke_commands=("make install", "make test", "make check", "make cf-worker-notes", "make tf-plan ENV=dev"),
         uses_cloudflare_workers=True,
     ),
     "hybrid": RuntimeProfile(
@@ -105,6 +105,7 @@ monorepo_runtimes: dict[str, RuntimeProfile] = {
         smoke_commands=(
             "make install",
             "make test",
+            "make check",
             "make k8s-render ENV=dev",
             "make cf-worker-notes",
             "make tf-plan ENV=dev",

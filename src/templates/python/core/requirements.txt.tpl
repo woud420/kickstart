@@ -1,27 +1,28 @@
 # Core web framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+fastapi>=0.124,<1
+uvicorn[standard]>=0.38,<1
 
 # Data validation and serialization
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pydantic>=2.12,<3
+pydantic-settings>=2.12,<3
+email-validator>=2.3,<3
 
 
 # HTTP client
-httpx==0.25.2
+httpx>=0.28,<1
 
 # Environment and configuration
-python-dotenv==1.0.0
+python-dotenv>=1.2,<2
 
 # Monitoring and observability
-structlog==23.2.0
+structlog>=25.5,<26
 
 # Development and testing
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
+pytest>=8.4,<9
+pytest-asyncio>=1.3,<2
+pytest-cov>=7,<8
 
 # Code quality
-black==23.11.0
-ruff==0.1.6
-mypy==1.7.1
+black>=25.11,<26
+ruff>=0.14,<1
+mypy>=1.20,<2

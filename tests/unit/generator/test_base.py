@@ -88,6 +88,7 @@ def test_write_template(mock_write_file, base_generator, tmp_path):
         base_generator.project / target,
         str(template_path),
         service_name="test-project",
+        package_name="test-project",
         name="World"
     )
 
@@ -99,7 +100,8 @@ def test_write_content(mock_write_file, base_generator):
     mock_write_file.assert_called_once_with(
         base_generator.project / target,
         content,
-        service_name="test-project"
+        service_name="test-project",
+        package_name="test-project"
     )
 
 @patch('src.generator.base.success')

@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from typing import Callable, Sequence
 import logging
 from src.generator.scaffold_contract import ScaffoldContract
@@ -113,7 +114,11 @@ class BaseGenerator:
         if isinstance(resolved_template_path, Path) and not resolved_template_path.exists():
             raise TemplateError(f"Template file not found: {template_path}")
 
-        template_vars = {"service_name": self.name, **vars}
+        template_vars = {
+            "service_name": self.name,
+            "package_name": self._package_name(),
+            **vars,
+        }
         write_file(self.project / target, resolved_template_path, **template_vars)
         logger.debug(f"Successfully wrote template {template_path} to {target}")
         return True
@@ -129,9 +134,19 @@ class BaseGenerator:
         Returns:
             True if file was written successfully, False otherwise
         """
-        write_file(self.project / target, content, service_name=self.name)
+        write_file(
+            self.project / target,
+            content,
+            service_name=self.name,
+            package_name=self._package_name(),
+        )
         logger.debug(f"Successfully wrote content to {target}")
         return True
+
+    def _package_name(self) -> str:
+        """Return a package-manager-safe name derived from the project name."""
+        normalized = re.sub(r"[^a-z0-9]+", "-", self.name.lower()).strip("-")
+        return normalized or "app"
 
     def log_success(self, message: str) -> None:
         """Log a success message."""

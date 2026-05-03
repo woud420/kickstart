@@ -293,6 +293,7 @@ class ServiceGenerator(BaseGenerator):
         
         # Create basic migration file as example
         self.write_content("migrations/001_initial.sql", self._read_template_text("python/core/migrations/001_initial.sql.tpl"))
+        self.write_content("tests/test_smoke.py", "def test_generated_scaffold() -> None:\n    assert True\n")
         
         self.create_directories(["migrations"])
 

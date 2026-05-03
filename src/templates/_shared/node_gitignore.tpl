@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+.tmp/
+.cache/
 .env
 .env.local
 bun-debug.log*

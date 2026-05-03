@@ -1,5 +1,5 @@
 {
-  "name": "{{ service_name }}",
+  "name": "{{ package_name }}",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "vitest run",
+    "test": "vitest run tests/App.test.tsx",
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {

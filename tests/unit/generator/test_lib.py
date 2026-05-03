@@ -132,7 +132,7 @@ def test_library_create_rust_success(
     ]
     
     # Verify Rust-specific file
-    expected_rust_call = call("Cargo.toml", "rust/Cargo.toml.tpl")
+    expected_rust_call = call("Cargo.toml", "rust/Cargo.lib.toml.tpl")
     
     all_expected_calls = expected_common_calls + [expected_rust_call]
     mock_write_template.assert_has_calls(all_expected_calls, any_order=True)
@@ -184,7 +184,16 @@ def test_cli_create_python_success_with_gh(
     
     # Verify Python CLI main file is written
     expected_main_content = 'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n'
-    mock_write_content.assert_called_once_with("src/main.py", expected_main_content)
+    mock_write_content.assert_has_calls(
+        [
+            call("src/__init__.py", ""),
+            call("src/main.py", expected_main_content),
+            call(
+                "tests/test_smoke.py",
+                'from src.main import main\n\n\ndef test_generated_cli(capsys) -> None:\n    main()\n    assert "Hello from CLI" in capsys.readouterr().out\n',
+            ),
+        ]
+    )
     
     mock_create_architecture_docs.assert_called_once_with("test-cli CLI Docs")
     mock_log_success.assert_called_once_with("Python CLI 'test-cli' created successfully in 'test-cli'!")
@@ -285,11 +294,11 @@ def test_cli_unsupported_language_no_specific_files():
 def test_library_python_vs_rust_differences():
     """Test the differences between Python and Rust library generation."""
     test_cases = [
-        ("python", "python/pyproject.toml.tpl"),
-        ("rust", "rust/Cargo.toml.tpl")
+        ("python", "pyproject.toml", "python/pyproject.toml.tpl"),
+        ("rust", "Cargo.toml", "rust/Cargo.lib.toml.tpl")
     ]
     
-    for lang, expected_config_template in test_cases:
+    for lang, expected_config_filename, expected_config_template in test_cases:
         with patch.object(LibraryGenerator, 'create_project', return_value=True), \
              patch.object(LibraryGenerator, 'init_basic_structure'), \
              patch.object(LibraryGenerator, 'create_architecture_docs'), \
@@ -300,7 +309,7 @@ def test_library_python_vs_rust_differences():
             generator.create()
             
             # Check that the correct language-specific config file is written
-            config_call = call(expected_config_template.split('/')[-1].replace('.tpl', ''), expected_config_template)
+            config_call = call(expected_config_filename, expected_config_template)
             assert config_call in mock_write_template.call_args_list
 
 
@@ -328,7 +337,7 @@ def test_cli_python_vs_rust_differences():
             assert config_call in mock_write_template.call_args_list
             
             # Check that the correct main file is written with correct content
-            mock_write_content.assert_called_once_with(main_file, main_content)
+            assert call(main_file, main_content) in mock_write_content.call_args_list
 
 
 def test_library_vs_cli_architecture_docs_difference():

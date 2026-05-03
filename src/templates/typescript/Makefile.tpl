@@ -1,24 +1,30 @@
-.PHONY: install dev test typecheck build run docker-build
+.PHONY: install dev test typecheck check build run docker-build
 
 BUN ?= bun
+BUN_TMPDIR ?= $(CURDIR)/.tmp
+BUN_CACHE_DIR ?= $(CURDIR)/.cache/bun
+BUN_ENV = TMPDIR=$(BUN_TMPDIR) XDG_CACHE_HOME=$(CURDIR)/.cache BUN_INSTALL_CACHE_DIR=$(BUN_CACHE_DIR)/install
 
 install:
-	$(BUN) install
+	@mkdir -p $(BUN_TMPDIR) $(BUN_CACHE_DIR)/install
+	$(BUN_ENV) $(BUN) install
 
 dev:
-	$(BUN) run dev
+	$(BUN_ENV) $(BUN) run dev
 
-test:
-	$(BUN) run test
+test: install
+	$(BUN_ENV) $(BUN) run test
 
-typecheck:
-	$(BUN) run typecheck
+typecheck: install
+	$(BUN_ENV) $(BUN) run typecheck
 
-build:
-	$(BUN) run build
+check: typecheck test
 
-run:
-	$(BUN) start
+build: install
+	$(BUN_ENV) $(BUN) run build
+
+run: build
+	$(BUN_ENV) $(BUN) start
 
 docker-build:
 	docker build -t {{ service_name }}:local .

@@ -1,13 +1,21 @@
-.PHONY: dev test build lint
+.PHONY: install dev test typecheck check build lint
 
-dev:
+install:
+	cargo fetch
+
+dev: install
 	cargo run
 
-test:
+test: install
 	cargo test
 
-build:
+typecheck: install
+	cargo check
+
+check: lint typecheck test
+
+build: install
 	cargo build --release
 
 lint:
-	cargo fmt --all
+	cargo fmt --all -- --check

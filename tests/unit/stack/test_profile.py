@@ -18,7 +18,7 @@ def test_container_service_selection_includes_templates_and_smoke_commands():
     assert selection.language == "typescript"
     assert selection.runtime == "container"
     assert selection.artifact_tool == "docker"
-    assert "make typecheck" in selection.smoke_commands
+    assert "make check" in selection.smoke_commands
     assert {"target": "package.json", "template": "typescript/package.json.tpl"} in selection.template_configs()
 
 

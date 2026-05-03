@@ -1,1 +1,5 @@
-{% extends "python/base/api_init.py.tpl" %}
+"""Application service exports."""
+
+from .services import UserService
+
+__all__ = ["UserService"]

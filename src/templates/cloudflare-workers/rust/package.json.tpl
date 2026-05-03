@@ -1,5 +1,5 @@
 {
-  "name": "{{ service_name }}",
+  "name": "{{ package_name }}",
   "version": "0.1.0",
   "private": true,
   "type": "module",

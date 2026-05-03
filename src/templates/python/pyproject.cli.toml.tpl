@@ -3,28 +3,32 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "{{ service_name }}"
+name = "{{ package_name }}"
 version = "0.1.0"
 description = "{{ service_name }} Python CLI"
 authors = ["You"]
 packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
-python = "^3.12"
-typer = "^0.12.0"
-rich = "^13.0.0"
+python = ">=3.12,<3.15"
+typer = ">=0.20,<1"
+rich = ">=14,<15"
 
 [tool.poetry.scripts]
-{{ service_name | replace("-", "_") }} = "src.main:main"
+{{ package_name | replace("-", "_") }} = "src.main:main"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-ruff = "^0.6.0"
-mypy = "^1.11.0"
+pytest = ">=8.4,<9"
+ruff = ">=0.14,<1"
+mypy = ">=1.20,<2"
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["asyncpg", "jose.*", "passlib.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100

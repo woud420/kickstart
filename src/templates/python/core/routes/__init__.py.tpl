@@ -1,5 +1,6 @@
-"""HTTP routing package.
+"""HTTP route exports."""
 
-This package contains the HTTP route handlers that map URLs to business logic.
-Routes are kept thin and delegate to services for business logic.
-"""
+from .health import router as health_router
+from .users import router as users_router
+
+__all__ = ["health_router", "users_router"]

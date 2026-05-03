@@ -1,19 +1,28 @@
-.PHONY: install check build dev deploy
+.PHONY: install test typecheck check build dev deploy
 
 BUN ?= bun
 CARGO ?= cargo
+BUN_TMPDIR ?= $(CURDIR)/.tmp
+BUN_CACHE_DIR ?= $(CURDIR)/.cache/bun
+BUN_ENV = TMPDIR=$(BUN_TMPDIR) XDG_CACHE_HOME=$(CURDIR)/.cache BUN_INSTALL_CACHE_DIR=$(BUN_CACHE_DIR)/install
 
 install:
-	$(BUN) install
+	@mkdir -p $(BUN_TMPDIR) $(BUN_CACHE_DIR)/install
+	$(BUN_ENV) $(BUN) install
 
-check:
-	$(CARGO) check --target wasm32-unknown-unknown
+test: install
+	$(CARGO) test
 
-build:
-	$(BUN) run build
+typecheck: install
+	$(CARGO) check
+
+check: typecheck test
+
+build: install
+	$(BUN_ENV) $(BUN) run build
 
 dev:
-	$(BUN) run dev
+	$(BUN_ENV) $(BUN) run dev
 
 deploy:
-	$(BUN) run deploy
+	$(BUN_ENV) $(BUN) run deploy

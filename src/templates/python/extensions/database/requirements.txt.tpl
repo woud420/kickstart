@@ -2,5 +2,5 @@
 # Adds PostgreSQL database support to the core service
 
 # PostgreSQL drivers
-asyncpg==0.29.0
-psycopg2-binary==2.9.9
+asyncpg>=0.31,<1
+psycopg[binary]>=3.2,<4

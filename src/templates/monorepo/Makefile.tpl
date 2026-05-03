@@ -5,22 +5,25 @@ KUSTOMIZE ?= kubectl kustomize
 TERRAFORM ?= terraform
 BUN ?= bun
 
-.PHONY: install dev test typecheck build compose-up compose-down tf-init tf-plan tf-validate docs-check{% if uses_kubernetes %} k8s-render{% endif %}{% if uses_cloudflare_workers %} cf-worker-notes{% endif %}
+.PHONY: install dev test typecheck check build compose-up compose-down tf-init tf-plan tf-validate docs-check child-validation-note{% if uses_kubernetes %} k8s-render{% endif %}{% if uses_cloudflare_workers %} cf-worker-notes{% endif %}
 
 install:
-	$(BUN) install
+	@echo "System roots are composition scaffolds. Run child component install commands from child .kickstart/scaffold.json manifests."
 
 dev:
-	$(BUN) run dev
+	@echo "Start leaf projects from their own directories. This root does not run mixed-language services."
 
-test:
-	$(BUN) run test
+test: docs-check child-validation-note
 
-typecheck:
-	$(BUN) run typecheck
+typecheck: docs-check
+
+check: docs-check child-validation-note
 
 build:
-	$(BUN) run build
+	@echo "Build leaf projects from their own directories. This root only owns shared scaffold files."
+
+child-validation-note:
+	@echo "Child validation is manifest-driven: apps/*, services/*, libs/*, and tools/* each own make install/test/check."
 
 compose-up:
 	docker compose -f infra/docker/docker-compose.yml up --build

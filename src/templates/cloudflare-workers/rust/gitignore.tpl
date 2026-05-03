@@ -1,6 +1,8 @@
 target/
 build/
 node_modules/
+.tmp/
+.cache/
 .dev.vars
 .wrangler/
 bun.lockb
