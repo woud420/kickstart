@@ -91,7 +91,7 @@ def prompt_for_missing_args(
                 if framework == "fastapi":
                     framework = None
 
-        if lang in ("typescript", "ts") and database is None:
+        if lang in ("typescript", "ts", "rust") and database is None:
             database = prompt.ask("Database extension", choices=["none", "postgres"], default="none")
             if database == "none":
                 database = None

@@ -42,7 +42,7 @@ poetry run kickstart create mono product-stack
 - Preferred stack: Rust, TypeScript, Python, SQL, and C++.
 - Go is supported as a tolerated service target; Python and Rust are the first-class library/CLI targets.
 - Service execution models: containers by default, Cloudflare Workers when requested.
-- Implemented service extensions are intentionally narrow: Python/FastAPI container services support Postgres, Redis, and JWT; Rust container services support Redis and JWT; TypeScript container services support Postgres and Redis.
+- Implemented service extensions are intentionally narrow: Python/FastAPI container services support Postgres, Redis, and JWT; Rust container services support Postgres, Redis, and JWT; TypeScript container services support Postgres and Redis.
 - System provider targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
 - System platform profiles: `kubernetes`, `cloudflare-workers`, or `hybrid`.
 - Dockerfiles are image artifacts; Helm and Kustomize are Kubernetes artifact styles; Wrangler is the Cloudflare Worker artifact path.
@@ -53,7 +53,7 @@ poetry run kickstart create mono product-stack
 
 ```bash
 poetry run kickstart create service my-api --lang python --database postgres --cache redis --auth jwt
-poetry run kickstart create service api-rs --lang rust --cache redis --auth jwt
+poetry run kickstart create service api-rs --lang rust --database postgres --cache redis --auth jwt
 poetry run kickstart create service api-ts --lang typescript --database postgres --cache redis
 poetry run kickstart create service edge-rs --lang rust --runtime cloudflare-workers
 poetry run kickstart create frontend web

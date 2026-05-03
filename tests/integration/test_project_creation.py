@@ -247,6 +247,33 @@ class TestServiceCreation:
         assert "jsonwebtoken = " in (project_path / "Cargo.toml").read_text()
         assert "JWT_SECRET=change-me-change-me" in (project_path / ".env.example").read_text()
 
+    def test_rust_service_postgres_database_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test Rust service generation with Postgres database support."""
+        service_name = "test-rust-postgres-service"
+
+        generator = ServiceGenerator(
+            name=service_name,
+            lang="rust",
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+            database="postgres",
+        )
+        generator.create()
+
+        project_path = temp_project_dir / service_name
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+
+        assert manifest["capabilities"] == {"service_extensions": {"database": "postgres"}}
+        assert (project_path / "src/clients/mod.rs").read_text() == "pub mod database;\n"
+        assert (project_path / "src/clients/database.rs").exists()
+        assert (project_path / "migrations/001_initial.sql").exists()
+        assert "mod clients;" in (project_path / "src/main.rs").read_text()
+        assert "tokio-postgres = " in (project_path / "Cargo.toml").read_text()
+        assert "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres" in (
+            project_path / ".env.example"
+        ).read_text()
+
     def test_typescript_service_postgres_database_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test TypeScript service generation with Postgres database support."""
         service_name = "test-typescript-postgres-service"

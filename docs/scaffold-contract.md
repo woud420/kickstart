@@ -26,7 +26,7 @@ There is no separate root architecture document. `docs/architecture/` is the can
 - `capabilities`: optional generated capabilities with real code support, for example `service_extensions: { database: postgres, cache: redis, auth: jwt }`.
 - `knowledge_adapter`: external knowledge integration metadata, for example `none`, `obsidian`, `backstage`, or `both`.
 
-Implemented service extensions are intentionally narrow. Python/FastAPI container services support Postgres, Redis, and JWT. Rust container services support Redis and JWT. TypeScript container services support Postgres and Redis. Unsupported combinations fail instead of generating a partial or silent scaffold.
+Implemented service extensions are intentionally narrow. Python/FastAPI container services support Postgres, Redis, and JWT. Rust container services support Postgres, Redis, and JWT. TypeScript container services support Postgres and Redis. Unsupported combinations fail instead of generating a partial or silent scaffold.
 
 Systems contain other project kinds and are currently generated through the `mono` command with `project.repo_layout: monorepo`.
 

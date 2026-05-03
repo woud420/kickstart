@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 actix-web = "4"
+{% if database == "postgres" %}
+tokio-postgres = "0.7"
+{% endif %}
 {% if cache == "redis" %}
 redis = { version = "1.2", features = ["tokio-comp"] }
 {% endif %}

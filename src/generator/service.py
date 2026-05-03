@@ -368,28 +368,38 @@ class ServiceGenerator(BaseGenerator):
         - Cargo.toml with common dependencies
         - Proper crate structure
         """
+        include_postgres_database = self.database == "postgres"
         include_redis_cache = self.cache == "redis"
         include_jwt_auth = self.auth == "jwt"
         self._write_content_files(
             rust_service_content_files(
+                include_postgres_database=include_postgres_database,
                 include_redis_cache=include_redis_cache,
                 include_jwt_auth=include_jwt_auth,
             )
         )
+        if include_postgres_database:
+            self.write_template("src/clients/database.rs", "rust/extensions/database/postgres.rs.tpl")
+            self.create_directories(["migrations"])
+            self.write_template("migrations/001_initial.sql", "rust/extensions/database/migrations.sql.tpl")
         if include_redis_cache:
             self.write_template("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
         if include_jwt_auth:
             self.write_template("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
 
-        if include_redis_cache or include_jwt_auth:
+        if include_postgres_database or include_redis_cache or include_jwt_auth:
             env_content = "EXAMPLE_ENV_VAR=value\n"
+            if include_postgres_database:
+                env_content += "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n"
             if include_redis_cache:
                 env_content += "REDIS_URL=redis://127.0.0.1:6379/0\n"
             if include_jwt_auth:
                 env_content += f"JWT_SECRET=change-me-change-me\nJWT_ISSUER={self.name}\n"
             self.write_content(".env.example", env_content)
 
-        cargo_vars = {}
+        cargo_vars: dict[str, str] = {}
+        if include_postgres_database:
+            cargo_vars["database"] = "postgres"
         if include_redis_cache:
             cargo_vars["cache"] = "redis"
         if include_jwt_auth:

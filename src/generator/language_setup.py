@@ -14,7 +14,6 @@ class ContentFile:
 
 
 RUST_MODULE_CONTENT = "// Module definitions\n"
-RUST_CLIENTS_MODULE_CONTENT = "pub mod cache;\n"
 RUST_HANDLER_MODULE_CONTENT = "pub mod auth;\n"
 
 RUST_MAIN_CONTENT = """use actix_web::{App, HttpResponse, HttpServer, web};
@@ -90,15 +89,17 @@ TYPESCRIPT_REDIS_ENV_LINE = "REDIS_URL=redis://127.0.0.1:6379/0\n"
 
 def rust_service_content_files(
     *,
+    include_postgres_database: bool = False,
     include_redis_cache: bool = False,
     include_jwt_auth: bool = False,
 ) -> tuple[ContentFile, ...]:
     """Return direct content files for Rust services."""
     module_lines = []
-    if include_redis_cache:
+    if include_postgres_database or include_redis_cache:
         module_lines.append("mod clients;")
     if include_jwt_auth:
         module_lines.append("mod handler;")
+
     main_content = RUST_MAIN_CONTENT
     if module_lines:
         main_content = "\n".join(module_lines) + f"\n\n{RUST_MAIN_CONTENT}"
@@ -110,8 +111,14 @@ def rust_service_content_files(
         ContentFile("tests/model/mod.rs", RUST_MODULE_CONTENT),
         ContentFile("src/main.rs", main_content),
     )
+
+    client_module_lines = []
     if include_redis_cache:
-        files = (*files, ContentFile("src/clients/mod.rs", RUST_CLIENTS_MODULE_CONTENT))
+        client_module_lines.append("pub mod cache;")
+    if include_postgres_database:
+        client_module_lines.append("pub mod database;")
+    if client_module_lines:
+        files = (*files, ContentFile("src/clients/mod.rs", "\n".join(client_module_lines) + "\n"))
     if include_jwt_auth:
         files = (*files, ContentFile("src/handler/mod.rs", RUST_HANDLER_MODULE_CONTENT))
     return files
