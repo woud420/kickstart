@@ -1,13 +1,68 @@
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from src.generator.base import BaseGenerator
+from src.generator.file_plan import ContentFile
 from src.generator.layouts import cli_directories, library_directories
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.generator.specs import CliSpec, LibrarySpec
 from src.generator.template_plan import TemplatePlan
 from src.generator.template_plans import cli_template_plan, library_template_plan
+from src.stack.types import TemplateConfig
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
+
+
+@dataclass(frozen=True)
+class PackageSetupPlan:
+    """Language-specific templates and direct files for package-like projects."""
+
+    templates: tuple[TemplateConfig, ...] = ()
+    content_files: tuple[ContentFile, ...] = ()
+
+
+PYTHON_LIBRARY_TEST_CONTENT = "def test_generated_scaffold() -> None:\n    assert True\n"
+RUST_LIBRARY_CONTENT = "pub fn generated_scaffold_ready() -> bool {\n    true\n}\n"
+PYTHON_CLI_MAIN_CONTENT = (
+    'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n'
+)
+PYTHON_CLI_TEST_CONTENT = (
+    "from src.main import main\n\n\n"
+    "def test_generated_cli(capsys) -> None:\n"
+    "    main()\n"
+    '    assert "Hello from CLI" in capsys.readouterr().out\n'
+)
+RUST_CLI_MAIN_CONTENT = 'fn main() {\n    println!("Hello from CLI!");\n}\n'
+
+LIBRARY_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
+    "python": PackageSetupPlan(
+        templates=(TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl"),),
+        content_files=(
+            ContentFile("src/__init__.py", ""),
+            ContentFile("tests/test_smoke.py", PYTHON_LIBRARY_TEST_CONTENT),
+        ),
+    ),
+    "rust": PackageSetupPlan(
+        templates=(TemplateConfig("Cargo.toml", "rust/Cargo.lib.toml.tpl"),),
+        content_files=(ContentFile("src/lib.rs", RUST_LIBRARY_CONTENT),),
+    ),
+}
+
+CLI_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
+    "python": PackageSetupPlan(
+        templates=(TemplateConfig("pyproject.toml", "python/pyproject.cli.toml.tpl"),),
+        content_files=(
+            ContentFile("src/__init__.py", ""),
+            ContentFile("src/main.py", PYTHON_CLI_MAIN_CONTENT),
+            ContentFile("tests/test_smoke.py", PYTHON_CLI_TEST_CONTENT),
+        ),
+    ),
+    "rust": PackageSetupPlan(
+        templates=(TemplateConfig("Cargo.toml", "rust/Cargo.cli.toml.tpl"),),
+        content_files=(ContentFile("src/main.rs", RUST_CLI_MAIN_CONTENT),),
+    ),
+}
+
 
 class LibraryGenerator(BaseGenerator):
     lang: str
@@ -63,14 +118,16 @@ class LibraryGenerator(BaseGenerator):
     
     def _setup_language_specific_files(self) -> bool:
         """Setup language-specific files for library."""
-        if self.lang == "python":
-            self.write_template("pyproject.toml", "python/pyproject.toml.tpl")
-            self.write_content("src/__init__.py", "")
-            self.write_content("tests/test_smoke.py", "def test_generated_scaffold() -> None:\n    assert True\n")
-        elif self.lang == "rust":
-            self.write_template("Cargo.toml", "rust/Cargo.lib.toml.tpl")
-            self.write_content("src/lib.rs", "pub fn generated_scaffold_ready() -> bool {\n    true\n}\n")
+        self._write_package_setup(LIBRARY_LANGUAGE_SETUP.get(self.lang))
         return True
+
+    def _write_package_setup(self, setup: PackageSetupPlan | None) -> None:
+        """Write a package setup plan when the selected language has one."""
+        if setup is None:
+            return
+
+        self.write_template_configs(setup.templates)
+        self.write_content_files(setup.content_files)
 
 class CLIGenerator(LibraryGenerator):
     def __init__(self, name: str, lang: str, gh: bool, config: GeneratorConfig, root: str | None = None) -> None:
@@ -95,17 +152,7 @@ class CLIGenerator(LibraryGenerator):
     
     def _setup_cli_specific_files(self) -> bool:
         """Setup language-specific files for CLI."""
-        if self.lang == "python":
-            self.write_template("pyproject.toml", "python/pyproject.cli.toml.tpl")
-            self.write_content("src/__init__.py", "")
-            self.write_content("src/main.py", 'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n')
-            self.write_content(
-                "tests/test_smoke.py",
-                "from src.main import main\n\n\ndef test_generated_cli(capsys) -> None:\n    main()\n    assert \"Hello from CLI\" in capsys.readouterr().out\n",
-            )
-        elif self.lang == "rust":
-            self.write_template("Cargo.toml", "rust/Cargo.cli.toml.tpl")
-            self.write_content("src/main.rs", 'fn main() {\n    println!("Hello from CLI!");\n}\n')
+        self._write_package_setup(CLI_LANGUAGE_SETUP.get(self.lang))
         return True
 
 

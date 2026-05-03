@@ -1,8 +1,22 @@
 """Language-specific configuration for templates."""
 
-from typing import Dict, Any
+from typing import Never, TypedDict
 
-LANGUAGE_CONFIG: Dict[str, Dict[str, Any]] = {
+
+class LanguageTemplateConfig(TypedDict):
+    """Language-specific template metadata."""
+
+    main_ext: str
+    config_file: str
+    dependency_file: str
+    build_tool: str
+    test_framework: str
+    gitignore_patterns: list[str]
+
+
+EMPTY_LANGUAGE_CONFIG: dict[str, Never] = {}
+
+LANGUAGE_CONFIG: dict[str, LanguageTemplateConfig] = {
     "python": {
         "main_ext": "py",
         "config_file": "pyproject.toml",
@@ -34,7 +48,7 @@ LANGUAGE_CONFIG: Dict[str, Dict[str, Any]] = {
             "venv/",
             "ENV/",
             "env/",
-        ]
+        ],
     },
     "rust": {
         "main_ext": "rs",
@@ -44,9 +58,9 @@ LANGUAGE_CONFIG: Dict[str, Dict[str, Any]] = {
         "test_framework": "cargo test",
         "gitignore_patterns": [
             "target/",
-            "Cargo.lock", 
+            "Cargo.lock",
             "*.pdb",
-        ]
+        ],
     },
     "go": {
         "main_ext": "go",
@@ -62,7 +76,7 @@ LANGUAGE_CONFIG: Dict[str, Dict[str, Any]] = {
             "*.test",
             "# Go modules",
             "go.sum",
-        ]
+        ],
     },
     "typescript": {
         "main_ext": "ts",
@@ -75,7 +89,7 @@ LANGUAGE_CONFIG: Dict[str, Dict[str, Any]] = {
             "dist/",
             "coverage/",
             "bun-debug.log*",
-        ]
+        ],
     },
     "cpp": {
         "main_ext": "cpp",
@@ -92,14 +106,14 @@ LANGUAGE_CONFIG: Dict[str, Dict[str, Any]] = {
             "CMakeCache.txt",
             "CMakeFiles/",
             "cmake_install.cmake",
-        ]
-    }
+        ],
+    },
 }
 
 
-def get_language_config(language: str) -> Dict[str, Any]:
+def get_language_config(language: str) -> LanguageTemplateConfig | dict[str, Never]:
     """Get configuration for a specific language."""
-    return LANGUAGE_CONFIG.get(language, {})
+    return LANGUAGE_CONFIG.get(language, EMPTY_LANGUAGE_CONFIG)
 
 
 def get_supported_languages() -> list[str]:

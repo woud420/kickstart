@@ -189,8 +189,7 @@ class MonorepoGenerator(BaseGenerator):
         self.create_directories(["infra/helm/example-service/templates"])
 
         template_vars = self._template_vars()
-        for template in stack_registry.helm_template_configs():
-            self.write_template(template.target, template.template, **template_vars)
+        self.write_template_configs(stack_registry.helm_template_configs(), template_vars)
 
     def _create_kustomize_structure(self) -> None:
         """Create Kustomize structure and files."""
@@ -200,8 +199,7 @@ class MonorepoGenerator(BaseGenerator):
         ])
 
         template_vars = self._template_vars()
-        for template in stack_registry.kustomize_template_configs():
-            self.write_template(template.target, template.template, **template_vars)
+        self.write_template_configs(stack_registry.kustomize_template_configs(), template_vars)
 
         for env in stack_registry.environments:
             self.write_template(

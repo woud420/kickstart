@@ -12,6 +12,7 @@ from src.stack.types import (
     TemplateConfig,
 )
 from src.utils.error_handling import LanguageNotSupportedError
+from src.utils.types import TemplatePathConfig
 
 
 class StackProfileRegistry:
@@ -90,7 +91,7 @@ class StackProfileRegistry:
             smoke_commands=language_profile.smoke_commands.get(normalized_runtime, ()),
         )
 
-    def service_template_configs(self, language: str, runtime: str = "container") -> list[dict[str, str]]:
+    def service_template_configs(self, language: str, runtime: str = "container") -> list[TemplatePathConfig]:
         """Return template mappings for a service selection."""
         return self.service_selection(language, runtime).template_configs()
 

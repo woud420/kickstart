@@ -1,16 +1,8 @@
 """Static language setup plans for service generators."""
 
-from dataclasses import dataclass
-
+from src.generator.file_plan import ContentFile
 from src.stack.types import TemplateConfig
-
-
-@dataclass(frozen=True)
-class ContentFile:
-    """Direct file content to write during language setup."""
-
-    target: str
-    content: str
+from src.utils.types import TemplateVars
 
 
 RUST_MODULE_CONTENT = "// Module definitions\n"
@@ -140,7 +132,7 @@ def go_service_content_files() -> tuple[ContentFile, ...]:
 
 def typescript_service_templates(*, include_postgres_database: bool = False) -> tuple[TemplateConfig, ...]:
     """Return template files for TypeScript services."""
-    template_vars = {"database": "postgres"} if include_postgres_database else {}
+    template_vars: TemplateVars = {"database": "postgres"} if include_postgres_database else {}
     return (
         TemplateConfig("src/main.ts", "typescript/src/main.ts.tpl", template_vars),
         TemplateConfig("src/config/env.ts", "typescript/src/config/env.ts.tpl", template_vars),

@@ -1,13 +1,16 @@
-from pathlib import Path
 import re
-from typing import Callable, Sequence
 import logging
+from collections.abc import Callable, Sequence
+from pathlib import Path
+
+from src.generator.file_plan import ContentFile
 from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
+from src.stack.types import TemplateConfig
 from src.utils.fs import write_file
 from src.utils.logger import success, warn
 from src.utils.template_registry import get_template_registry, TemplateRegistry
-from src.utils.types import GeneratorConfig, TemplateValue
+from src.utils.types import GeneratorConfig, TemplateValue, TemplateVars
 from src.utils.error_handling import (
     ErrorCollector, batch_operation_wrapper, handle_file_operations,
     handle_template_operations, safe_operation_context,
@@ -143,6 +146,28 @@ class BaseGenerator:
         logger.debug(f"Successfully wrote content to {target}")
         return True
 
+    def write_content_files(self, files: Sequence[ContentFile]) -> bool:
+        """Write multiple direct content files from a typed file plan."""
+        success = True
+        for file in files:
+            if self.write_content(file.target, file.content) is False:
+                success = False
+        return success
+
+    def write_template_configs(
+        self,
+        templates: Sequence[TemplateConfig],
+        base_vars: TemplateVars | None = None,
+    ) -> bool:
+        """Write multiple template files from typed template configs."""
+        success = True
+        for template in templates:
+            template_vars = dict(base_vars or {})
+            template_vars.update(template.vars)
+            if self.write_template(template.target, template.template, **template_vars) is False:
+                success = False
+        return success
+
     def _package_name(self) -> str:
         """Return a package-manager-safe name derived from the project name."""
         normalized = re.sub(r"[^a-z0-9]+", "-", self.name.lower()).strip("-")
@@ -192,7 +217,7 @@ class BaseGenerator:
         ):
             return False
 
-        docs = {
+        docs: dict[str, str] = {
             "AGENTS.md": self._agent_map_content(),
             "docs/contracts/README.md": self._contracts_content(contract),
             "docs/operations/README.md": self._operations_content(contract),
