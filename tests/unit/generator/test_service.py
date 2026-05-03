@@ -150,7 +150,6 @@ def test_create_rejects_unsupported_typescript_service_auth_extension():
     ("option", "kwargs"),
     [
         ("database", {"database": "postgres"}),
-        ("auth", {"auth": "jwt"}),
     ],
 )
 def test_create_rejects_unsupported_rust_service_extension_categories(option, kwargs):
@@ -295,6 +294,41 @@ def test_create_rust_structure_with_redis_cache(mock_write_content, mock_write_t
     )
     mock_write_template.assert_any_call("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
     mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", cache="redis")
+
+
+@patch.object(ServiceGenerator, 'write_template')
+@patch.object(ServiceGenerator, 'write_content')
+def test_create_rust_structure_with_jwt_auth(mock_write_content, mock_write_template, service_generator):
+    generator = ServiceGenerator("test-service", "rust", False, {}, auth="jwt")
+    generator._create_rust_structure()
+
+    mock_write_content.assert_any_call("src/handler/mod.rs", "pub mod auth;\n")
+    mock_write_content.assert_any_call(
+        ".env.example",
+        "EXAMPLE_ENV_VAR=value\nJWT_SECRET=change-me-change-me\nJWT_ISSUER=test-service\n",
+    )
+    mock_write_template.assert_any_call("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
+    mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", auth="jwt")
+
+
+@patch.object(ServiceGenerator, 'write_template')
+@patch.object(ServiceGenerator, 'write_content')
+def test_create_rust_structure_with_redis_and_jwt(mock_write_content, mock_write_template, service_generator):
+    generator = ServiceGenerator("test-service", "rust", False, {}, cache="redis", auth="jwt")
+    generator._create_rust_structure()
+
+    mock_write_content.assert_any_call("src/clients/mod.rs", "pub mod cache;\n")
+    mock_write_content.assert_any_call("src/handler/mod.rs", "pub mod auth;\n")
+    mock_write_content.assert_any_call(
+        ".env.example",
+        "EXAMPLE_ENV_VAR=value\n"
+        "REDIS_URL=redis://127.0.0.1:6379/0\n"
+        "JWT_SECRET=change-me-change-me\n"
+        "JWT_ISSUER=test-service\n",
+    )
+    mock_write_template.assert_any_call("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
+    mock_write_template.assert_any_call("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
+    mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", cache="redis", auth="jwt")
 
 
 @patch.object(ServiceGenerator, 'write_content')

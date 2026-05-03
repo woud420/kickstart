@@ -224,7 +224,7 @@ def test_create_monorepo_with_runtime(mock_load_config, mock_create_monorepo, ru
 def test_create_interactive_service(mock_prompt, mock_confirm, mock_load_config, mock_create_service, runner, mock_config):
     """Test creating a service interactively."""
     mock_load_config.return_value = mock_config
-    mock_prompt.ask.side_effect = ["service", "my-service", "/tmp", "rust"]
+    mock_prompt.ask.side_effect = ["service", "my-service", "/tmp", "rust", "none", "none"]
     mock_confirm.ask.side_effect = [True, True]  # gh=True, helm=True
     
     result = runner.invoke(app, ["create"])
@@ -232,6 +232,31 @@ def test_create_interactive_service(mock_prompt, mock_confirm, mock_load_config,
     assert result.exit_code == 0
     mock_create_service.assert_called_once_with(
         "my-service", "rust", True, mock_config, helm=True, root="/tmp"
+    )
+
+
+@patch('src.cli.main.create_service')
+@patch('src.cli.main.load_config')
+@patch('src.cli.main.Confirm')
+@patch('src.cli.main.Prompt')
+def test_create_interactive_rust_service_can_select_jwt(
+    mock_prompt,
+    mock_confirm,
+    mock_load_config,
+    mock_create_service,
+    runner,
+    mock_config,
+):
+    """Test selecting JWT for a Rust service interactively."""
+    mock_load_config.return_value = mock_config
+    mock_prompt.ask.side_effect = ["service", "my-service", "/tmp", "rust", "none", "jwt"]
+    mock_confirm.ask.side_effect = [False, False]
+
+    result = runner.invoke(app, ["create"])
+
+    assert result.exit_code == 0
+    mock_create_service.assert_called_once_with(
+        "my-service", "rust", False, mock_config, helm=False, root="/tmp", auth="jwt"
     )
 
 

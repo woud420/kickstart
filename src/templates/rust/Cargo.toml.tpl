@@ -8,3 +8,7 @@ actix-web = "4"
 {% if cache == "redis" %}
 redis = { version = "1.2", features = ["tokio-comp"] }
 {% endif %}
+{% if auth == "jwt" %}
+jsonwebtoken = "9"
+serde = { version = "1", features = ["derive"] }
+{% endif %}

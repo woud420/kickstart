@@ -36,6 +36,21 @@ def test_rust_container_accepts_redis_cache_extension() -> None:
     assert selection.auth is None
 
 
+def test_rust_container_accepts_jwt_auth_extension() -> None:
+    selection = validate_service_extensions(
+        language="rust",
+        runtime="container",
+        framework=None,
+        database=None,
+        cache=None,
+        auth="jwt",
+    )
+
+    assert selection.database is None
+    assert selection.cache is None
+    assert selection.auth == "jwt"
+
+
 def test_typescript_container_accepts_postgres_database_extension() -> None:
     selection = validate_service_extensions(
         language="typescript",
@@ -79,7 +94,6 @@ def test_typescript_services_reject_jwt_until_templates_exist() -> None:
     ("category", "kwargs"),
     [
         ("database", {"database": "postgres", "cache": None, "auth": None}),
-        ("auth", {"database": None, "cache": None, "auth": "jwt"}),
     ],
 )
 def test_rust_container_rejects_unimplemented_extension_categories(

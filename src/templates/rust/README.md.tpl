@@ -24,6 +24,7 @@ make lint
 src/
 ├── api/          # API endpoints and routes
 ├── clients/      # Optional generated service clients
+├── handler/      # Optional generated auth helpers
 └── model/        # Data models and structures
 tests/
 ├── api/          # API tests

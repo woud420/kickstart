@@ -369,16 +369,32 @@ class ServiceGenerator(BaseGenerator):
         - Proper crate structure
         """
         include_redis_cache = self.cache == "redis"
-        self._write_content_files(rust_service_content_files(include_redis_cache=include_redis_cache))
+        include_jwt_auth = self.auth == "jwt"
+        self._write_content_files(
+            rust_service_content_files(
+                include_redis_cache=include_redis_cache,
+                include_jwt_auth=include_jwt_auth,
+            )
+        )
         if include_redis_cache:
             self.write_template("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
-            self.write_content(
-                ".env.example",
-                "EXAMPLE_ENV_VAR=value\nREDIS_URL=redis://127.0.0.1:6379/0\n",
-            )
-            self.write_template("Cargo.toml", "rust/Cargo.toml.tpl", cache="redis")
-            return
-        self.write_template("Cargo.toml", "rust/Cargo.toml.tpl")
+        if include_jwt_auth:
+            self.write_template("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
+
+        if include_redis_cache or include_jwt_auth:
+            env_content = "EXAMPLE_ENV_VAR=value\n"
+            if include_redis_cache:
+                env_content += "REDIS_URL=redis://127.0.0.1:6379/0\n"
+            if include_jwt_auth:
+                env_content += f"JWT_SECRET=change-me-change-me\nJWT_ISSUER={self.name}\n"
+            self.write_content(".env.example", env_content)
+
+        cargo_vars = {}
+        if include_redis_cache:
+            cargo_vars["cache"] = "redis"
+        if include_jwt_auth:
+            cargo_vars["auth"] = "jwt"
+        self.write_template("Cargo.toml", "rust/Cargo.toml.tpl", **cargo_vars)
 
     def _create_cpp_structure(self) -> None:
         """Create C++-specific project structure.
