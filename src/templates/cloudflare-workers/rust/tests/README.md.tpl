@@ -1,3 +1,3 @@
 # Tests
 
-Use `cargo check --target wasm32-unknown-unknown` for compile checks and `wrangler dev` for local runtime smoke testing.
+Use `make check` for host compile checks and tests. Use `make build` to compile the Worker Wasm bundle with `worker-build`, then use `wrangler dev` for local runtime smoke testing.

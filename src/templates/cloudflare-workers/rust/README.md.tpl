@@ -17,6 +17,8 @@ cargo install worker-build
 bun install
 ```
 
+`make build` will install `worker-build` automatically. If `rustup` is available, it will also install the wasm target when missing. Non-rustup Rust installations must provide `wasm32-unknown-unknown` manually.
+
 ## Commands
 
 ```bash

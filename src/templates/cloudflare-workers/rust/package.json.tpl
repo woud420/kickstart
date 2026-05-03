@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "bun@1.3.0",
   "scripts": {
-    "build": "worker-build --release",
+    "build": "make worker-build-release",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
