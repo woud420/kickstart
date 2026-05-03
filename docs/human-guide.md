@@ -10,7 +10,7 @@ kickstart creates project scaffolds so the first hour of setup is repeatable ins
 | Frontend | `kickstart create frontend NAME` | React/Vite/Bun apps |
 | Library | `kickstart create lib NAME --lang python` | Reusable packages |
 | CLI | `kickstart create cli NAME --lang rust` | Command-line tools |
-| System | `kickstart create mono NAME` | TypeScript monorepo containing apps, packages, services, infrastructure, and docs |
+| System | `kickstart create system NAME` | TypeScript monorepo layout containing apps, packages, services, infrastructure, and docs |
 
 ## Service Options
 

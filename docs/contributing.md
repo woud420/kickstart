@@ -52,6 +52,16 @@ make check
 Use `make package` to build the wheel/source distribution and `make binary` to build the local standalone binary.
 GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Linux/macOS x64 and arm64 binaries for each supported Python minor.
 
+## Releases
+
+Release tags must be stable semantic versions like `v0.4.1`, and the tag must match `[project].version` in `pyproject.toml`.
+
+Run `make release-check TAG=v0.4.1` before pushing a release tag.
+
+Use a new patch/minor/major version for behavior or installable output changes. For docs, website copy, tests, or other same-version fixes, retag the current release line after merge so CI updates the existing GitHub Release instead of creating a new version.
+
+See [Release Policy](release-policy.md) for the full contract.
+
 ## Where To Add Things
 
 - New project directories: `src/generator/layouts.py`

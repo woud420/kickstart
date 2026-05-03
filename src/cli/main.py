@@ -141,7 +141,7 @@ def create(
     root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
     lang: str = typer.Option("python", "--lang", "-l"),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
-    helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or mono only)"),
+    helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or systems only)"),
     database: Optional[str] = typer.Option(
         None,
         "--database",
@@ -170,7 +170,7 @@ def create(
         help="Execution/platform profile. Services: container or cloudflare-workers. Systems: kubernetes, cloudflare-workers, hybrid.",
     )
 ) -> None:
-    """Create a new service, lib, CLI, frontend, or mono repo."""
+    """Create a new service, lib, CLI, frontend, or system."""
     try:
         config: GeneratorConfig = load_config()
         options = prompt_for_missing_args(

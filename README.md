@@ -23,10 +23,10 @@ Create a Cloudflare Worker:
 poetry run kickstart create service edge-api --lang typescript --runtime cloudflare-workers
 ```
 
-Create a TypeScript system monorepo:
+Create a TypeScript system:
 
 ```bash
-poetry run kickstart create mono product-stack
+poetry run kickstart create system product-stack
 ```
 
 ## What It Generates
@@ -35,7 +35,7 @@ poetry run kickstart create mono product-stack
 - `frontend`: React, TypeScript, Vite, and Bun frontend app.
 - `lib`: Python or Rust library project.
 - `cli`: Python or Rust CLI project.
-- `mono`: TypeScript/Bun/Turbo system workspace containing apps, packages, services, infrastructure, and docs.
+- `system`: TypeScript/Bun/Turbo system workspace containing apps, packages, services, infrastructure, and docs.
 
 ## Major Choices
 
@@ -59,7 +59,7 @@ poetry run kickstart create service edge-rs --lang rust --runtime cloudflare-wor
 poetry run kickstart create frontend web
 poetry run kickstart create lib core-lib --lang python
 poetry run kickstart create cli ops-tool --lang rust
-poetry run kickstart create mono platform --cloud aws --runtime kubernetes --knowledge none
+poetry run kickstart create system platform --cloud aws --runtime kubernetes --knowledge none
 ```
 
 ## More Docs

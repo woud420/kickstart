@@ -9,6 +9,9 @@ from src.cli.options import CreateOptions, MonorepoCreateKwargs, ServiceCreateKw
 from src.utils.types import GeneratorConfig
 
 
+SYSTEM_PROJECT_TYPES = {"mono", "monorepo", "system"}
+
+
 class ServiceCreator(Protocol):
     """Callable that creates a service project."""
 
@@ -98,7 +101,7 @@ def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, c
         creators.cli(options.name, options.lang, options.gh, config, root=options.root)
         return
 
-    if options.project_type == "mono":
+    if options.project_type in SYSTEM_PROJECT_TYPES:
         monorepo_kwargs: MonorepoCreateKwargs = {"helm": options.helm, "root": options.root}
         if options.cloud != "multi":
             monorepo_kwargs["cloud"] = options.cloud

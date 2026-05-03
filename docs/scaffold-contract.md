@@ -28,7 +28,7 @@ There is no separate root architecture document. `docs/architecture/` is the can
 
 Implemented service extensions are intentionally narrow. Python/FastAPI container services support Postgres, Redis, and JWT. Rust container services support Redis and JWT. TypeScript container services support Postgres. Unsupported combinations fail instead of generating a partial or silent scaffold.
 
-Systems contain other project kinds and are currently generated through the `mono` command with `project.repo_layout: monorepo`.
+Systems contain other project kinds and are generated through the `system` command with `project.repo_layout: monorepo`. The older `mono` project type remains a backwards-compatible alias.
 
 Docker is an image/build artifact. Kubernetes is a runtime platform for containers. Helm and Kustomize are Kubernetes artifact styles. Cloudflare Workers are a Cloudflare runtime platform, not a Docker or Kubernetes container. Cloudflare Containers are modeled separately as Worker-controlled container images when that scaffold is added.
 

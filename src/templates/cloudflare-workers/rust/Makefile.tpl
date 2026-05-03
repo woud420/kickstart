@@ -8,23 +8,29 @@ WASM_TARGET ?= wasm32-unknown-unknown
 BUN_TMPDIR ?= $(CURDIR)/.tmp
 BUN_CACHE_DIR ?= $(CURDIR)/.cache/bun
 BUN_ENV = TMPDIR=$(BUN_TMPDIR) XDG_CACHE_HOME=$(CURDIR)/.cache BUN_INSTALL_CACHE_DIR=$(BUN_CACHE_DIR)/install
+{% include "_shared/make_logging.mk.tpl" %}
 
 install:
+	@$(call log,Installing Worker dependencies)
 	@mkdir -p $(BUN_TMPDIR) $(BUN_CACHE_DIR)/install
-	$(BUN_ENV) $(BUN) install
+	@$(BUN_ENV) $(BUN) install
 
 test: install
-	$(CARGO) test
+	@$(call log,Running Rust tests)
+	@$(CARGO) test
 
 typecheck: install
-	$(CARGO) check
+	@$(call log,Running Rust typecheck)
+	@$(CARGO) check
 
 check: typecheck test
 
 ensure-worker-build:
+	@$(call log,Checking worker-build)
 	@command -v $(WORKER_BUILD) >/dev/null 2>&1 || $(CARGO) install worker-build --locked
 
 ensure-wasm-target:
+	@$(call log,Checking Rust WASM target)
 	@target_libdir="$$( $(RUSTC) --print target-libdir --target $(WASM_TARGET) 2>/dev/null )"; \
 	if [ -z "$$target_libdir" ] || [ ! -d "$$target_libdir" ]; then \
 		if command -v rustup >/dev/null 2>&1; then \
@@ -36,12 +42,15 @@ ensure-wasm-target:
 	fi
 
 worker-build-release: ensure-worker-build ensure-wasm-target
-	$(WORKER_BUILD) --release
+	@$(call log,Building Worker release)
+	@$(WORKER_BUILD) --release
 
 build: install worker-build-release
 
 dev:
-	$(BUN_ENV) $(BUN) run dev
+	@$(call log,Starting Worker dev server)
+	@$(BUN_ENV) $(BUN) run dev
 
 deploy:
-	$(BUN_ENV) $(BUN) run deploy
+	@$(call log,Deploying Worker)
+	@$(BUN_ENV) $(BUN) run deploy

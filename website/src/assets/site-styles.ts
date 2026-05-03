@@ -73,11 +73,15 @@ nav a:hover {
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(560px, 1.2fr);
+  grid-template-columns: minmax(260px, 0.76fr) minmax(560px, 1.24fr);
   align-items: start;
-  gap: 48px;
+  gap: 42px;
   padding: 66px 0 72px;
   border-bottom: 1px solid var(--ink);
+}
+
+.hero-copy {
+  padding-top: 6px;
 }
 
 .kicker,
@@ -299,7 +303,7 @@ h2 {
 .generated-view {
   display: grid;
   grid-template-columns: minmax(0, 1.06fr) minmax(250px, 0.94fr);
-  min-height: 610px;
+  min-height: 570px;
 }
 
 .picker {
@@ -442,17 +446,17 @@ pre {
   margin: 0;
   white-space: pre-wrap;
   font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.42;
 }
 
 #output-tree {
   display: block;
-  max-height: 270px;
   overflow: auto;
 }
 
 .boundary {
+  grid-template-columns: 230px minmax(0, 1fr);
   border-bottom: 0;
 }
 
@@ -557,8 +561,5 @@ footer a {
     font-size: 18px;
   }
 
-  #output-tree {
-    max-height: 280px;
-  }
 }
 `;

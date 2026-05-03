@@ -6,7 +6,7 @@ Purpose: kickstart generates repeatable project scaffolds so agents do not recre
 
 Inputs:
 
-- project type: `service`, `frontend`, `lib`, `cli`, `mono`
+- project type: `service`, `frontend`, `lib`, `cli`, `system`
 - name
 - root directory
 - language, execution/platform profile, provider target, knowledge adapter, and extension options
