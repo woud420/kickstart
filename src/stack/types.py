@@ -101,8 +101,8 @@ class ServiceSelection:
 
 
 @dataclass(frozen=True)
-class MonorepoSelection:
-    """Validated monorepo scaffold selection."""
+class SystemSelection:
+    """Validated system scaffold selection."""
 
     cloud: str
     clouds: tuple[str, ...]
@@ -126,6 +126,9 @@ class MonorepoSelection:
     def template_configs(self, base_vars: TemplateVars) -> list[TemplateConfigDict]:
         """Return generator-compatible template configs."""
         return [template.as_dict(base_vars) for template in self.templates]
+
+
+MonorepoSelection = SystemSelection
 
 
 Profile = LanguageProfile | RuntimeProfile | CloudProfile | KnowledgeProfile | ArtifactToolProfile

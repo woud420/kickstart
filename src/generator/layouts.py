@@ -1,6 +1,6 @@
 """Directory layout plans for project generators."""
 
-from src.stack.profile import MonorepoSelection, stack_registry
+from src.stack.profile import SystemSelection, stack_registry
 
 
 def scaffold_contract_directories() -> list[str]:
@@ -60,8 +60,8 @@ def python_package_directories() -> list[str]:
     ]
 
 
-def monorepo_directories(selection: MonorepoSelection) -> list[str]:
-    """Return the base directory layout for a monorepo stack selection."""
+def system_directories(selection: SystemSelection) -> list[str]:
+    """Return the base directory layout for a system stack selection."""
     directories = [
         "apps",
         "packages",
@@ -88,6 +88,9 @@ def monorepo_directories(selection: MonorepoSelection) -> list[str]:
     if selection.uses_cloudflare_workers:
         return directories + ["infra/cloudflare/workers"]
     return directories
+
+
+monorepo_directories = system_directories
 
 
 def frontend_directories() -> list[str]:

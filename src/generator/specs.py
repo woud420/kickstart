@@ -60,8 +60,8 @@ class ServiceSpec:
 
 
 @dataclass(frozen=True)
-class MonorepoSpec:
-    """Validated constructor data for monorepo scaffolds."""
+class SystemSpec:
+    """Validated constructor data for system scaffolds."""
 
     name: str
     gh: bool
@@ -84,8 +84,8 @@ class MonorepoSpec:
         cloud: str = "multi",
         knowledge: str = "none",
         runtime: str = "kubernetes",
-    ) -> "MonorepoSpec":
-        """Create a monorepo spec from public constructor options."""
+    ) -> "SystemSpec":
+        """Create a system spec from public constructor options."""
         return cls(
             name=name,
             gh=gh,
@@ -94,8 +94,11 @@ class MonorepoSpec:
             root=root,
             cloud=stack_registry.normalize_cloud(cloud),
             knowledge=stack_registry.normalize_knowledge(knowledge),
-            runtime=stack_registry.normalize_monorepo_runtime(runtime),
+            runtime=stack_registry.normalize_system_runtime(runtime),
         )
+
+
+MonorepoSpec = SystemSpec
 
 
 @dataclass(frozen=True)

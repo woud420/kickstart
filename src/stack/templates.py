@@ -33,12 +33,12 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
     return common + language_specific.get(language, ())
 
 
-def monorepo_templates(
+def system_templates(
     environments: tuple[str, ...],
     knowledge_profile: KnowledgeProfile,
     runtime_profile: RuntimeProfile,
 ) -> tuple[TemplateConfig, ...]:
-    """Return monorepo template mappings for selected stack profiles."""
+    """Return system template mappings for selected stack profiles."""
     templates = [
         TemplateConfig("infra/docker/docker-compose.yml", "docker-compose.yml"),
         TemplateConfig("infra/terraform/versions.tf", "terraform_versions.tf"),
@@ -107,6 +107,9 @@ def monorepo_templates(
         )
 
     return tuple(templates)
+
+
+monorepo_templates = system_templates
 
 
 def kustomize_template_configs() -> tuple[TemplateConfig, ...]:

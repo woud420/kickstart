@@ -9,6 +9,7 @@ from src.stack.types import (
     Profile,
     RuntimeProfile,
     ServiceSelection,
+    SystemSelection,
     TemplateConfig,
 )
 from src.utils.error_handling import LanguageNotSupportedError
@@ -22,7 +23,8 @@ class StackProfileRegistry:
         self.environments = defaults.environments
         self.languages = dict(defaults.languages)
         self.service_runtimes = dict(defaults.service_runtimes)
-        self.monorepo_runtimes = dict(defaults.monorepo_runtimes)
+        self.system_runtimes = dict(defaults.system_runtimes)
+        self.monorepo_runtimes = self.system_runtimes
         self.clouds = dict(defaults.clouds)
         self.knowledge = dict(defaults.knowledge)
         self.artifact_tools = dict(defaults.artifact_tools)
@@ -35,9 +37,13 @@ class StackProfileRegistry:
         """Normalize service runtime aliases, preserving unknown values for validation."""
         return self._normalize(runtime, self.service_runtimes)
 
+    def normalize_system_runtime(self, runtime: str) -> str:
+        """Normalize system runtime aliases, preserving unknown values for validation."""
+        return self._normalize(runtime, self.system_runtimes)
+
     def normalize_monorepo_runtime(self, runtime: str) -> str:
-        """Normalize monorepo runtime aliases, preserving unknown values for validation."""
-        return self._normalize(runtime, self.monorepo_runtimes)
+        """Normalize legacy monorepo runtime aliases."""
+        return self.normalize_system_runtime(runtime)
 
     def normalize_cloud(self, cloud: str) -> str:
         """Normalize cloud aliases, preserving unknown values for validation."""
@@ -95,18 +101,18 @@ class StackProfileRegistry:
         """Return template mappings for a service selection."""
         return self.service_selection(language, runtime).template_configs()
 
-    def monorepo_selection(
+    def system_selection(
         self,
         cloud: str = "multi",
         knowledge: str = "none",
         runtime: str = "kubernetes",
         *,
         helm: bool = False,
-    ) -> MonorepoSelection:
-        """Validate and describe a monorepo scaffold selection."""
+    ) -> SystemSelection:
+        """Validate and describe a system scaffold selection."""
         normalized_cloud = self.normalize_cloud(cloud)
         normalized_knowledge = self.normalize_knowledge(knowledge)
-        normalized_runtime = self.normalize_monorepo_runtime(runtime)
+        normalized_runtime = self.normalize_system_runtime(runtime)
 
         cloud_profile = self.clouds.get(normalized_cloud)
         if cloud_profile is None:
@@ -126,17 +132,17 @@ class StackProfileRegistry:
                 )
             )
 
-        runtime_profile = self.monorepo_runtimes.get(normalized_runtime)
+        runtime_profile = self.system_runtimes.get(normalized_runtime)
         if runtime_profile is None:
             raise ValueError(
-                "Unsupported monorepo platform profile '{runtime}'. Use one of: {supported}".format(
+                "Unsupported system runtime profile '{runtime}'. Use one of: {supported}".format(
                     runtime=runtime,
-                    supported=", ".join(sorted(self.monorepo_runtimes)),
+                    supported=", ".join(sorted(self.system_runtimes)),
                 )
             )
 
-        artifact_tool, artifact_label = self._monorepo_artifacts(runtime_profile, helm=helm)
-        return MonorepoSelection(
+        artifact_tool, artifact_label = self._system_artifacts(runtime_profile, helm=helm)
+        return SystemSelection(
             cloud=normalized_cloud,
             clouds=cloud_profile.providers,
             knowledge=normalized_knowledge,
@@ -148,9 +154,20 @@ class StackProfileRegistry:
             include_backstage=knowledge_profile.include_backstage,
             uses_kubernetes=runtime_profile.uses_kubernetes,
             uses_cloudflare_workers=runtime_profile.uses_cloudflare_workers,
-            templates=templates.monorepo_templates(self.environments, knowledge_profile, runtime_profile),
+            templates=templates.system_templates(self.environments, knowledge_profile, runtime_profile),
             smoke_commands=runtime_profile.smoke_commands,
         )
+
+    def monorepo_selection(
+        self,
+        cloud: str = "multi",
+        knowledge: str = "none",
+        runtime: str = "kubernetes",
+        *,
+        helm: bool = False,
+    ) -> MonorepoSelection:
+        """Validate and describe a legacy monorepo scaffold selection."""
+        return self.system_selection(cloud, knowledge, runtime, helm=helm)
 
     def kustomize_template_configs(self) -> tuple[TemplateConfig, ...]:
         """Return Kubernetes Kustomize template mappings."""
@@ -160,12 +177,15 @@ class StackProfileRegistry:
         """Return Helm chart template mappings."""
         return templates.helm_template_configs()
 
-    def _monorepo_artifacts(self, runtime_profile: RuntimeProfile, *, helm: bool) -> tuple[str, str]:
+    def _system_artifacts(self, runtime_profile: RuntimeProfile, *, helm: bool) -> tuple[str, str]:
         if runtime_profile.uses_kubernetes and runtime_profile.uses_cloudflare_workers:
             return ("helm+wrangler", "Helm and Wrangler") if helm else ("kustomize+wrangler", "Kustomize and Wrangler")
         if runtime_profile.uses_kubernetes:
             return ("helm", "Helm") if helm else ("kustomize", "Kustomize")
         return "wrangler", "Wrangler"
+
+    def _monorepo_artifacts(self, runtime_profile: RuntimeProfile, *, helm: bool) -> tuple[str, str]:
+        return self._system_artifacts(runtime_profile, helm=helm)
 
     def _normalize(self, value: str, profiles: Mapping[str, Profile]) -> str:
         candidate = value.strip().lower()

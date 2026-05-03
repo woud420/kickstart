@@ -79,7 +79,7 @@ service_runtimes: dict[str, RuntimeProfile] = {
     ),
 }
 
-monorepo_runtimes: dict[str, RuntimeProfile] = {
+system_runtimes: dict[str, RuntimeProfile] = {
     "kubernetes": RuntimeProfile(
         id="kubernetes",
         display_name="Kubernetes",
@@ -112,6 +112,8 @@ monorepo_runtimes: dict[str, RuntimeProfile] = {
         uses_cloudflare_workers=True,
     ),
 }
+
+monorepo_runtimes = system_runtimes
 
 clouds: dict[str, CloudProfile] = {
     "aws": CloudProfile(id="aws", display_name="AWS", providers=("aws",)),

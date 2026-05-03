@@ -89,11 +89,14 @@ class ServiceCreateKwargs(TypedDict, total=False):
     runtime: str
 
 
-class MonorepoCreateKwargs(TypedDict, total=False):
-    """Keyword arguments accepted by monorepo creation."""
+class SystemCreateKwargs(TypedDict, total=False):
+    """Keyword arguments accepted by system creation."""
 
     helm: bool
     root: str | None
     cloud: str
     knowledge: str
     runtime: str
+
+
+MonorepoCreateKwargs = SystemCreateKwargs

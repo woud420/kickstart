@@ -5,7 +5,7 @@ from typing import Protocol, Unpack
 
 from rich import print
 
-from src.cli.options import CreateOptions, MonorepoCreateKwargs, ServiceCreateKwargs
+from src.cli.options import CreateOptions, ServiceCreateKwargs, SystemCreateKwargs
 from src.utils.types import GeneratorConfig
 
 
@@ -47,17 +47,20 @@ class CliCreator(Protocol):
         """Create a CLI."""
 
 
-class MonorepoCreator(Protocol):
-    """Callable that creates a monorepo project."""
+class SystemCreator(Protocol):
+    """Callable that creates a system project."""
 
     def __call__(
         self,
         name: str,
         gh: bool,
         config: GeneratorConfig,
-        **kwargs: Unpack[MonorepoCreateKwargs],
+        **kwargs: Unpack[SystemCreateKwargs],
     ) -> None:
-        """Create a monorepo."""
+        """Create a system."""
+
+
+MonorepoCreator = SystemCreator
 
 
 @dataclass(frozen=True)
@@ -68,7 +71,7 @@ class ProjectCreators:
     frontend: FrontendCreator
     lib: LibraryCreator
     cli: CliCreator
-    monorepo: MonorepoCreator
+    monorepo: SystemCreator
 
 
 def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, creators: ProjectCreators) -> None:
@@ -102,15 +105,15 @@ def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, c
         return
 
     if options.project_type in SYSTEM_PROJECT_TYPES:
-        monorepo_kwargs: MonorepoCreateKwargs = {"helm": options.helm, "root": options.root}
+        system_kwargs: SystemCreateKwargs = {"helm": options.helm, "root": options.root}
         if options.cloud != "multi":
-            monorepo_kwargs["cloud"] = options.cloud
+            system_kwargs["cloud"] = options.cloud
         if options.knowledge != "none":
-            monorepo_kwargs["knowledge"] = options.knowledge
+            system_kwargs["knowledge"] = options.knowledge
         if options.runtime is not None:
-            monorepo_kwargs["runtime"] = options.runtime
+            system_kwargs["runtime"] = options.runtime
 
-        creators.monorepo(options.name, options.gh, config, **monorepo_kwargs)
+        creators.monorepo(options.name, options.gh, config, **system_kwargs)
         return
 
     print(f"[bold red]Type '{options.project_type}' not supported.[/]")
