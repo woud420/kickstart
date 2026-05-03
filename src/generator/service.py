@@ -407,8 +407,14 @@ class ServiceGenerator(BaseGenerator):
         Sets up a Fastify service with strict TypeScript, environment parsing,
         a health route, and a small test harness.
         """
-        self._write_template_configs(typescript_service_templates())
-        self._write_content_files(typescript_service_content_files())
+        include_postgres_database = self.database == "postgres"
+        self._write_template_configs(typescript_service_templates(include_postgres_database=include_postgres_database))
+        self._write_content_files(typescript_service_content_files(include_postgres_database=include_postgres_database))
+        if include_postgres_database:
+            self.write_template("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
+            self.write_template("package.json", "typescript/package.json.tpl", database="postgres")
+            self.create_directories(["migrations"])
+            self.write_template("migrations/001_initial.sql", "typescript/extensions/database/migrations.sql.tpl")
 
     def _write_content_files(self, files: Sequence[ContentFile]) -> None:
         """Write direct content files from a typed setup plan."""
