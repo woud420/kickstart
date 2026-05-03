@@ -148,6 +148,7 @@ def typescript_service_templates(
     *,
     include_postgres_database: bool = False,
     include_redis_cache: bool = False,
+    include_jwt_auth: bool = False,
 ) -> tuple[TemplateConfig, ...]:
     """Return template files for TypeScript services."""
     template_vars: dict[str, str] = {}
@@ -155,6 +156,8 @@ def typescript_service_templates(
         template_vars["database"] = "postgres"
     if include_redis_cache:
         template_vars["cache"] = "redis"
+    if include_jwt_auth:
+        template_vars["auth"] = "jwt"
     return (
         TemplateConfig("src/main.ts", "typescript/src/main.ts.tpl", template_vars),
         TemplateConfig("src/config/env.ts", "typescript/src/config/env.ts.tpl", template_vars),
@@ -167,6 +170,7 @@ def typescript_service_content_files(
     *,
     include_postgres_database: bool = False,
     include_redis_cache: bool = False,
+    jwt_issuer: str | None = None,
 ) -> tuple[ContentFile, ...]:
     """Return direct content files for TypeScript services."""
     env_content = TYPESCRIPT_ENV_EXAMPLE_CONTENT
@@ -174,4 +178,6 @@ def typescript_service_content_files(
         env_content += TYPESCRIPT_POSTGRES_ENV_LINE
     if include_redis_cache:
         env_content += TYPESCRIPT_REDIS_ENV_LINE
+    if jwt_issuer is not None:
+        env_content += f"JWT_SECRET=change-me-change-me\nJWT_ISSUER={jwt_issuer}\n"
     return (ContentFile(".env.example", env_content),)

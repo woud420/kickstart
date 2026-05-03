@@ -10,6 +10,10 @@ const envSchema = z.object({
 {% if cache == "redis" %}
   REDIS_URL: z.string().url().default("redis://127.0.0.1:6379/0"),
 {% endif %}
+{% if auth == "jwt" %}
+  JWT_SECRET: z.string().min(16).default("change-me-change-me"),
+  JWT_ISSUER: z.string().default("{{ service_name }}"),
+{% endif %}
 });
 
 export const env = envSchema.parse(process.env);

@@ -96,21 +96,15 @@ def prompt_for_missing_args(
             if database == "none":
                 database = None
 
-        if lang in ("typescript", "ts") and cache is None:
+        if lang in ("typescript", "ts", "rust") and cache is None:
             cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
             if cache == "none":
                 cache = None
 
-        if lang == "rust":
-            if cache is None:
-                cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
-                if cache == "none":
-                    cache = None
-
-            if auth is None:
-                auth = prompt.ask("Authentication extension", choices=["none", "jwt"], default="none")
-                if auth == "none":
-                    auth = None
+        if lang in ("typescript", "ts", "rust") and auth is None:
+            auth = prompt.ask("Authentication extension", choices=["none", "jwt"], default="none")
+            if auth == "none":
+                auth = None
 
     assert project_type is not None, "project_type should be set by now"
     assert name is not None, "name should be set by now"

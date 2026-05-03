@@ -435,16 +435,20 @@ class ServiceGenerator(BaseGenerator):
         """
         include_postgres_database = self.database == "postgres"
         include_redis_cache = self.cache == "redis"
+        include_jwt_auth = self.auth == "jwt"
         self._write_template_configs(
             typescript_service_templates(
                 include_postgres_database=include_postgres_database,
                 include_redis_cache=include_redis_cache,
+                include_jwt_auth=include_jwt_auth,
             )
         )
+        jwt_issuer = self.name if include_jwt_auth else None
         self._write_content_files(
             typescript_service_content_files(
                 include_postgres_database=include_postgres_database,
                 include_redis_cache=include_redis_cache,
+                jwt_issuer=jwt_issuer,
             )
         )
         if include_postgres_database:
@@ -453,12 +457,16 @@ class ServiceGenerator(BaseGenerator):
             self.write_template("migrations/001_initial.sql", "typescript/extensions/database/migrations.sql.tpl")
         if include_redis_cache:
             self.write_template("src/clients/cache.ts", "typescript/src/clients/cache.ts.tpl")
-        if include_postgres_database or include_redis_cache:
+        if include_jwt_auth:
+            self.write_template("src/handler/auth.ts", "typescript/src/handler/auth.ts.tpl")
+        if include_postgres_database or include_redis_cache or include_jwt_auth:
             package_vars: dict[str, str] = {}
             if include_postgres_database:
                 package_vars["database"] = "postgres"
             if include_redis_cache:
                 package_vars["cache"] = "redis"
+            if include_jwt_auth:
+                package_vars["auth"] = "jwt"
             self.write_template("package.json", "typescript/package.json.tpl", **package_vars)
 
     def _write_content_files(self, files: Sequence[ContentFile]) -> None:

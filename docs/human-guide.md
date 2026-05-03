@@ -37,7 +37,7 @@ Support is intentionally narrow:
 
 - Python/FastAPI container services support Postgres, Redis, and JWT.
 - Rust container services support Postgres, Redis, and JWT.
-- TypeScript container services support Postgres and Redis.
+- TypeScript container services support Postgres, Redis, and JWT.
 
 Other language/runtime/framework combinations fail loudly until their templates are implemented.
 

@@ -138,26 +138,6 @@ def test_create_rejects_unsupported_go_service_cache_extension():
         generator.create()
 
 
-def test_create_rejects_unsupported_typescript_service_auth_extension():
-    generator = ServiceGenerator("test-service", "typescript", False, {}, auth="jwt")
-
-    with pytest.raises(ExtensionError, match="auth extension 'jwt' is not supported"):
-        generator.create()
-
-
-@pytest.mark.parametrize(
-    ("option", "kwargs"),
-    [
-        ("auth", {"auth": "jwt"}),
-    ],
-)
-def test_create_rejects_unsupported_typescript_service_extension_categories(option, kwargs):
-    generator = ServiceGenerator("test-service", "typescript", False, {}, **kwargs)
-
-    with pytest.raises(ExtensionError, match=f"{option} extension '.+' is not supported"):
-        generator.create()
-
-
 @pytest.mark.parametrize(
     ("option", "value", "kwargs"),
     [
@@ -653,6 +633,62 @@ def test_create_typescript_structure_with_redis_cache(mock_write_template, mock_
         ".env.example",
         "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\nREDIS_URL=redis://127.0.0.1:6379/0\n",
     )
+
+
+@patch.object(ServiceGenerator, 'write_content')
+@patch.object(ServiceGenerator, 'write_template')
+def test_create_typescript_structure_with_jwt_auth(mock_write_template, mock_write_content, service_generator):
+    generator = ServiceGenerator("test-service", "typescript", False, {}, auth="jwt")
+    generator._create_typescript_structure()
+
+    mock_write_template.assert_any_call("src/handler/auth.ts", "typescript/src/handler/auth.ts.tpl")
+    mock_write_template.assert_any_call("package.json", "typescript/package.json.tpl", auth="jwt")
+    mock_write_content.assert_called_once_with(
+        ".env.example",
+        "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n"
+        "JWT_SECRET=change-me-change-me\nJWT_ISSUER=test-service\n",
+    )
+
+
+@patch.object(ServiceGenerator, 'create_directories')
+@patch.object(ServiceGenerator, 'write_content')
+@patch.object(ServiceGenerator, 'write_template')
+def test_create_typescript_structure_with_all_extensions(
+    mock_write_template,
+    mock_write_content,
+    mock_create_directories,
+    service_generator,
+):
+    generator = ServiceGenerator(
+        "test-service",
+        "typescript",
+        False,
+        {},
+        database="postgres",
+        cache="redis",
+        auth="jwt",
+    )
+    generator._create_typescript_structure()
+
+    mock_write_template.assert_any_call("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
+    mock_write_template.assert_any_call("src/clients/cache.ts", "typescript/src/clients/cache.ts.tpl")
+    mock_write_template.assert_any_call("src/handler/auth.ts", "typescript/src/handler/auth.ts.tpl")
+    mock_write_template.assert_any_call(
+        "package.json",
+        "typescript/package.json.tpl",
+        database="postgres",
+        cache="redis",
+        auth="jwt",
+    )
+    mock_write_content.assert_called_once_with(
+        ".env.example",
+        "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n"
+        "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n"
+        "REDIS_URL=redis://127.0.0.1:6379/0\n"
+        "JWT_SECRET=change-me-change-me\n"
+        "JWT_ISSUER=test-service\n",
+    )
+    mock_create_directories.assert_called_once_with(["migrations"])
 
 
 def test_typescript_alias_normalizes_to_template_directory():

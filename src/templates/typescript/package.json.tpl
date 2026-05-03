@@ -20,6 +20,9 @@
 {% if database == "postgres" %}
     "pg": "^8.13.1",
 {% endif %}
+{% if auth == "jwt" %}
+    "jose": "^6.0.0",
+{% endif %}
     "pino": "^9.6.0",
 {% if cache == "redis" %}
     "redis": "^5.0.0",

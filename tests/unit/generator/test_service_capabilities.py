@@ -6,9 +6,10 @@ from src.generator.service_capabilities import validate_service_extensions
 from src.utils.error_handling import ExtensionError
 
 
-def test_python_fastapi_container_accepts_implemented_extensions() -> None:
+@pytest.mark.parametrize("language", ["python", "rust", "typescript"])
+def test_container_services_accept_implemented_extensions(language: str) -> None:
     selection = validate_service_extensions(
-        language="python",
+        language=language,
         runtime="container",
         framework=None,
         database="postgres",
@@ -19,48 +20,6 @@ def test_python_fastapi_container_accepts_implemented_extensions() -> None:
     assert selection.database == "postgres"
     assert selection.cache == "redis"
     assert selection.auth == "jwt"
-
-
-def test_rust_container_accepts_implemented_extensions() -> None:
-    selection = validate_service_extensions(
-        language="rust",
-        runtime="container",
-        framework=None,
-        database="postgres",
-        cache="redis",
-        auth="jwt",
-    )
-
-    assert selection.database == "postgres"
-    assert selection.cache == "redis"
-    assert selection.auth == "jwt"
-
-
-def test_typescript_container_accepts_database_and_cache_extensions() -> None:
-    selection = validate_service_extensions(
-        language="typescript",
-        runtime="container",
-        framework=None,
-        database="postgres",
-        cache="redis",
-        auth=None,
-    )
-
-    assert selection.database == "postgres"
-    assert selection.cache == "redis"
-    assert selection.auth is None
-
-
-def test_typescript_services_reject_jwt_until_templates_exist() -> None:
-    with pytest.raises(ExtensionError, match="typescript/container/default"):
-        validate_service_extensions(
-            language="typescript",
-            runtime="container",
-            framework=None,
-            database=None,
-            cache=None,
-            auth="jwt",
-        )
 
 
 def test_cloudflare_worker_services_reject_extensions() -> None:
