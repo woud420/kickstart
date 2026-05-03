@@ -274,7 +274,7 @@ def test_create_interactive_typescript_service_can_select_postgres(
 ):
     """Test selecting Postgres for a TypeScript service interactively."""
     mock_load_config.return_value = mock_config
-    mock_prompt.ask.side_effect = ["service", "my-service", "/tmp", "typescript", "postgres"]
+    mock_prompt.ask.side_effect = ["service", "my-service", "/tmp", "typescript", "postgres", "none"]
     mock_confirm.ask.side_effect = [False, False]
 
     result = runner.invoke(app, ["create"])
@@ -282,6 +282,31 @@ def test_create_interactive_typescript_service_can_select_postgres(
     assert result.exit_code == 0
     mock_create_service.assert_called_once_with(
         "my-service", "typescript", False, mock_config, helm=False, root="/tmp", database="postgres"
+    )
+
+
+@patch('src.cli.main.create_service')
+@patch('src.cli.main.load_config')
+@patch('src.cli.main.Confirm')
+@patch('src.cli.main.Prompt')
+def test_create_interactive_typescript_service_can_select_redis(
+    mock_prompt,
+    mock_confirm,
+    mock_load_config,
+    mock_create_service,
+    runner,
+    mock_config,
+):
+    """Test selecting Redis for a TypeScript service interactively."""
+    mock_load_config.return_value = mock_config
+    mock_prompt.ask.side_effect = ["service", "my-service", "/tmp", "typescript", "none", "redis"]
+    mock_confirm.ask.side_effect = [False, False]
+
+    result = runner.invoke(app, ["create"])
+
+    assert result.exit_code == 0
+    mock_create_service.assert_called_once_with(
+        "my-service", "typescript", False, mock_config, helm=False, root="/tmp", cache="redis"
     )
 
 

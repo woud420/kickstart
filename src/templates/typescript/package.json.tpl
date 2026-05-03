@@ -21,6 +21,9 @@
     "pg": "^8.13.1",
 {% endif %}
     "pino": "^9.6.0",
+{% if cache == "redis" %}
+    "redis": "^5.0.0",
+{% endif %}
     "zod": "^3.24.2"
   },
   "devDependencies": {

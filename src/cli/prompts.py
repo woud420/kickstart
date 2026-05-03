@@ -96,6 +96,11 @@ def prompt_for_missing_args(
             if database == "none":
                 database = None
 
+        if lang in ("typescript", "ts") and cache is None:
+            cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
+            if cache == "none":
+                cache = None
+
         if lang == "rust":
             if cache is None:
                 cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")

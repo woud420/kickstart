@@ -131,9 +131,8 @@ def test_create_passes_service_extension_capabilities_to_manifest(mock_execute_c
     assert contract.service_extensions.auth == "jwt"
 
 
-def test_create_rejects_unsupported_typescript_service_cache_extension():
-    language = "typescript"
-    generator = ServiceGenerator("test-service", language, False, {}, cache="redis")
+def test_create_rejects_unsupported_go_service_cache_extension():
+    generator = ServiceGenerator("test-service", "go", False, {}, cache="redis")
 
     with pytest.raises(ExtensionError, match="cache extension 'redis' is not supported"):
         generator.create()
@@ -154,6 +153,19 @@ def test_create_rejects_unsupported_typescript_service_auth_extension():
 )
 def test_create_rejects_unsupported_rust_service_extension_categories(option, kwargs):
     generator = ServiceGenerator("test-service", "rust", False, {}, **kwargs)
+
+    with pytest.raises(ExtensionError, match=f"{option} extension '.+' is not supported"):
+        generator.create()
+
+
+@pytest.mark.parametrize(
+    ("option", "kwargs"),
+    [
+        ("auth", {"auth": "jwt"}),
+    ],
+)
+def test_create_rejects_unsupported_typescript_service_extension_categories(option, kwargs):
+    generator = ServiceGenerator("test-service", "typescript", False, {}, **kwargs)
 
     with pytest.raises(ExtensionError, match=f"{option} extension '.+' is not supported"):
         generator.create()
@@ -574,6 +586,20 @@ def test_create_typescript_structure_with_postgres_database(
         "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n",
     )
     mock_create_directories.assert_called_once_with(["migrations"])
+
+
+@patch.object(ServiceGenerator, 'write_content')
+@patch.object(ServiceGenerator, 'write_template')
+def test_create_typescript_structure_with_redis_cache(mock_write_template, mock_write_content, service_generator):
+    generator = ServiceGenerator("test-service", "typescript", False, {}, cache="redis")
+    generator._create_typescript_structure()
+
+    mock_write_template.assert_any_call("src/clients/cache.ts", "typescript/src/clients/cache.ts.tpl")
+    mock_write_template.assert_any_call("package.json", "typescript/package.json.tpl", cache="redis")
+    mock_write_content.assert_called_once_with(
+        ".env.example",
+        "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\nREDIS_URL=redis://127.0.0.1:6379/0\n",
+    )
 
 
 def test_typescript_alias_normalizes_to_template_directory():

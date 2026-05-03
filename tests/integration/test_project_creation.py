@@ -273,6 +273,29 @@ class TestServiceCreation:
             project_path / ".env.example"
         ).read_text()
 
+    def test_typescript_service_redis_cache_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+        """Test TypeScript service generation with Redis cache support."""
+        service_name = "test-typescript-redis-service"
+
+        generator = ServiceGenerator(
+            name=service_name,
+            lang="typescript",
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+            cache="redis",
+        )
+        generator.create()
+
+        project_path = temp_project_dir / service_name
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+
+        assert manifest["capabilities"] == {"service_extensions": {"cache": "redis"}}
+        assert (project_path / "src/clients/cache.ts").exists()
+        assert '"redis": "^5.0.0"' in (project_path / "package.json").read_text()
+        assert "REDIS_URL: z.string().url()" in (project_path / "src/config/env.ts").read_text()
+        assert "REDIS_URL=redis://127.0.0.1:6379/0" in (project_path / ".env.example").read_text()
+
     def test_typescript_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
         """Test TypeScript Cloudflare Worker service creation."""
         service_name = "test-worker-service"

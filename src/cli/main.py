@@ -150,7 +150,7 @@ def create(
     cache: Optional[str] = typer.Option(
         None,
         "--cache",
-        help="Cache extension (implemented: redis for Python/FastAPI and Rust container services)",
+        help="Cache extension (implemented: redis for Python/FastAPI, Rust, and TypeScript container services)",
     ),
     auth: Optional[str] = typer.Option(
         None,

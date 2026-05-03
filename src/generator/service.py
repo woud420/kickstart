@@ -424,13 +424,32 @@ class ServiceGenerator(BaseGenerator):
         a health route, and a small test harness.
         """
         include_postgres_database = self.database == "postgres"
-        self._write_template_configs(typescript_service_templates(include_postgres_database=include_postgres_database))
-        self._write_content_files(typescript_service_content_files(include_postgres_database=include_postgres_database))
+        include_redis_cache = self.cache == "redis"
+        self._write_template_configs(
+            typescript_service_templates(
+                include_postgres_database=include_postgres_database,
+                include_redis_cache=include_redis_cache,
+            )
+        )
+        self._write_content_files(
+            typescript_service_content_files(
+                include_postgres_database=include_postgres_database,
+                include_redis_cache=include_redis_cache,
+            )
+        )
         if include_postgres_database:
             self.write_template("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
-            self.write_template("package.json", "typescript/package.json.tpl", database="postgres")
             self.create_directories(["migrations"])
             self.write_template("migrations/001_initial.sql", "typescript/extensions/database/migrations.sql.tpl")
+        if include_redis_cache:
+            self.write_template("src/clients/cache.ts", "typescript/src/clients/cache.ts.tpl")
+        if include_postgres_database or include_redis_cache:
+            package_vars: dict[str, str] = {}
+            if include_postgres_database:
+                package_vars["database"] = "postgres"
+            if include_redis_cache:
+                package_vars["cache"] = "redis"
+            self.write_template("package.json", "typescript/package.json.tpl", **package_vars)
 
     def _write_content_files(self, files: Sequence[ContentFile]) -> None:
         """Write direct content files from a typed setup plan."""
