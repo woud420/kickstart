@@ -14,6 +14,7 @@ class MonorepoGenerator(BaseGenerator):
     knowledge: str
     runtime: str
     spec: MonorepoSpec
+    selection: MonorepoSelection
 
     VALID_CLOUDS = set(stack_registry.clouds)
     VALID_KNOWLEDGE = set(stack_registry.knowledge)
@@ -47,10 +48,16 @@ class MonorepoGenerator(BaseGenerator):
         self.cloud = spec.cloud
         self.knowledge = spec.knowledge
         self.runtime = spec.runtime
+        self.selection = stack_registry.monorepo_selection(
+            self.cloud,
+            self.knowledge,
+            self.runtime,
+            helm=self.helm,
+        )
         self.template_dir = self.template_dir / "monorepo"
 
     def create(self) -> None:
-        selection = self._selection()
+        selection = self.selection
 
         directories = monorepo_directories(selection)
         
@@ -107,7 +114,7 @@ class MonorepoGenerator(BaseGenerator):
 
     def _selection(self) -> MonorepoSelection:
         """Return the validated stack selection for this monorepo."""
-        return stack_registry.monorepo_selection(self.cloud, self.knowledge, self.runtime, helm=self.helm)
+        return self.selection
 
     def _clouds(self) -> list[str]:
         """Return concrete cloud providers to scaffold."""
@@ -163,7 +170,7 @@ class MonorepoGenerator(BaseGenerator):
         )
 
     def _template_vars(self) -> dict[str, TemplateValue]:
-        selection = self._selection()
+        selection = self.selection
         return {
             "monorepo_name": self.name,
             "service_name": self.name,

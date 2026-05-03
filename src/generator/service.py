@@ -4,6 +4,8 @@ from src.generator.base import BaseGenerator
 from src.generator.language_setup import (
     cpp_service_content_files,
     go_service_content_files,
+    python_init_content_files,
+    python_service_content_files,
     rust_service_content_files,
     typescript_service_content_files,
     typescript_service_templates,
@@ -388,23 +390,20 @@ class ServiceGenerator(BaseGenerator):
         - Clean architecture with proper separation of concerns
         - Type hints and proper error handling
         """
-        # Create __init__.py files for all Python packages
-        for package_path in python_package_directories():
-            self.write_content(f"{package_path}/__init__.py", "")
+        self.write_content_files(python_init_content_files(python_package_directories()))
 
-        for template in python_service_core_template_plan(self.framework).entries():
-            self.write_template(template.target, template.template, **template.vars)
+        self.write_templates_from_plan(python_service_core_template_plan(self.framework))
         
         # Add extensions based on flags (only for FastAPI framework)
         if self.framework != "minimal":
             self._add_python_extensions()
         
-        # Create environment example
-        self.write_content(".env.example", self._read_template_text("python/core/env.example.tpl"))
-        
-        # Create basic migration file as example
-        self.write_content("migrations/001_initial.sql", self._read_template_text("python/core/migrations/001_initial.sql.tpl"))
-        self.write_content("tests/test_smoke.py", "def test_generated_scaffold() -> None:\n    assert True\n")
+        self.write_content_files(
+            python_service_content_files(
+                env_content=self._read_template_text("python/core/env.example.tpl"),
+                migration_content=self._read_template_text("python/core/migrations/001_initial.sql.tpl"),
+            )
+        )
         
         self.create_directories(["migrations"])
 

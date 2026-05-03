@@ -1,5 +1,7 @@
 """Static language setup plans for service generators."""
 
+from collections.abc import Sequence
+
 from src.generator.file_plan import ContentFile
 from src.stack.types import TemplateConfig
 from src.utils.types import TemplateVars
@@ -79,6 +81,21 @@ LOG_LEVEL=info
 TYPESCRIPT_POSTGRES_ENV_EXAMPLE_CONTENT = (
     f"{TYPESCRIPT_ENV_EXAMPLE_CONTENT}DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n"
 )
+PYTHON_SMOKE_TEST_CONTENT = "def test_generated_scaffold() -> None:\n    assert True\n"
+
+
+def python_init_content_files(package_paths: Sequence[str]) -> tuple[ContentFile, ...]:
+    """Return Python package marker files for generated package directories."""
+    return tuple(ContentFile(f"{package_path}/__init__.py", "") for package_path in package_paths)
+
+
+def python_service_content_files(*, env_content: str, migration_content: str) -> tuple[ContentFile, ...]:
+    """Return direct content files for Python services."""
+    return (
+        ContentFile(".env.example", env_content),
+        ContentFile("migrations/001_initial.sql", migration_content),
+        ContentFile("tests/test_smoke.py", PYTHON_SMOKE_TEST_CONTENT),
+    )
 
 
 def rust_service_content_files(
