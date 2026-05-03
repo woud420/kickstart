@@ -4,12 +4,12 @@ These tests validate the complete project creation process from CLI input
 to final project structure, ensuring all components work together correctly.
 """
 
+from collections.abc import Iterator
 import pytest
 import tempfile
 import shutil
 import json
 from pathlib import Path
-from typing import Any, Dict
 from unittest.mock import patch
 
 from src.api import create_service, create_frontend, create_lib, create_cli, create_monorepo
@@ -18,10 +18,11 @@ from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibGenerator
 from src.generator.monorepo import MonorepoGenerator
 from src.utils.error_handling import LanguageNotSupportedError
+from src.utils.types import GeneratorConfig
 
 
 @pytest.fixture
-def temp_project_dir():
+def temp_project_dir() -> Iterator[Path]:
     """Create a temporary directory for test projects."""
     temp_dir = Path(tempfile.mkdtemp())
     yield temp_dir
@@ -29,7 +30,7 @@ def temp_project_dir():
 
 
 @pytest.fixture  
-def mock_config():
+def mock_config() -> GeneratorConfig:
     """Mock configuration for testing."""
     return {
         "default_language": "python",
@@ -41,7 +42,7 @@ def mock_config():
 class TestServiceCreation:
     """Test end-to-end service creation workflows."""
     
-    def test_python_service_creation_complete_workflow(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_python_service_creation_complete_workflow(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test complete Python service creation workflow.
         
         Validates:
@@ -120,7 +121,7 @@ class TestServiceCreation:
         assert manifest["artifacts"] == {"image": "dockerfile"}
         assert manifest["capabilities"] == {}
 
-    def test_python_service_extension_manifest(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_python_service_extension_manifest(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test Python service extensions are recorded in the scaffold manifest."""
         service_name = "test-python-service-extensions"
 
@@ -150,7 +151,7 @@ class TestServiceCreation:
         assert (project_path / "src/clients/cache.py").exists()
         assert (project_path / "src/handler/auth.py").exists()
     
-    def test_rust_service_creation_with_helm(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_rust_service_creation_with_helm(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test Rust service creation with Helm charts."""
         service_name = "test-rust-service"
         
@@ -199,7 +200,7 @@ class TestServiceCreation:
         assert manifest["execution"] == {"models": ["container"], "platforms": ["kubernetes"]}
         assert manifest["artifacts"] == {"image": "dockerfile", "kubernetes": "helm"}
 
-    def test_rust_service_redis_cache_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_rust_service_redis_cache_extension(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test Rust service generation with Redis cache support."""
         service_name = "test-rust-redis-service"
 
@@ -223,7 +224,7 @@ class TestServiceCreation:
         assert "redis = " in (project_path / "Cargo.toml").read_text()
         assert "REDIS_URL=redis://127.0.0.1:6379/0" in (project_path / ".env.example").read_text()
 
-    def test_rust_service_jwt_auth_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_rust_service_jwt_auth_extension(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test Rust service generation with JWT auth support."""
         service_name = "test-rust-jwt-service"
 
@@ -247,7 +248,7 @@ class TestServiceCreation:
         assert "jsonwebtoken = " in (project_path / "Cargo.toml").read_text()
         assert "JWT_SECRET=change-me-change-me" in (project_path / ".env.example").read_text()
 
-    def test_typescript_service_postgres_database_extension(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_typescript_service_postgres_database_extension(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test TypeScript service generation with Postgres database support."""
         service_name = "test-typescript-postgres-service"
 
@@ -273,7 +274,7 @@ class TestServiceCreation:
             project_path / ".env.example"
         ).read_text()
 
-    def test_typescript_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_typescript_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test TypeScript Cloudflare Worker service creation."""
         service_name = "test-worker-service"
 
@@ -349,7 +350,7 @@ class TestServiceCreation:
         assert "This profile is an explicit scaffold contract" in readme
         assert "make check" in readme
 
-    def test_rust_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_rust_cloudflare_worker_creation(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test Rust Cloudflare Worker service creation."""
         service_name = "test-rust-worker"
 
@@ -374,7 +375,7 @@ class TestServiceCreation:
         assert 'crate-type = ["cdylib"]' in cargo_toml
         assert 'worker = "0.8"' in cargo_toml
     
-    def test_service_creation_error_handling(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_service_creation_error_handling(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test error handling during service creation."""
         service_name = "test-service-errors"
         
@@ -400,7 +401,7 @@ class TestServiceCreation:
 class TestFrontendCreation:
     """Test end-to-end frontend creation workflows."""
     
-    def test_react_frontend_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_react_frontend_creation(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test React frontend project creation."""
         frontend_name = "test-react-app"
         
@@ -434,7 +435,7 @@ class TestFrontendCreation:
 class TestLibraryCreation:
     """Test end-to-end library creation workflows."""
     
-    def test_python_library_creation(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_python_library_creation(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test Python library project creation."""
         lib_name = "test-python-lib"
         
@@ -468,7 +469,7 @@ class TestLibraryCreation:
 class TestMonorepoCreation:
     """Test end-to-end monorepo creation workflows."""
     
-    def test_monorepo_creation_with_helm(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_monorepo_creation_with_helm(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test monorepo creation with Helm support."""
         mono_name = "test-monorepo"
         
@@ -504,7 +505,7 @@ class TestMonorepoCreation:
 class TestAPIFunctions:
     """Test the high-level API functions used by CLI."""
     
-    def test_create_service_api(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_create_service_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test the create_service API function."""
         service_name = "api-test-service"
         
@@ -522,7 +523,7 @@ class TestAPIFunctions:
         assert project_path.exists()
         assert (project_path / "src").exists()
     
-    def test_create_frontend_api(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_create_frontend_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test the create_frontend API function."""
         frontend_name = "api-test-frontend"
         
@@ -538,7 +539,7 @@ class TestAPIFunctions:
         assert project_path.exists()
         assert (project_path / "src").exists()
     
-    def test_create_lib_api(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_create_lib_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test the create_lib API function."""
         lib_name = "api-test-lib"
         
@@ -555,7 +556,7 @@ class TestAPIFunctions:
         assert project_path.exists()
         assert (project_path / "src").exists()
     
-    def test_create_cli_api(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_create_cli_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test the create_cli API function."""
         cli_name = "api-test-cli"
         
@@ -572,7 +573,7 @@ class TestAPIFunctions:
         assert project_path.exists()
         assert (project_path / "src").exists()
     
-    def test_create_monorepo_api(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_create_monorepo_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test the create_monorepo API function."""
         mono_name = "api-test-monorepo"
         
@@ -590,7 +591,7 @@ class TestAPIFunctions:
         assert (project_path / "services").exists()
         assert (project_path / "infra/k8s/base/deployment.yaml").exists()
 
-    def test_create_monorepo_api_with_cloudflare(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_create_monorepo_api_with_cloudflare(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test that Cloudflare monorepos render Cloudflare Terraform only."""
         mono_name = "api-test-cloudflare-monorepo"
 
@@ -618,7 +619,7 @@ class TestAPIFunctions:
         assert "gcp_project_id" not in variables_tf
 
     def test_create_monorepo_api_with_cloudflare_workers_runtime(
-        self, temp_project_dir: Path, mock_config: Dict[str, Any]
+        self, temp_project_dir: Path, mock_config: GeneratorConfig
     ):
         """Test that Cloudflare Workers runtime renders Worker runtime docs."""
         mono_name = "api-test-worker-runtime-monorepo"
@@ -644,7 +645,7 @@ class TestAPIFunctions:
 class TestErrorRecovery:
     """Test error recovery and graceful degradation."""
     
-    def test_template_missing_graceful_failure(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_template_missing_graceful_failure(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test graceful handling when templates are missing."""
         service_name = "test-missing-templates"
         
@@ -663,7 +664,7 @@ class TestErrorRecovery:
         
         # The method should fail before creating the project directory.
     
-    def test_permission_error_handling(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_permission_error_handling(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test handling of permission errors during file creation."""
         service_name = "test-permissions"
         
@@ -695,7 +696,7 @@ class TestErrorRecovery:
 class TestTemplateRendering:
     """Test template rendering and variable substitution."""
     
-    def test_template_variable_substitution(self, temp_project_dir: Path, mock_config: Dict[str, Any]):
+    def test_template_variable_substitution(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test that template variables are correctly substituted."""
         service_name = "variable-test-service"
         
