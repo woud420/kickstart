@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 from src.generator.language_setup import typescript_service_templates
@@ -19,26 +20,60 @@ from src.utils.extension_manager import ExtensionManager
 
 TEMPLATE_ROOT = Path("src/templates")
 
-KNOWN_BLUEPRINT_PREFIXES = (
-    "python/base/",
-    "python/core/api/",
-    "python/core/infrastructure/",
-    "python/core/model/dto/",
-    "python/core/model/entities/",
-    "python/core/services/",
-    "python/core/validators/",
-    "python/dao/",
-    "python/repository/",
-)
 
-KNOWN_BLUEPRINT_FILES = {
-    "_shared/base_gitignore.tpl",
-    "_shared/lang_config.py",
-    "_shared/project_structure.md",
-    "_shared/service_readme.tpl",
-    "python/core/__init__.py.tpl",
-    "python/core/model/schemas.py.tpl",
-}
+@dataclass(frozen=True)
+class BlueprintTemplateSet:
+    """Known intentionally retained templates that are not active defaults yet."""
+
+    name: str
+    prefixes: tuple[str, ...] = ()
+    files: tuple[str, ...] = ()
+
+    def contains(self, path: str) -> bool:
+        """Return True when the template belongs to this blueprint set."""
+        return path in self.files or path.startswith(self.prefixes)
+
+
+@dataclass(frozen=True)
+class TemplateFamilySummary:
+    """Per-family template wiring counts."""
+
+    family: str
+    active: int
+    blueprint: int
+    unknown: int
+    total: int
+
+
+KNOWN_BLUEPRINT_SETS = (
+    BlueprintTemplateSet(
+        name="shared-reference",
+        files=(
+            "_shared/base_gitignore.tpl",
+            "_shared/lang_config.py",
+            "_shared/project_structure.md",
+            "_shared/service_readme.tpl",
+        ),
+    ),
+    BlueprintTemplateSet(
+        name="python-rich-service-reference",
+        prefixes=(
+            "python/base/",
+            "python/core/api/",
+            "python/core/infrastructure/",
+            "python/core/model/dto/",
+            "python/core/model/entities/",
+            "python/core/services/",
+            "python/core/validators/",
+            "python/dao/",
+            "python/repository/",
+        ),
+        files=(
+            "python/core/__init__.py.tpl",
+            "python/core/model/schemas.py.tpl",
+        ),
+    ),
+)
 
 
 def main() -> None:
@@ -57,6 +92,13 @@ def main() -> None:
     print(f"active templates: {len(active & files)}")
     print(f"blueprint templates: {len(blueprints)}")
     print(f"unknown templates: {len(unknown)}")
+    print("template families:")
+    for summary in _family_summaries(files, active, blueprints):
+        print(
+            f"  {summary.family}: "
+            f"{summary.active} active, {summary.blueprint} blueprint, "
+            f"{summary.unknown} unknown, {summary.total} total"
+        )
     for path in unknown:
         print(f"unknown: {path}")
 
@@ -175,7 +217,36 @@ def _jinja_references(template_text: str) -> set[str]:
 
 
 def _is_known_blueprint(path: str) -> bool:
-    return path in KNOWN_BLUEPRINT_FILES or path.startswith(KNOWN_BLUEPRINT_PREFIXES)
+    return any(blueprint_set.contains(path) for blueprint_set in KNOWN_BLUEPRINT_SETS)
+
+
+def _family_summaries(
+    files: set[str],
+    active: set[str],
+    blueprints: set[str],
+) -> tuple[TemplateFamilySummary, ...]:
+    """Return active/blueprint/unknown counts grouped by top-level template family."""
+    summaries: list[TemplateFamilySummary] = []
+    for family in sorted({_template_family(path) for path in files}):
+        family_files = {path for path in files if _template_family(path) == family}
+        family_active = family_files & active
+        family_blueprints = family_files & blueprints
+        family_unknown = family_files - family_active - family_blueprints
+        summaries.append(
+            TemplateFamilySummary(
+                family=family,
+                active=len(family_active),
+                blueprint=len(family_blueprints),
+                unknown=len(family_unknown),
+                total=len(family_files),
+            )
+        )
+    return tuple(summaries)
+
+
+def _template_family(path: str) -> str:
+    """Return the top-level template family for a template path."""
+    return path.split("/", 1)[0]
 
 
 if __name__ == "__main__":

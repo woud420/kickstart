@@ -1,10 +1,11 @@
 import Fastify from "fastify";
 import helmet from "@fastify/helmet";
+import type { FastifyInstance } from "fastify";
 
 import { env } from "./config/env.js";
 import { registerHealthRoutes } from "./routes/health.js";
 
-export async function buildApp() {
+export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,

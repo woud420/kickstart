@@ -15,11 +15,14 @@ import random
 import shutil
 import subprocess
 import sys
-from typing import Literal
+from typing import Literal, TypeGuard, cast
 
 
 ProjectScale = Literal["micro", "small", "medium", "large"]
 ComponentKind = Literal["system", "service", "worker", "frontend", "cli", "library"]
+JsonScalar = str | int | float | bool | None
+type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
+type ManifestObject = dict[str, JsonValue]
 
 
 @dataclass(frozen=True)
@@ -464,19 +467,19 @@ def _compact_output(stdout: str, stderr: str) -> str:
     return " / ".join(lines[-3:])[:240]
 
 
-def _load_manifest(path: Path, issues: list[str]) -> dict[str, object] | None:
+def _load_manifest(path: Path, issues: list[str]) -> ManifestObject | None:
     try:
-        payload = json.loads(path.read_text())
+        payload = cast(JsonValue, json.loads(path.read_text()))
     except json.JSONDecodeError as exc:
         issues.append(f"manifest json decode failed: {exc}")
         return None
-    if not isinstance(payload, dict):
+    if not _is_json_object(payload):
         issues.append("manifest root is not an object")
         return None
     return payload
 
 
-def _validate_common_contract(target_path: Path, manifest: dict[str, object], issues: list[str]) -> None:
+def _validate_common_contract(target_path: Path, manifest: ManifestObject, issues: list[str]) -> None:
     required_paths = (
         "AGENTS.md",
         "docs/architecture/README.md",
@@ -492,7 +495,7 @@ def _validate_common_contract(target_path: Path, manifest: dict[str, object], is
         issues.append("manifest still contains legacy options object")
 
     project = manifest.get("project")
-    if not isinstance(project, dict):
+    if not _is_json_object(project):
         issues.append("manifest project is not an object")
     else:
         if "type" in project:
@@ -502,20 +505,25 @@ def _validate_common_contract(target_path: Path, manifest: dict[str, object], is
         if "repo_layout" not in project:
             issues.append("manifest project.repo_layout missing")
 
-    if not isinstance(manifest.get("execution"), dict):
+    if not _is_json_object(manifest.get("execution")):
         issues.append("manifest execution is not an object")
-    if not isinstance(manifest.get("artifacts"), dict):
+    if not _is_json_object(manifest.get("artifacts")):
         issues.append("manifest artifacts is not an object")
-    if not isinstance(manifest.get("provider"), dict):
+    if not _is_json_object(manifest.get("provider")):
         issues.append("manifest provider is not an object")
 
 
-def _validate_kind_contract(component: ComponentPlan, target_path: Path, manifest: dict[str, object], issues: list[str]) -> None:
+def _validate_kind_contract(
+    component: ComponentPlan,
+    target_path: Path,
+    manifest: ManifestObject,
+    issues: list[str],
+) -> None:
     project = manifest.get("project")
     execution = manifest.get("execution")
     artifacts = manifest.get("artifacts")
     provider = manifest.get("provider")
-    if not isinstance(project, dict) or not isinstance(execution, dict) or not isinstance(artifacts, dict):
+    if not _is_json_object(project) or not _is_json_object(execution) or not _is_json_object(artifacts):
         return
 
     kind = project.get("kind")
@@ -526,7 +534,7 @@ def _validate_kind_contract(component: ComponentPlan, target_path: Path, manifes
         _expect_list_member(execution, "platforms", "cloudflare-workers", issues)
         if artifacts.get("worker") != "wrangler":
             issues.append("worker manifest missing wrangler artifact")
-        if isinstance(provider, dict) and "cloudflare" not in _string_list(provider.get("targets")):
+        if _is_json_object(provider) and "cloudflare" not in _string_list(provider.get("targets")):
             issues.append("worker provider target does not include cloudflare")
         if (target_path / "Dockerfile").exists():
             issues.append("worker generated a Dockerfile")
@@ -556,16 +564,20 @@ def _validate_kind_contract(component: ComponentPlan, target_path: Path, manifes
         issues.append(f"library generated manifest kind {kind!r}")
 
 
-def _expect_list_member(source: dict[str, object], key: str, expected: str, issues: list[str]) -> None:
+def _expect_list_member(source: ManifestObject, key: str, expected: str, issues: list[str]) -> None:
     values = _string_list(source.get(key))
     if expected not in values:
         issues.append(f"manifest {key} missing {expected}")
 
 
-def _string_list(value: object) -> tuple[str, ...]:
+def _string_list(value: JsonValue | None) -> tuple[str, ...]:
     if not isinstance(value, list):
         return ()
     return tuple(item for item in value if isinstance(item, str))
+
+
+def _is_json_object(value: JsonValue | None) -> TypeGuard[ManifestObject]:
+    return isinstance(value, dict)
 
 
 def _validate_helm(target_path: Path, issues: list[str]) -> None:
@@ -594,11 +606,11 @@ def _validate_helm(target_path: Path, issues: list[str]) -> None:
                     issues.append(f"helm deployment contains collapsed fragment {bad_fragment!r}")
 
 
-def _validate_system(target_path: Path, manifest: dict[str, object], issues: list[str]) -> None:
+def _validate_system(target_path: Path, manifest: ManifestObject, issues: list[str]) -> None:
     execution = manifest.get("execution")
     artifacts = manifest.get("artifacts")
     provider = manifest.get("provider")
-    if not isinstance(execution, dict) or not isinstance(artifacts, dict) or not isinstance(provider, dict):
+    if not _is_json_object(execution) or not _is_json_object(artifacts) or not _is_json_object(provider):
         return
 
     platforms = _string_list(execution.get("platforms"))
