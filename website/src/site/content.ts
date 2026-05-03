@@ -185,7 +185,7 @@ export const commandExamples: CommandExample[] = [
     label: "rust cli",
     title: "rust cli",
     command: "kickstart create cli ops-tool --lang rust",
-    summary: "Writes a Rust CLI with Cargo metadata, source entrypoint, tests, Makefile, README, docs, and an agent scaffold contract.",
+    summary: "Writes a Rust CLI with Cargo metadata, source entrypoint, Makefile, README, docs, and an agent scaffold contract.",
     output: [
       "Cargo.toml",
       "src/main.rs",

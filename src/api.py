@@ -27,9 +27,9 @@ def create_service(name: str, lang: str, gh: bool, config: GeneratorConfig, *, h
         config: Configuration dictionary
         helm: Include Helm charts
         root: Root directory
-        database: Database extension (postgres, mysql, sqlite)
-        cache: Cache extension (redis, memcached)
-        auth: Authentication extension (jwt, oauth)
+        database: Database extension (implemented: postgres for Python/FastAPI and TypeScript container services)
+        cache: Cache extension (implemented: redis for Python/FastAPI and Rust container services)
+        auth: Authentication extension (implemented: jwt for Python/FastAPI and Rust container services)
         framework: HTTP framework (None for FastAPI default, minimal for standard library)
         runtime: Service execution profile (container or cloudflare-workers)
     """

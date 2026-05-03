@@ -18,7 +18,12 @@ from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
 from src.stack.types import TemplateConfig
 from src.generator.layouts import python_package_directories, service_directories, worker_directories
-from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract, ScaffoldServiceExtensions
+from src.generator.scaffold_contract import (
+    ScaffoldArtifacts,
+    ScaffoldContract,
+    ScaffoldLifecycle,
+    ScaffoldServiceExtensions,
+)
 from src.generator.service_capabilities import ServiceExtensionSelection, validate_service_extensions
 from src.generator.specs import ServiceSpec
 from src.generator.template_plan import TemplatePlan
@@ -80,9 +85,9 @@ class ServiceGenerator(BaseGenerator):
             config: Configuration dictionary with user preferences
             helm: Whether to include Helm chart scaffolding
             root: Root directory for project creation (optional)
-            database: Database extension (postgres, mysql, sqlite)
-            cache: Cache extension (redis, memcached)
-            auth: Authentication extension (jwt, oauth)
+            database: Database extension (implemented: postgres for Python/FastAPI and TypeScript container services)
+            cache: Cache extension (implemented: redis for Python/FastAPI and Rust container services)
+            auth: Authentication extension (implemented: jwt for Python/FastAPI and Rust container services)
             framework: HTTP framework (None for FastAPI default, minimal for standard library)
             runtime: Runtime target (container or cloudflare-workers)
             
@@ -237,6 +242,7 @@ class ServiceGenerator(BaseGenerator):
                 runtime_platforms=("cloudflare-workers",),
                 artifacts=ScaffoldArtifacts(worker="wrangler"),
                 provider_targets=("cloudflare",),
+                lifecycle=self._cloudflare_worker_lifecycle(),
             ),
             success_message=success_message,
             github_create_fn=github_create_fn if self.gh else None,
@@ -253,6 +259,20 @@ class ServiceGenerator(BaseGenerator):
         """Return a typed template plan for Cloudflare Worker services."""
         selection = stack_registry.service_selection(self.lang, "cloudflare-workers")
         return TemplatePlan.from_templates(selection.templates)
+
+    def _cloudflare_worker_lifecycle(self) -> ScaffoldLifecycle | None:
+        """Return profile-specific lifecycle metadata for Worker services."""
+        if self.lang != "rust":
+            return None
+
+        return ScaffoldLifecycle(
+            install="make install",
+            test="make test",
+            check="make check",
+            build="make build",
+            dev="make dev",
+            deploy="make deploy",
+        )
 
     def _is_typescript_cloudflare_worker(self) -> bool:
         """Return True when generating the TypeScript Cloudflare Worker profile."""

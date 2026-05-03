@@ -6,7 +6,7 @@ Accepted for initial scaffold.
 
 ## Context
 
-This workspace starts from a polyglot application shape: Python, Rust, and C++ for services and tooling, TypeScript for user-facing and edge code, SQL for durable data contracts, Docker for local parity, and Terraform for provider resources.
+This workspace starts from a polyglot application shape: Python, Rust, TypeScript, C++, and Go for services, Python and Rust for package/CLI tooling, SQL for durable data contracts, Docker for local parity, and Terraform for provider resources.
 
 TypeScript workspaces use Bun for package/runtime workflow and Turbo for task orchestration. Generated directories separate deployable `apps/`, reusable `packages/`, service runtimes, shared `config/`, and durable `knowledge/`.
 

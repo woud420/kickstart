@@ -55,8 +55,6 @@ languages: dict[str, LanguageProfile] = {
         id="go",
         display_name="Go",
         service_runtimes=("container",),
-        library=True,
-        cli=True,
         smoke_commands={
             "container": ("make install", "make test", "make check", "make build"),
         },
