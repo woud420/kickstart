@@ -52,6 +52,7 @@ Implemented service extensions are intentionally narrow. As of this contract:
 
 - Python/FastAPI container services support `postgres`, `redis`, and `jwt`.
 - Rust container services support `redis`.
+- TypeScript container services support `postgres`.
 
 Do not pass unsupported extension options and assume they were generated.
 

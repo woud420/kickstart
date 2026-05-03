@@ -139,6 +139,13 @@ def test_create_rejects_unsupported_typescript_service_cache_extension():
         generator.create()
 
 
+def test_create_rejects_unsupported_typescript_service_auth_extension():
+    generator = ServiceGenerator("test-service", "typescript", False, {}, auth="jwt")
+
+    with pytest.raises(ExtensionError, match="auth extension 'jwt' is not supported"):
+        generator.create()
+
+
 @pytest.mark.parametrize(
     ("option", "kwargs"),
     [
@@ -507,6 +514,32 @@ def test_create_typescript_structure(mock_write_template, mock_write_content, se
 
     mock_write_template.assert_has_calls(expected_calls, any_order=True)
     mock_write_content.assert_called_once_with(".env.example", "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n")
+
+
+@patch.object(ServiceGenerator, 'create_directories')
+@patch.object(ServiceGenerator, 'write_content')
+@patch.object(ServiceGenerator, 'write_template')
+def test_create_typescript_structure_with_postgres_database(
+    mock_write_template,
+    mock_write_content,
+    mock_create_directories,
+    service_generator,
+):
+    generator = ServiceGenerator("test-service", "typescript", False, {}, database="postgres")
+    generator._create_typescript_structure()
+
+    mock_write_template.assert_any_call("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
+    mock_write_template.assert_any_call("package.json", "typescript/package.json.tpl", database="postgres")
+    mock_write_template.assert_any_call(
+        "migrations/001_initial.sql",
+        "typescript/extensions/database/migrations.sql.tpl",
+    )
+    mock_write_content.assert_called_once_with(
+        ".env.example",
+        "HOST=0.0.0.0\nPORT=8080\nLOG_LEVEL=info\n"
+        "DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n",
+    )
+    mock_create_directories.assert_called_once_with(["migrations"])
 
 
 def test_typescript_alias_normalizes_to_template_directory():
