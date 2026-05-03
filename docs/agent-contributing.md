@@ -23,6 +23,27 @@ make tests
 
 If touching generation, create a before-output fixture in `/tmp` and compare it after the change.
 
+For the TypeScript Cloudflare Worker scaffold, keep the committed fixture in sync:
+
+- fixture: `tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker`
+- drift test: `tests/integration/test_scaffold_golden.py`
+
+Regenerate with:
+
+```bash
+tmpdir=$(mktemp -d)
+PYTHONPATH=$(pwd) poetry run python kickstart.py create service hello-worker --lang typescript --runtime cloudflare-worker --root "$tmpdir"
+rm -rf tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker
+mkdir -p tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker
+cp -R "$tmpdir/hello-worker/." tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker/
+```
+
+Then run:
+
+```bash
+PYTHONPATH=$(pwd) poetry run pytest tests/integration/test_scaffold_golden.py
+```
+
 ## Preferred Shape
 
 Generators should read like:

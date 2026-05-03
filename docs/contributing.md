@@ -18,6 +18,28 @@ kickstart should stay small, typed, and easy to inspect.
 4. For generator changes, compare generated output before and after.
 5. Commit source and test changes intentionally.
 
+## Updating committed golden fixtures
+
+The TypeScript Cloudflare Worker scaffold has a committed golden fixture at:
+
+- `tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker`
+- validated by `tests/integration/test_scaffold_golden.py`
+
+When intentional generator changes affect this scaffold, regenerate and review the fixture diff:
+
+```bash
+tmpdir=$(mktemp -d)
+PYTHONPATH=$(pwd) poetry run python kickstart.py create service hello-worker --lang typescript --runtime cloudflare-worker --root "$tmpdir"
+
+rm -rf tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker
+mkdir -p tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker
+cp -R "$tmpdir/hello-worker/." tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker/
+
+PYTHONPATH=$(pwd) poetry run pytest tests/integration/test_scaffold_golden.py
+```
+
+Keep fixture updates in the same commit as the generator change that required them.
+
 ## Test Commands
 
 ```bash
