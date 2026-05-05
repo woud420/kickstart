@@ -1,0 +1,44 @@
+# Local Evals
+
+kickstart has two useful local eval layers:
+
+- Scaffold shape: generate many supported project combinations and verify the generator commands succeed.
+- Generated project validation: run generated `make test` targets to catch template wiring, dependency, and toolchain issues.
+
+Reports should be written to scratch paths such as `/private/tmp`. Do not commit reports.
+
+## Scaffold Shape
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/scaffold_matrix_eval.py \
+  --count 500 \
+  --seed 6149 \
+  --max-components-per-project 15 \
+  --max-system-depth 2 \
+  --exclude-known-gaps \
+  --output-root /private/tmp/kickstart-scaffold-matrix-supported \
+  --report /private/tmp/kickstart-scaffold-matrix-supported.md
+```
+
+Expected result for the supported matrix is zero failed commands. The most recent local run generated 500 projects and 4696 components with 0 failed commands.
+
+## Generated Project Validation
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/generated_make_test_eval.py \
+  --output-root /private/tmp/kickstart-scaffold-matrix-supported \
+  --target test \
+  --dependency-mode cached \
+  --cache-root /private/tmp/kickstart-eval-cache \
+  --report /private/tmp/kickstart-generated-make-test-supported.md \
+  --timeout-seconds 90 \
+  --workers 12 \
+  --prewarm \
+  --prewarm-workers 2
+```
+
+This eval may need network access when dependencies are not already cached. The dependency cache is a performance tool, not part of generated behavior.
+
+The most recent local cached-network run validated 4696 generated Makefiles: 4589 passed and 107 failed. The prewarm phase passed 21 of 21 targets. Remaining failures were classified into dependency, install, and toolchain failure classes, mostly Bun concurrent install/cache `EEXIST` errors and `workerd` install failures under Node 25.
+
+When reporting this eval, include the pass count and the failure classes. Do not compress failures into a single pass/fail number.

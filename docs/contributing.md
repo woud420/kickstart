@@ -29,7 +29,7 @@ When intentional generator changes affect this scaffold, regenerate and review t
 
 ```bash
 tmpdir=$(mktemp -d)
-PYTHONPATH=$(pwd) poetry run python kickstart.py create service hello-worker --lang typescript --runtime cloudflare-worker --root "$tmpdir"
+PYTHONPATH=$(pwd) poetry run python kickstart.py create service hello-worker --lang typescript --runtime cloudflare-workers --root "$tmpdir"
 
 rm -rf tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker
 mkdir -p tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker

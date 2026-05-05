@@ -25,7 +25,7 @@ Languages:
 Execution model:
 
 - `container`: default service runtime
-- `cloudflare-workers`: TypeScript or Rust Worker scaffold
+- `cloudflare-workers`: TypeScript or Rust Worker scaffold. Singular forms such as `cloudflare-worker` are accepted aliases, but docs should use the plural canonical name.
 
 Implemented service extensions:
 
@@ -70,7 +70,7 @@ Artifact model:
 - Kubernetes is the platform for container workloads.
 - Kustomize and Helm are Kubernetes artifact styles.
 - Wrangler is the Cloudflare Worker artifact path.
-- Cloudflare Containers are reserved for Worker-controlled container images when that scaffold is added.
+- Cloudflare Containers are not implemented yet. Treat them as a future Cloudflare runtime, not as the current Cloudflare Worker scaffold.
 
 Knowledge adapter:
 
@@ -90,6 +90,7 @@ Prefer extending the typed plan layers before adding generator branches:
 - Service language setup plans live in `src/generator/language_setup.py`.
 - The generated scaffold contract lives in `src/generator/scaffold_contract.py`.
 - Stack choices live in `src/stack/`.
+- System generation currently lives in `src/generator/monorepo.py` and `src/templates/monorepo/` for historical compatibility.
 
 When adding a new scaffold option, add generated-output tests for the affected project type before refactoring that path.
 
