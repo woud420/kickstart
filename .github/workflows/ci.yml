@@ -247,8 +247,8 @@ jobs:
         run: bun run check
 
   build-test:
-    name: Package & Binary for ${{ matrix.platform }}
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    name: Manual Package & Binary for ${{ matrix.platform }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ${{ matrix.runner }}
     needs: [lint, test]
     strategy:

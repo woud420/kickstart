@@ -18,6 +18,7 @@ ResolvedCreateArgs = tuple[
     str,
     str,
     str | None,
+    str | None,
 ]
 
 
@@ -38,6 +39,7 @@ class CreateCommandOptions:
     cloud: str = "multi"
     knowledge: str = "none"
     runtime: str | None = None
+    workspace_tooling: str | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,7 @@ class CreateOptions:
     cloud: str = "multi"
     knowledge: str = "none"
     runtime: str | None = None
+    workspace_tooling: str | None = None
 
     def as_tuple(self) -> ResolvedCreateArgs:
         """Return the legacy tuple shape used by older CLI helper callers."""
@@ -74,6 +77,7 @@ class CreateOptions:
             self.cloud,
             self.knowledge,
             self.runtime,
+            self.workspace_tooling,
         )
 
 
@@ -89,11 +93,15 @@ class ServiceCreateKwargs(TypedDict, total=False):
     runtime: str
 
 
-class MonorepoCreateKwargs(TypedDict, total=False):
-    """Keyword arguments accepted by monorepo creation."""
+class SystemCreateKwargs(TypedDict, total=False):
+    """Keyword arguments accepted by system creation."""
 
     helm: bool
     root: str | None
     cloud: str
     knowledge: str
     runtime: str
+    workspace_tooling: str
+
+
+MonorepoCreateKwargs = SystemCreateKwargs

@@ -49,6 +49,7 @@ def prompt_for_missing_args(
     cloud = options.cloud
     knowledge = options.knowledge
     runtime = options.runtime
+    workspace_tooling = options.workspace_tooling
     interactive_mode = not project_type or not name
 
     if project_type and root is None:
@@ -58,7 +59,7 @@ def prompt_for_missing_args(
         typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
         project_type = prompt.ask(
             "What do you want to create?",
-            choices=["service", "frontend", "lib", "cli", "mono"],
+            choices=["service", "frontend", "lib", "cli", "system"],
         )
         name = prompt.ask("Project name?")
         if root is None:
@@ -66,7 +67,7 @@ def prompt_for_missing_args(
         default_language = cast(str, config.get("default_language", "python"))
         lang = prompt.ask("Language", default=default_language)
         gh = confirm.ask("Create GitHub repo?", default=False)
-        if project_type in ["mono", "service"]:
+        if project_type in ["mono", "monorepo", "system", "service"]:
             helm = confirm.ask("Use Helm scaffolding?", default=False)
 
     if project_type == "service" and interactive_mode:
@@ -124,4 +125,5 @@ def prompt_for_missing_args(
         cloud=cloud,
         knowledge=knowledge,
         runtime=runtime,
+        workspace_tooling=workspace_tooling,
     )

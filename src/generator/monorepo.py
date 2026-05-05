@@ -1,24 +1,26 @@
 from src.generator.base import BaseGenerator
 from src.utils.github import create_repo
-from src.stack.profile import stack_registry, MonorepoSelection
-from src.generator.layouts import monorepo_directories
+from src.stack.profile import stack_registry, SystemSelection
+from src.generator.layouts import system_directories
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
-from src.generator.specs import MonorepoSpec
+from src.generator.specs import SystemSpec
 from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig, TemplateValue
 
-class MonorepoGenerator(BaseGenerator):
+
+class SystemGenerator(BaseGenerator):
     helm: bool
     gh: bool
     cloud: str
     knowledge: str
     runtime: str
-    spec: MonorepoSpec
-    selection: MonorepoSelection
+    workspace_tooling: str
+    spec: SystemSpec
+    selection: SystemSelection
 
     VALID_CLOUDS = set(stack_registry.clouds)
     VALID_KNOWLEDGE = set(stack_registry.knowledge)
-    VALID_RUNTIMES = set(stack_registry.monorepo_runtimes)
+    VALID_RUNTIMES = set(stack_registry.system_runtimes)
     
     def __init__(
         self,
@@ -30,8 +32,9 @@ class MonorepoGenerator(BaseGenerator):
         cloud: str = "multi",
         knowledge: str = "none",
         runtime: str = "kubernetes",
+        workspace_tooling: str = "none",
     ) -> None:
-        spec = MonorepoSpec.from_options(
+        spec = SystemSpec.from_options(
             name=name,
             gh=gh,
             config=config,
@@ -40,6 +43,7 @@ class MonorepoGenerator(BaseGenerator):
             cloud=cloud,
             knowledge=knowledge,
             runtime=runtime,
+            workspace_tooling=workspace_tooling,
         )
         super().__init__(spec.name, spec.config, spec.root)
         self.spec = spec
@@ -48,10 +52,12 @@ class MonorepoGenerator(BaseGenerator):
         self.cloud = spec.cloud
         self.knowledge = spec.knowledge
         self.runtime = spec.runtime
-        self.selection = stack_registry.monorepo_selection(
+        self.workspace_tooling = spec.workspace_tooling
+        self.selection = stack_registry.system_selection(
             self.cloud,
             self.knowledge,
             self.runtime,
+            self.workspace_tooling,
             helm=self.helm,
         )
         self.template_dir = self.template_dir / "monorepo"
@@ -59,7 +65,7 @@ class MonorepoGenerator(BaseGenerator):
     def create(self) -> None:
         selection = self.selection
 
-        directories = monorepo_directories(selection)
+        directories = system_directories(selection)
         
         template_vars = self._template_vars()
         template_plan = TemplatePlan.from_templates(selection.templates, template_vars)
@@ -85,14 +91,15 @@ class MonorepoGenerator(BaseGenerator):
                 artifacts=self._artifact_contract(selection),
                 provider_targets=selection.clouds,
                 knowledge_adapter=selection.knowledge,
+                workspace_tooling=selection.workspace_tooling,
             ),
             success_message=success_message,
-            additional_setup_fn=self._setup_monorepo_specific,
+            additional_setup_fn=self._setup_system_specific,
             github_create_fn=github_create_fn if self.gh else None
         )
     
-    def _setup_monorepo_specific(self) -> bool:
-        """Setup monorepo-specific files and structure."""
+    def _setup_system_specific(self) -> bool:
+        """Setup system-specific files and structure."""
         # Create and configure deployment infrastructure
         if self._uses_kubernetes():
             if self.helm:
@@ -106,14 +113,14 @@ class MonorepoGenerator(BaseGenerator):
         return True
 
     def _validate_options(self) -> None:
-        """Validate monorepo profile options."""
+        """Validate system profile options."""
         self._selection()
 
     def _normalize_runtime(self, runtime: str) -> str:
-        return stack_registry.normalize_monorepo_runtime(runtime)
+        return stack_registry.normalize_system_runtime(runtime)
 
-    def _selection(self) -> MonorepoSelection:
-        """Return the validated stack selection for this monorepo."""
+    def _selection(self) -> SystemSelection:
+        """Return the validated stack selection for this system."""
         return self.selection
 
     def _clouds(self) -> list[str]:
@@ -138,7 +145,7 @@ class MonorepoGenerator(BaseGenerator):
     def _artifact_label(self) -> str:
         return self._selection().artifact_label
 
-    def _execution_models(self, selection: MonorepoSelection) -> tuple[str, ...]:
+    def _execution_models(self, selection: SystemSelection) -> tuple[str, ...]:
         """Return execution models represented by this system scaffold."""
         models: list[str] = []
         if selection.uses_kubernetes:
@@ -147,7 +154,7 @@ class MonorepoGenerator(BaseGenerator):
             models.append("cloudflare-worker")
         return tuple(models)
 
-    def _runtime_platforms(self, selection: MonorepoSelection) -> tuple[str, ...]:
+    def _runtime_platforms(self, selection: SystemSelection) -> tuple[str, ...]:
         """Return runtime platforms represented by this system scaffold."""
         platforms: list[str] = []
         if selection.uses_kubernetes:
@@ -156,7 +163,7 @@ class MonorepoGenerator(BaseGenerator):
             platforms.append("cloudflare-workers")
         return tuple(platforms)
 
-    def _artifact_contract(self, selection: MonorepoSelection) -> ScaffoldArtifacts:
+    def _artifact_contract(self, selection: SystemSelection) -> ScaffoldArtifacts:
         """Return emitted artifact categories for the system scaffold."""
         kubernetes_artifact = None
         if selection.uses_kubernetes:
@@ -172,6 +179,7 @@ class MonorepoGenerator(BaseGenerator):
     def _template_vars(self) -> dict[str, TemplateValue]:
         selection = self.selection
         return {
+            "system_name": self.name,
             "monorepo_name": self.name,
             "service_name": self.name,
             "cloud": selection.cloud,
@@ -180,6 +188,9 @@ class MonorepoGenerator(BaseGenerator):
             "cloud_label": selection.cloud_label,
             "runtime": selection.runtime,
             "runtime_label": selection.runtime_label,
+            "workspace_tooling": selection.workspace_tooling,
+            "workspace_tooling_label": selection.workspace_tooling_label,
+            "uses_bun_turbo": selection.uses_bun_turbo,
             "include_aws": "aws" in selection.clouds,
             "include_gcp": "gcp" in selection.clouds,
             "include_cloudflare": "cloudflare" in selection.clouds,
@@ -214,3 +225,33 @@ class MonorepoGenerator(BaseGenerator):
                 "kustomize/overlay-kustomization.yaml",
                 **{**template_vars, "environment": env},
             )
+class MonorepoGenerator(SystemGenerator):
+    """Legacy monorepo generator.
+
+    The legacy monorepo entry point keeps the historical Bun + Turbo workspace
+    default. The canonical system entry point is neutral by default.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        gh: bool,
+        config: GeneratorConfig,
+        helm: bool = False,
+        root: str | None = None,
+        cloud: str = "multi",
+        knowledge: str = "none",
+        runtime: str = "kubernetes",
+        workspace_tooling: str = "bun-turbo",
+    ) -> None:
+        super().__init__(
+            name,
+            gh,
+            config,
+            helm=helm,
+            root=root,
+            cloud=cloud,
+            knowledge=knowledge,
+            runtime=runtime,
+            workspace_tooling=workspace_tooling,
+        )

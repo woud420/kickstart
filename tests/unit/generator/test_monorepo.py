@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.monorepo import MonorepoGenerator
+from src.generator.system import SystemGenerator
 
 
 def _template_written(mock_write_template, target, template):
@@ -27,6 +28,7 @@ def _expected_monorepo_dirs():
         "frontend",
         "libs",
         "services",
+        "tools",
         "data/postgres",
         "knowledge",
         ".kickstart",
@@ -75,6 +77,7 @@ def test_monorepo_generator_initialization(monorepo_generator):
     assert monorepo_generator.cloud == "multi"
     assert monorepo_generator.knowledge == "none"
     assert monorepo_generator.runtime == "kubernetes"
+    assert monorepo_generator.workspace_tooling == "bun-turbo"
     assert monorepo_generator.config == {"key": "value"}
     assert monorepo_generator.template_dir.name == "monorepo"
 
@@ -105,6 +108,7 @@ def test_monorepo_multi_cloud_includes_cloudflare():
     assert generator._clouds() == ["aws", "gcp", "cloudflare"]
     assert generator._template_vars()["include_cloudflare"] is True
     assert generator._template_vars()["cloud_label"] == "AWS, GCP, CLOUDFLARE"
+    assert generator._template_vars()["uses_bun_turbo"] is True
 
 
 def test_monorepo_cloudflare_only_selection():
@@ -129,6 +133,28 @@ def test_monorepo_hybrid_runtime_selection():
 
     assert generator._uses_kubernetes() is True
     assert generator._uses_cloudflare_workers() is True
+
+
+def test_system_generator_defaults_to_neutral_workspace_tooling():
+    generator = SystemGenerator("test-system", False, {})
+
+    assert generator.workspace_tooling == "none"
+    assert generator.selection.uses_bun_turbo is False
+    template_targets = {template.target for template in generator.selection.templates}
+    assert "package.json" not in template_targets
+    assert "turbo.json" not in template_targets
+    assert "config/tsconfig/base.json" not in template_targets
+
+
+def test_system_generator_can_use_bun_turbo_workspace_tooling():
+    generator = SystemGenerator("test-system", False, {}, workspace_tooling="bun-turbo")
+
+    assert generator.workspace_tooling == "bun-turbo"
+    assert generator.selection.uses_bun_turbo is True
+    template_targets = {template.target for template in generator.selection.templates}
+    assert "package.json" in template_targets
+    assert "turbo.json" in template_targets
+    assert "config/tsconfig/base.json" in template_targets
 
 
 def test_monorepo_rejects_invalid_profile_options():
@@ -380,7 +406,10 @@ def test_monorepo_name_passed_to_templates():
         )
 
         assert makefile_call.kwargs["monorepo_name"] == "my-awesome-repo"
+        assert makefile_call.kwargs["system_name"] == "my-awesome-repo"
+        assert makefile_call.kwargs["workspace_tooling"] == "bun-turbo"
         assert readme_call.kwargs["monorepo_name"] == "my-awesome-repo"
+        assert readme_call.kwargs["system_name"] == "my-awesome-repo"
 
 
 def test_basic_structure_includes_all_required_directories():

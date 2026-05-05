@@ -9,7 +9,9 @@ from src.stack.types import (
     MonorepoSelection,
     RuntimeProfile,
     ServiceSelection,
+    SystemSelection,
     TemplateConfig,
+    WorkspaceToolingProfile,
 )
 
 __all__ = [
@@ -21,6 +23,8 @@ __all__ = [
     "RuntimeProfile",
     "ServiceSelection",
     "StackProfileRegistry",
+    "SystemSelection",
     "TemplateConfig",
+    "WorkspaceToolingProfile",
     "stack_registry",
 ]

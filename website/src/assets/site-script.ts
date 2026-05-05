@@ -37,19 +37,36 @@ function renderComponents(components) {
   });
 }
 
+function selectExample(key) {
+  const example = examples[key];
+  const activeButton = buttons.find((button) => button.getAttribute("data-command") === key);
+  if (!example || !activeButton) {
+    return;
+  }
+
+  buttons.forEach((button) => {
+    button.classList.remove("active");
+    button.setAttribute("aria-selected", "false");
+  });
+  activeButton.classList.add("active");
+  activeButton.setAttribute("aria-selected", "true");
+  title.textContent = example.title;
+  command.textContent = example.command;
+  outputTree.textContent = example.output;
+  outputTree.scrollTop = 0;
+  summary.textContent = example.summary;
+  renderComponents(example.components);
+}
+
 buttons.forEach((button) => {
   button.addEventListener("click", () => {
     const key = button.getAttribute("data-command");
-    const example = examples[key];
-    buttons.forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
-    title.textContent = example.title;
-    command.textContent = example.command;
-    outputTree.textContent = example.output;
-    summary.textContent = example.summary;
-    renderComponents(example.components);
+    selectExample(key);
+    window.history.replaceState(null, "", "#" + key);
   });
 });
+
+selectExample(window.location.hash.slice(1));
 
 copy.addEventListener("click", async () => {
   await navigator.clipboard.writeText(command.textContent);

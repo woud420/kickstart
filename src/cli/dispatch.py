@@ -5,8 +5,12 @@ from typing import Protocol, Unpack
 
 from rich import print
 
-from src.cli.options import CreateOptions, MonorepoCreateKwargs, ServiceCreateKwargs
+from src.cli.options import CreateOptions, ServiceCreateKwargs, SystemCreateKwargs
 from src.utils.types import GeneratorConfig
+
+
+SYSTEM_PROJECT_TYPES = {"system"}
+LEGACY_MONOREPO_PROJECT_TYPES = {"mono", "monorepo"}
 
 
 class ServiceCreator(Protocol):
@@ -44,17 +48,20 @@ class CliCreator(Protocol):
         """Create a CLI."""
 
 
-class MonorepoCreator(Protocol):
-    """Callable that creates a monorepo project."""
+class SystemCreator(Protocol):
+    """Callable that creates a system project."""
 
     def __call__(
         self,
         name: str,
         gh: bool,
         config: GeneratorConfig,
-        **kwargs: Unpack[MonorepoCreateKwargs],
+        **kwargs: Unpack[SystemCreateKwargs],
     ) -> None:
-        """Create a monorepo."""
+        """Create a system."""
+
+
+MonorepoCreator = SystemCreator
 
 
 @dataclass(frozen=True)
@@ -65,7 +72,8 @@ class ProjectCreators:
     frontend: FrontendCreator
     lib: LibraryCreator
     cli: CliCreator
-    monorepo: MonorepoCreator
+    system: SystemCreator
+    monorepo: SystemCreator
 
 
 def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, creators: ProjectCreators) -> None:
@@ -98,16 +106,26 @@ def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, c
         creators.cli(options.name, options.lang, options.gh, config, root=options.root)
         return
 
-    if options.project_type == "mono":
-        monorepo_kwargs: MonorepoCreateKwargs = {"helm": options.helm, "root": options.root}
-        if options.cloud != "multi":
-            monorepo_kwargs["cloud"] = options.cloud
-        if options.knowledge != "none":
-            monorepo_kwargs["knowledge"] = options.knowledge
-        if options.runtime is not None:
-            monorepo_kwargs["runtime"] = options.runtime
+    if options.project_type in SYSTEM_PROJECT_TYPES:
+        creators.system(options.name, options.gh, config, **_system_kwargs(options))
+        return
 
-        creators.monorepo(options.name, options.gh, config, **monorepo_kwargs)
+    if options.project_type in LEGACY_MONOREPO_PROJECT_TYPES:
+        creators.monorepo(options.name, options.gh, config, **_system_kwargs(options))
         return
 
     print(f"[bold red]Type '{options.project_type}' not supported.[/]")
+
+
+def _system_kwargs(options: CreateOptions) -> SystemCreateKwargs:
+    """Return keyword args common to system-like project creation."""
+    system_kwargs: SystemCreateKwargs = {"helm": options.helm, "root": options.root}
+    if options.cloud != "multi":
+        system_kwargs["cloud"] = options.cloud
+    if options.knowledge != "none":
+        system_kwargs["knowledge"] = options.knowledge
+    if options.runtime is not None:
+        system_kwargs["runtime"] = options.runtime
+    if options.workspace_tooling is not None:
+        system_kwargs["workspace_tooling"] = options.workspace_tooling
+    return system_kwargs

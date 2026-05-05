@@ -1,20 +1,26 @@
 .PHONY: install dev test typecheck check build clean
+{% include "_shared/make_logging.mk.tpl" %}
 
 install:
-	go mod download
+	@$(call log,Downloading Go modules)
+	@go mod download
 
 dev: install
-	go run ./src/main.go
+	@$(call log,Running Go service)
+	@go run ./src/main.go
 
 test: install
-	go test ./...
+	@$(call log,Running Go tests)
+	@go test ./...
 
 typecheck: test
 
 check: test
 
 build: install
-	go build -o bin/{{service_name}} ./src
+	@$(call log,Building Go binary)
+	@go build -o bin/{{service_name}} ./src
 
 clean:
-	rm -rf bin/ 
+	@$(call log,Removing Go build artifacts)
+	@rm -rf bin/

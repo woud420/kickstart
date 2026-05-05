@@ -2,7 +2,7 @@
 
 Small single-page website served by a TypeScript Cloudflare Worker.
 
-The source lives in this directory so copy, CSS, tests, and release behavior are reviewed like normal code. CI deploys it on major/minor release tags and injects the current release metadata without requiring a source edit for every release.
+The source lives in this directory so copy, CSS, tests, and release behavior are reviewed like normal code. CI deploys it on stable release tags and injects the current release metadata without requiring a source edit for every release.
 
 ## Stack
 

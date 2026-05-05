@@ -9,7 +9,9 @@ def test_language_and_runtime_aliases_normalize_to_canonical_ids():
     assert stack_registry.normalize_language("c++") == "cpp"
     assert stack_registry.normalize_service_runtime("cf-worker") == "cloudflare-workers"
     assert stack_registry.normalize_monorepo_runtime("k8s") == "kubernetes"
+    assert stack_registry.normalize_system_runtime("k8s") == "kubernetes"
     assert stack_registry.normalize_cloud("cf") == "cloudflare"
+    assert stack_registry.normalize_workspace_tooling("turbo") == "bun-turbo"
 
 
 def test_container_service_selection_includes_templates_and_smoke_commands():
@@ -51,6 +53,8 @@ def test_monorepo_selection_resolves_cloud_knowledge_runtime_and_templates():
     assert selection.include_obsidian is True
     assert selection.uses_kubernetes is False
     assert selection.uses_cloudflare_workers is True
+    assert selection.workspace_tooling == "bun-turbo"
+    assert selection.uses_bun_turbo is True
     assert selection.artifact_label == "Wrangler"
     assert "make cf-worker-notes" in selection.smoke_commands
 
@@ -58,6 +62,33 @@ def test_monorepo_selection_resolves_cloud_knowledge_runtime_and_templates():
     assert ("infra/cloudflare/workers/README.md", "cloudflare_workers_readme.md") in template_pairs
     assert ("catalog-info.yaml", "catalog-info.yaml") in template_pairs
     assert (".obsidian/app.json", "obsidian_app.json") in template_pairs
+    assert ("package.json", "package.json.tpl") in template_pairs
+
+
+def test_system_selection_is_workspace_neutral_by_default():
+    selection = stack_registry.system_selection(cloud="aws", runtime="kubernetes")
+
+    assert selection.workspace_tooling == "none"
+    assert selection.workspace_tooling_label == "None"
+    assert selection.uses_bun_turbo is False
+
+    template_pairs = {(template.target, template.template) for template in selection.templates}
+    assert ("package.json", "package.json.tpl") not in template_pairs
+    assert ("turbo.json", "turbo.json.tpl") not in template_pairs
+    assert ("config/tsconfig/base.json", "tsconfig_base.json.tpl") not in template_pairs
+
+
+def test_system_selection_can_emit_bun_turbo_workspace_tooling():
+    selection = stack_registry.system_selection(workspace_tooling="bun-turbo")
+
+    assert selection.workspace_tooling == "bun-turbo"
+    assert selection.workspace_tooling_label == "Bun + Turbo"
+    assert selection.uses_bun_turbo is True
+
+    template_pairs = {(template.target, template.template) for template in selection.templates}
+    assert ("package.json", "package.json.tpl") in template_pairs
+    assert ("turbo.json", "turbo.json.tpl") in template_pairs
+    assert ("config/tsconfig/base.json", "tsconfig_base.json.tpl") in template_pairs
 
 
 def test_hybrid_monorepo_selection_reports_both_artifact_tools():

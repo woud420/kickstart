@@ -1,21 +1,28 @@
 .PHONY: install dev test typecheck check build lint
+{% include "_shared/make_logging.mk.tpl" %}
 
 install:
-	cargo fetch
+	@$(call log,Fetching Rust dependencies)
+	@cargo fetch
 
 dev: install
-	cargo run
+	@$(call log,Running Rust service)
+	@cargo run
 
 test: install
-	cargo test
+	@$(call log,Running Rust tests)
+	@cargo test
 
 typecheck: install
-	cargo check
+	@$(call log,Running Rust typecheck)
+	@cargo check
 
 check: lint typecheck test
 
 build: install
-	cargo build --release
+	@$(call log,Building Rust release)
+	@cargo build --release
 
 lint:
-	cargo fmt --all -- --check
+	@$(call log,Checking Rust formatting)
+	@cargo fmt --all -- --check

@@ -217,6 +217,55 @@ def test_create_monorepo_with_runtime(mock_load_config, mock_create_monorepo, ru
     )
 
 
+@patch('src.cli.main.create_system')
+@patch('src.cli.main.load_config')
+def test_create_system_with_runtime(mock_load_config, mock_create_system, runner, mock_config):
+    """Test creating a system with the canonical public project type."""
+    mock_load_config.return_value = mock_config
+
+    result = runner.invoke(app, [
+        "create", "system", "platform",
+        "--cloud", "aws",
+        "--runtime", "kubernetes",
+        "--knowledge", "none",
+        "--root", "/tmp",
+    ])
+
+    assert result.exit_code == 0
+    mock_create_system.assert_called_once_with(
+        "platform",
+        False,
+        mock_config,
+        helm=False,
+        root="/tmp",
+        cloud="aws",
+        runtime="kubernetes",
+    )
+
+
+@patch('src.cli.main.create_system')
+@patch('src.cli.main.load_config')
+def test_create_system_with_bun_turbo_workspace_tooling(mock_load_config, mock_create_system, runner, mock_config):
+    """Test creating a system with explicit Bun + Turbo workspace tooling."""
+    mock_load_config.return_value = mock_config
+
+    result = runner.invoke(app, [
+        "create", "system", "platform",
+        "--workspace-tooling", "bun-turbo",
+        "--root", "/tmp",
+    ])
+
+    assert result.exit_code == 0
+    mock_create_system.assert_called_once_with(
+        "platform",
+        False,
+        mock_config,
+        helm=False,
+        root="/tmp",
+        workspace_tooling="bun-turbo",
+    )
+
+
 @patch('src.cli.main.create_service')
 @patch('src.cli.main.load_config')
 @patch('src.cli.main.Confirm')

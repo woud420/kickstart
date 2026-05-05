@@ -6,7 +6,7 @@ Purpose: kickstart generates repeatable project scaffolds so agents do not recre
 
 Inputs:
 
-- project type: `service`, `frontend`, `lib`, `cli`, `mono`
+- project type: `service`, `frontend`, `lib`, `cli`, `system`
 - name
 - root directory
 - language, execution/platform profile, provider target, knowledge adapter, and extension options
@@ -18,6 +18,7 @@ Resolved metadata in `.kickstart/scaffold.json`:
 - runtime platforms
 - emitted artifacts
 - provider targets
+- system composition metadata, including workspace tooling
 - selected capabilities, such as implemented service extensions
 - knowledge adapter
 
@@ -48,6 +49,8 @@ Do not infer unsupported options. Use existing registries and typed plans.
 - Stack registry: `src/stack/`
 - Templates: `src/templates/`
 
+System generation currently lives in `src/generator/monorepo.py` and `src/templates/monorepo/` for historical compatibility. The public concept is still `system`.
+
 Implemented service extensions are intentionally narrow. As of this contract:
 
 - Python/FastAPI container services support `postgres`, `redis`, and `jwt`.
@@ -62,9 +65,12 @@ Do not pass unsupported extension options and assume they were generated.
 - service runtime: `container`
 - system provider target: `multi`
 - system platform profile: `kubernetes`
+- system workspace tooling: `none`
 - system knowledge adapter: `none`
 - GitHub creation: off
 - Helm: off
+
+Use `system` for aggregate repos. `mono` and `monorepo` are legacy aliases only. Use `cloudflare-workers` as the canonical Worker runtime spelling.
 
 Generated docs are baseline output. The `--knowledge` option only controls external metadata such as Obsidian or Backstage files.
 
@@ -89,3 +95,5 @@ make check
 ```
 
 The supported Python range is `>=3.12,<3.15`. Treat Python 3.12 as the compatibility floor and Python 3.14 as the current stable target.
+
+For generator wiring changes, also use the local evals in [Local Evals](evals.md). Scaffold-shape evals should pass with zero failed commands. Generated-project dependency evals may require network and should be reported with classified failures rather than treated as invisible noise.

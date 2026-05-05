@@ -10,7 +10,7 @@ from template_wiring_audit import TEMPLATE_ROOT, _active_templates, _referenced_
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_ROOTS = ("src", "scripts", "tests")
+SOURCE_ROOTS = ("src", "scripts", "ci", "tests")
 ANY_NAME = "A" "ny"
 LOOSE_PYTHON_TYPE_PATTERN = re.compile(
     rf"\b{ANY_NAME}\b"

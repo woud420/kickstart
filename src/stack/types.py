@@ -86,6 +86,16 @@ class ArtifactToolProfile:
 
 
 @dataclass(frozen=True)
+class WorkspaceToolingProfile:
+    """System workspace tooling metadata."""
+
+    id: str
+    display_name: str
+    aliases: tuple[str, ...] = ()
+    uses_bun_turbo: bool = False
+
+
+@dataclass(frozen=True)
 class ServiceSelection:
     """Validated service scaffold selection."""
 
@@ -101,8 +111,8 @@ class ServiceSelection:
 
 
 @dataclass(frozen=True)
-class MonorepoSelection:
-    """Validated monorepo scaffold selection."""
+class SystemSelection:
+    """Validated system scaffold selection."""
 
     cloud: str
     clouds: tuple[str, ...]
@@ -111,6 +121,9 @@ class MonorepoSelection:
     artifact_tool: str
     artifact_label: str
     runtime_label: str
+    workspace_tooling: str
+    workspace_tooling_label: str
+    uses_bun_turbo: bool
     include_obsidian: bool
     include_backstage: bool
     uses_kubernetes: bool
@@ -128,4 +141,7 @@ class MonorepoSelection:
         return [template.as_dict(base_vars) for template in self.templates]
 
 
-Profile = LanguageProfile | RuntimeProfile | CloudProfile | KnowledgeProfile | ArtifactToolProfile
+MonorepoSelection = SystemSelection
+
+
+Profile = LanguageProfile | RuntimeProfile | CloudProfile | KnowledgeProfile | ArtifactToolProfile | WorkspaceToolingProfile

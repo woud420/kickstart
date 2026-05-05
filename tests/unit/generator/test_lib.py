@@ -72,6 +72,7 @@ def test_cli_generator_inherits_from_library_generator():
 
 
 @patch('src.generator.lib.create_repo')
+@patch.object(LibraryGenerator, 'write_content_files')
 @patch.object(LibraryGenerator, 'write_template')
 @patch.object(LibraryGenerator, 'create_architecture_docs')
 @patch.object(LibraryGenerator, 'init_basic_structure')
@@ -79,7 +80,7 @@ def test_cli_generator_inherits_from_library_generator():
 @patch.object(LibraryGenerator, 'log_success')
 def test_library_create_python_success_with_gh(
     mock_log_success, mock_create_project, mock_init_basic_structure,
-    mock_create_architecture_docs, mock_write_template, mock_create_repo
+    mock_create_architecture_docs, mock_write_template, mock_write_content_files, mock_create_repo
 ):
     generator = LibraryGenerator("test-lib", "python", True, {"key": "value"})
     mock_create_project.return_value = True
@@ -111,6 +112,7 @@ def test_library_create_python_success_with_gh(
 
 
 @patch('src.generator.lib.create_repo')
+@patch.object(LibraryGenerator, 'write_content_files')
 @patch.object(LibraryGenerator, 'write_template')
 @patch.object(LibraryGenerator, 'create_architecture_docs')
 @patch.object(LibraryGenerator, 'init_basic_structure')
@@ -118,7 +120,7 @@ def test_library_create_python_success_with_gh(
 @patch.object(LibraryGenerator, 'log_success')
 def test_library_create_rust_success(
     mock_log_success, mock_create_project, mock_init_basic_structure,
-    mock_create_architecture_docs, mock_write_template, mock_create_repo
+    mock_create_architecture_docs, mock_write_template, mock_write_content_files, mock_create_repo
 ):
     generator = LibraryGenerator("test-lib", "rust", False, {"key": "value"})
     mock_create_project.return_value = True
@@ -288,6 +290,7 @@ def test_library_python_vs_rust_differences():
              patch.object(LibraryGenerator, 'init_basic_structure'), \
              patch.object(LibraryGenerator, 'create_architecture_docs'), \
              patch.object(LibraryGenerator, 'log_success'), \
+             patch.object(LibraryGenerator, 'write_content_files'), \
              patch.object(LibraryGenerator, 'write_template') as mock_write_template:
             
             generator = LibraryGenerator("test", lang, False, {})
@@ -331,6 +334,7 @@ def test_library_vs_cli_architecture_docs_difference():
     with patch.object(LibraryGenerator, 'create_project', return_value=True), \
          patch.object(LibraryGenerator, 'init_basic_structure'), \
          patch.object(LibraryGenerator, 'write_template'), \
+         patch.object(LibraryGenerator, 'write_content_files'), \
          patch.object(LibraryGenerator, 'log_success'), \
          patch.object(LibraryGenerator, 'create_architecture_docs') as mock_lib_arch_docs:
         
@@ -359,6 +363,7 @@ def test_library_vs_cli_success_message_difference():
     with patch.object(LibraryGenerator, 'create_project', return_value=True), \
          patch.object(LibraryGenerator, 'init_basic_structure'), \
          patch.object(LibraryGenerator, 'write_template'), \
+         patch.object(LibraryGenerator, 'write_content_files'), \
          patch.object(LibraryGenerator, 'create_architecture_docs'), \
          patch.object(LibraryGenerator, 'log_success') as mock_lib_success:
         
@@ -391,6 +396,7 @@ def test_common_directory_structure():
     with patch.object(LibraryGenerator, 'create_project', return_value=True), \
          patch.object(LibraryGenerator, 'write_template'), \
          patch.object(LibraryGenerator, 'create_architecture_docs'), \
+         patch.object(LibraryGenerator, 'write_content_files'), \
          patch.object(LibraryGenerator, 'log_success'), \
          patch.object(LibraryGenerator, 'init_basic_structure') as mock_lib_init:
         

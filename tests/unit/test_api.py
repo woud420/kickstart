@@ -5,6 +5,7 @@ from src.api import (
     create_frontend,
     create_lib,
     create_cli,
+    create_system,
     create_monorepo
 )
 
@@ -150,6 +151,28 @@ def test_create_monorepo_basic(mock_monorepo_generator):
         cloud="multi",
         knowledge="none",
         runtime="kubernetes",
+        workspace_tooling="bun-turbo",
+    )
+    mock_generator_instance.create.assert_called_once()
+
+
+@patch('src.api.SystemGenerator')
+def test_create_system_basic(mock_system_generator):
+    mock_generator_instance = MagicMock()
+    mock_system_generator.return_value = mock_generator_instance
+
+    create_system("test-system", True, {"infrastructure": "k8s"})
+
+    mock_system_generator.assert_called_once_with(
+        "test-system",
+        True,
+        {"infrastructure": "k8s"},
+        helm=False,
+        root=None,
+        cloud="multi",
+        knowledge="none",
+        runtime="kubernetes",
+        workspace_tooling="none",
     )
     mock_generator_instance.create.assert_called_once()
 
@@ -170,6 +193,7 @@ def test_create_monorepo_with_helm_and_root(mock_monorepo_generator):
         cloud="multi",
         knowledge="none",
         runtime="kubernetes",
+        workspace_tooling="bun-turbo",
     )
     mock_generator_instance.create.assert_called_once()
 
@@ -196,6 +220,7 @@ def test_create_monorepo_with_cloud_and_knowledge(mock_monorepo_generator):
         cloud="gcp",
         knowledge="obsidian",
         runtime="kubernetes",
+        workspace_tooling="bun-turbo",
     )
     mock_generator_instance.create.assert_called_once()
 
@@ -239,6 +264,7 @@ def test_create_monorepo_with_runtime(mock_monorepo_generator):
         cloud="cloudflare",
         knowledge="none",
         runtime="cloudflare-workers",
+        workspace_tooling="bun-turbo",
     )
     mock_generator_instance.create.assert_called_once()
 
@@ -302,6 +328,7 @@ def test_api_exports():
         "create_frontend", 
         "create_lib",
         "create_cli",
+        "create_system",
         "create_monorepo"
     ]
     
@@ -336,10 +363,18 @@ def test_optional_parameters_default_behavior():
          patch('src.api.FrontendGenerator') as mock_frontend_gen, \
          patch('src.api.LibraryGenerator') as mock_lib_gen, \
          patch('src.api.CLIGenerator') as mock_cli_gen, \
+         patch('src.api.SystemGenerator') as mock_system_gen, \
          patch('src.api.MonorepoGenerator') as mock_monorepo_gen:
         
         # Setup mocks
-        for mock_gen in [mock_service_gen, mock_frontend_gen, mock_lib_gen, mock_cli_gen, mock_monorepo_gen]:
+        for mock_gen in [
+            mock_service_gen,
+            mock_frontend_gen,
+            mock_lib_gen,
+            mock_cli_gen,
+            mock_system_gen,
+            mock_monorepo_gen,
+        ]:
             mock_gen.return_value.create = MagicMock()
         
         # Test default values
@@ -366,6 +401,19 @@ def test_optional_parameters_default_behavior():
         
         create_cli("test", "python", True, {})
         mock_cli_gen.assert_called_with("test", "python", True, {}, None)
+
+        create_system("test", True, {})
+        mock_system_gen.assert_called_with(
+            "test",
+            True,
+            {},
+            helm=False,
+            root=None,
+            cloud="multi",
+            knowledge="none",
+            runtime="kubernetes",
+            workspace_tooling="none",
+        )
         
         create_monorepo("test", True, {})
         mock_monorepo_gen.assert_called_with(
@@ -377,4 +425,5 @@ def test_optional_parameters_default_behavior():
             cloud="multi",
             knowledge="none",
             runtime="kubernetes",
+            workspace_tooling="bun-turbo",
         )

@@ -22,8 +22,10 @@ Older supported Python minors use the same pattern, for example `kickstart-macos
 
 ## Install
 
+Replace the version and platform suffix when installing a different release or architecture. The project supports releases from `v0.4.0` onward.
+
 ```bash
-curl -L -o kickstart "https://github.com/OWNER/REPO/releases/download/v0.4.0/kickstart-macos-arm64-py3.14"
+curl -L -o kickstart "https://github.com/woud420/kickstart/releases/download/v0.4.0/kickstart-macos-arm64-py3.14"
 chmod +x kickstart
 ./kickstart version
 ```

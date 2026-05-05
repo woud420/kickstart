@@ -49,7 +49,8 @@ function renderCommandButtons(): string {
   return commandExamples
     .map((example, index) => {
       const activeClass = index === 0 ? " active" : "";
-      return `<button class="pick${activeClass}" data-command="${escapeHtml(example.key)}" type="button">[${escapeHtml(example.label)}]</button>`;
+      const selected = index === 0 ? "true" : "false";
+      return `<button class="pick${activeClass}" data-command="${escapeHtml(example.key)}" type="button" role="tab" aria-selected="${selected}">[${escapeHtml(example.label)}]</button>`;
     })
     .join("");
 }
@@ -57,8 +58,8 @@ function renderCommandButtons(): string {
 function currentReleaseNote(meta: ProjectMeta): ReleaseNote {
   return {
     version: meta.latestVersion,
-    title: "Current release",
-    body: "GitHub Releases carry release notes, optional Python package publishing, and Linux/macOS binary assets for this tag.",
+    title: "Release assets",
+    body: "GitHub Releases carry notes, optional Python package publishing, and Linux/macOS binary assets for this tag.",
     highlights: [
       "Installable Linux and macOS assets are attached to GitHub Releases.",
       "Website metadata is resolved from release configuration at deploy time.",
@@ -98,10 +99,10 @@ function renderReleaseNotes(meta: ProjectMeta): string {
 
 function releaseMetaText(meta: ProjectMeta): string {
   if (meta.latestVersion === meta.supportedFrom) {
-    return `v${meta.latestVersion} is the first supported release.`;
+    return "Support starts with this release line.";
   }
 
-  return `Current: v${meta.latestVersion}. Supported from v${meta.supportedFrom}.`;
+  return `Support starts at v${meta.supportedFrom}.`;
 }
 
 function renderComponentMap(components: GeneratedComponent[]): string {
@@ -138,7 +139,7 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
   <body>
     <header class="shell topbar">
       <div>
-        <a class="brand" href="/" aria-label="kickstart home">kickstart:</a>
+        <a class="brand" href="/" aria-label="kickstart home">kickstart</a>
       </div>
       <nav aria-label="Main navigation">
         <a href="#examples">[examples]</a>
@@ -176,7 +177,7 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
                   </div>
                   <pre><code id="command">${escapeHtml(firstExample.command)}</code></pre>
                   <div class="terminal-rule"></div>
-                  <div class="tree-label">selected generated files</div>
+                  <div class="tree-label">generated shape</div>
                   <pre><code id="output-tree">${firstExample.output.map((file) => `./${escapeHtml(file)}`).join("\n")}</code></pre>
                 </div>
                 <p id="example-summary" class="example-summary">${escapeHtml(firstExample.summary)}</p>
@@ -217,7 +218,7 @@ ${renderPositioningPoints(isNotPoints)}
       <section id="release" class="shell compact-section boundary">
         <div class="section-head">
           <div class="section-index">[release]</div>
-          <h2>Current release</h2>
+          <h2>Releases</h2>
         </div>
         <div>
           <p class="release-meta">${escapeHtml(releaseMetaText(meta))}</p>

@@ -6,6 +6,7 @@ from src.stack.types import (
     KnowledgeProfile,
     LanguageProfile,
     RuntimeProfile,
+    WorkspaceToolingProfile,
 )
 
 environments = ("dev", "staging", "prod")
@@ -79,7 +80,7 @@ service_runtimes: dict[str, RuntimeProfile] = {
     ),
 }
 
-monorepo_runtimes: dict[str, RuntimeProfile] = {
+system_runtimes: dict[str, RuntimeProfile] = {
     "kubernetes": RuntimeProfile(
         id="kubernetes",
         display_name="Kubernetes",
@@ -112,6 +113,8 @@ monorepo_runtimes: dict[str, RuntimeProfile] = {
         uses_cloudflare_workers=True,
     ),
 }
+
+monorepo_runtimes = system_runtimes
 
 clouds: dict[str, CloudProfile] = {
     "aws": CloudProfile(id="aws", display_name="AWS", providers=("aws",)),
@@ -158,4 +161,18 @@ artifact_tools: dict[str, ArtifactToolProfile] = {
     "kustomize": ArtifactToolProfile(id="kustomize", display_name="Kustomize"),
     "helm": ArtifactToolProfile(id="helm", display_name="Helm"),
     "wrangler": ArtifactToolProfile(id="wrangler", display_name="Wrangler"),
+}
+
+workspace_tooling: dict[str, WorkspaceToolingProfile] = {
+    "none": WorkspaceToolingProfile(
+        id="none",
+        display_name="None",
+        aliases=("neutral", "minimal", "no-workspace"),
+    ),
+    "bun-turbo": WorkspaceToolingProfile(
+        id="bun-turbo",
+        display_name="Bun + Turbo",
+        aliases=("bun", "turbo", "typescript", "ts", "ts-workspace"),
+        uses_bun_turbo=True,
+    ),
 }
