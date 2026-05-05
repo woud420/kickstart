@@ -31,7 +31,7 @@ The release workflow builds the Python package and standalone Linux/macOS binari
 
 For documentation, website copy, tests, or non-behavior fixes that should stay on the current version, do not create a new version number.
 
-Retag the current release line after the fix is merged. The release workflow updates the existing GitHub Release for that tag, overwrites release assets, and refreshes generated release notes.
+Retag the current release line after the fix is merged. The release workflow updates the existing GitHub Release for that tag, overwrites GitHub Release assets, and refreshes generated release notes. PyPI publish uses `--skip-existing`, so existing package artifacts for that version are skipped (no overwrite).
 
 ## Website
 

@@ -84,7 +84,7 @@ jobs:
           POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           if [ -n "$POETRY_PYPI_TOKEN_PYPI" ]; then
-            poetry publish --no-interaction
+            poetry publish --no-interaction --skip-existing
           else
             echo "PYPI_API_TOKEN not set, skipping PyPI publish"
           fi

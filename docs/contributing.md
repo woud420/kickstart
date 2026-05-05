@@ -58,7 +58,7 @@ Release tags must be stable semantic versions like `v0.4.1`, and the tag must ma
 
 Run `make release-check TAG=v0.4.1` before pushing a release tag.
 
-Use a new patch/minor/major version for behavior or installable output changes. For docs, website copy, tests, or other same-version fixes, retag the current release line after merge so CI updates the existing GitHub Release instead of creating a new version.
+Use a new patch/minor/major version for behavior or installable output changes. For docs, website copy, tests, or other same-version fixes, retag the current release line after merge so CI updates the existing GitHub Release instead of creating a new version. On reused tags, GitHub Release assets are overwritten while PyPI publish skips already-existing package artifacts for that version.
 
 See [Release Policy](release-policy.md) for the full contract.
 
