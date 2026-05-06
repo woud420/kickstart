@@ -7,7 +7,8 @@ The source lives in this directory so copy, CSS, tests, and release behavior are
 ## Stack
 
 - Cloudflare Workers
-- Wrangler
+- Alchemy
+- Wrangler for local Worker compatibility
 - Bun
 - Strict TypeScript
 - Vitest
@@ -21,11 +22,10 @@ bun run check
 bun run deploy
 ```
 
-Release deployment reads the package version from the repository `pyproject.toml` by default and writes an ignored Wrangler config:
+Release deployment reads the package version from the repository `pyproject.toml` by default and deploys the production Worker through Alchemy:
 
 ```bash
-bun run prepare-release
 bun run deploy:release
 ```
 
-`prepare-release` writes `wrangler.release.toml`, which is ignored by git.
+GitHub Actions requires `ALCHEMY_PASSWORD`, `ALCHEMY_STATE_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_API_TOKEN` before it will deploy the website. Local deploys use your default Alchemy stage unless you pass `--stage`.

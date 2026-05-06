@@ -16,5 +16,5 @@
     "target": "ES2022",
     "types": ["@cloudflare/workers-types", "bun", "vitest/globals"]
   },
-  "include": ["scripts/**/*.ts", "src/**/*.ts", "tests/**/*.ts"]
+  "include": ["alchemy.run.ts", "scripts/**/*.ts", "src/**/*.ts", "tests/**/*.ts"]
 }
