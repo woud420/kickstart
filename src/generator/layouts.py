@@ -108,6 +108,21 @@ def library_directories() -> list[str]:
     return ["src", "tests", *scaffold_contract_directories()]
 
 
-def cli_directories() -> list[str]:
-    """Return the base directory layout for CLI projects."""
-    return ["src", "tests", *scaffold_contract_directories()]
+def cli_directories(language: str | None = None) -> list[str]:
+    """Return the base directory layout for modular CLI projects."""
+    command_directories = {
+        "python": ["src/cli", "src/cli/commands"],
+        "rust": ["src/cli"],
+        "typescript": ["bin", "src/commands"],
+    }.get(language or "", ["src/cli"])
+    return [
+        *command_directories,
+        "src/config",
+        "src/clients",
+        "src/model",
+        "src/operations",
+        "src/output",
+        "src/error",
+        "tests",
+        *scaffold_contract_directories(),
+    ]

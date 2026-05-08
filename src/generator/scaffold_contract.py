@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 import json
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
 ProjectKind = Literal["service", "worker", "frontend", "library", "cli", "system"]
@@ -13,6 +13,12 @@ class ScaffoldProjectManifest(TypedDict):
     name: str
     kind: ProjectKind
     repo_layout: RepoLayout
+    architecture: NotRequired[str]
+    cli_framework: NotRequired[str]
+    command_root: NotRequired[str]
+    entrypoint: NotRequired[str]
+    operation_root: NotRequired[str]
+    src_root_files: NotRequired[list[str]]
 
 
 class ScaffoldExecutionManifest(TypedDict):
@@ -73,6 +79,12 @@ class ScaffoldDocsManifest(TypedDict):
 class ScaffoldOptionSemanticsManifest(TypedDict):
     project_kind: str
     repo_layout: str
+    architecture: str
+    cli_framework: str
+    command_root: str
+    entrypoint: str
+    operation_root: str
+    src_root_files: str
     execution_models: str
     runtime_platforms: str
     artifacts: str
@@ -199,18 +211,38 @@ class ScaffoldContract:
     knowledge_adapter: str = "none"
     repo_layout: RepoLayout = "single-project"
     workspace_tooling: str = "none"
+    architecture: str | None = None
+    cli_framework: str | None = None
+    command_root: str | None = None
+    entrypoint: str | None = None
+    operation_root: str | None = None
+    src_root_files: tuple[str, ...] = ()
     schema_version: str = "2.0"
 
     def manifest(self, project_name: str) -> ScaffoldManifest:
         """Return the JSON-serializable scaffold manifest."""
+        project_manifest: ScaffoldProjectManifest = {
+            "name": project_name,
+            "kind": self.project_kind,
+            "repo_layout": self.repo_layout,
+        }
+        if self.architecture is not None:
+            project_manifest["architecture"] = self.architecture
+        if self.cli_framework is not None:
+            project_manifest["cli_framework"] = self.cli_framework
+        if self.command_root is not None:
+            project_manifest["command_root"] = self.command_root
+        if self.entrypoint is not None:
+            project_manifest["entrypoint"] = self.entrypoint
+        if self.operation_root is not None:
+            project_manifest["operation_root"] = self.operation_root
+        if self.src_root_files:
+            project_manifest["src_root_files"] = list(self.src_root_files)
+
         manifest: ScaffoldManifest = {
             "schema_version": self.schema_version,
             "generated_by": "kickstart",
-            "project": {
-                "name": project_name,
-                "kind": self.project_kind,
-                "repo_layout": self.repo_layout,
-            },
+            "project": project_manifest,
             "execution": {
                 "models": list(self.execution_models),
                 "platforms": list(self.runtime_platforms),
@@ -230,6 +262,12 @@ class ScaffoldContract:
             "option_semantics": {
                 "project_kind": "what kickstart generated",
                 "repo_layout": "how generated projects are arranged in the repository",
+                "architecture": "named source layout profile when a scaffold has one",
+                "cli_framework": "CLI parser/framework selected by a CLI scaffold",
+                "command_root": "where framework-native command adapter files belong",
+                "entrypoint": "process entrypoint for the generated project",
+                "operation_root": "where CLI use-case implementation belongs",
+                "src_root_files": "files expected directly under src/ for source-root hygiene",
                 "execution_models": "how generated code is meant to execute",
                 "runtime_platforms": "where generated runtime artifacts are meant to run",
                 "artifacts": "files and tool configs emitted by the scaffold",

@@ -31,6 +31,12 @@ Create a system root:
 poetry run kickstart create system product-stack
 ```
 
+Create a CLI:
+
+```bash
+poetry run kickstart create cli ops-tool --lang rust
+```
+
 Add Bun + Turbo workspace tooling when you want a TypeScript workspace at the system root:
 
 ```bash
@@ -42,13 +48,15 @@ poetry run kickstart create system product-stack --workspace-tooling bun-turbo
 - `service`: Python, TypeScript, Rust, C++, or Go backend service structure.
 - `frontend`: React, TypeScript, Vite, and Bun frontend app.
 - `lib`: Python or Rust library project.
-- `cli`: Python or Rust CLI project.
+- `cli`: Python, Rust, or TypeScript CLI project with modular command/client/model/operation boundaries and framework-native command adapters.
 - `system`: language-neutral composition repo containing apps, services, libs, tools, infrastructure, docs, and agent metadata.
 
 ## Major Choices
 
 - Preferred stack: Rust, TypeScript, Python, SQL, and C++.
-- Go is supported as a tolerated service target; Python and Rust are the first-class library/CLI targets.
+- Go is supported as a tolerated service target; Python and Rust are the first-class library targets, and Python, Rust, and TypeScript are first-class CLI targets.
+- CLI command adapters default to clap for Rust, Typer for Python, and oclif for TypeScript.
+- Rust is the preferred CLI delivery target for single-binary distribution and performance; Python and TypeScript still use their own professional CLI conventions instead of copying Rust's file layout.
 - Service execution models: containers by default, Cloudflare Workers when requested.
 - Implemented service extensions are intentionally narrow: Python/FastAPI container services support Postgres, Redis, and JWT; Rust container services support Redis and JWT; TypeScript container services support Postgres.
 - System provider targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
@@ -70,7 +78,9 @@ poetry run kickstart create service api-ts --lang typescript --database postgres
 poetry run kickstart create service edge-rs --lang rust --runtime cloudflare-workers
 poetry run kickstart create frontend web
 poetry run kickstart create lib core-lib --lang python
+poetry run kickstart create cli ops-tool-py --lang python
 poetry run kickstart create cli ops-tool --lang rust
+poetry run kickstart create cli ops-tool-ts --lang typescript
 poetry run kickstart create system platform --cloud aws --runtime kubernetes --knowledge none
 poetry run kickstart create system web-platform --workspace-tooling bun-turbo
 ```
@@ -81,6 +91,7 @@ poetry run kickstart create system web-platform --workspace-tooling bun-turbo
 - [Agent Guide](docs/agent-guide.md): compact, LLM-oriented generation contract.
 - [Agent Map](AGENTS.md): repo-local map for agents modifying kickstart itself.
 - [Scaffold Contract](docs/scaffold-contract.md): always-generated docs, metadata, and option vocabulary.
+- [CLI Framework Research](docs/decisions/cli-framework-research.md): decision record for clap, Typer, and oclif defaults.
 - [Local Evals](docs/evals.md): scaffold matrix and generated-project validation commands.
 - [Contributing](docs/contributing.md): how humans should change the repo.
 - [Agent Contributing](docs/agent-contributing.md): how agents should safely modify the repo.

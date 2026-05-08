@@ -571,7 +571,79 @@ class TestAPIFunctions:
         
         project_path = temp_project_dir / cli_name
         assert project_path.exists()
-        assert (project_path / "src").exists()
+        assert (project_path / "src/main.py").exists()
+        assert (project_path / "src/cli/app.py").exists()
+        assert (project_path / "src/cli/commands/check.py").exists()
+        assert (project_path / "src/clients").exists()
+        assert (project_path / "src/model/dto.py").exists()
+        assert (project_path / "src/operations").exists()
+
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        assert manifest["project"]["architecture"] == "modular-cli"
+        assert manifest["project"]["cli_framework"] == "typer"
+        assert manifest["project"]["command_root"] == "src/cli/commands"
+        assert manifest["project"]["entrypoint"] == "src/main.py"
+        assert manifest["project"]["operation_root"] == "src/operations"
+        assert manifest["project"]["src_root_files"] == ["__init__.py", "main.py"]
+
+    def test_create_rust_cli_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
+        """Test the create_cli API function for Rust."""
+        cli_name = "api-test-rust-cli"
+
+        create_cli(
+            name=cli_name,
+            lang="rust",
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+        )
+
+        project_path = temp_project_dir / cli_name
+        assert project_path.exists()
+        assert (project_path / "src/main.rs").exists()
+        assert (project_path / "src/cli/args.rs").exists()
+        assert (project_path / "src/cli/dispatch.rs").exists()
+        assert (project_path / "src/clients/mod.rs").exists()
+        assert (project_path / "src/model/dto.rs").exists()
+        assert (project_path / "src/operations/mod.rs").exists()
+
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        assert manifest["project"]["architecture"] == "modular-cli"
+        assert manifest["project"]["cli_framework"] == "clap"
+        assert manifest["project"]["command_root"] == "src/cli"
+        assert manifest["project"]["entrypoint"] == "src/main.rs"
+        assert manifest["project"]["operation_root"] == "src/operations"
+        assert manifest["project"]["src_root_files"] == ["main.rs"]
+
+    def test_create_typescript_cli_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
+        """Test the create_cli API function for TypeScript."""
+        cli_name = "api-test-ts-cli"
+
+        create_cli(
+            name=cli_name,
+            lang="typescript",
+            gh=False,
+            config=mock_config,
+            root=str(temp_project_dir),
+        )
+
+        project_path = temp_project_dir / cli_name
+        assert project_path.exists()
+        assert (project_path / "bin/dev.js").exists()
+        assert (project_path / "bin/run.js").exists()
+        assert (project_path / "src/base-command.ts").exists()
+        assert (project_path / "src/commands/check.ts").exists()
+        assert (project_path / "src/clients/index.ts").exists()
+        assert (project_path / "src/model/dto.ts").exists()
+        assert (project_path / "src/operations/index.ts").exists()
+
+        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        assert manifest["project"]["architecture"] == "modular-cli"
+        assert manifest["project"]["cli_framework"] == "oclif"
+        assert manifest["project"]["command_root"] == "src/commands"
+        assert manifest["project"]["entrypoint"] == "bin/run.js"
+        assert manifest["project"]["operation_root"] == "src/operations"
+        assert manifest["project"]["src_root_files"] == ["base-command.ts"]
     
     def test_create_monorepo_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test the create_monorepo API function."""

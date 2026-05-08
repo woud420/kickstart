@@ -38,6 +38,7 @@ languages: dict[str, LanguageProfile] = {
         display_name="TypeScript",
         aliases=("ts",),
         service_runtimes=("container", "cloudflare-workers"),
+        cli=True,
         smoke_commands={
             "container": ("make install", "make test", "make check", "make build"),
             "cloudflare-workers": ("make install", "make test", "make check"),

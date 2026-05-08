@@ -34,7 +34,9 @@ kickstart create service my-api --lang python --root /private/tmp/kickstart-outp
 kickstart create service edge-api --lang typescript --runtime cloudflare-workers --root /private/tmp/kickstart-output
 kickstart create frontend web --root /private/tmp/kickstart-output
 kickstart create lib core-lib --lang python --root /private/tmp/kickstart-output
+kickstart create cli ops-tool-py --lang python --root /private/tmp/kickstart-output
 kickstart create cli ops-tool --lang rust --root /private/tmp/kickstart-output
+kickstart create cli ops-tool-ts --lang typescript --root /private/tmp/kickstart-output
 kickstart create system platform --cloud aws --runtime kubernetes --knowledge none --root /private/tmp/kickstart-output
 ```
 
@@ -48,6 +50,10 @@ Only use `--gh` when the user explicitly asks to create a GitHub repository.
 - Cloudflare Workers are a Worker runtime, not Docker containers.
 - Keep generated output separate from unrelated worktrees unless the user gives a specific destination.
 - Do not commit generated projects unless the user explicitly asks.
+- After generation, inspect `.kickstart/scaffold.json` and the file tree before extending the project.
+- CLI scaffolds should have `project.architecture: modular-cli`, `project.cli_framework`, `project.command_root`, `project.entrypoint`, `project.operation_root`, and language-appropriate `project.src_root_files`.
+- Add commands through the generated framework: clap in Rust, Typer in Python, and oclif in TypeScript. Put product behavior under `src/operations`, transport code under `src/clients`, DTOs under `src/model`, formatting under `src/output`, and exit behavior under `src/error`.
+- For Rust CLIs, `src/main.rs` should be the only Rust file directly under `src/`.
 
 ## Report Back
 

@@ -42,6 +42,11 @@ def cli_generator_rust():
 
 
 @pytest.fixture
+def cli_generator_typescript():
+    return CLIGenerator("test-cli", "typescript", False, {"key": "value"})
+
+
+@pytest.fixture
 def cli_generator_with_gh():
     return CLIGenerator("test-cli", "python", True, {"key": "value"})
 
@@ -172,31 +177,25 @@ def test_cli_create_python_success_with_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "tests", ".kickstart", "docs/architecture",
+        "src/cli", "src/cli/commands", "src/config", "src/clients", "src/model", "src/operations",
+        "src/output", "src/error", "tests", ".kickstart", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
     # Verify common template files are written
     expected_template_calls = [
         call(".gitignore", "python/gitignore.tpl"),
-        call("Makefile", "python/Makefile.tpl"),
-        call("README.md", "python/README.md.tpl"),
-        call("pyproject.toml", "python/pyproject.cli.toml.tpl")
+        call("Makefile", "cli/python/Makefile.tpl"),
+        call("README.md", "cli/python/README.md.tpl"),
+        call("pyproject.toml", "python/pyproject.cli.toml.tpl"),
+        call("src/main.py", "cli/python/src/main.py.tpl"),
+        call("src/cli/app.py", "cli/python/src/cli/app.py.tpl"),
+        call("src/cli/commands/check.py", "cli/python/src/cli/commands/check.py.tpl"),
+        call("src/model/dto.py", "cli/python/src/model/dto.py.tpl"),
+        call("tests/test_cli_smoke.py", "cli/python/tests/test_cli_smoke.py.tpl"),
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    
-    # Verify Python CLI main file is written
-    expected_main_content = 'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n'
-    mock_write_content.assert_has_calls(
-        [
-            call("src/__init__.py", ""),
-            call("src/main.py", expected_main_content),
-            call(
-                "tests/test_smoke.py",
-                'from src.main import main\n\n\ndef test_generated_cli(capsys) -> None:\n    main()\n    assert "Hello from CLI" in capsys.readouterr().out\n',
-            ),
-        ]
-    )
+    mock_write_content.assert_called_once_with("src/__init__.py", '__version__ = "0.1.0"\n')
     
     mock_create_architecture_docs.assert_called_once_with("test-cli CLI Docs")
     mock_log_success.assert_called_once_with("Python CLI 'test-cli' created successfully in 'test-cli'!")
@@ -222,18 +221,57 @@ def test_cli_create_rust_success(
     # Verify common template files are written
     expected_template_calls = [
         call(".gitignore", "rust/gitignore.tpl"),
-        call("Makefile", "rust/Makefile.tpl"),
-        call("README.md", "rust/README.md.tpl"),
-        call("Cargo.toml", "rust/Cargo.cli.toml.tpl")
+        call("Makefile", "cli/rust/Makefile.tpl"),
+        call("README.md", "cli/rust/README.md.tpl"),
+        call("Cargo.toml", "rust/Cargo.cli.toml.tpl"),
+        call("src/main.rs", "cli/rust/src/main.rs.tpl"),
+        call("src/cli/args.rs", "cli/rust/src/cli/args.rs.tpl"),
+        call("src/cli/dispatch.rs", "cli/rust/src/cli/dispatch.rs.tpl"),
+        call("src/model/dto.rs", "cli/rust/src/model/dto.rs.tpl"),
+        call("tests/cli_smoke.rs", "cli/rust/tests/cli_smoke.rs.tpl"),
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    
-    # Verify Rust CLI main file is written
-    expected_main_content = 'fn main() {\n    println!("Hello from CLI!");\n}\n'
-    mock_write_content.assert_called_once_with("src/main.rs", expected_main_content)
+    mock_write_content.assert_not_called()
     
     mock_create_architecture_docs.assert_called_once_with("test-cli CLI Docs")
     mock_log_success.assert_called_once_with("Rust CLI 'test-cli' created successfully in 'test-cli'!")
+    mock_create_repo.assert_not_called()
+
+
+@patch('src.generator.lib.create_repo')
+@patch.object(CLIGenerator, 'write_content')
+@patch.object(CLIGenerator, 'write_template')
+@patch.object(CLIGenerator, 'create_architecture_docs')
+@patch.object(CLIGenerator, 'init_basic_structure')
+@patch.object(CLIGenerator, 'create_project')
+@patch.object(CLIGenerator, 'log_success')
+def test_cli_create_typescript_success(
+    mock_log_success, mock_create_project, mock_init_basic_structure,
+    mock_create_architecture_docs, mock_write_template, mock_write_content, mock_create_repo
+):
+    generator = CLIGenerator("test-cli", "typescript", False, {"key": "value"})
+    mock_create_project.return_value = True
+
+    generator.create()
+
+    expected_template_calls = [
+        call(".gitignore", "typescript/gitignore.tpl"),
+        call("Makefile", "cli/typescript/Makefile.tpl"),
+        call("README.md", "cli/typescript/README.md.tpl"),
+        call("package.json", "cli/typescript/package.json.tpl"),
+        call("tsconfig.json", "cli/typescript/tsconfig.json.tpl"),
+        call("vitest.config.ts", "cli/typescript/vitest.config.ts.tpl"),
+        call("bin/dev.js", "cli/typescript/bin/dev.js.tpl"),
+        call("bin/run.js", "cli/typescript/bin/run.js.tpl"),
+        call("src/base-command.ts", "cli/typescript/src/base-command.ts.tpl"),
+        call("src/commands/check.ts", "cli/typescript/src/commands/check.ts.tpl"),
+        call("src/model/dto.ts", "cli/typescript/src/model/dto.ts.tpl"),
+        call("tests/cli-smoke.test.ts", "cli/typescript/tests/cli-smoke.test.ts.tpl"),
+    ]
+    mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
+    mock_write_content.assert_not_called()
+    mock_create_architecture_docs.assert_called_once_with("test-cli CLI Docs")
+    mock_log_success.assert_called_once_with("Typescript CLI 'test-cli' created successfully in 'test-cli'!")
     mock_create_repo.assert_not_called()
 
 
@@ -271,7 +309,7 @@ def test_cli_unsupported_language_fails_loudly():
          patch.object(CLIGenerator, 'write_content') as mock_write_content:
         
         generator = CLIGenerator("test", "unsupported", False, {})
-        with pytest.raises(LanguageNotSupportedError, match="Supported cli languages: python, rust"):
+        with pytest.raises(LanguageNotSupportedError, match="Supported cli languages: python, rust, typescript"):
             generator.create()
 
         mock_write_template.assert_not_called()
@@ -301,14 +339,15 @@ def test_library_python_vs_rust_differences():
             assert config_call in mock_write_template.call_args_list
 
 
-def test_cli_python_vs_rust_differences():
-    """Test the differences between Python and Rust CLI generation."""
+def test_cli_language_differences():
+    """Test the language-specific package files for CLI generation."""
     test_cases = [
-        ("python", "python/pyproject.cli.toml.tpl", "src/main.py", 'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n'),
-        ("rust", "rust/Cargo.cli.toml.tpl", "src/main.rs", 'fn main() {\n    println!("Hello from CLI!");\n}\n')
+        ("python", "pyproject.toml", "python/pyproject.cli.toml.tpl", "src/main.py", "cli/python/src/main.py.tpl"),
+        ("rust", "Cargo.toml", "rust/Cargo.cli.toml.tpl", "src/main.rs", "cli/rust/src/main.rs.tpl"),
+        ("typescript", "package.json", "cli/typescript/package.json.tpl", "src/base-command.ts", "cli/typescript/src/base-command.ts.tpl"),
     ]
     
-    for lang, config_template, main_file, main_content in test_cases:
+    for lang, expected_filename, config_template, main_file, main_template in test_cases:
         with patch.object(CLIGenerator, 'create_project', return_value=True), \
              patch.object(CLIGenerator, 'init_basic_structure'), \
              patch.object(CLIGenerator, 'create_architecture_docs'), \
@@ -320,12 +359,14 @@ def test_cli_python_vs_rust_differences():
             generator.create()
             
             # Check that the correct language-specific config file is written
-            expected_filename = "pyproject.toml" if lang == "python" else "Cargo.toml"
             config_call = call(expected_filename, config_template)
             assert config_call in mock_write_template.call_args_list
-            
-            # Check that the correct main file is written with correct content
-            assert call(main_file, main_content) in mock_write_content.call_args_list
+
+            assert call(main_file, main_template) in mock_write_template.call_args_list
+            if lang == "python":
+                assert call("src/__init__.py", '__version__ = "0.1.0"\n') in mock_write_content.call_args_list
+            else:
+                mock_write_content.assert_not_called()
 
 
 def test_library_vs_cli_architecture_docs_difference():
@@ -385,10 +426,15 @@ def test_library_vs_cli_success_message_difference():
         mock_cli_success.assert_called_once_with("Python CLI 'my-cli' created successfully in 'my-cli'!")
 
 
-def test_common_directory_structure():
-    """Test that both library and CLI generators create the same directory structure."""
-    expected_directories = [
+def test_library_and_cli_directory_structures():
+    """Test library stays minimal while CLI gets the modular command layout."""
+    library_directories = [
         "src", "tests", ".kickstart", "docs/architecture",
+        "docs/contracts", "docs/operations", "docs/decisions"
+    ]
+    cli_directories = [
+        "src/cli", "src/cli/commands", "src/config", "src/clients", "src/model", "src/operations",
+        "src/output", "src/error", "tests", ".kickstart", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ]
     
@@ -403,7 +449,7 @@ def test_common_directory_structure():
         lib_generator = LibraryGenerator("test", "python", False, {})
         lib_generator.create()
         
-        mock_lib_init.assert_called_once_with(expected_directories)
+        mock_lib_init.assert_called_once_with(library_directories)
     
     # Test CLI
     with patch.object(CLIGenerator, 'create_project', return_value=True), \
@@ -416,4 +462,4 @@ def test_common_directory_structure():
         cli_generator = CLIGenerator("test", "python", False, {})
         cli_generator.create()
         
-        mock_cli_init.assert_called_once_with(expected_directories)
+        mock_cli_init.assert_called_once_with(cli_directories)

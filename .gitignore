@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 *.log
 .venv/
+.mypy_cache/
+.claude/settings.local.json
 /kickstart
 build/
 dist/

@@ -257,12 +257,34 @@ class BaseGenerator:
         )
 
     def _contracts_content(self, contract: ScaffoldContract) -> str:
+        if contract.project_kind == "cli":
+            cli_framework = contract.cli_framework or "language-native CLI framework"
+            command_root = contract.command_root or "src/cli"
+            operation_root = contract.operation_root or "src/operations"
+            entrypoint = contract.entrypoint or "the generated process entrypoint"
+            return (
+                "# Contracts\n\n"
+                f"- Command adapters use `{cli_framework}` and live under `{command_root}`.\n"
+                f"- Product behavior belongs under `{operation_root}`.\n"
+                f"- The process entrypoint is `{entrypoint}`.\n"
+                "- Document commands, flags, environment variables, config files, output formats, "
+                "exit codes, and package metadata here.\n"
+            )
         return (
             "# Contracts\n\n"
             f"Document {contract.contract_subjects} here.\n"
         )
 
     def _operations_content(self, contract: ScaffoldContract) -> str:
+        if contract.project_kind == "cli":
+            return (
+                "# Operations\n\n"
+                "- `make install`: install package dependencies.\n"
+                "- `make test`: run generated CLI smoke tests.\n"
+                "- `make check`: run the generated validation suite.\n\n"
+                "Add packaging, installation, release, signing, and operator runbooks here as the "
+                "CLI matures.\n"
+            )
         return (
             "# Operations\n\n"
             f"Document {contract.operations_subjects} here.\n"
