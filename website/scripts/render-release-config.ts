@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 interface ReleaseConfig {
+  domain: string;
   output: string;
   releaseUrl: string;
   repositoryUrl: string;
@@ -10,6 +11,7 @@ interface ReleaseConfig {
 }
 
 const defaultConfig: ReleaseConfig = {
+  domain: "kickstart-cli.org",
   output: "wrangler.release.toml",
   releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
@@ -70,6 +72,7 @@ export function resolveReleaseConfig(
     argumentValue(args, "--release-url") ?? `${repositoryUrl}/releases/tag/v${version}`;
 
   return {
+    domain: argumentValue(args, "--domain") ?? env.WEBSITE_DOMAIN ?? defaultConfig.domain,
     output: argumentValue(args, "--output") ?? defaultConfig.output,
     releaseUrl,
     repositoryUrl,

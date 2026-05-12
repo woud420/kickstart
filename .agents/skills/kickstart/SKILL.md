@@ -5,56 +5,36 @@ description: Use the installed kickstart binary whenever an agent is asked to cr
 
 # Kickstart
 
-## Overview
+## Use When
 
-Use this skill when a user asks an agent to create, scaffold, generate, or start a project such as a service, frontend, library, CLI, or system repo.
+Use the installed `kickstart` binary when asked to create, scaffold, generate, or start a service, frontend, library, CLI, or system repo. Treat the binary as the interface.
 
-Run the installed `kickstart` binary. Treat the binary as the interface.
+## Hot Path
 
-## Preflight
-
-Confirm the binary exists before generating. Read help when option syntax is unclear.
-
-```bash
-command -v kickstart
-kickstart version
-kickstart create --help
-```
-
-If `kickstart` is not on `PATH`, report that clearly and ask the user which installed binary path to use.
-
-## Generate
-
-Use `kickstart create` for scaffold requests. Use an explicit output root so the destination is predictable.
+Confirm `kickstart` exists. Read `kickstart create --help` only when syntax is unclear. Generate with an explicit `--root`, then inspect `.kickstart/scaffold.json` and `AGENTS.md` before extending.
 
 Common patterns:
 
 ```bash
-kickstart create service my-api --lang python --root /private/tmp/kickstart-output
-kickstart create service edge-api --lang typescript --runtime cloudflare-workers --root /private/tmp/kickstart-output
-kickstart create frontend web --root /private/tmp/kickstart-output
-kickstart create lib core-lib --lang python --root /private/tmp/kickstart-output
-kickstart create cli ops-tool-py --lang python --root /private/tmp/kickstart-output
 kickstart create cli ops-tool --lang rust --root /private/tmp/kickstart-output
-kickstart create cli ops-tool-ts --lang typescript --root /private/tmp/kickstart-output
+kickstart create service my-api --lang python --root /private/tmp/kickstart-output
 kickstart create system platform --cloud aws --runtime kubernetes --knowledge none --root /private/tmp/kickstart-output
 ```
 
-Use `system` for aggregate repos. `mono` and `monorepo` are legacy aliases and should not be the default in new commands.
+Use `create frontend NAME --root ...` for frontends and `create lib NAME --lang python|rust --root ...` for libraries.
 
-Only use `--gh` when the user explicitly asks to create a GitHub repository.
+## Rules
 
-## Guardrails
-
-- Do not infer unsupported option combinations. If the binary rejects an option, report the error and pick a supported alternative only with user consent.
-- Cloudflare Workers are a Worker runtime, not Docker containers.
-- Keep generated output separate from unrelated worktrees unless the user gives a specific destination.
+- Use `system` for aggregate repos; `mono` and `monorepo` are legacy aliases.
+- Use `--gh` only when the user explicitly asks to create a GitHub repository.
+- Keep generated output separate from unrelated worktrees unless given a destination.
 - Do not commit generated projects unless the user explicitly asks.
-- After generation, inspect `.kickstart/scaffold.json` and the file tree before extending the project.
-- CLI scaffolds should have `project.architecture: modular-cli`, `project.cli_framework`, `project.command_root`, `project.entrypoint`, `project.operation_root`, and language-appropriate `project.src_root_files`.
-- Add commands through the generated framework: clap in Rust, Typer in Python, and oclif in TypeScript. Put product behavior under `src/operations`, transport code under `src/clients`, DTOs under `src/model`, formatting under `src/output`, and exit behavior under `src/error`.
-- For Rust CLIs, `src/main.rs` should be the only Rust file directly under `src/`.
+- If an option is rejected, report the error and choose an alternative only with user consent.
+- Cloudflare Workers are a Worker runtime, not Docker containers.
+- Add CLI commands through the generated framework: clap for Rust, Typer for Python, oclif for TypeScript.
+- Put CLI product behavior under `src/operations`; clients under `src/clients`; DTOs under `src/model`; output formatting under `src/output`; exit/error behavior under `src/error`.
+- For Rust CLIs, keep `src/main.rs` as the only Rust file directly under `src/`.
 
 ## Report Back
 
-Report the exact command run and output path.
+Report the exact command and output path. Read README/docs only when the next task needs deeper project context.

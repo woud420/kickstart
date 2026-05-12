@@ -33,6 +33,10 @@ const app = await alchemy("kickstart-site", {
 });
 
 const workerName = workerNameForStage(config.serviceName, app.stage);
+const workerDomains =
+  app.stage === "prod" && config.domain !== ""
+    ? [{ domainName: config.domain, adopt: true }]
+    : undefined;
 
 export const worker = await Worker("website", {
   name: workerName,
@@ -40,6 +44,7 @@ export const worker = await Worker("website", {
   compatibilityDate: "2026-05-02",
   adopt: true,
   url: true,
+  domains: workerDomains,
   bindings: {
     SERVICE_NAME: config.serviceName,
     PROJECT_VERSION: config.version,
@@ -50,5 +55,8 @@ export const worker = await Worker("website", {
 });
 
 console.log(`Configured ${workerName} for v${config.version}`);
+if (workerDomains !== undefined) {
+  console.log(`Configured custom domain ${config.domain}`);
+}
 
 await app.finalize();
