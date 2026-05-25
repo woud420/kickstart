@@ -6,6 +6,54 @@ The goal is to eliminate the repeated setup work that humans and agents otherwis
 
 It is intentionally not a product architect. Use it to create a deterministic starting repo, then add the domain model, APIs, security choices, and tests that belong to the product.
 
+## Install
+
+One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux + macOS, x64 + arm64):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh | bash
+```
+
+The script downloads the matching binary archive for your platform from a GitHub release, verifies its SHA-256 checksum, extracts it under the binary directory, and offers to append a managed `PATH` block to your shell rc file. Knobs:
+
+```bash
+# Install into /usr/local without touching shell rc files. Picks /usr/local/share/kickstart
+# for the binary payload automatically.
+curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh \
+  | KICKSTART_INSTALL_DIR=/usr/local/bin bash -s -- --no-path-update
+
+# Pin a specific release tag (replace v<TAG> with one from the Releases page).
+curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh \
+  | KICKSTART_VERSION=v<TAG> bash
+```
+
+Already pulled the binary archive from the Releases page? Extract it and use kickstart's own installer to lay out the launcher and configure `PATH`:
+
+```bash
+tar -xzf kickstart-macos-arm64-py3.14.tar.gz
+./kickstart-macos-arm64-py3.14/kickstart install --update-path
+# Drops a symlink at ~/.local/bin/kickstart pointing at ~/.local/share/kickstart/current/kickstart
+# and edits ~/.zshrc, ~/.bash_profile, or ~/.config/fish/config.fish.
+
+./kickstart-macos-arm64-py3.14/kickstart install --target /usr/local/bin --app-dir /usr/local/share/kickstart
+./kickstart-macos-arm64-py3.14/kickstart install --check                    # just report install/PATH status
+./kickstart-macos-arm64-py3.14/kickstart install --force                    # overwrite an existing install
+./kickstart-macos-arm64-py3.14/kickstart install --shell bash               # override $SHELL detection
+./kickstart-macos-arm64-py3.14/kickstart uninstall --clean-path             # remove launcher + binary payload, restore rc file
+```
+
+Refresh in place against the newest release once installed:
+
+```bash
+kickstart upgrade
+```
+
+Or install from PyPI when published:
+
+```bash
+pip install kickstart
+```
+
 ## Get Started
 
 ```bash
@@ -104,6 +152,6 @@ make package
 make binary
 ```
 
-kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 standalone binaries for each supported Python minor.
+kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 binary archives (`kickstart-<platform>-py<minor>.tar.gz`) for each supported Python minor.
 
 Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/private/tmp` or another scratch path and are not committed.

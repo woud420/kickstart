@@ -110,4 +110,4 @@ When adding a new scaffold option, add generated-output tests for the affected p
 
 ## Project Tooling
 
-kickstart supports Python `>=3.12,<3.15`. Use `make check` before committing. Use `make package` for wheel/source builds and `make binary` for a local standalone binary.
+kickstart supports Python `>=3.12,<3.15`. Use `make check` before committing. Use `make package` for wheel/source builds and `make binary` to build the local kickstart binary (a PyInstaller `--onedir` payload under `dist/kickstart/`).

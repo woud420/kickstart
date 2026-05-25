@@ -1,0 +1,54 @@
+name: Set up Python and Poetry
+description: >-
+  Provision the kickstart Python toolchain for a job: install Python via
+  setup-python, install Poetry, cache the project venv, and run
+  `poetry install --no-interaction`. Single source of truth for the setup
+  block that ci.yml and release.yml repeat per job.
+
+inputs:
+  python-version:
+    description: Python minor version to install (e.g. "3.14").
+    required: true
+  poetry-version:
+    description: Poetry version to install.
+    required: false
+    default: "2.3.3"
+  install-dependencies:
+    description: Whether to run `poetry install --no-interaction`. Set "false" to skip.
+    required: false
+    default: "true"
+  cache-venv:
+    description: Whether to restore the project venv from the actions cache.
+    required: false
+    default: "true"
+  cache-key-prefix:
+    description: Prefix used for the venv cache key.
+    required: false
+    default: "venv"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: ${{ inputs.poetry-version }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Load cached venv
+      if: ${{ inputs.cache-venv == 'true' }}
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install dependencies
+      if: ${{ inputs.install-dependencies == 'true' }}
+      shell: bash
+      run: poetry install --no-interaction

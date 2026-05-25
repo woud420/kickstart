@@ -29,7 +29,7 @@ When intentional generator changes affect this scaffold, regenerate and review t
 
 ```bash
 tmpdir=$(mktemp -d)
-PYTHONPATH=$(pwd) poetry run python kickstart.py create service hello-worker --lang typescript --runtime cloudflare-workers --root "$tmpdir"
+poetry run kickstart create service hello-worker --lang typescript --runtime cloudflare-workers --root "$tmpdir"
 
 rm -rf tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker
 mkdir -p tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker
@@ -49,8 +49,8 @@ make tests
 make check
 ```
 
-Use `make package` to build the wheel/source distribution and `make binary` to build the local standalone binary.
-GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Linux/macOS x64 and arm64 binaries for each supported Python minor.
+Use `make package` to build the wheel/source distribution and `make binary` to build the local kickstart binary (a PyInstaller `--onedir` payload under `dist/kickstart/`).
+GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Linux/macOS x64 and arm64 binary archives (`kickstart-<platform>-py<minor>.tar.gz`) for each supported Python minor.
 
 ## Releases
 

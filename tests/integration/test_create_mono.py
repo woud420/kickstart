@@ -1,46 +1,38 @@
+import json
 import tempfile
 from pathlib import Path
-import subprocess
-import sys
-import os
-import json
+from typing import Callable
+
+import pytest
 
 
-def _run_create_mono(tmp: Path, *args: str) -> Path:
-    repo_root = Path(__file__).resolve().parents[2]
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(repo_root)
-    project_name = args[0]
-    root = Path(args[args.index("--root") + 1]) if "--root" in args else tmp
+@pytest.fixture
+def _run_create_mono(kickstart_run) -> Callable[..., Path]:
+    """Return a helper that runs `kickstart create mono <args>` and returns the generated project root."""
 
-    subprocess.run(
-        [sys.executable, str(repo_root / "kickstart.py"), "create", "mono", *args],
-        cwd=tmp,
-        check=True,
-        env=env,
-    )
+    def _runner(tmp: Path, *args: str) -> Path:
+        project_name = args[0]
+        root = Path(args[args.index("--root") + 1]) if "--root" in args else tmp
+        kickstart_run("create", "mono", *args, cwd=tmp, check=True)
+        return root / project_name
 
-    return root / project_name
+    return _runner
 
 
-def _run_create_system(tmp: Path, *args: str) -> Path:
-    repo_root = Path(__file__).resolve().parents[2]
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(repo_root)
-    project_name = args[0]
-    root = Path(args[args.index("--root") + 1]) if "--root" in args else tmp
+@pytest.fixture
+def _run_create_system(kickstart_run) -> Callable[..., Path]:
+    """Return a helper that runs `kickstart create system <args>` and returns the generated project root."""
 
-    subprocess.run(
-        [sys.executable, str(repo_root / "kickstart.py"), "create", "system", *args],
-        cwd=tmp,
-        check=True,
-        env=env,
-    )
+    def _runner(tmp: Path, *args: str) -> Path:
+        project_name = args[0]
+        root = Path(args[args.index("--root") + 1]) if "--root" in args else tmp
+        kickstart_run("create", "system", *args, cwd=tmp, check=True)
+        return root / project_name
 
-    return root / project_name
+    return _runner
 
 
-def test_create_monorepo_kustomize():
+def test_create_monorepo_kustomize(_run_create_mono):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         _run_create_mono(tmp, "infra-stack", "--root", str(tmp))
@@ -50,7 +42,7 @@ def test_create_monorepo_kustomize():
         assert (base / "Makefile").exists()
 
 
-def test_create_system_is_workspace_neutral_by_default():
+def test_create_system_is_workspace_neutral_by_default(_run_create_system):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         base = _run_create_system(tmp, "platform", "--root", str(tmp), "--cloud", "aws")
@@ -71,7 +63,7 @@ def test_create_system_is_workspace_neutral_by_default():
         assert "Workspace tooling: None" in readme
 
 
-def test_create_system_can_emit_bun_turbo_workspace_tooling():
+def test_create_system_can_emit_bun_turbo_workspace_tooling(_run_create_system):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         base = _run_create_system(
@@ -91,7 +83,7 @@ def test_create_system_can_emit_bun_turbo_workspace_tooling():
         assert (base / "config/tsconfig/base.json").exists()
 
 
-def test_create_monorepo_kustomize_with_root():
+def test_create_monorepo_kustomize_with_root(_run_create_mono):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
 
@@ -106,7 +98,7 @@ def test_create_monorepo_kustomize_with_root():
         assert (base / "Makefile").exists()
 
 
-def test_create_aws_kubernetes_docs_match_selected_profile():
+def test_create_aws_kubernetes_docs_match_selected_profile(_run_create_mono):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         base = _run_create_mono(
@@ -154,7 +146,7 @@ def test_create_aws_kubernetes_docs_match_selected_profile():
         assert "make k8s-render ENV=${{ inputs.environment }}" in deploy_workflow
 
 
-def test_create_cloudflare_workers_docs_match_runtime_profile():
+def test_create_cloudflare_workers_docs_match_runtime_profile(_run_create_mono):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         base = _run_create_mono(

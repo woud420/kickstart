@@ -37,8 +37,8 @@ release workflow reads `CLOUDFLARE_ACCOUNT_ID` from repository variables and
 `CLOUDFLARE_WEBSITE_API_TOKEN` from repository secrets, then exposes them to
 Alchemy as the Cloudflare environment variables it expects.
 
-The Cloudflare token needs an account-scoped policy for the `polarcoordinates`
-account with `Workers Scripts: Write`. It also needs a domain-scoped policy for
-`kickstart-cli.org` with `Zone: Read` so Alchemy can infer the zone for the
-custom domain binding. `Workers Routes: Edit` is only needed if the website
-switches from a Worker custom domain to route-pattern deployment.
+The Cloudflare token needs `Workers Scripts: Write` on the website's Cloudflare
+account. It also needs a domain-scoped policy for `kickstart-cli.org` with
+`Zone: Read` so Alchemy can infer the zone for the custom domain binding.
+`Workers Routes: Edit` is only needed if the website switches from a Worker
+custom domain to route-pattern deployment.
