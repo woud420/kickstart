@@ -18,6 +18,6 @@ jobs:
       - name: Install build tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential cmake
+          sudo apt-get install -y --no-install-recommends build-essential cmake clang-format
 
       - run: make check

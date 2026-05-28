@@ -17,7 +17,7 @@ kickstart creates project scaffolds so the first hour of setup is repeatable ins
 Languages:
 
 - `python`: FastAPI by default, or `--framework minimal`
-- `typescript` or `ts`: Bun + Fastify
+- `typescript` or `ts`: Bun + Hono on `@hono/node-server`
 - `rust`: Actix-web
 - `cpp`: C++20 + CMake
 - `go`: minimal `net/http`

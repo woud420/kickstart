@@ -22,7 +22,7 @@ test: install
 
 typecheck: build
 
-check: test
+check: lint typecheck test
 
 build: install
 	@$(call log,Building C++ service)
