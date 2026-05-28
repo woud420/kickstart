@@ -12,7 +12,10 @@ export function buildApp(): Hono {
   const app = new Hono();
 
   app.use("*", secureHeaders());
-  app.use("*", honoLogger((message) => log.info(message)));
+  app.use(
+    "*",
+    honoLogger((message) => log.info(message)),
+  );
 
   registerHealthRoutes(app);
 

@@ -1,4 +1,4 @@
 [toolchain]
-channel = "1.85"
+channel = "{{ rust_toolchain }}"
 components = ["rustfmt", "clippy"]
 profile = "minimal"

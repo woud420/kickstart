@@ -1,7 +1,8 @@
-.PHONY: install dev test typecheck check build lint clean
+.PHONY: install dev test typecheck check build lint clean docker-build
 
 BUILD_DIR = build
 {% include "_shared/make_logging.mk.tpl" %}
+{% include "_shared/make_docker.mk.tpl" %}
 
 install:
 	@$(call log,Checking C++ toolchain)

@@ -1,4 +1,4 @@
-FROM oven/bun:1 AS deps
+FROM oven/bun:{{ bun_version }} AS deps
 WORKDIR /app
 COPY package.json bun.lock* ./
 RUN bun install

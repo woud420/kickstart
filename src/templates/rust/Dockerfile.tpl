@@ -1,4 +1,4 @@
-FROM rust:1.85-bookworm AS builder
+FROM rust:{{ rust_docker_tag }} AS builder
 
 WORKDIR /usr/src/{{service_name}}
 COPY . .

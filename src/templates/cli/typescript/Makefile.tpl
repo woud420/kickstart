@@ -1,4 +1,4 @@
-.PHONY: install dev test typecheck check build run
+.PHONY: install dev test typecheck check build run lint fmt format-check
 
 BUN ?= bun
 BUN_TMPDIR ?= $(CURDIR)/.tmp
@@ -23,7 +23,19 @@ typecheck: install
 	@$(call log,Running TypeScript typecheck)
 	@$(BUN_ENV) $(BUN) run typecheck
 
-check: typecheck test
+lint: install
+	@$(call log,Running ESLint)
+	@$(BUN_ENV) $(BUN) run lint
+
+fmt: install
+	@$(call log,Formatting TypeScript sources)
+	@$(BUN_ENV) $(BUN) run format
+
+format-check: install
+	@$(call log,Checking TypeScript formatting)
+	@$(BUN_ENV) $(BUN) run format:check
+
+check: lint typecheck test
 
 build: install
 	@$(call log,Building TypeScript CLI)

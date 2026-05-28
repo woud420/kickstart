@@ -253,7 +253,7 @@ def test_template_files_count():
         generator = FrontendGenerator("test", False, {})
         generator.create()
         
-        assert mock_write_template.call_count == 12
+        assert mock_write_template.call_count == 15
 
 
 def test_no_language_specific_logic():

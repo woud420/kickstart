@@ -20,6 +20,9 @@ def frontend_template_plan() -> TemplatePlan:
             TemplateConfig("src/App.tsx", "src/App.tsx.tpl"),
             TemplateConfig("src/main.tsx", "src/main.tsx.tpl"),
             TemplateConfig("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
+            TemplateConfig("eslint.config.mjs", "_shared/typescript/eslint.config.react.mjs.tpl"),
+            TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
+            TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
             *language_ci_workflow("typescript"),
         ]
     )
@@ -52,6 +55,9 @@ def cli_template_plan(language: str) -> TemplatePlan:
             TemplateConfig("tsconfig.build.json", "typescript/tsconfig.build.json.tpl"),
             TemplateConfig("vitest.config.ts", "cli/typescript/vitest.config.ts.tpl"),
             TemplateConfig("bunfig.toml", "typescript/bunfig.toml.tpl"),
+            TemplateConfig("eslint.config.mjs", "_shared/typescript/eslint.config.mjs.tpl"),
+            TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
+            TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
         ),
     }
     return TemplatePlan.from_templates([*common, *language_specific.get(language, ())])

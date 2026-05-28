@@ -6,6 +6,7 @@ from pathlib import Path
 from src.generator.file_plan import ContentFile
 from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
+from src.stack.toolchain_versions import toolchain_vars
 from src.stack.types import TemplateConfig
 from src.utils.fs import get_template_engine, write_file
 from src.utils.logger import success, warn
@@ -124,6 +125,7 @@ class BaseGenerator:
         template_vars = {
             "service_name": self.name,
             "package_name": self._package_name(),
+            **toolchain_vars(),
             **vars,
         }
         write_file(self.project / target, resolved_template_path, **template_vars)
@@ -183,6 +185,7 @@ class BaseGenerator:
             template_vars: dict[str, TemplateValue] = {
                 "service_name": self.name,
                 "package_name": self._package_name(),
+                **toolchain_vars(),
             }
             template_vars.update(template.vars)
             base_dir = self._templates_root if template.template.startswith("_shared/") else self.template_dir

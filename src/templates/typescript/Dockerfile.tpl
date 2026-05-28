@@ -1,4 +1,4 @@
-FROM oven/bun:1 AS deps
+FROM oven/bun:{{ bun_version }} AS deps
 WORKDIR /app
 COPY package.json bun.lock* bunfig.toml* ./
 RUN bun install
@@ -8,7 +8,7 @@ COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
 RUN bun run build
 
-FROM oven/bun:1 AS runtime
+FROM oven/bun:{{ bun_version }} AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY package.json bun.lock* bunfig.toml* ./

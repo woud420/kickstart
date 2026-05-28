@@ -80,6 +80,8 @@ def test_create_scaffold_contract_docs(base_generator, tmp_path):
 
 @patch('src.generator.base.write_file')
 def test_write_template(mock_write_file, base_generator, tmp_path):
+    from src.stack.toolchain_versions import toolchain_vars
+
     template_path = tmp_path / "template.txt"
     template_path.write_text("Hello {{NAME}}")
     target = "output.txt"
@@ -90,7 +92,8 @@ def test_write_template(mock_write_file, base_generator, tmp_path):
         str(template_path),
         service_name="test-project",
         package_name="test-project",
-        name="World"
+        **toolchain_vars(),
+        name="World",
     )
 
 @patch('src.generator.base.write_file')

@@ -1,10 +1,11 @@
-.PHONY: install dev test typecheck check build run docker-build
+.PHONY: install dev test typecheck check build run lint fmt format-check docker-build
 
 BUN ?= bun
 BUN_TMPDIR ?= $(CURDIR)/.tmp
 BUN_CACHE_DIR ?= $(CURDIR)/.cache/bun
 BUN_ENV = TMPDIR=$(BUN_TMPDIR) XDG_CACHE_HOME=$(CURDIR)/.cache BUN_INSTALL_CACHE_DIR=$(BUN_CACHE_DIR)/install
 {% include "_shared/make_logging.mk.tpl" %}
+{% include "_shared/make_docker.mk.tpl" %}
 
 install:
 	@$(call log,Installing TypeScript dependencies)
@@ -23,7 +24,19 @@ typecheck: install
 	@$(call log,Running TypeScript typecheck)
 	@$(BUN_ENV) $(BUN) run typecheck
 
-check: typecheck test
+lint: install
+	@$(call log,Running ESLint)
+	@$(BUN_ENV) $(BUN) run lint
+
+fmt: install
+	@$(call log,Formatting TypeScript sources)
+	@$(BUN_ENV) $(BUN) run format
+
+format-check: install
+	@$(call log,Checking TypeScript formatting)
+	@$(BUN_ENV) $(BUN) run format:check
+
+check: lint typecheck test
 
 build: install
 	@$(call log,Building TypeScript service)
@@ -33,6 +46,3 @@ run: build
 	@$(call log,Running TypeScript service)
 	@$(BUN_ENV) $(BUN) start
 
-docker-build:
-	@$(call log,Building Docker image)
-	@docker build -t {{ service_name }}:local .

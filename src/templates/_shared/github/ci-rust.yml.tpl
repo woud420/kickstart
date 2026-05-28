@@ -17,7 +17,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.85"
+          toolchain: "{{ rust_toolchain }}"
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2

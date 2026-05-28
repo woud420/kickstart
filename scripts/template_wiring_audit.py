@@ -150,7 +150,10 @@ def _active_templates() -> set[str]:
     )
 
     for entry in frontend_template_plan().entries():
-        active.add(f"react/{entry.template}")
+        if entry.template.startswith("_shared/"):
+            active.add(entry.template)
+        else:
+            active.add(f"react/{entry.template}")
 
     for language, profile in stack_registry.languages.items():
         if profile.library:

@@ -17,6 +17,6 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.0"
+          bun-version: "{{ bun_version }}"
 
       - run: make check

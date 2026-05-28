@@ -17,6 +17,6 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "{{ go_version }}"
 
       - run: make check

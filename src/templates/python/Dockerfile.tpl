@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS builder
+FROM python:{{ python_docker_tag }} AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -20,7 +20,7 @@ RUN poetry install --only main --no-root --no-ansi
 COPY . .
 RUN poetry install --only main --no-ansi
 
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:{{ python_docker_tag }} AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
