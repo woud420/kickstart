@@ -20,7 +20,10 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
             TemplateConfig("requirements.txt", "python/requirements.txt.tpl"),
             TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl"),
         ),
-        "rust": (TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl"),),
+        "rust": (
+            TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl"),
+            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+        ),
         "go": (TemplateConfig("go.mod", "go/go.mod.tpl"),),
         "typescript": (
             TemplateConfig("package.json", "typescript/package.json.tpl"),

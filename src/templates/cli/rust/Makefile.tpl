@@ -1,4 +1,4 @@
-.PHONY: install dev test typecheck check build lint
+.PHONY: install dev test typecheck check build lint fmt clean
 {% include "_shared/make_logging.mk.tpl" %}
 
 install:
@@ -23,6 +23,16 @@ build: install
 	@$(call log,Building Rust CLI release)
 	@cargo build --release
 
+fmt:
+	@$(call log,Formatting Rust sources)
+	@cargo fmt --all
+
 lint:
 	@$(call log,Checking Rust formatting)
 	@cargo fmt --all -- --check
+	@$(call log,Running Clippy)
+	@cargo clippy --all-targets --all-features -- -D warnings
+
+clean:
+	@$(call log,Cleaning Rust build artifacts)
+	@cargo clean

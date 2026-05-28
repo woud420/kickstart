@@ -41,6 +41,7 @@ def cli_template_plan(language: str) -> TemplatePlan:
         ),
         "rust": (
             TemplateConfig("Cargo.toml", "rust/Cargo.cli.toml.tpl"),
+            TemplateConfig("rust-toolchain.toml", "cli/rust/rust-toolchain.toml.tpl"),
         ),
         "typescript": (
             TemplateConfig("package.json", "cli/typescript/package.json.tpl"),
