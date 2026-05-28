@@ -1,6 +1,7 @@
 """Reusable template render plans for generators."""
 
 from src.generator.template_plan import TemplatePlan
+from src.stack.templates import language_ci_workflow
 from src.stack.types import TemplateConfig
 
 
@@ -19,6 +20,7 @@ def frontend_template_plan() -> TemplatePlan:
             TemplateConfig("src/App.tsx", "src/App.tsx.tpl"),
             TemplateConfig("src/main.tsx", "src/main.tsx.tpl"),
             TemplateConfig("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
+            *language_ci_workflow("typescript"),
         ]
     )
 
@@ -34,6 +36,7 @@ def cli_template_plan(language: str) -> TemplatePlan:
         TemplateConfig(".gitignore", f"{language}/gitignore.tpl"),
         TemplateConfig("Makefile", f"cli/{language}/Makefile.tpl"),
         TemplateConfig("README.md", f"cli/{language}/README.md.tpl"),
+        *language_ci_workflow(language),
     ]
     language_specific = {
         "python": (
@@ -90,5 +93,6 @@ def _package_template_plan(language: str) -> TemplatePlan:
             TemplateConfig(".gitignore", f"{language}/gitignore.tpl"),
             TemplateConfig("Makefile", f"{language}/Makefile.tpl"),
             TemplateConfig("README.md", f"{language}/README.md.tpl"),
+            *language_ci_workflow(language),
         ]
     )

@@ -51,6 +51,7 @@ class BaseGenerator:
         self.config = config
         self.project = Path(root) / name if root else Path(name)
         self.template_dir = Path(__file__).parent.parent / "templates"
+        self._templates_root = self.template_dir
         self.template_registry = get_template_registry(self.template_dir)
 
     def create_project(self) -> bool:
@@ -109,7 +110,10 @@ class BaseGenerator:
         """
         resolved_template_path: Path | str
         if isinstance(template_path, str) and not Path(template_path).is_absolute():
-            resolved_template_path = self.template_dir / template_path
+            if template_path.startswith("_shared/"):
+                resolved_template_path = self._templates_root / template_path
+            else:
+                resolved_template_path = self.template_dir / template_path
         else:
             resolved_template_path = template_path
 
@@ -181,7 +185,8 @@ class BaseGenerator:
                 "package_name": self._package_name(),
             }
             template_vars.update(template.vars)
-            source = (self.template_dir / template.template).read_text(encoding="utf-8")
+            base_dir = self._templates_root if template.template.startswith("_shared/") else self.template_dir
+            source = (base_dir / template.template).read_text(encoding="utf-8")
             content = get_template_engine().render_string(source, template_vars)
             if self.write_content(template.target, content) is False:
                 success = False

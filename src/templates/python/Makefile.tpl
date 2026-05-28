@@ -1,4 +1,4 @@
-.PHONY: install test lint typecheck check build
+.PHONY: install run test lint format format-check typecheck check build clean
 
 POETRY ?= poetry
 PY_CACHE_DIR ?= $(CURDIR)/.cache
@@ -12,6 +12,10 @@ install:
 	@$(POETRY_ENV) install
 	@if [ -f requirements.txt ]; then $(POETRY_RUN) python -m pip install -r requirements.txt; fi
 
+run: install
+	@$(call log,Running Python service)
+	@$(POETRY_RUN) python -m src.main
+
 test: install
 	@$(call log,Running Python tests)
 	@$(POETRY_RUN) python -m pytest
@@ -19,6 +23,15 @@ test: install
 lint: install
 	@$(call log,Running Ruff lint)
 	@$(POETRY_RUN) ruff check .
+
+format: install
+	@$(call log,Formatting Python sources)
+	@$(POETRY_RUN) ruff format .
+	@$(POETRY_RUN) ruff check --fix .
+
+format-check: install
+	@$(call log,Checking Python formatting)
+	@$(POETRY_RUN) ruff format --check .
 
 typecheck: install
 	@$(call log,Running mypy)
@@ -29,3 +42,8 @@ check: lint typecheck test
 build: install
 	@$(call log,Building Python package)
 	@$(POETRY_ENV) build
+
+clean:
+	@$(call log,Cleaning Python build artifacts)
+	@rm -rf build dist *.egg-info .pytest_cache .ruff_cache .mypy_cache
+	@find . -type d -name __pycache__ -exec rm -rf {} +
