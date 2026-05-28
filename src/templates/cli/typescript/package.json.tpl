@@ -15,7 +15,7 @@
     "dev": "node ./bin/dev.js check",
     "build": "tsc -p tsconfig.build.json",
     "start": "node ./bin/run.js check",
-    "test": "vitest run tests/cli-smoke.test.ts",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -35,7 +35,7 @@
     "tsx": "^4.20.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.0"
   },
   "oclif": {
     "bin": "{{ package_name }}",

@@ -65,7 +65,7 @@ def test_create_success_with_gh(
         call("index.html", "index.html.tpl"),
         call(".gitignore", "gitignore.tpl"),
         call("Dockerfile", "Dockerfile.tpl"),
-        call("Makefile", "Makefile.tpl"),
+        call("Makefile", "Makefile.tpl", has_docker=True),
         call("README.md", "README.md.tpl"),
         call("package.json", "package.json.tpl"),
         call("tsconfig.json", "tsconfig.json.tpl"),
@@ -107,7 +107,7 @@ def test_create_success_without_gh(
         call("index.html", "index.html.tpl"),
         call(".gitignore", "gitignore.tpl"),
         call("Dockerfile", "Dockerfile.tpl"),
-        call("Makefile", "Makefile.tpl"),
+        call("Makefile", "Makefile.tpl", has_docker=True),
         call("README.md", "README.md.tpl"),
         call("package.json", "package.json.tpl"),
         call("tsconfig.json", "tsconfig.json.tpl"),
@@ -162,30 +162,30 @@ def test_project_structure_directories():
 def test_all_template_files_are_written():
     """Test that all expected template files are written."""
     expected_template_files = [
-        ("index.html", "index.html.tpl"),
-        (".gitignore", "gitignore.tpl"),
-        ("Dockerfile", "Dockerfile.tpl"),
-        ("Makefile", "Makefile.tpl"),
-        ("README.md", "README.md.tpl"),
-        ("package.json", "package.json.tpl"),
-        ("tsconfig.json", "tsconfig.json.tpl"),
-        ("vite.config.ts", "vite.config.ts.tpl"),
-        ("src/App.tsx", "src/App.tsx.tpl"),
-        ("src/main.tsx", "src/main.tsx.tpl"),
-        ("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
+        ("index.html", "index.html.tpl", {}),
+        (".gitignore", "gitignore.tpl", {}),
+        ("Dockerfile", "Dockerfile.tpl", {}),
+        ("Makefile", "Makefile.tpl", {"has_docker": True}),
+        ("README.md", "README.md.tpl", {}),
+        ("package.json", "package.json.tpl", {}),
+        ("tsconfig.json", "tsconfig.json.tpl", {}),
+        ("vite.config.ts", "vite.config.ts.tpl", {}),
+        ("src/App.tsx", "src/App.tsx.tpl", {}),
+        ("src/main.tsx", "src/main.tsx.tpl", {}),
+        ("tests/App.test.tsx", "tests/App.test.tsx.tpl", {}),
     ]
-    
+
     with patch.object(FrontendGenerator, 'create_project', return_value=True), \
          patch.object(FrontendGenerator, 'init_basic_structure'), \
          patch.object(FrontendGenerator, 'create_architecture_docs'), \
          patch.object(FrontendGenerator, 'log_success'), \
          patch.object(FrontendGenerator, 'write_template') as mock_write_template:
-        
+
         generator = FrontendGenerator("test", False, {})
         generator.create()
-        
-        for file_path, template_name in expected_template_files:
-            expected_call = call(file_path, template_name)
+
+        for file_path, template_name, kwargs in expected_template_files:
+            expected_call = call(file_path, template_name, **kwargs)
             assert expected_call in mock_write_template.call_args_list
 
 

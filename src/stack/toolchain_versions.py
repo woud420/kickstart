@@ -13,6 +13,7 @@ from src.utils.types import TemplateValue
 BUN_VERSION: Final[str] = "1.3.0"
 PYTHON_DOCKER_TAG: Final[str] = "3.12-slim-bookworm"
 PYTHON_MATRIX: Final[tuple[str, ...]] = ("3.12", "3.13", "3.14")
+POETRY_VERSION: Final[str] = "1.8.4"
 RUST_TOOLCHAIN: Final[str] = "1.85"
 RUST_DOCKER_TAG: Final[str] = "1.85-bookworm"
 GO_VERSION: Final[str] = "1.26"
@@ -28,6 +29,7 @@ def toolchain_vars() -> dict[str, TemplateValue]:
         "bun_version": BUN_VERSION,
         "python_docker_tag": PYTHON_DOCKER_TAG,
         "python_matrix": list(PYTHON_MATRIX),
+        "poetry_version": POETRY_VERSION,
         "rust_toolchain": RUST_TOOLCHAIN,
         "rust_docker_tag": RUST_DOCKER_TAG,
         "go_version": GO_VERSION,

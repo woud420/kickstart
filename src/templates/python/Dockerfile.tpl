@@ -3,7 +3,7 @@ FROM python:{{ python_docker_tag }} AS builder
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    POETRY_VERSION=1.8.4 \
+    POETRY_VERSION={{ poetry_version }} \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     POETRY_NO_INTERACTION=1
 

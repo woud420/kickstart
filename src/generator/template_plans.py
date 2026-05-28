@@ -12,7 +12,7 @@ def frontend_template_plan() -> TemplatePlan:
             TemplateConfig("index.html", "index.html.tpl"),
             TemplateConfig(".gitignore", "gitignore.tpl"),
             TemplateConfig("Dockerfile", "Dockerfile.tpl"),
-            TemplateConfig("Makefile", "Makefile.tpl"),
+            TemplateConfig("Makefile", "Makefile.tpl", {"has_docker": True}),
             TemplateConfig("README.md", "README.md.tpl"),
             TemplateConfig("package.json", "package.json.tpl"),
             TemplateConfig("tsconfig.json", "tsconfig.json.tpl"),

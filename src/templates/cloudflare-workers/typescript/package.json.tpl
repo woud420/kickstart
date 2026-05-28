@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "vitest run tests/worker.test.ts",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -25,7 +25,7 @@
     "prettier": "^3.4.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.20.0",
-    "vitest": "^4.1.2",
+    "vitest": "^3.0.0",
     "wrangler": "^4.80.0"
   }
 }

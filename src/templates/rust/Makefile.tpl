@@ -1,6 +1,6 @@
-.PHONY: install dev test typecheck check build lint fmt clean docker-build
+.PHONY: install dev test typecheck check build lint fmt clean{% if has_docker %} docker-build{% endif %}
 {% include "_shared/make_logging.mk.tpl" %}
-{% include "_shared/make_docker.mk.tpl" %}
+{% if has_docker %}{% include "_shared/make_docker.mk.tpl" %}{% endif %}
 
 install:
 	@$(call log,Fetching Rust dependencies)

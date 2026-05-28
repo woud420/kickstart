@@ -11,7 +11,7 @@
     "dev": "bun --watch src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "bun dist/main.js",
-    "test": "vitest run tests/health.test.ts",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -39,6 +39,6 @@
     "prettier": "^3.4.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.0"
   }
 }

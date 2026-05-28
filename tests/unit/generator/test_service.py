@@ -98,7 +98,7 @@ def test_create_success_python_with_helm_and_gh(
         call("README.md", "python/README.md.tpl"),
         call(".gitignore", "python/gitignore.tpl"),
         call("Dockerfile", "python/Dockerfile.tpl"),
-        call("Makefile", "python/Makefile.tpl")
+        call("Makefile", "python/Makefile.tpl", has_docker=True)
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     

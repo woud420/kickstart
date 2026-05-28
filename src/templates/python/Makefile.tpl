@@ -1,11 +1,11 @@
-.PHONY: install run test lint format format-check typecheck check build clean docker-build
+.PHONY: install run test lint format format-check typecheck check build clean{% if has_docker %} docker-build{% endif %}
 
 POETRY ?= poetry
 PY_CACHE_DIR ?= $(CURDIR)/.cache
 POETRY_ENV = POETRY_IGNORE_ACTIVE_VIRTUALENVS=1 POETRY_VIRTUALENVS_IN_PROJECT=true POETRY_CACHE_DIR=$(PY_CACHE_DIR)/pypoetry PIP_CACHE_DIR=$(PY_CACHE_DIR)/pip $(POETRY)
 POETRY_RUN = POETRY_IGNORE_ACTIVE_VIRTUALENVS=1 POETRY_VIRTUALENVS_IN_PROJECT=true POETRY_CACHE_DIR=$(PY_CACHE_DIR)/pypoetry PIP_CACHE_DIR=$(PY_CACHE_DIR)/pip $(POETRY) run
 {% include "_shared/make_logging.mk.tpl" %}
-{% include "_shared/make_docker.mk.tpl" %}
+{% if has_docker %}{% include "_shared/make_docker.mk.tpl" %}{% endif %}
 
 install:
 	@$(call log,Installing Python dependencies)

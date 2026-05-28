@@ -13,7 +13,7 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
         TemplateConfig("README.md", f"{language}/README.md.tpl"),
         TemplateConfig(".gitignore", f"{language}/gitignore.tpl"),
         TemplateConfig("Dockerfile", f"{language}/Dockerfile.tpl"),
-        TemplateConfig("Makefile", f"{language}/Makefile.tpl"),
+        TemplateConfig("Makefile", f"{language}/Makefile.tpl", {"has_docker": True}),
         *language_ci_workflow(language),
     )
     language_specific = {
