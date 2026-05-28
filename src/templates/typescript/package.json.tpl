@@ -15,8 +15,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@fastify/helmet": "^12.0.1",
-    "fastify": "^5.2.1",
+    "@hono/node-server": "^1.13.7",
+    "@hono/zod-validator": "^0.4.2",
+    "hono": "^4.6.13",
 {% if database == "postgres" %}
     "pg": "^8.13.1",
 {% endif %}

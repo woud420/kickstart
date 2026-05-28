@@ -1,13 +1,17 @@
-import type { FastifyInstance } from "fastify";
+import type { Hono } from "hono";
 
-export async function registerHealthRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/healthz", async () => ({
-    status: "ok",
-    service: "{{ service_name }}",
-  }));
+export function registerHealthRoutes(app: Hono): void {
+  app.get("/healthz", (c) =>
+    c.json({
+      status: "ok",
+      service: "{{ service_name }}",
+    }),
+  );
 
-  app.get("/readyz", async () => ({
-    status: "ready",
-    service: "{{ service_name }}",
-  }));
+  app.get("/readyz", (c) =>
+    c.json({
+      status: "ready",
+      service: "{{ service_name }}",
+    }),
+  );
 }

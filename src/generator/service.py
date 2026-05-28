@@ -527,7 +527,7 @@ class ServiceGenerator(BaseGenerator):
     def _create_typescript_structure(self) -> None:
         """Create TypeScript-specific service structure.
 
-        Sets up a Fastify service with strict TypeScript, environment parsing,
+        Sets up a Hono service on @hono/node-server with strict TypeScript, environment parsing,
         a health route, and a small test harness.
         """
         include_postgres_database = self.database == "postgres"
