@@ -23,6 +23,5 @@ pytest-asyncio>=1.3,<2
 pytest-cov>=7,<8
 
 # Code quality
-black>=25.11,<26
 ruff>=0.14,<1
 mypy>=1.20,<2
