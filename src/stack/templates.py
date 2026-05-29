@@ -19,7 +19,7 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
     language_specific = {
         "python": (
             TemplateConfig("requirements.txt", "python/requirements.txt.tpl"),
-            TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl"),
+            TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl", {"has_async": True}),
         ),
         "rust": (
             TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl"),

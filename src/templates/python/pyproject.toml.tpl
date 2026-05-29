@@ -39,8 +39,8 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers --strict-config"
 testpaths = ["tests"]
-asyncio_mode = "auto"
-markers = [
+{% if has_async %}asyncio_mode = "auto"
+{% endif %}markers = [
     "unit: fast, isolated tests",
     "integration: tests that touch external services",
     "slow: long-running tests",
