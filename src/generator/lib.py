@@ -38,7 +38,10 @@ LIBRARY_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
         ),
     ),
     "rust": PackageSetupPlan(
-        templates=(TemplateConfig("Cargo.toml", "rust/Cargo.lib.toml.tpl"),),
+        templates=(
+            TemplateConfig("Cargo.toml", "rust/Cargo.lib.toml.tpl"),
+            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+        ),
         content_files=(ContentFile("src/lib.rs", RUST_LIBRARY_CONTENT),),
     ),
 }

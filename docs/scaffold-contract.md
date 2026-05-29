@@ -12,6 +12,7 @@ Every project type gets:
 - `docs/operations/`: project-specific development, validation, packaging, deployment, and runbook notes.
 - `docs/decisions/`: durable architecture and implementation decisions.
 - `.kickstart/scaffold.json`: machine-readable scaffold metadata.
+- `.github/workflows/ci.yml`: per-language GitHub Actions workflow that runs `make check` (lint + typecheck + tests) on push and pull requests. The workflow is emitted for every service, CLI, library, and frontend; system scaffolds emit `build.yml`, `test.yml`, and `deploy.yml` at the same path instead.
 
 There is no separate root architecture document. `docs/architecture/` is the canonical architecture location.
 
