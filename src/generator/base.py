@@ -289,13 +289,21 @@ class BaseGenerator:
                 "# Operations\n\n"
                 "- `make install`: install package dependencies.\n"
                 "- `make test`: run generated CLI smoke tests.\n"
-                "- `make check`: run the generated validation suite.\n\n"
+                "- `make lint`: run the language linter (and clippy for Rust, ESLint for TypeScript).\n"
+                "- `make fmt`: format sources in place.\n"
+                "- `make typecheck`: run the language type checker.\n"
+                "- `make check`: run lint + typecheck + tests; CI emits `.github/workflows/ci.yml` "
+                "to invoke this same target.\n\n"
                 "Add packaging, installation, release, signing, and operator runbooks here as the "
                 "CLI matures.\n"
             )
         return (
             "# Operations\n\n"
             f"Document {contract.operations_subjects} here.\n"
+            "\n"
+            "Canonical make targets: `install`, `test`, `lint`, `fmt`, `typecheck`, `check`, "
+            "`build`. Services with a `Dockerfile` also expose `docker-build`. The generated "
+            "`.github/workflows/ci.yml` runs `make check` on push and pull requests.\n"
         )
 
     def _decisions_content(self) -> str:
