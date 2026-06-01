@@ -24,7 +24,7 @@ jobs:
           python-version: ${{ "{{" }} matrix.python-version {{ "}}" }}
 
       - name: Install Poetry
-        run: pipx install poetry
+        run: pipx install "poetry=={{ poetry_version }}"
 
       - name: Cache poetry virtualenv
         uses: actions/cache@v4
@@ -32,6 +32,6 @@ jobs:
           path: |
             .cache
             .venv
-          key: ${{ "{{" }} runner.os {{ "}}" }}-poetry-${{ "{{" }} matrix.python-version {{ "}}" }}-${{ "{{" }} hashFiles('poetry.lock', 'pyproject.toml') {{ "}}" }}
+          key: ${{ "{{" }} runner.os {{ "}}" }}-poetry-{{ poetry_version }}-${{ "{{" }} matrix.python-version {{ "}}" }}-${{ "{{" }} hashFiles('poetry.lock', 'pyproject.toml') {{ "}}" }}
 
       - run: make check
