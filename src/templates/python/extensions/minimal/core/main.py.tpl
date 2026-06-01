@@ -161,8 +161,8 @@ class {{service_name|classname}}Handler(BaseHTTPRequestHandler):
 
 def run_server() -> None:
     """Run the HTTP server."""
-    host = os.environ.get("HOST", "127.0.0.1")
-    port = int(os.environ.get("PORT", "8000"))
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "8080"))
 
     server_address = (host, port)
     httpd = HTTPServer(server_address, {{service_name|classname}}Handler)
@@ -196,8 +196,8 @@ if __name__ == "__main__":
     """Main entry point when running the module directly."""
     import argparse
 
-    default_host = os.environ.get("HOST", "127.0.0.1")
-    default_port = int(os.environ.get("PORT", "8000"))
+    default_host = os.environ.get("HOST", "0.0.0.0")
+    default_port = int(os.environ.get("PORT", "8080"))
 
     parser = argparse.ArgumentParser(description="{{service_name}} API Server")
     parser.add_argument(

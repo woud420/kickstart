@@ -17,4 +17,6 @@ WORKDIR /app
 COPY --from=builder /usr/src/{{service_name}}/target/release/{{service_name}} /usr/local/bin/{{service_name}}
 USER app
 
+EXPOSE 8080
+
 CMD ["/usr/local/bin/{{service_name}}"]

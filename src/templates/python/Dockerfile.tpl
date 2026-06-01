@@ -14,8 +14,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
-COPY pyproject.toml poetry.lock* ./
-RUN poetry install --only main --no-root --no-ansi
+COPY pyproject.toml poetry.lock* requirements.txt* ./
+RUN poetry install --only main --no-root --no-ansi \
+    && if [ -f requirements.txt ]; then poetry run pip install --no-cache-dir -r requirements.txt; fi
 
 COPY . .
 RUN poetry install --only main --no-ansi
@@ -35,5 +36,7 @@ COPY --from=builder --chown=app:app /app/.venv /app/.venv
 COPY --from=builder --chown=app:app /app/src /app/src
 
 USER app
+
+EXPOSE 8080
 
 CMD ["python", "-m", "src.main"]
