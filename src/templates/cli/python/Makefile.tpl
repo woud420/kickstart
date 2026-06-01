@@ -1,4 +1,4 @@
-.PHONY: install dev test lint format format-check typecheck check build clean
+.PHONY: install dev test lint fmt format-check typecheck check build clean
 
 POETRY ?= poetry
 PY_CACHE_DIR ?= $(CURDIR)/.cache
@@ -23,7 +23,7 @@ lint: install
 	@$(call log,Running Ruff lint)
 	@$(POETRY_RUN) ruff check .
 
-format: install
+fmt: install
 	@$(call log,Formatting Python sources)
 	@$(POETRY_RUN) ruff format .
 	@$(POETRY_RUN) ruff check --fix .

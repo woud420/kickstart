@@ -1,4 +1,4 @@
-.PHONY: install dev test typecheck check build lint fmt clean
+.PHONY: install dev test typecheck check build lint fmt format-check clean
 {% include "_shared/make_logging.mk.tpl" %}
 
 install:
@@ -26,6 +26,10 @@ build: install
 fmt:
 	@$(call log,Formatting Rust sources)
 	@cargo fmt --all
+
+format-check:
+	@$(call log,Checking Rust formatting)
+	@cargo fmt --all -- --check
 
 lint:
 	@$(call log,Checking Rust formatting)

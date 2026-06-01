@@ -1,4 +1,4 @@
-.PHONY: install dev test typecheck check build lint clean{% if has_docker %} docker-build{% endif %}
+.PHONY: install dev test typecheck check build lint fmt format-check clean{% if has_docker %} docker-build{% endif %}
 
 BUILD_DIR = build
 {% include "_shared/make_logging.mk.tpl" %}
@@ -30,10 +30,17 @@ build: install
 	@mkdir -p $(BUILD_DIR)
 	@cd $(BUILD_DIR) && cmake .. && cmake --build .
 
-lint:
+fmt:
+	@$(call log,Formatting C++ sources)
+	@command -v clang-format
+	@clang-format -i src/**/*.hpp src/**/*.cpp tests/**/*.cpp
+
+format-check:
 	@$(call log,Checking C++ formatting)
 	@command -v clang-format
 	@clang-format --dry-run --Werror src/**/*.hpp src/**/*.cpp tests/**/*.cpp
+
+lint: format-check
 
 clean:
 	@$(call log,Removing C++ build artifacts)

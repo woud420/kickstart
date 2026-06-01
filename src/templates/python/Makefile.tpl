@@ -1,4 +1,4 @@
-.PHONY: install run test lint format format-check typecheck check build clean{% if has_docker %} docker-build{% endif %}
+.PHONY: install dev test lint fmt format-check typecheck check build clean{% if has_docker %} docker-build{% endif %}
 
 POETRY ?= poetry
 PY_CACHE_DIR ?= $(CURDIR)/.cache
@@ -13,7 +13,7 @@ install:
 	@$(POETRY_ENV) install
 	@if [ -f requirements.txt ]; then $(POETRY_RUN) python -m pip install -r requirements.txt; fi
 
-run: install
+dev: install
 	@$(call log,Running Python service)
 	@$(POETRY_RUN) python -m src.main
 
@@ -25,7 +25,7 @@ lint: install
 	@$(call log,Running Ruff lint)
 	@$(POETRY_RUN) ruff check .
 
-format: install
+fmt: install
 	@$(call log,Formatting Python sources)
 	@$(POETRY_RUN) ruff format .
 	@$(POETRY_RUN) ruff check --fix .
