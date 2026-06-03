@@ -21,6 +21,7 @@ Resolved metadata in `.kickstart/scaffold.json`:
 - system composition metadata, including workspace tooling
 - selected capabilities, such as implemented service extensions
 - knowledge adapter
+- CLI architecture metadata, including `project.architecture`, `project.cli_framework`, `project.command_root`, `project.entrypoint`, `project.operation_root`, and `project.src_root_files`
 
 Outputs:
 
@@ -40,7 +41,7 @@ Do not infer unsupported options. Use existing registries and typed plans.
 ## Source Of Truth
 
 - Public API: `src/api.py`
-- CLI dispatch: `src/cli/`
+- kickstart CLI dispatch: `src/cli/`
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
 - Scaffold contract: `src/generator/scaffold_contract.py`
@@ -58,6 +59,8 @@ Implemented service extensions are intentionally narrow. As of this contract:
 - TypeScript container services support `postgres`.
 
 Do not pass unsupported extension options and assume they were generated.
+
+CLI scaffolds are modular by default for Python, Rust, and TypeScript. They expose the same conceptual boundaries in each language: command adapters, `config`, `clients`, `model`, `operations`, `output`, and `error`. Add command parsing through the generated framework: clap for Rust, Typer for Python, and oclif for TypeScript. Product behavior belongs in `src/operations`, not directly inside command adapters.
 
 ## Defaults
 

@@ -1,5 +1,7 @@
 """FastAPI application entrypoint for {{ service_name }}."""
 
+import os
+
 from fastapi import FastAPI
 
 from .config import get_settings
@@ -16,3 +18,13 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        app,
+        host=os.environ.get("HOST", "0.0.0.0"),
+        port=int(os.environ.get("PORT", "8080")),
+    )

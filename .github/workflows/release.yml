@@ -28,6 +28,8 @@ jobs:
             exit 1
           fi
 
+      # `make release-check` only uses the stdlib (tomllib), so we set up Python
+      # before Poetry — the release-check policy can run without the venv.
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -36,15 +38,11 @@ jobs:
       - name: Verify release version
         run: make release-check TAG="$GITHUB_REF_NAME"
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
         with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
 
       - name: Run checks
         run: make check
@@ -60,20 +58,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
+          poetry-version: ${{ env.POETRY_VERSION }}
 
       - name: Build package
         run: make package
@@ -147,41 +136,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
         with:
           python-version: ${{ matrix.python-version }}
+          poetry-version: ${{ env.POETRY_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Build standalone binary
+      - name: Build kickstart binary
         run: make binary
 
-      - name: Name binary artifact
+      - name: Name, smoke-test, and archive binary
         env:
           PLATFORM: ${{ matrix.platform }}
           PYTHON_MINOR: ${{ matrix.python-version }}
-        run: |
-          asset="kickstart-${PLATFORM}-py${PYTHON_MINOR}"
-          mv dist/kickstart "dist/${asset}"
-          "dist/${asset}" version
-          install -m 0755 "dist/${asset}" "${RUNNER_TEMP}/kickstart"
-          "${RUNNER_TEMP}/kickstart" --help
-          shasum -a 256 "dist/${asset}" > "dist/${asset}.sha256"
+        run: scripts/ci/name-and-smoke-binary.sh "${PLATFORM}" "${PYTHON_MINOR}"
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.platform }}-py${{ matrix.python-version }}
-          path: dist/kickstart-*
+          path: |
+            dist/kickstart-*.tar.gz
+            dist/kickstart-*.tar.gz.sha256
           retention-days: 7
 
   release:
@@ -192,6 +168,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download package artifacts
         uses: actions/download-artifact@v4
         with:
@@ -204,6 +183,11 @@ jobs:
           pattern: binary-*
           path: artifacts/binaries
           merge-multiple: true
+
+      - name: Stage install script
+        run: |
+          mkdir -p artifacts/scripts
+          install -m 0755 scripts/install.sh artifacts/scripts/install.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -221,26 +205,35 @@ jobs:
             artifacts/python-package/*.whl
             artifacts/python-package/*.tar.gz
             artifacts/binaries/kickstart-*
+            artifacts/scripts/install.sh
           body: |
             ## Installation
 
-            Install from PyPI when published:
+            One-line install (latest stable release, into `~/.local/bin`):
+
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/master/scripts/install.sh | bash
+            ```
+
+            The script downloads the matching binary archive, verifies its SHA-256, installs the binary payload under a stable directory, and exposes `kickstart` on `PATH`.
+
+            ### From PyPI
 
             ```bash
             pip install kickstart
             ```
 
-            Standalone binaries are attached for Linux and macOS across the supported Python minor versions.
+            ### Manual binary install
 
-            Pick the asset for your platform, then install it:
+            Binary archives are attached for Linux and macOS across the supported Python minor versions. Pick the asset for your platform, extract it, and run `kickstart install` to place the binary payload in a user-writable directory and configure `PATH`:
 
             ```bash
-            curl -L -o kickstart "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/kickstart-linux-x64-py3.14"
-            chmod +x kickstart
-            ./kickstart version
+            curl -L -o kickstart-linux-x64-py3.14.tar.gz "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/kickstart-linux-x64-py3.14.tar.gz"
+            tar -xzf kickstart-linux-x64-py3.14.tar.gz
+            ./kickstart-linux-x64-py3.14/kickstart install --update-path
             ```
 
-            Check the matching `.sha256` file before installing when you want integrity verification.
+            Pass `--target /usr/local/bin` to choose a different launcher directory, `--app-dir /usr/local/share/kickstart` to choose the binary payload directory, and `--shell bash|zsh|fish` to override shell detection. Check the matching `.sha256` file before installing when you want integrity verification.
 
   website:
     name: Deploy Website
@@ -265,27 +258,24 @@ jobs:
       - name: Check website
         run: bun run check
 
-      - name: Prepare release deploy config
+      - name: Check website deploy credentials
+        id: website-deploy
         env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: bun run prepare-release
-
-      - name: Check Cloudflare credentials
-        id: cloudflare
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WEBSITE_API_TOKEN }}
         run: |
           if [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$CLOUDFLARE_API_TOKEN" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Cloudflare credentials are not configured; skipping website deploy."
+            echo "Cloudflare website credentials are not configured; skipping website deploy."
           fi
 
-      - name: Deploy to Cloudflare Workers
-        if: ${{ steps.cloudflare.outputs.ready == 'true' }}
+      - name: Deploy website with Alchemy
+        if: ${{ steps.website-deploy.outputs.ready == 'true' }}
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ALCHEMY_TELEMETRY_DISABLED: "1"
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WEBSITE_API_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: bun run deploy:release

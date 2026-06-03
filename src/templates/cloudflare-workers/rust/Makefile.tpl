@@ -1,4 +1,4 @@
-.PHONY: install test typecheck check ensure-worker-build ensure-wasm-target worker-build-release build dev deploy
+.PHONY: install test typecheck check lint fmt ensure-worker-build ensure-wasm-target worker-build-release build dev deploy
 
 BUN ?= bun
 CARGO ?= cargo
@@ -23,7 +23,17 @@ typecheck: install
 	@$(call log,Running Rust typecheck)
 	@$(CARGO) check
 
-check: typecheck test
+check: lint typecheck test
+
+fmt:
+	@$(call log,Formatting Rust sources)
+	@$(CARGO) fmt --all
+
+lint:
+	@$(call log,Checking Rust formatting)
+	@$(CARGO) fmt --all -- --check
+	@$(call log,Running Clippy)
+	@$(CARGO) clippy --all-targets -- -D warnings
 
 ensure-worker-build:
 	@$(call log,Checking worker-build)

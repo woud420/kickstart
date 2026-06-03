@@ -29,17 +29,6 @@ class PackageSetupPlan:
 
 PYTHON_LIBRARY_TEST_CONTENT = "def test_generated_scaffold() -> None:\n    assert True\n"
 RUST_LIBRARY_CONTENT = "pub fn generated_scaffold_ready() -> bool {\n    true\n}\n"
-PYTHON_CLI_MAIN_CONTENT = (
-    'def main() -> None:\n    print("Hello from CLI")\n\n\nif __name__ == "__main__":\n    main()\n'
-)
-PYTHON_CLI_TEST_CONTENT = (
-    "from src.main import main\n\n\n"
-    "def test_generated_cli(capsys) -> None:\n"
-    "    main()\n"
-    '    assert "Hello from CLI" in capsys.readouterr().out\n'
-)
-RUST_CLI_MAIN_CONTENT = 'fn main() {\n    println!("Hello from CLI!");\n}\n'
-
 LIBRARY_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
     "python": PackageSetupPlan(
         templates=(TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl"),),
@@ -49,23 +38,65 @@ LIBRARY_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
         ),
     ),
     "rust": PackageSetupPlan(
-        templates=(TemplateConfig("Cargo.toml", "rust/Cargo.lib.toml.tpl"),),
+        templates=(
+            TemplateConfig("Cargo.toml", "rust/Cargo.lib.toml.tpl"),
+            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+        ),
         content_files=(ContentFile("src/lib.rs", RUST_LIBRARY_CONTENT),),
     ),
 }
 
 CLI_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
     "python": PackageSetupPlan(
-        templates=(TemplateConfig("pyproject.toml", "python/pyproject.cli.toml.tpl"),),
+        templates=(
+            TemplateConfig("src/main.py", "cli/python/src/main.py.tpl"),
+            TemplateConfig("src/cli/__init__.py", "cli/python/src/cli/__init__.py.tpl"),
+            TemplateConfig("src/cli/app.py", "cli/python/src/cli/app.py.tpl"),
+            TemplateConfig("src/cli/commands/__init__.py", "cli/python/src/cli/commands/__init__.py.tpl"),
+            TemplateConfig("src/cli/commands/check.py", "cli/python/src/cli/commands/check.py.tpl"),
+            TemplateConfig("src/config/__init__.py", "cli/python/src/config/__init__.py.tpl"),
+            TemplateConfig("src/clients/__init__.py", "cli/python/src/clients/__init__.py.tpl"),
+            TemplateConfig("src/model/__init__.py", "cli/python/src/model/__init__.py.tpl"),
+            TemplateConfig("src/model/dto.py", "cli/python/src/model/dto.py.tpl"),
+            TemplateConfig("src/operations/__init__.py", "cli/python/src/operations/__init__.py.tpl"),
+            TemplateConfig("src/output/__init__.py", "cli/python/src/output/__init__.py.tpl"),
+            TemplateConfig("src/error/__init__.py", "cli/python/src/error/__init__.py.tpl"),
+            TemplateConfig("tests/test_cli_smoke.py", "cli/python/tests/test_cli_smoke.py.tpl"),
+        ),
         content_files=(
-            ContentFile("src/__init__.py", ""),
-            ContentFile("src/main.py", PYTHON_CLI_MAIN_CONTENT),
-            ContentFile("tests/test_smoke.py", PYTHON_CLI_TEST_CONTENT),
+            ContentFile("src/__init__.py", '__version__ = "0.1.0"\n'),
         ),
     ),
     "rust": PackageSetupPlan(
-        templates=(TemplateConfig("Cargo.toml", "rust/Cargo.cli.toml.tpl"),),
-        content_files=(ContentFile("src/main.rs", RUST_CLI_MAIN_CONTENT),),
+        templates=(
+            TemplateConfig("src/main.rs", "cli/rust/src/main.rs.tpl"),
+            TemplateConfig("src/cli/mod.rs", "cli/rust/src/cli/mod.rs.tpl"),
+            TemplateConfig("src/cli/args.rs", "cli/rust/src/cli/args.rs.tpl"),
+            TemplateConfig("src/cli/dispatch.rs", "cli/rust/src/cli/dispatch.rs.tpl"),
+            TemplateConfig("src/config/mod.rs", "cli/rust/src/config/mod.rs.tpl"),
+            TemplateConfig("src/clients/mod.rs", "cli/rust/src/clients/mod.rs.tpl"),
+            TemplateConfig("src/model/mod.rs", "cli/rust/src/model/mod.rs.tpl"),
+            TemplateConfig("src/model/dto.rs", "cli/rust/src/model/dto.rs.tpl"),
+            TemplateConfig("src/operations/mod.rs", "cli/rust/src/operations/mod.rs.tpl"),
+            TemplateConfig("src/output/mod.rs", "cli/rust/src/output/mod.rs.tpl"),
+            TemplateConfig("src/error/mod.rs", "cli/rust/src/error/mod.rs.tpl"),
+            TemplateConfig("tests/cli_smoke.rs", "cli/rust/tests/cli_smoke.rs.tpl"),
+        ),
+    ),
+    "typescript": PackageSetupPlan(
+        templates=(
+            TemplateConfig("bin/dev.js", "cli/typescript/bin/dev.js.tpl"),
+            TemplateConfig("bin/run.js", "cli/typescript/bin/run.js.tpl"),
+            TemplateConfig("src/base-command.ts", "cli/typescript/src/base-command.ts.tpl"),
+            TemplateConfig("src/commands/check.ts", "cli/typescript/src/commands/check.ts.tpl"),
+            TemplateConfig("src/config/index.ts", "cli/typescript/src/config/index.ts.tpl"),
+            TemplateConfig("src/clients/index.ts", "cli/typescript/src/clients/index.ts.tpl"),
+            TemplateConfig("src/model/dto.ts", "cli/typescript/src/model/dto.ts.tpl"),
+            TemplateConfig("src/operations/index.ts", "cli/typescript/src/operations/index.ts.tpl"),
+            TemplateConfig("src/output/index.ts", "cli/typescript/src/output/index.ts.tpl"),
+            TemplateConfig("src/error/index.ts", "cli/typescript/src/error/index.ts.tpl"),
+            TemplateConfig("tests/cli-smoke.test.ts", "cli/typescript/tests/cli-smoke.test.ts.tpl"),
+        ),
     ),
 }
 
@@ -170,7 +201,7 @@ class CLIGenerator(LibraryGenerator):
     def create(self) -> None:
         self._validate_package_language("cli")
         self._create_package_project(
-            directories=cli_directories(),
+            directories=cli_directories(self.lang),
             template_plan=cli_template_plan(self.lang),
             architecture_title=f"{self.name} CLI Docs",
             scaffold_contract=ScaffoldContract(
@@ -178,6 +209,12 @@ class CLIGenerator(LibraryGenerator):
                 execution_models=("cli",),
                 runtime_platforms=("local",),
                 artifacts=ScaffoldArtifacts(package=self.lang),
+                architecture="modular-cli",
+                cli_framework=self._cli_framework(),
+                command_root=self._command_root(),
+                entrypoint=self._entrypoint(),
+                operation_root="src/operations",
+                src_root_files=self._src_root_files(),
             ),
             success_message=f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!",
             language_setup_fn=self._setup_cli_specific_files,
@@ -187,6 +224,38 @@ class CLIGenerator(LibraryGenerator):
         """Setup language-specific files for CLI."""
         self._write_package_setup(CLI_LANGUAGE_SETUP.get(self.lang))
         return True
+
+    def _src_root_files(self) -> tuple[str, ...]:
+        """Return expected language root files below ``src/`` for CLI contracts."""
+        return {
+            "python": ("__init__.py", "main.py"),
+            "rust": ("main.rs",),
+            "typescript": ("base-command.ts",),
+        }.get(self.lang, ())
+
+    def _cli_framework(self) -> str:
+        """Return the default CLI framework for the selected language."""
+        return {
+            "python": "typer",
+            "rust": "clap",
+            "typescript": "oclif",
+        }.get(self.lang, "custom")
+
+    def _command_root(self) -> str:
+        """Return the framework-native command adapter root."""
+        return {
+            "python": "src/cli/commands",
+            "rust": "src/cli",
+            "typescript": "src/commands",
+        }.get(self.lang, "src/cli")
+
+    def _entrypoint(self) -> str:
+        """Return the generated process entrypoint."""
+        return {
+            "python": "src/main.py",
+            "rust": "src/main.rs",
+            "typescript": "bin/run.js",
+        }.get(self.lang, "src/main")
 
 
 LibGenerator = LibraryGenerator

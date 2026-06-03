@@ -2,7 +2,9 @@ __pycache__/
 *.pyc
 *.log
 .venv/
-kickstart
+.mypy_cache/
+.claude/settings.local.json
+/kickstart
 build/
 dist/
 *.egg-info/

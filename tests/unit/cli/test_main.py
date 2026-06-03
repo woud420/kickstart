@@ -1,8 +1,17 @@
-import pytest
+from pathlib import Path
 from unittest.mock import patch
+
+import pytest
+import typer
 from typer.testing import CliRunner
-from src.cli.main import app
-from src.utils.error_handling import ExtensionError
+
+from src.cli.main import (
+    _InstallContext,
+    _report_install_failure,
+    _resolve_install_context,
+    app,
+)
+from src.utils.error_handling import ExtensionError, KickstartError
 
 
 @pytest.fixture
@@ -582,7 +591,339 @@ def test_create_service_validation_error_is_concise(mock_load_config, mock_creat
 def test_completion_command_invalid_shell(runner):
     """Test completion command with invalid shell."""
     result = runner.invoke(app, ["completion", "invalid"])
-    
+
     # Should still work since we just return a placeholder message
     assert result.exit_code == 0
     assert "Completion not implemented" in result.stdout
+
+
+def _make_single_file_binary(tmp_path):
+    source_dir = tmp_path / "src-bin"
+    source_dir.mkdir()
+    source = source_dir / "kickstart-source"
+    source.write_text("#!/bin/sh\necho hi\n")
+    source.chmod(0o755)
+    return source
+
+
+def test_install_command_check_mode(runner, tmp_path):
+    """`install --check` reports status without modifying the filesystem."""
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "user-bin"
+
+    with patch("src.cli.main.current_binary_path", return_value=source):
+        result = runner.invoke(
+            app,
+            ["install", "--target", str(target_dir), "--check", "--shell", "zsh"],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+        )
+
+    assert result.exit_code == 0
+    assert "Install status" in result.stdout
+    assert "missing" in result.stdout
+    assert not (target_dir / "kickstart").exists()
+
+
+def test_install_command_copies_binary_and_prints_path_hint(runner, tmp_path):
+    """Without --update-path the installer copies the binary and prints PATH instructions."""
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "user-bin"
+
+    with patch("src.cli.main.current_binary_path", return_value=source):
+        result = runner.invoke(
+            app,
+            ["install", "--target", str(target_dir), "--shell", "zsh"],
+            env={
+                "PATH": "/usr/bin:/bin",
+                "HOME": str(tmp_path),
+                "SHELL": "/bin/zsh",
+                "COLUMNS": "400",
+                "TERM": "dumb",
+            },
+        )
+
+    assert result.exit_code == 0, result.stdout
+    assert (target_dir / "kickstart").exists()
+    assert f'export PATH="{target_dir}:$PATH"' in result.stdout
+    assert "not on your PATH" in result.stdout
+
+
+def test_install_command_updates_rc_file(runner, tmp_path):
+    """`install --update-path` writes a managed block into the rc file."""
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "user-bin"
+    rc_file = tmp_path / ".zshrc"
+    rc_file.write_text("# existing\n")
+
+    with patch("src.cli.main.current_binary_path", return_value=source):
+        result = runner.invoke(
+            app,
+            [
+                "install",
+                "--target",
+                str(target_dir),
+                "--rc-file",
+                str(rc_file),
+                "--shell",
+                "zsh",
+                "--update-path",
+            ],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+        )
+
+    assert result.exit_code == 0, result.stdout
+    contents = rc_file.read_text()
+    assert "# existing" in contents
+    assert f'export PATH="{target_dir}:$PATH"' in contents
+
+
+def test_install_command_skips_path_when_already_on_path(runner, tmp_path):
+    """When the install dir is already on PATH we never touch the rc file."""
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "user-bin"
+    rc_file = tmp_path / ".zshrc"
+
+    with patch("src.cli.main.current_binary_path", return_value=source):
+        result = runner.invoke(
+            app,
+            [
+                "install",
+                "--target",
+                str(target_dir),
+                "--rc-file",
+                str(rc_file),
+                "--shell",
+                "zsh",
+                "--update-path",
+            ],
+            env={"PATH": str(target_dir), "HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+        )
+
+    assert result.exit_code == 0
+    assert "already on your PATH" in result.stdout
+    assert not rc_file.exists()
+
+
+def test_install_command_refuses_overwrite_without_force(runner, tmp_path):
+    """Without --force the install command exits non-zero if the destination exists."""
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "user-bin"
+    target_dir.mkdir()
+    (target_dir / "kickstart").write_text("placeholder")
+
+    with patch("src.cli.main.current_binary_path", return_value=source):
+        result = runner.invoke(
+            app,
+            ["install", "--target", str(target_dir), "--shell", "zsh"],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+        )
+
+    assert result.exit_code != 0
+
+
+def test_uninstall_command_removes_binary(runner, tmp_path):
+    """The uninstall command removes the binary and optionally cleans the rc file."""
+    target_dir = tmp_path / "user-bin"
+    target_dir.mkdir()
+    (target_dir / "kickstart").write_text("#!/bin/sh\n")
+    rc_file = tmp_path / ".zshrc"
+    rc_file.write_text(
+        "# existing\n"
+        "# >>> kickstart install >>>\n"
+        f'export PATH="{target_dir}:$PATH"\n'
+        "# <<< kickstart install <<<\n"
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "uninstall",
+            "--target",
+            str(target_dir),
+            "--rc-file",
+            str(rc_file),
+            "--shell",
+            "zsh",
+            "--clean-path",
+        ],
+        env={"HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert not (target_dir / "kickstart").exists()
+    assert "# >>> kickstart install >>>" not in rc_file.read_text()
+
+
+def test_uninstall_command_when_nothing_installed(runner, tmp_path):
+    """The uninstall command is graceful when the binary is not present."""
+    result = runner.invoke(
+        app,
+        ["uninstall", "--target", str(tmp_path / "missing")],
+        env={"HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+    )
+
+    assert result.exit_code == 0
+    assert "Nothing to uninstall" in result.stdout
+
+
+# --- Tests targeting the DRY helpers introduced by the refactor. -----------
+
+
+def test_resolve_install_context_defaults_to_xdg(tmp_path, monkeypatch):
+    """When --target is omitted the resolved install_dir falls back to ~/.local/bin."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("SHELL", "/bin/zsh")
+    monkeypatch.setattr("src.cli.main.path_contains", lambda *_args, **_kw: False)
+    ctx = _resolve_install_context(target=None, shell=None, rc_file=None)
+    # The default install_dir module-level constant is computed at import time, so we just
+    # assert the structural invariants instead of comparing against the live HOME.
+    assert ctx.install_dir.name == "bin"
+    assert ctx.shell == "zsh"
+    assert ctx.rc_file is not None
+    assert ctx.rc_file.name == ".zshrc"
+    assert ctx.snippet.startswith("export PATH=")
+    assert ctx.already_on_path is False
+
+
+def test_resolve_install_context_honors_explicit_overrides(tmp_path):
+    """Explicit --target / --rc-file / --shell win over detection."""
+    target = tmp_path / "custom-bin"
+    rc = tmp_path / "rc"
+    ctx = _resolve_install_context(target=target, shell="fish", rc_file=rc)
+    assert ctx.install_dir == target
+    assert ctx.shell == "fish"
+    assert ctx.rc_file == rc
+    assert ctx.snippet == f"fish_add_path -gp {target}"
+
+
+def test_resolve_install_context_expands_user_paths(tmp_path, monkeypatch):
+    """Tilde-prefixed paths should be expanded against HOME for both --target and --rc-file."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("SHELL", "/bin/zsh")
+    ctx = _resolve_install_context(
+        target=Path("~/bin"),
+        shell=None,
+        rc_file=Path("~/.zshrc-override"),
+    )
+    assert ctx.install_dir == tmp_path / "bin"
+    assert ctx.rc_file == tmp_path / ".zshrc-override"
+
+
+def test_report_install_failure_converts_kickstart_error(capsys):
+    """A KickstartError inside the helper exits non-zero with a uniform red banner."""
+    with pytest.raises(typer.Exit) as excinfo:
+        with _report_install_failure("Install"):
+            raise KickstartError("nope")
+    assert excinfo.value.exit_code == 1
+    out = capsys.readouterr().out
+    assert "Install failed: nope" in out
+
+
+def test_report_install_failure_converts_file_not_found(capsys):
+    """FileNotFoundError is caught and reported under the same banner."""
+    with pytest.raises(typer.Exit):
+        with _report_install_failure("Uninstall"):
+            raise FileNotFoundError("missing")
+    out = capsys.readouterr().out
+    assert "Uninstall failed: missing" in out
+
+
+def test_report_install_failure_lets_other_exceptions_through():
+    """Exceptions we don't recognize should not be silently swallowed."""
+    with pytest.raises(RuntimeError):
+        with _report_install_failure("Install"):
+            raise RuntimeError("not handled")
+
+
+def test_install_context_check_does_not_modify_filesystem(runner, tmp_path):
+    """--check must not create the target directory or the rc file."""
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "untouched"
+    rc_file = tmp_path / ".not-touched"
+
+    with patch("src.cli.main.current_binary_path", return_value=source):
+        result = runner.invoke(
+            app,
+            [
+                "install",
+                "--target",
+                str(target_dir),
+                "--rc-file",
+                str(rc_file),
+                "--shell",
+                "zsh",
+                "--check",
+            ],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/zsh", "COLUMNS": "400", "TERM": "dumb"},
+        )
+
+    assert result.exit_code == 0
+    assert not target_dir.exists()
+    assert not rc_file.exists()
+    assert "Install status" in result.stdout
+
+
+def test_install_update_path_without_resolvable_rc(runner, tmp_path):
+    """--update-path with an unknown shell prints manual instructions and exits 0."""
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "user-bin"
+
+    with patch("src.cli.main.current_binary_path", return_value=source):
+        result = runner.invoke(
+            app,
+            [
+                "install",
+                "--target",
+                str(target_dir),
+                "--shell",
+                "unknown-shell",
+                "--update-path",
+            ],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "", "COLUMNS": "400", "TERM": "dumb"},
+        )
+
+    assert result.exit_code == 0
+    assert (target_dir / "kickstart").exists()
+    assert "Could not infer a shell rc file" in result.stdout
+
+
+def test_uninstall_with_clean_path_no_block_present(runner, tmp_path):
+    """uninstall --clean-path against an rc file with no managed block reports gracefully."""
+    target_dir = tmp_path / "user-bin"
+    target_dir.mkdir()
+    (target_dir / "kickstart").write_text("#!/bin/sh\n")
+    rc_file = tmp_path / ".zshrc"
+    rc_file.write_text("# user content only\n")
+
+    result = runner.invoke(
+        app,
+        [
+            "uninstall",
+            "--target",
+            str(target_dir),
+            "--rc-file",
+            str(rc_file),
+            "--shell",
+            "zsh",
+            "--clean-path",
+        ],
+        env={"HOME": str(tmp_path), "SHELL": "/bin/zsh", "COLUMNS": "400", "TERM": "dumb"},
+    )
+
+    assert result.exit_code == 0
+    assert "No managed PATH block" in result.stdout
+    assert rc_file.read_text() == "# user content only\n"
+
+
+def test_install_context_dataclass_is_frozen():
+    """_InstallContext should be immutable so commands can't mutate shared state."""
+    ctx = _InstallContext(
+        install_dir=Path("/tmp/x"),
+        app_root=Path("/tmp/x-app"),
+        shell="zsh",
+        rc_file=Path("/tmp/rc"),
+        snippet='export PATH="/tmp/x:$PATH"',
+        already_on_path=False,
+    )
+    with pytest.raises(Exception):
+        ctx.install_dir = Path("/tmp/y")  # type: ignore[misc]

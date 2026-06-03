@@ -1,0 +1,9 @@
+.kickstart/
+dist/
+build/
+coverage/
+node_modules/
+.cache/
+.turbo/
+*.lock
+*.log

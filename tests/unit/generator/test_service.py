@@ -98,7 +98,7 @@ def test_create_success_python_with_helm_and_gh(
         call("README.md", "python/README.md.tpl"),
         call(".gitignore", "python/gitignore.tpl"),
         call("Dockerfile", "python/Dockerfile.tpl"),
-        call("Makefile", "python/Makefile.tpl")
+        call("Makefile", "python/Makefile.tpl", has_docker=True)
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
@@ -375,16 +375,16 @@ def test_create_go_structure(mock_write_content, mock_write_template, service_ge
     expected_go_main = """package main
 
 import (
-    "fmt"
-    "net/http"
+\t"fmt"
+\t"net/http"
 )
 
 func main() {
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintln(w, `{"message": "Hello World"}`)
-    })
-    fmt.Println("Listening on :8080...")
-    http.ListenAndServe(":8080", nil)
+\thttp.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+\t\tfmt.Fprintln(w, `{"message": "Hello World"}`)
+\t})
+\tfmt.Println("Listening on :8080...")
+\thttp.ListenAndServe(":8080", nil)
 }
 """
     

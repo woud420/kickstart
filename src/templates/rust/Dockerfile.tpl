@@ -1,8 +1,22 @@
-FROM rust:1.74
+FROM rust:{{ rust_docker_tag }} AS builder
 
 WORKDIR /usr/src/{{service_name}}
 COPY . .
 
 RUN cargo build --release
 
-CMD ["./target/release/{{service_name}}"]
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system app \
+    && useradd --system --gid app --home-dir /app --create-home app
+
+WORKDIR /app
+COPY --from=builder /usr/src/{{service_name}}/target/release/{{service_name}} /usr/local/bin/{{service_name}}
+USER app
+
+EXPOSE 8080
+
+CMD ["/usr/local/bin/{{service_name}}"]

@@ -6,6 +6,54 @@ The goal is to eliminate the repeated setup work that humans and agents otherwis
 
 It is intentionally not a product architect. Use it to create a deterministic starting repo, then add the domain model, APIs, security choices, and tests that belong to the product.
 
+## Install
+
+One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux + macOS, x64 + arm64):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh | bash
+```
+
+The script downloads the matching binary archive for your platform from a GitHub release, verifies its SHA-256 checksum, extracts it under the binary directory, and offers to append a managed `PATH` block to your shell rc file. Knobs:
+
+```bash
+# Install into /usr/local without touching shell rc files. Picks /usr/local/share/kickstart
+# for the binary payload automatically.
+curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh \
+  | KICKSTART_INSTALL_DIR=/usr/local/bin bash -s -- --no-path-update
+
+# Pin a specific release tag (replace v<TAG> with one from the Releases page).
+curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh \
+  | KICKSTART_VERSION=v<TAG> bash
+```
+
+Already pulled the binary archive from the Releases page? Extract it and use kickstart's own installer to lay out the launcher and configure `PATH`:
+
+```bash
+tar -xzf kickstart-macos-arm64-py3.14.tar.gz
+./kickstart-macos-arm64-py3.14/kickstart install --update-path
+# Drops a symlink at ~/.local/bin/kickstart pointing at ~/.local/share/kickstart/current/kickstart
+# and edits ~/.zshrc, ~/.bash_profile, or ~/.config/fish/config.fish.
+
+./kickstart-macos-arm64-py3.14/kickstart install --target /usr/local/bin --app-dir /usr/local/share/kickstart
+./kickstart-macos-arm64-py3.14/kickstart install --check                    # just report install/PATH status
+./kickstart-macos-arm64-py3.14/kickstart install --force                    # overwrite an existing install
+./kickstart-macos-arm64-py3.14/kickstart install --shell bash               # override $SHELL detection
+./kickstart-macos-arm64-py3.14/kickstart uninstall --clean-path             # remove launcher + binary payload, restore rc file
+```
+
+Refresh in place against the newest release once installed:
+
+```bash
+kickstart upgrade
+```
+
+Or install from PyPI when published:
+
+```bash
+pip install kickstart
+```
+
 ## Get Started
 
 ```bash
@@ -31,6 +79,12 @@ Create a system root:
 poetry run kickstart create system product-stack
 ```
 
+Create a CLI:
+
+```bash
+poetry run kickstart create cli ops-tool --lang rust
+```
+
 Add Bun + Turbo workspace tooling when you want a TypeScript workspace at the system root:
 
 ```bash
@@ -42,13 +96,15 @@ poetry run kickstart create system product-stack --workspace-tooling bun-turbo
 - `service`: Python, TypeScript, Rust, C++, or Go backend service structure.
 - `frontend`: React, TypeScript, Vite, and Bun frontend app.
 - `lib`: Python or Rust library project.
-- `cli`: Python or Rust CLI project.
+- `cli`: Python, Rust, or TypeScript CLI project with modular command/client/model/operation boundaries and framework-native command adapters.
 - `system`: language-neutral composition repo containing apps, services, libs, tools, infrastructure, docs, and agent metadata.
 
 ## Major Choices
 
 - Preferred stack: Rust, TypeScript, Python, SQL, and C++.
-- Go is supported as a tolerated service target; Python and Rust are the first-class library/CLI targets.
+- Go is supported as a tolerated service target; Python and Rust are the first-class library targets, and Python, Rust, and TypeScript are first-class CLI targets.
+- CLI command adapters default to clap for Rust, Typer for Python, and oclif for TypeScript.
+- Rust is the preferred CLI delivery target for single-binary distribution and performance; Python and TypeScript still use their own professional CLI conventions instead of copying Rust's file layout.
 - Service execution models: containers by default, Cloudflare Workers when requested.
 - Implemented service extensions are intentionally narrow: Python/FastAPI container services support Postgres, Redis, and JWT; Rust container services support Redis and JWT; TypeScript container services support Postgres.
 - System provider targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
@@ -70,7 +126,9 @@ poetry run kickstart create service api-ts --lang typescript --database postgres
 poetry run kickstart create service edge-rs --lang rust --runtime cloudflare-workers
 poetry run kickstart create frontend web
 poetry run kickstart create lib core-lib --lang python
+poetry run kickstart create cli ops-tool-py --lang python
 poetry run kickstart create cli ops-tool --lang rust
+poetry run kickstart create cli ops-tool-ts --lang typescript
 poetry run kickstart create system platform --cloud aws --runtime kubernetes --knowledge none
 poetry run kickstart create system web-platform --workspace-tooling bun-turbo
 ```
@@ -81,6 +139,7 @@ poetry run kickstart create system web-platform --workspace-tooling bun-turbo
 - [Agent Guide](docs/agent-guide.md): compact, LLM-oriented generation contract.
 - [Agent Map](AGENTS.md): repo-local map for agents modifying kickstart itself.
 - [Scaffold Contract](docs/scaffold-contract.md): always-generated docs, metadata, and option vocabulary.
+- [CLI Framework Research](docs/decisions/cli-framework-research.md): decision record for clap, Typer, and oclif defaults.
 - [Local Evals](docs/evals.md): scaffold matrix and generated-project validation commands.
 - [Contributing](docs/contributing.md): how humans should change the repo.
 - [Agent Contributing](docs/agent-contributing.md): how agents should safely modify the repo.
@@ -93,6 +152,6 @@ make package
 make binary
 ```
 
-kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 standalone binaries for each supported Python minor.
+kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 binary archives (`kickstart-<platform>-py<minor>.tar.gz`) for each supported Python minor.
 
 Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/private/tmp` or another scratch path and are not committed.

@@ -1,24 +1,38 @@
-import sys
+"""Self-update for the kickstart installation.
+
+`kickstart upgrade` queries the GitHub Releases API for the latest tag, picks
+the binary archive matching this host's platform and Python minor, verifies its
+SHA-256, extracts it to a temp directory, and re-uses `installer.install_binary`
+to overwrite the running launcher and (when this is an onedir install) refresh
+the binary payload directory.
+"""
+
+from __future__ import annotations
+
 import hashlib
-import shutil
+import os
+import platform
+import sys
+import tarfile
+import tempfile
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Optional, TypedDict, cast
 
 import requests
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.exceptions import InvalidSignature
 
 from src import __version__
-from .error_handling import handle_http_operations, safe_operation_context
+from src.utils.installer import (
+    APP_DIR_NAME,
+    BINARY_NAME,
+    InstallResult,
+    current_binary_path,
+    default_app_root,
+    install_binary,
+)
 
-REPO: str = "woud420/kickstart"
+
+REPO: str = os.environ.get("KICKSTART_REPO") or "woud420/kickstart"
 RELEASE_URL: str = f"https://api.github.com/repos/{REPO}/releases/latest"
-
-# Public key for verifying releases (should be distributed securely)
-PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... # Replace with actual public key
------END PUBLIC KEY-----"""
 
 
 class ReleaseAsset(TypedDict):
@@ -35,180 +49,181 @@ class ReleaseInfo(TypedDict):
     assets: list[ReleaseAsset]
 
 
-def verify_signature(data: bytes, signature: bytes) -> bool:
-    """Verify the signature of downloaded binary data.
-    
-    Args:
-        data: The binary data to verify
-        signature: The signature to verify against
-        
-    Returns:
-        True if signature is valid, False otherwise
+def host_platform_tag() -> str:
+    """Return the platform tag used in release asset names (e.g. ``linux-x64``)."""
+    if sys.platform.startswith("linux"):
+        os_tag = "linux"
+    elif sys.platform == "darwin":
+        os_tag = "macos"
+    else:
+        raise RuntimeError(f"Unsupported platform for self-update: {sys.platform}")
+
+    machine = platform.machine().lower()
+    if machine in {"x86_64", "amd64"}:
+        arch_tag = "x64"
+    elif machine in {"arm64", "aarch64"}:
+        arch_tag = "arm64"
+    else:
+        raise RuntimeError(f"Unsupported architecture for self-update: {machine}")
+
+    return f"{os_tag}-{arch_tag}"
+
+
+def host_python_minor() -> str:
+    """Return the Python minor used in release asset names (e.g. ``3.14``)."""
+    return f"{sys.version_info.major}.{sys.version_info.minor}"
+
+
+def expected_archive_name(
+    platform_tag: Optional[str] = None,
+    python_minor: Optional[str] = None,
+) -> str:
+    """Return the archive asset name for this host (or for explicit overrides)."""
+    return f"kickstart-{platform_tag or host_platform_tag()}-py{python_minor or host_python_minor()}.tar.gz"
+
+
+def find_asset(assets: list[ReleaseAsset], name: str) -> Optional[ReleaseAsset]:
+    """Return the asset with exactly this name, or None."""
+    return next((asset for asset in assets if asset["name"] == name), None)
+
+
+def resolve_current_install_layout() -> tuple[Path, Optional[Path]]:
+    """Return ``(launcher_dir, app_root_or_None)`` for the currently running install.
+
+    When the launcher is a symlink (the onedir install shape), we can recover
+    the app root from the symlink target. For legacy single-file installs the
+    launcher is a regular file and we return ``None`` so callers fall back to
+    `default_app_root` (or skip app-root handling entirely).
     """
-    try:
-        # Load the public key
-        public_key = serialization.load_pem_public_key(PUBLIC_KEY_PEM.encode())
+    launcher = current_binary_path()
+    launcher_dir = launcher.parent
 
-        # Verify the signature - cast to RSAPublicKey as we know it's RSA
-        from cryptography.hazmat.primitives.asymmetric import rsa
-        if isinstance(public_key, rsa.RSAPublicKey):
-            public_key.verify(
-                signature,
-                data,
-                padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.MAX_LENGTH
-                ),
-                hashes.SHA256()
-            )
-            return True
-        return False
-    except (InvalidSignature, Exception):
-        return False
+    if launcher.is_symlink():
+        try:
+            executable = launcher.resolve()
+        except OSError:
+            return launcher_dir, None
+        # Expected layout: <app_root>/<APP_DIR_NAME>/<BINARY_NAME>
+        if executable.parent.name == APP_DIR_NAME:
+            return launcher_dir, executable.parent.parent
+
+    return launcher_dir, None
 
 
-def get_sha256_hash(data: bytes) -> str:
-    """Calculate SHA256 hash of binary data.
-    
-    Args:
-        data: Binary data to hash
-        
-    Returns:
-        Hexadecimal SHA256 hash string
-    """
-    return hashlib.sha256(data).hexdigest()
+def fetch_release_info(url: str = RELEASE_URL) -> ReleaseInfo:
+    """Return the GitHub Releases payload for the latest release."""
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    return cast(ReleaseInfo, response.json())
 
 
-@handle_http_operations("Binary download", default_return=cast(bytes | None, None), log_errors=True)
-def download_and_verify_binary(
-    download_url: str,
-    expected_hash: str | None = None,
-    signature_url: str | None = None,
-) -> bytes | None:
-    """Download binary and verify its integrity and authenticity.
+def download_to(url: str, destination: Path) -> None:
+    """Stream `url` to `destination`. Raises on network/HTTP error."""
+    with requests.get(url, stream=True, timeout=60) as response:
+        response.raise_for_status()
+        destination.write_bytes(response.content)
 
-    Args:
-        download_url: URL to download the binary from
-        expected_hash: Expected SHA256 hash (optional)
-        signature_url: URL to download signature from (optional)
 
-    Returns:
-        Binary data if verification passes, None otherwise
-    """
-    # Download the binary
-    with requests.get(download_url, stream=True, timeout=30) as r:
-        r.raise_for_status()
-        binary_data = r.content
+def verify_sha256(archive_path: Path, expected_hash: str) -> None:
+    """Verify `archive_path` has the given hex-encoded SHA-256."""
+    actual = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+    if actual != expected_hash:
+        raise RuntimeError(f"checksum mismatch (expected {expected_hash}, got {actual})")
 
-    # Verify hash if provided
-    if expected_hash:
-        actual_hash = get_sha256_hash(binary_data)
-        if actual_hash != expected_hash:
-            print(f"[red]✖ Hash verification failed. Expected: {expected_hash}, Got: {actual_hash}")
-            return None
 
-    # Verify signature if provided
-    if signature_url:
-        with safe_operation_context("Signature verification", log_errors=False, suppress_exceptions=True):
-            with requests.get(signature_url, timeout=10) as sig_r:
-                sig_r.raise_for_status()
-                signature = sig_r.content
-
-            if not verify_signature(binary_data, signature):
-                print("[red]✖ Signature verification failed. Binary may be compromised.")
-                return None
-
-    return binary_data
+def _extract_archive_launcher(archive_path: Path, dest_root: Path) -> Path:
+    """Extract a release tarball and return the launcher path inside the bundle."""
+    with tarfile.open(archive_path, "r:gz") as tar:
+        tar.extractall(dest_root)
+    bundle_dirs = [entry for entry in dest_root.iterdir() if entry.is_dir()]
+    if len(bundle_dirs) != 1:
+        names = sorted(entry.name for entry in dest_root.iterdir())
+        raise RuntimeError(f"unexpected archive layout (top-level entries: {names})")
+    launcher = bundle_dirs[0] / BINARY_NAME
+    if not launcher.exists():
+        raise RuntimeError(f"archive does not contain a {BINARY_NAME} executable at {launcher}")
+    return launcher
 
 
 def check_for_update() -> None:
-    """Check for updates and securely download new version if available.
+    """Check for updates and install the newest release in-place."""
+    print(f"[cyan]Checking for updates (current version: {__version__})...")
 
-    This function:
-    1. Fetches the latest release information from GitHub API
-    2. Compares version numbers
-    3. Downloads binary with integrity and signature verification
-    4. Creates backup of current binary before replacement
-    5. Replaces binary with verified new version
-    """
     try:
-        print(f"[cyan]Checking for updates (current version: {__version__})...")
+        info = fetch_release_info()
+    except Exception as exc:
+        print(f"[red]✖ Update failed: could not query the latest release: {exc}")
+        return
 
-        # Fetch release information
-        r: requests.Response = requests.get(RELEASE_URL, timeout=5)
-        r.raise_for_status()
-        data = cast(ReleaseInfo, r.json())
+    latest = info["tag_name"].lstrip("v")
+    if latest == __version__:
+        print("[green]✅ You're already up to date.")
+        return
 
-        latest: str = data["tag_name"].lstrip("v")
+    try:
+        archive_name = expected_archive_name()
+    except RuntimeError as exc:
+        print(f"[red]✖ Update failed: {exc}")
+        return
 
-        # Find the main binary asset
-        kickstart_asset = next(
-            (asset for asset in data["assets"] if asset["name"] == "kickstart"),
-            None
+    archive_asset = find_asset(info["assets"], archive_name)
+    if archive_asset is None:
+        print(
+            f"[red]✖ Update failed: no asset named {archive_name} on release {info['tag_name']}. "
+            "Wait for the release to publish the matching binary archive."
         )
+        return
 
-        if not kickstart_asset:
-            raise RuntimeError("Could not find kickstart binary in release assets")
+    hash_asset = find_asset(info["assets"], f"{archive_name}.sha256")
+    launcher_dir, app_root = resolve_current_install_layout()
 
-        download_url: str = kickstart_asset["browser_download_url"]
+    print(f"[yellow]⬆ New version available: {latest} — downloading {archive_name}...")
+    print(f"  launcher dir: {launcher_dir}")
+    print(f"  app root:     {app_root or default_app_root(launcher_dir)}")
 
-        # Look for hash and signature files
-        expected_hash: str | None = None
-        signature_url: str | None = None
+    with tempfile.TemporaryDirectory(prefix="kickstart-upgrade-") as raw_dir:
+        tmp = Path(raw_dir)
+        archive_path = tmp / archive_name
 
-        # Try to find SHA256 hash file
-        hash_asset = next(
-            (asset for asset in data["assets"] if asset["name"] == "kickstart.sha256"),
-            None
-        )
-        if hash_asset:
-            with safe_operation_context("Hash file retrieval", log_errors=False, suppress_exceptions=True):
-                hash_response = requests.get(hash_asset["browser_download_url"], timeout=5)
-                hash_response.raise_for_status()
-                expected_hash = hash_response.text.strip().split()[0]  # First part is the hash
-
-        # Try to find signature file
-        sig_asset = next(
-            (asset for asset in data["assets"] if asset["name"] == "kickstart.sig"),
-            None
-        )
-        if sig_asset:
-            signature_url = sig_asset["browser_download_url"]
-
-        if latest == __version__:
-            print("[green]✅ You're already up to date.")
+        try:
+            download_to(archive_asset["browser_download_url"], archive_path)
+        except Exception as exc:
+            print(f"[red]✖ Update failed: could not download {archive_name}: {exc}")
             return
 
-        print(f"[yellow]⬆ New version available: {latest} — downloading...")
-        print("[cyan]🔒 Verifying download integrity and authenticity...")
-
-        binary_data: bytes | None = None
-        download_response: requests.Response | None = None
-        if expected_hash or signature_url:
-            binary_data = download_and_verify_binary(download_url, expected_hash, signature_url)
-            if binary_data is None:
-                raise RuntimeError("Binary verification failed")
+        if hash_asset is not None:
+            try:
+                hash_response = requests.get(hash_asset["browser_download_url"], timeout=10)
+                hash_response.raise_for_status()
+                expected_hash = hash_response.text.strip().split()[0]
+                verify_sha256(archive_path, expected_hash)
+                print(f"[green]🔒 Checksum verified ({expected_hash}).")
+            except Exception as exc:
+                print(f"[red]✖ Update failed: could not verify checksum: {exc}")
+                return
         else:
-            download_response = requests.get(download_url, stream=True)
-            download_response.raise_for_status()
+            print("[yellow]⚠ No matching .sha256 asset; skipping checksum verification.")
 
-        # File operations with standardized error handling
-        bin_path: Path = Path(sys.argv[0]).resolve()
-        backup: Path = bin_path.with_suffix(".bak")
+        extract_root = tmp / "extracted"
+        extract_root.mkdir()
+        try:
+            launcher = _extract_archive_launcher(archive_path, extract_root)
+        except Exception as exc:
+            print(f"[red]✖ Update failed: could not extract archive: {exc}")
+            return
 
-        shutil.copy2(bin_path, backup)
+        try:
+            result: InstallResult = install_binary(
+                launcher,
+                target_dir=launcher_dir,
+                overwrite=True,
+                app_root=app_root,
+            )
+        except Exception as exc:
+            print(f"[red]✖ Update failed: could not install the new app bundle: {exc}")
+            return
 
-        with open(bin_path, "wb") as binary_file:
-            if binary_data is not None:
-                binary_file.write(binary_data)
-            elif download_response is not None:
-                shutil.copyfileobj(download_response.raw, binary_file)
-
-        bin_path.chmod(0o755)
-
-        print(f"[green]✔ Updated successfully to {latest}!")
-        print(f"[green]💾 Backup saved to {backup}")
-        print("[green]🔒 Binary integrity and authenticity verified")
-
-    except Exception as exc:
-        print(f"[red]✖ Update failed: {exc}")
+    print(f"[green]✔ Updated to {latest}.")
+    print(f"  launcher: {result.destination}")
+    if result.app_path is not None:
+        print(f"  app:      {result.app_path}")

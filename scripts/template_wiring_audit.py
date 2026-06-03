@@ -150,13 +150,18 @@ def _active_templates() -> set[str]:
     )
 
     for entry in frontend_template_plan().entries():
-        active.add(f"react/{entry.template}")
+        if entry.template.startswith("_shared/"):
+            active.add(entry.template)
+        else:
+            active.add(f"react/{entry.template}")
 
-    for language in ("python", "rust"):
-        for entry in library_template_plan(language).entries():
-            active.add(entry.template)
-        for entry in cli_template_plan(language).entries():
-            active.add(entry.template)
+    for language, profile in stack_registry.languages.items():
+        if profile.library:
+            for entry in library_template_plan(language).entries():
+                active.add(entry.template)
+        if profile.cli:
+            for entry in cli_template_plan(language).entries():
+                active.add(entry.template)
 
     for setup in (*LIBRARY_LANGUAGE_SETUP.values(), *CLI_LANGUAGE_SETUP.values()):
         active.update(template.template for template in setup.templates)

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.3.0",
+  "packageManager": "bun@{{ bun_version }}",
   "scripts": {
     "build": "make worker-build-release",
     "dev": "wrangler dev",

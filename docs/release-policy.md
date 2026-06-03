@@ -25,7 +25,7 @@ Use a new version when generated behavior, installable output, public CLI behavi
 3. Tag the merged commit with `vX.Y.Z`.
 4. Push the tag.
 
-The release workflow builds the Python package and standalone Linux/macOS binaries, publishes or updates the GitHub Release, and deploys the website with metadata for that tag.
+The release workflow builds the Python package and Linux/macOS binary archives (`kickstart-<platform>-py<minor>.tar.gz`, one per supported Python minor), publishes or updates the GitHub Release, and deploys the website with metadata for that tag.
 
 ## Same-Version Updates
 

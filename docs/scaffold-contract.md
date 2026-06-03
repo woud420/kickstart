@@ -12,6 +12,7 @@ Every project type gets:
 - `docs/operations/`: project-specific development, validation, packaging, deployment, and runbook notes.
 - `docs/decisions/`: durable architecture and implementation decisions.
 - `.kickstart/scaffold.json`: machine-readable scaffold metadata.
+- `.github/workflows/ci.yml`: per-language GitHub Actions workflow that runs `make check` (lint + typecheck + tests) on push and pull requests. The workflow is emitted for every service, CLI, library, and frontend; system scaffolds emit `build.yml`, `test.yml`, and `deploy.yml` at the same path instead.
 
 There is no separate root architecture document. `docs/architecture/` is the canonical architecture location.
 
@@ -19,6 +20,12 @@ There is no separate root architecture document. `docs/architecture/` is the can
 
 - `project.kind`: what kickstart generated, for example `service`, `worker`, `frontend`, `library`, `cli`, or `system`.
 - `project.repo_layout`: how generated projects are arranged, for example `single-project` or `monorepo`.
+- `project.architecture`: optional named source layout profile, for example `modular-cli`.
+- `project.cli_framework`: optional CLI framework selected by the language profile, for example `clap`, `typer`, or `oclif`.
+- `project.command_root`: optional framework-native command adapter root.
+- `project.entrypoint`: optional process entrypoint.
+- `project.operation_root`: optional use-case implementation root.
+- `project.src_root_files`: optional list of files expected directly under `src/`.
 - `execution.models`: how code runs, for example `container`, `cloudflare-worker`, `static-site`, `cli`, or `library`.
 - `execution.platforms`: where runtime artifacts are meant to run, for example `local`, `kubernetes`, `cloudflare-workers`, `static-host`, or `none`.
 - `artifacts`: emitted files and tool configs, for example `image: dockerfile`, `kubernetes: kustomize`, `kubernetes: helm`, `worker: wrangler`, `iac: terraform`, or `ci: github-actions`.
@@ -28,6 +35,8 @@ There is no separate root architecture document. `docs/architecture/` is the can
 - `knowledge_adapter`: external knowledge integration metadata, for example `none`, `obsidian`, `backstage`, or `both`.
 
 Implemented service extensions are intentionally narrow. Python/FastAPI container services support Postgres, Redis, and JWT. Rust container services support Redis and JWT. TypeScript container services support Postgres. Unsupported combinations fail instead of generating a partial or silent scaffold.
+
+CLI scaffolds use `project.architecture: modular-cli` and align Rust, Python, and TypeScript around the same agent-facing boundaries: command adapters, config, clients, DTO/model, operations, output, and errors. Language idioms still apply: Rust uses `project.cli_framework: clap` with `project.command_root: src/cli`, Python uses `typer` with `src/cli/commands`, and TypeScript uses `oclif` with `src/commands` and `bin/run.js`.
 
 Systems contain other project kinds and are generated through the `system` command with `project.repo_layout: monorepo`. A system is language-neutral by default. Use `--workspace-tooling bun-turbo` when the root should also be a Bun/Turbo TypeScript workspace. The older `mono` and `monorepo` project types remain backwards-compatible aliases that preserve the historical Bun/Turbo default, but new usage should prefer `system`.
 

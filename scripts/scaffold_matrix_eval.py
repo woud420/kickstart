@@ -524,7 +524,7 @@ def _command_with_root(plan: ProjectPlan, component: ComponentPlan, root: Path) 
     args = list(component.args)
     if component.kind == "system":
         args[2] = _system_component_name(plan, component)
-    return (sys.executable, "kickstart.py", *args, "--root", str(root))
+    return (sys.executable, "-m", "src.cli.main", *args, "--root", str(root))
 
 
 def _system_component_name(plan: ProjectPlan, component: ComponentPlan) -> str:

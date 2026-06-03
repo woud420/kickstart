@@ -1,6 +1,7 @@
 """Reusable template render plans for generators."""
 
 from src.generator.template_plan import TemplatePlan
+from src.stack.templates import language_ci_workflow
 from src.stack.types import TemplateConfig
 
 
@@ -11,7 +12,7 @@ def frontend_template_plan() -> TemplatePlan:
             TemplateConfig("index.html", "index.html.tpl"),
             TemplateConfig(".gitignore", "gitignore.tpl"),
             TemplateConfig("Dockerfile", "Dockerfile.tpl"),
-            TemplateConfig("Makefile", "Makefile.tpl"),
+            TemplateConfig("Makefile", "Makefile.tpl", {"has_docker": True}),
             TemplateConfig("README.md", "README.md.tpl"),
             TemplateConfig("package.json", "package.json.tpl"),
             TemplateConfig("tsconfig.json", "tsconfig.json.tpl"),
@@ -19,6 +20,10 @@ def frontend_template_plan() -> TemplatePlan:
             TemplateConfig("src/App.tsx", "src/App.tsx.tpl"),
             TemplateConfig("src/main.tsx", "src/main.tsx.tpl"),
             TemplateConfig("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
+            TemplateConfig("eslint.config.mjs", "_shared/typescript/eslint.config.react.mjs.tpl"),
+            TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
+            TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
+            *language_ci_workflow("typescript"),
         ]
     )
 
@@ -30,7 +35,32 @@ def library_template_plan(language: str) -> TemplatePlan:
 
 def cli_template_plan(language: str) -> TemplatePlan:
     """Return the template plan for CLI projects."""
-    return _package_template_plan(language)
+    common = [
+        TemplateConfig(".gitignore", f"{language}/gitignore.tpl"),
+        TemplateConfig("Makefile", f"cli/{language}/Makefile.tpl"),
+        TemplateConfig("README.md", f"cli/{language}/README.md.tpl"),
+        *language_ci_workflow(language),
+    ]
+    language_specific = {
+        "python": (
+            TemplateConfig("pyproject.toml", "python/pyproject.cli.toml.tpl"),
+        ),
+        "rust": (
+            TemplateConfig("Cargo.toml", "rust/Cargo.cli.toml.tpl"),
+            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+        ),
+        "typescript": (
+            TemplateConfig("package.json", "cli/typescript/package.json.tpl"),
+            TemplateConfig("tsconfig.json", "cli/typescript/tsconfig.json.tpl"),
+            TemplateConfig("tsconfig.build.json", "typescript/tsconfig.build.json.tpl"),
+            TemplateConfig("vitest.config.ts", "cli/typescript/vitest.config.ts.tpl"),
+            TemplateConfig("bunfig.toml", "typescript/bunfig.toml.tpl"),
+            TemplateConfig("eslint.config.mjs", "_shared/typescript/eslint.config.mjs.tpl"),
+            TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
+            TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
+        ),
+    }
+    return TemplatePlan.from_templates([*common, *language_specific.get(language, ())])
 
 
 def python_service_core_template_plan(framework: str | None) -> TemplatePlan:
@@ -69,5 +99,6 @@ def _package_template_plan(language: str) -> TemplatePlan:
             TemplateConfig(".gitignore", f"{language}/gitignore.tpl"),
             TemplateConfig("Makefile", f"{language}/Makefile.tpl"),
             TemplateConfig("README.md", f"{language}/README.md.tpl"),
+            *language_ci_workflow(language),
         ]
     )

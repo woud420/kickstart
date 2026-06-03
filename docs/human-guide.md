@@ -17,7 +17,7 @@ kickstart creates project scaffolds so the first hour of setup is repeatable ins
 Languages:
 
 - `python`: FastAPI by default, or `--framework minimal`
-- `typescript` or `ts`: Bun + Fastify
+- `typescript` or `ts`: Bun + Hono on `@hono/node-server`
 - `rust`: Actix-web
 - `cpp`: C++20 + CMake
 - `go`: minimal `net/http`
@@ -43,7 +43,21 @@ Other language/runtime/framework combinations fail loudly until their templates 
 
 ## Library And CLI Options
 
-Python and Rust are the supported library and CLI targets. Other languages fail loudly until they have complete package setup, source files, and validation commands.
+Python and Rust are the supported library targets. Python, Rust, and TypeScript are the supported CLI targets.
+
+CLI scaffolds use the same agent-facing architecture across languages, with framework-native command adapters:
+
+- Rust: clap derive in `src/cli/`.
+- Python: Typer app in `src/cli/app.py` with commands in `src/cli/commands/`.
+- TypeScript: oclif bin scripts in `bin/`, shared command base in `src/base-command.ts`, and commands in `src/commands/`.
+- `src/config/`: configuration loading.
+- `src/clients/`: external API/client boundaries.
+- `src/model/`: DTOs and typed data boundaries.
+- `src/operations/`: command use cases.
+- `src/output/`: human and machine output formatting.
+- `src/error/`: errors and exit codes.
+
+Rust CLIs keep only `src/main.rs` at the source root. Python includes `src/__init__.py` and `src/main.py`. TypeScript follows oclif and keeps `src/base-command.ts` as the only direct source-root adapter. Other languages fail loudly until they have complete package setup, source files, and validation commands.
 
 ## System Options
 
@@ -96,4 +110,4 @@ When adding a new scaffold option, add generated-output tests for the affected p
 
 ## Project Tooling
 
-kickstart supports Python `>=3.12,<3.15`. Use `make check` before committing. Use `make package` for wheel/source builds and `make binary` for a local standalone binary.
+kickstart supports Python `>=3.12,<3.15`. Use `make check` before committing. Use `make package` for wheel/source builds and `make binary` to build the local kickstart binary (a PyInstaller `--onedir` payload under `dist/kickstart/`).

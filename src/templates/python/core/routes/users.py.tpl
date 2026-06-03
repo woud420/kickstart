@@ -5,7 +5,6 @@ from fastapi import APIRouter, HTTPException, status
 from ..api import UserService
 from ..model import CreateUserRequest, UserResponse
 
-
 router = APIRouter(prefix="/users", tags=["users"])
 service = UserService()
 

@@ -1,6 +1,16 @@
 PYTHON ?= python3
 POETRY ?= poetry
-PYTEST := $(POETRY) run python -c "import pytest, sys; raise SystemExit(pytest.main(sys.argv[1:]))"
+POETRY_RUN := $(POETRY) run
+PY := PYTHONPATH=$(CURDIR) $(POETRY_RUN) python
+PYTEST := $(POETRY_RUN) python -c "import pytest, sys; raise SystemExit(pytest.main(sys.argv[1:]))"
+
+# Directories that Ruff scans for lint + format. Keep mypy narrower (no tests).
+LINT_DIRS := src tests ci
+MYPY_DIRS := src ci
+
+# Modules PyInstaller can't auto-discover from imports alone.
+PYINSTALLER_HIDDEN_IMPORTS := typer rich requests toml jinja2
+HIDDEN_IMPORT_ARGS := $(foreach mod,$(PYINSTALLER_HIDDEN_IMPORTS),--hidden-import $(mod))
 
 LOG_COLOR ?= \033[1;34m
 LOG_RESET ?= \033[0m
@@ -27,8 +37,8 @@ help:
 	@echo "  make template-audit   Check template wiring inventory"
 	@echo "  make check            Run lint, typecheck, and tests"
 	@echo "  make package          Build wheel and source distribution"
-	@echo "  make binary           Build a local standalone binary with PyInstaller"
-	@echo "  make build            Build package and standalone binary"
+	@echo "  make binary           Build the kickstart binary with PyInstaller"
+	@echo "  make build            Build package and binary"
 	@echo "  make release-check    Validate release tag policy, requires TAG=vX.Y.Z"
 	@echo "  make clean            Remove local build and test artifacts"
 
@@ -38,7 +48,7 @@ setup install:
 
 run:
 	@$(call log,Showing CLI help)
-	@$(POETRY) run kickstart --help
+	@$(POETRY_RUN) kickstart --help
 
 tests:
 	@$(call log,Running full test suite)
@@ -54,27 +64,27 @@ test-integration:
 
 typecheck:
 	@$(call log,Running mypy)
-	@$(POETRY) run mypy src ci
+	@$(POETRY_RUN) mypy $(MYPY_DIRS)
 
 lint:
 	@$(call log,Running Ruff lint)
-	@$(POETRY) run ruff check src tests ci
+	@$(POETRY_RUN) ruff check $(LINT_DIRS)
 
 format:
 	@$(call log,Formatting source, tests, and CI Python)
-	@$(POETRY) run ruff format src tests ci
+	@$(POETRY_RUN) ruff format $(LINT_DIRS)
 
 format-check:
 	@$(call log,Checking source, tests, and CI Python formatting)
-	@$(POETRY) run ruff format --check src tests ci
+	@$(POETRY_RUN) ruff format --check $(LINT_DIRS)
 
 type-hygiene:
 	@$(call log,Auditing type hygiene)
-	@PYTHONPATH=$(CURDIR) $(POETRY) run python scripts/type_hygiene_audit.py
+	@$(PY) scripts/type_hygiene_audit.py
 
 template-audit:
 	@$(call log,Auditing template wiring)
-	@PYTHONPATH=$(CURDIR) $(POETRY) run python scripts/template_wiring_audit.py --strict
+	@$(PY) scripts/template_wiring_audit.py --strict
 
 check: lint typecheck type-hygiene template-audit tests
 
@@ -83,17 +93,13 @@ package:
 	@$(POETRY) build
 
 binary:
-	@$(call log,Building standalone binary)
-	@$(POETRY) run pyinstaller \
+	@$(call log,Building kickstart binary)
+	@$(POETRY_RUN) pyinstaller \
 		--name kickstart \
-		--onefile \
+		--onedir \
 		--clean \
 		--add-data "src/templates:src/templates" \
-		--hidden-import typer \
-		--hidden-import rich \
-		--hidden-import requests \
-		--hidden-import toml \
-		--hidden-import jinja2 \
+		$(HIDDEN_IMPORT_ARGS) \
 		--collect-all src \
 		src/cli/main.py
 

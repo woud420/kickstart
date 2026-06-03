@@ -20,27 +20,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
+          poetry-version: ${{ env.POETRY_VERSION }}
 
       - name: Validate package metadata
         run: poetry check
@@ -64,27 +48,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
+          poetry-version: ${{ env.POETRY_VERSION }}
 
       - name: Run tests
         run: make tests
@@ -103,20 +71,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
+          poetry-version: ${{ env.POETRY_VERSION }}
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -164,59 +123,16 @@ jobs:
 
           test -d /tmp/test-cli-tool
 
-      - name: Smoke test Cloudflare Worker flagship profile
-        shell: bash
+      - name: Smoke test kickstart install subcommand
         run: |
-          set -euo pipefail
+          scripts/ci/smoke-install.sh \
+            "poetry run kickstart" \
+            "${RUNNER_TEMP}/kickstart-install-smoke" \
+            "${RUNNER_TEMP}/kickstart-install-smoke-app" \
+            "${RUNNER_TEMP}/install-smoke.zshrc"
 
-          worker_temp_root="$(mktemp -d /tmp/kickstart-cf-worker-smoke-XXXXXX)"
-          worker_project_name="test-cf-worker-flagship"
-          worker_project_path="${worker_temp_root}/${worker_project_name}"
-          worker_log_dir="${worker_temp_root}/logs"
-          generation_log_path="${worker_log_dir}/generate.log"
-
-          mkdir -p "${worker_log_dir}"
-
-          echo "Cloudflare Worker smoke temp root: ${worker_temp_root}"
-          echo "Generated Cloudflare Worker project path: ${worker_project_path}"
-          echo "Smoke log directory: ${worker_log_dir}"
-
-          if poetry run kickstart create service "${worker_project_name}" \
-            --root "${worker_temp_root}" \
-            --lang typescript \
-            --runtime cloudflare-workers >"${generation_log_path}" 2>&1; then
-            echo "Generation passed for Cloudflare Worker flagship profile."
-          else
-            exit_code=$?
-            echo "::error title=Cloudflare Worker generation failed::project=${worker_project_path}; command=poetry run kickstart create service ${worker_project_name} --root ${worker_temp_root} --lang typescript --runtime cloudflare-workers; exit_code=${exit_code}; log=${generation_log_path}"
-            echo "---- tail -n 80 ${generation_log_path} ----"
-            tail -n 80 "${generation_log_path}" || true
-            echo "---- end log tail ----"
-            exit "${exit_code}"
-          fi
-
-          run_smoke_command() {
-            local log_name="$1"
-            shift
-            local command_display="$*"
-            local log_path="${worker_log_dir}/${log_name}.log"
-
-            echo "Running command in generated project: ${command_display}"
-            if (cd "${worker_project_path}" && "$@") >"${log_path}" 2>&1; then
-              echo "Command passed: ${command_display}"
-            else
-              local exit_code=$?
-              echo "::error title=Cloudflare Worker smoke check failed::project=${worker_project_path}; command=${command_display}; exit_code=${exit_code}; log=${log_path}"
-              echo "---- tail -n 80 ${log_path} ----"
-              tail -n 80 "${log_path}" || true
-              echo "---- end log tail ----"
-              exit "${exit_code}"
-            fi
-          }
-
-          run_smoke_command make-install make install
-          run_smoke_command make-test make test
-          run_smoke_command make-check make check
+      - name: Smoke test Cloudflare Worker flagship profile
+        run: scripts/ci/smoke-cloudflare-worker.sh
 
       - name: Verify template syntax
         run: |
@@ -268,38 +184,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
+          poetry-version: ${{ env.POETRY_VERSION }}
 
       - name: Build package
         run: make package
 
-      - name: Build standalone binary
+      - name: Build kickstart binary
         run: make binary
 
-      - name: Name, install, and check binary
+      - name: Name, smoke-test, and archive binary
         env:
           PLATFORM: ${{ matrix.platform }}
           PYTHON_MINOR: ${{ env.PYTHON_VERSION }}
-        run: |
-          asset="kickstart-${PLATFORM}-py${PYTHON_MINOR}"
-          mv dist/kickstart "dist/${asset}"
-          "dist/${asset}" version
-          install -m 0755 "dist/${asset}" "${RUNNER_TEMP}/kickstart"
-          "${RUNNER_TEMP}/kickstart" --help
-          shasum -a 256 "dist/${asset}" > "dist/${asset}.sha256"
+        run: scripts/ci/name-and-smoke-binary.sh "${PLATFORM}" "${PYTHON_MINOR}"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -308,5 +209,5 @@ jobs:
           path: |
             dist/*.whl
             dist/*.tar.gz
-            dist/kickstart-*
+            dist/kickstart-*.tar.gz.sha256
           retention-days: 7

@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.3.0",
+  "packageManager": "bun@{{ bun_version }}",
   "engines": {
-    "bun": ">=1.3.0 <2"
+    "bun": ">={{ bun_version }} <2"
   },
   "workspaces": {
     "packages": [

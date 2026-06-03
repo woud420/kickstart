@@ -6,6 +6,7 @@ from pathlib import Path
 from src.generator.file_plan import ContentFile
 from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
+from src.stack.toolchain_versions import toolchain_vars
 from src.stack.types import TemplateConfig
 from src.utils.fs import get_template_engine, write_file
 from src.utils.logger import success, warn
@@ -51,6 +52,7 @@ class BaseGenerator:
         self.config = config
         self.project = Path(root) / name if root else Path(name)
         self.template_dir = Path(__file__).parent.parent / "templates"
+        self._templates_root = self.template_dir
         self.template_registry = get_template_registry(self.template_dir)
 
     def create_project(self) -> bool:
@@ -109,7 +111,10 @@ class BaseGenerator:
         """
         resolved_template_path: Path | str
         if isinstance(template_path, str) and not Path(template_path).is_absolute():
-            resolved_template_path = self.template_dir / template_path
+            if template_path.startswith("_shared/"):
+                resolved_template_path = self._templates_root / template_path
+            else:
+                resolved_template_path = self.template_dir / template_path
         else:
             resolved_template_path = template_path
 
@@ -120,6 +125,7 @@ class BaseGenerator:
         template_vars = {
             "service_name": self.name,
             "package_name": self._package_name(),
+            **toolchain_vars(),
             **vars,
         }
         write_file(self.project / target, resolved_template_path, **template_vars)
@@ -179,9 +185,11 @@ class BaseGenerator:
             template_vars: dict[str, TemplateValue] = {
                 "service_name": self.name,
                 "package_name": self._package_name(),
+                **toolchain_vars(),
             }
             template_vars.update(template.vars)
-            source = (self.template_dir / template.template).read_text(encoding="utf-8")
+            base_dir = self._templates_root if template.template.startswith("_shared/") else self.template_dir
+            source = (base_dir / template.template).read_text(encoding="utf-8")
             content = get_template_engine().render_string(source, template_vars)
             if self.write_content(template.target, content) is False:
                 success = False
@@ -257,15 +265,45 @@ class BaseGenerator:
         )
 
     def _contracts_content(self, contract: ScaffoldContract) -> str:
+        if contract.project_kind == "cli":
+            cli_framework = contract.cli_framework or "language-native CLI framework"
+            command_root = contract.command_root or "src/cli"
+            operation_root = contract.operation_root or "src/operations"
+            entrypoint = contract.entrypoint or "the generated process entrypoint"
+            return (
+                "# Contracts\n\n"
+                f"- Command adapters use `{cli_framework}` and live under `{command_root}`.\n"
+                f"- Product behavior belongs under `{operation_root}`.\n"
+                f"- The process entrypoint is `{entrypoint}`.\n"
+                "- Document commands, flags, environment variables, config files, output formats, "
+                "exit codes, and package metadata here.\n"
+            )
         return (
             "# Contracts\n\n"
             f"Document {contract.contract_subjects} here.\n"
         )
 
     def _operations_content(self, contract: ScaffoldContract) -> str:
+        if contract.project_kind == "cli":
+            return (
+                "# Operations\n\n"
+                "- `make install`: install package dependencies.\n"
+                "- `make test`: run generated CLI smoke tests.\n"
+                "- `make lint`: run the language linter (and clippy for Rust, ESLint for TypeScript).\n"
+                "- `make fmt`: format sources in place.\n"
+                "- `make typecheck`: run the language type checker.\n"
+                "- `make check`: run lint + typecheck + tests; CI emits `.github/workflows/ci.yml` "
+                "to invoke this same target.\n\n"
+                "Add packaging, installation, release, signing, and operator runbooks here as the "
+                "CLI matures.\n"
+            )
         return (
             "# Operations\n\n"
             f"Document {contract.operations_subjects} here.\n"
+            "\n"
+            "Canonical make targets: `install`, `test`, `lint`, `fmt`, `typecheck`, `check`, "
+            "`build`. Services with a `Dockerfile` also expose `docker-build`. The generated "
+            "`.github/workflows/ci.yml` runs `make check` on push and pull requests.\n"
         )
 
     def _decisions_content(self) -> str:

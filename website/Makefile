@@ -34,9 +34,9 @@ prepare-release:
 	@$(BUN) run prepare-release
 
 deploy:
-	@$(call log,Deploying website)
+	@$(call log,Deploying website with Alchemy)
 	@$(BUN) run deploy
 
 deploy-release:
-	@$(call log,Deploying release website)
+	@$(call log,Deploying release website with Alchemy)
 	@$(BUN) run deploy:release

@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 .dev.vars
+.alchemy/
 .wrangler/
 wrangler.release.toml
 bun.lockb

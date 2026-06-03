@@ -13,20 +13,27 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
         TemplateConfig("README.md", f"{language}/README.md.tpl"),
         TemplateConfig(".gitignore", f"{language}/gitignore.tpl"),
         TemplateConfig("Dockerfile", f"{language}/Dockerfile.tpl"),
-        TemplateConfig("Makefile", f"{language}/Makefile.tpl"),
+        TemplateConfig("Makefile", f"{language}/Makefile.tpl", {"has_docker": True}),
+        *language_ci_workflow(language),
     )
     language_specific = {
         "python": (
             TemplateConfig("requirements.txt", "python/requirements.txt.tpl"),
-            TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl"),
+            TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl", {"has_async": True}),
         ),
-        "rust": (TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl"),),
+        "rust": (
+            TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl"),
+            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+        ),
         "go": (TemplateConfig("go.mod", "go/go.mod.tpl"),),
         "typescript": (
             TemplateConfig("package.json", "typescript/package.json.tpl"),
             TemplateConfig("tsconfig.json", "typescript/tsconfig.json.tpl"),
             TemplateConfig("tsconfig.build.json", "typescript/tsconfig.build.json.tpl"),
             TemplateConfig("bunfig.toml", "typescript/bunfig.toml.tpl"),
+            TemplateConfig("eslint.config.mjs", "_shared/typescript/eslint.config.mjs.tpl"),
+            TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
+            TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
         ),
         "cpp": (TemplateConfig("CMakeLists.txt", "cpp/CMakeLists.txt.tpl"),),
     }
@@ -144,6 +151,25 @@ def helm_template_configs() -> tuple[TemplateConfig, ...]:
     )
 
 
+_CI_WORKFLOW_LANGUAGES = {"python", "rust", "typescript", "go", "cpp"}
+
+
+def language_ci_workflow(language: str) -> tuple[TemplateConfig, ...]:
+    """Return the per-language CI workflow template, if any.
+
+    Each generated project gets a GitHub Actions workflow that invokes
+    ``make check`` so the same lint/typecheck/test gate runs locally and in CI.
+    """
+    if language not in _CI_WORKFLOW_LANGUAGES:
+        return ()
+    return (
+        TemplateConfig(
+            ".github/workflows/ci.yml",
+            f"_shared/github/ci-{language}.yml.tpl",
+        ),
+    )
+
+
 def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig, ...]:
     base = f"cloudflare-workers/{language}"
     common = (
@@ -152,6 +178,7 @@ def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig,
         TemplateConfig("Makefile", f"{base}/Makefile.tpl"),
         TemplateConfig("wrangler.toml", f"{base}/wrangler.toml.tpl"),
         TemplateConfig(".dev.vars.example", f"{base}/dev.vars.example.tpl"),
+        *language_ci_workflow(language),
     )
     worker_specific = {
         "typescript": (
@@ -159,6 +186,9 @@ def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig,
             TemplateConfig("tsconfig.json", f"{base}/tsconfig.json.tpl"),
             TemplateConfig("src/index.ts", f"{base}/src/index.ts.tpl"),
             TemplateConfig("tests/worker.test.ts", f"{base}/tests/worker.test.ts.tpl"),
+            TemplateConfig("eslint.config.mjs", "_shared/typescript/eslint.config.mjs.tpl"),
+            TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
+            TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
         ),
         "rust": (
             TemplateConfig("Cargo.toml", f"{base}/Cargo.toml.tpl"),
