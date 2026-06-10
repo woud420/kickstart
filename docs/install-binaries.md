@@ -106,6 +106,40 @@ If your filesystem doesn't allow symlinks (rare), `kickstart install` falls
 back to writing a tiny `#!/bin/sh` wrapper at the target path. The wrapper
 behaves identically for users.
 
+## Local Development Entrypoint
+
+This section is the maintainer-facing contract for what the `kickstart` command
+on `PATH` should resolve to, so a stale entrypoint can always be diagnosed and
+repaired.
+
+The canonical install is the one this document describes: a launcher at
+`~/.local/bin/kickstart` (symlink or `#!/bin/sh` wrapper) pointing into
+`~/.local/share/kickstart/current/kickstart`, owned by `kickstart install` and
+refreshed by `kickstart upgrade`. Nothing else should shadow it. In particular,
+ad-hoc shims in personal `bin` directories (for example
+`~/workspace/bin/kickstart`) are not supported: they bypass `kickstart
+upgrade`, go stale silently, and hide which binary owns the command. Delete
+them, or reduce them to a one-line `exec "$HOME/.local/bin/kickstart" "$@"`
+that cannot drift.
+
+To track the repo instead of a release (maintainer workflow), install the
+working copy as a tool so the entrypoint follows local changes:
+
+```bash
+uv tool install --editable /path/to/kickstart   # or: pipx install --editable
+```
+
+Diagnose the current entrypoint state at any time:
+
+```bash
+which -a kickstart        # every match on PATH, in resolution order
+kickstart install --check # source, destination, payload dir, PATH status
+```
+
+`which -a` showing more than one path, or `install --check` reporting a missing
+destination, means a shadowing shim or a stale install — repair with the steps
+above.
+
 ## Self-Update
 
 Once installed, refresh in place against the newest release:
