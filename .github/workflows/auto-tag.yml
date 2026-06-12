@@ -1,0 +1,81 @@
+name: Auto Tag Release
+
+# When a version bump lands on master, create the matching release tag
+# automatically. Safety properties:
+#   - idempotent: existing tags are never recreated or moved, so
+#     same-version retags stay a deliberate manual step
+#   - gated: the tag is only created after `make release-check` passes,
+#     which enforces the stable-semver format and the
+#     pyproject.toml <-> src/__init__.py version sync
+#   - explicit credentials: tags pushed with the default GITHUB_TOKEN do
+#     not trigger other workflows (GitHub's anti-recursion rule), so the
+#     release pipeline would silently never run. The push therefore
+#     requires the RELEASE_TAG_TOKEN secret (fine-grained PAT with
+#     contents: read/write); without it this workflow skips loudly
+#     instead of creating a tag that goes nowhere.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - pyproject.toml
+      - src/__init__.py
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    name: Tag Merged Version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TAG_TOKEN || github.token }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Resolve version and existing tag
+        id: version
+        run: |
+          VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag v${VERSION} already exists; nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate release policy
+        if: steps.version.outputs.exists == 'false'
+        run: make release-check TAG="${{ steps.version.outputs.tag }}"
+
+      - name: Check tagging credentials
+        id: credentials
+        if: steps.version.outputs.exists == 'false'
+        env:
+          RELEASE_TAG_TOKEN: ${{ secrets.RELEASE_TAG_TOKEN }}
+        run: |
+          if [ -n "$RELEASE_TAG_TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::RELEASE_TAG_TOKEN is not configured. Skipping auto-tag for ${{ steps.version.outputs.tag }} — tags pushed with the default GITHUB_TOKEN cannot trigger the release workflow. Tag manually per docs/release-policy.md."
+          fi
+
+      - name: Create and push release tag
+        if: steps.version.outputs.exists == 'false' && steps.credentials.outputs.ready == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+          echo "Pushed ${{ steps.version.outputs.tag }}; the release workflow takes it from here."

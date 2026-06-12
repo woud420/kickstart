@@ -30,7 +30,10 @@ current release line, or prepare a release PR. The full policy is
    make release-check TAG=vX.Y.Z
    ```
 
-5. Merge to `master`, then tag the merge commit and push the tag:
+5. Merge to `master`. The `Auto Tag Release` workflow tags the merge commit
+   automatically when the `RELEASE_TAG_TOKEN` secret is configured (it
+   re-runs `make release-check` first and never moves an existing tag).
+   Without the secret, tag and push manually:
 
    ```bash
    git tag -a vX.Y.Z -m "Release vX.Y.Z"

@@ -23,8 +23,14 @@ Use a new version when generated behavior, installable output, public CLI behavi
 1. Update `pyproject.toml` and `src/__init__.py:__version__` together.
 2. Add the release entry to `CHANGELOG.md` and `website/src/site/content.ts` (website tests fail when the current version has no release note).
 3. Merge the change to `master`.
-4. Tag the merged commit with `vX.Y.Z`.
-5. Push the tag.
+4. The `Auto Tag Release` workflow tags the merge commit with `vX.Y.Z` automatically when the `RELEASE_TAG_TOKEN` secret (fine-grained PAT, `contents: read/write`) is configured. It never moves an existing tag and only tags after `make release-check` passes. Without the secret it skips with a notice — tag and push manually instead:
+
+```bash
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+The tag push uses a PAT because tags pushed with the default `GITHUB_TOKEN` do not trigger the release workflow.
 
 The release workflow builds the Python package and Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz` for `linux-x64`, `linux-arm64`, and `macos-arm64`), publishes or updates the GitHub Release, and deploys the website with metadata for that tag.
 

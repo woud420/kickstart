@@ -34,6 +34,9 @@ Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 - Evals: bootstrap gate (kickstart must bootstrap a kickstart-like project
   that passes taste rules and its own `make check` — also run in CI),
   token-savings measurement, and byte-identical determinism tests.
+- Auto-tagging: merging a version bump to `master` creates the release tag
+  automatically (gated on `make release-check`, idempotent, requires the
+  `RELEASE_TAG_TOKEN` secret so the tag push can trigger the release).
 
 ### Changed
 
