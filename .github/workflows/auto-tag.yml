@@ -21,6 +21,9 @@ on:
     paths:
       - pyproject.toml
       - src/__init__.py
+  # Manual trigger for versions whose bump merged before this workflow
+  # existed (e.g. v0.4.2); the same gates apply.
+  workflow_dispatch:
 
 permissions:
   contents: read
