@@ -248,6 +248,15 @@ jobs:
         if: ${{ steps.website-deploy.outputs.ready == 'true' }}
         env:
           ALCHEMY_TELEMETRY_DISABLED: "1"
+          # The Worker and its custom domain are created with `adopt: true`, so
+          # every deploy converges on the same named resources. Ephemeral CI
+          # state cannot orphan infrastructure here, which makes Alchemy's CI
+          # local-state-store guard safe to disable. When the optional
+          # ALCHEMY_PASSWORD / ALCHEMY_STATE_TOKEN secrets are configured,
+          # alchemy.run.ts upgrades to the persistent CloudflareStateStore.
+          ALCHEMY_CI_STATE_STORE_CHECK: "false"
+          ALCHEMY_PASSWORD: ${{ secrets.ALCHEMY_PASSWORD }}
+          ALCHEMY_STATE_TOKEN: ${{ secrets.ALCHEMY_STATE_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WEBSITE_API_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
