@@ -33,10 +33,10 @@ export interface ReleaseNote {
 }
 
 export const defaultProjectMeta: ProjectMeta = {
-  latestVersion: "0.4.0",
+  latestVersion: "0.4.2",
   supportedFrom: "0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
-  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.0",
+  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.2",
 };
 
 export const commandExamples: CommandExample[] = [
@@ -246,6 +246,27 @@ export const isNotPoints: PositioningPoint[] = [
 ];
 
 export const releaseNotes: ReleaseNote[] = [
+  {
+    version: "0.4.2",
+    title: "Trustworthy version reporting",
+    body: "Installed binaries report the release they came from, and the release pipeline now runs green end to end, website deploy included.",
+    highlights: [
+      "kickstart version reports the released version (0.4.1 binaries printed v0.4.0).",
+      "Release checks fail when pyproject.toml and the runtime __version__ disagree.",
+      "Release website deploys work from CI again, and this changelog is enforced by tests.",
+    ],
+  },
+  {
+    version: "0.4.1",
+    title: "Scaffold contract convergence",
+    body: "Generated projects behave the way their scaffold contract says across languages, and binaries install with one command.",
+    highlights: [
+      "Every generated Makefile exposes the same canonical verbs across Python, Rust, Go, TypeScript, and C++.",
+      "Python service containers install runtime dependencies, expose their port, and bind to 0.0.0.0.",
+      "Generated CI consumes pinned toolchain versions from a single source of truth.",
+      "One-line install script with SHA-256 verification; binary matrix focused on py3.14 for Linux x64/arm64 and macOS arm64.",
+    ],
+  },
   {
     version: "0.4.0",
     title: "First supported baseline",
