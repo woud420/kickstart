@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ '{{ include "example-service.fullname" . }}' }}-config
+  name: {{ '{{ include "' ~ service_name ~ '.fullname" . }}' }}-config
 data:
 {{ '{{- range $key, $value := .Values.env }}' }}
   {{ '{{ $key }}' }}: {{ '{{ $value | quote }}' }}

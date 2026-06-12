@@ -9,6 +9,7 @@ from typing import Optional, cast
 
 import typer
 from rich import print
+from rich.markup import escape
 from rich.prompt import Confirm, Prompt
 
 from src import __version__
@@ -21,6 +22,7 @@ from src.api import (
     create_system,
 )
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
+from src.generator.adoption import AdoptionTargetError, inspect_repo
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
 from src.utils.error_handling import KickstartError
@@ -50,6 +52,25 @@ logger = logging.getLogger(__name__)
 app: typer.Typer = typer.Typer(help="kickstart: Full-stack project scaffolding CLI")
 
 
+def _print_version_and_exit(value: bool) -> None:
+    if value:
+        print(f"[bold cyan]kickstart v{__version__}[/]")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root_options(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        callback=_print_version_and_exit,
+        is_eager=True,
+        help="Show the version and exit.",
+    ),
+) -> None:
+    """kickstart: Full-stack project scaffolding CLI."""
+
+
 @app.command()
 def version() -> None:
     """Show the current version."""
@@ -60,6 +81,42 @@ def version() -> None:
 def upgrade() -> None:
     """Upgrade to the latest version."""
     check_for_update()
+
+
+@app.command()
+def adopt(
+    path: Path = typer.Argument(Path("."), help="Existing repository to inspect"),
+    check: bool = typer.Option(False, "--check", help="Report standard-artifact status without writing"),
+    json_output: bool = typer.Option(False, "--json", help="Emit a machine-readable report"),
+) -> None:
+    """Check an existing repo against the kickstart scaffold standard (read-only).
+
+    Exit codes: 0 = repo matches the standard, 1 = gaps found, 2 = usage error.
+    """
+    if not check:
+        print("[red]kickstart adopt only supports --check for now; writing is a future, explicit step.[/]")
+        raise typer.Exit(code=2)
+
+    try:
+        report = inspect_repo(path)
+    except AdoptionTargetError as error:
+        print(f"[red]{error}[/]")
+        raise typer.Exit(code=2) from error
+
+    if json_output:
+        # Machine-readable output must bypass rich: console printing wraps
+        # long lines and interprets bracketed path segments as markup, both
+        # of which corrupt the JSON.
+        typer.echo(report.to_json(), nl=False)
+    else:
+        print(f"[bold]Adoption check for {escape(str(report.root))}[/]")
+        for status in report.artifacts:
+            if status.ok:
+                print(f"  [green]ok[/]      {escape(status.path)}")
+            else:
+                print(f"  [red]needed[/]  {escape(status.path)} ({escape(status.issue)})")
+
+    raise typer.Exit(code=0 if report.complete else 1)
 
 
 @dataclass(frozen=True)
@@ -382,12 +439,28 @@ def _dispatch_project_creation(
     )
 
 
-@app.command()
+@app.command(
+    epilog=(
+        "Examples:\n\n"
+        "  kickstart create service my-api --lang python --database postgres --auth jwt\n\n"
+        "  kickstart create service edge --lang typescript --runtime cloudflare-workers\n\n"
+        "  kickstart create cli ops-tool --lang rust\n\n"
+        "  kickstart create system platform --cloud aws --runtime kubernetes\n\n"
+        "Every project generates with tests, docs, and a Makefile; verify with: make check"
+    )
+)
 def create(
-    project_type: Optional[str] = typer.Argument(None),
-    name: Optional[str] = typer.Argument(None),
+    project_type: Optional[str] = typer.Argument(None, help="service, frontend, lib, cli, or system"),
+    name: Optional[str] = typer.Argument(
+        None, help="Lowercase project name: letters, digits, dashes, underscores (e.g. my-api)"
+    ),
     root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
-    lang: str = typer.Option("python", "--lang", "-l"),
+    lang: str = typer.Option(
+        "python",
+        "--lang",
+        "-l",
+        help="Language: python, rust, typescript, go, cpp (services); python, rust, typescript (libs/CLIs)",
+    ),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or systems only)"),
     database: Optional[str] = typer.Option(
@@ -448,10 +521,29 @@ def create(
             confirm=cast(ConfirmReader, Confirm),
         )
         dispatch_project_creation(options, config, _project_creators())
+        project_path = Path(options.root) / options.name if options.root else Path(options.name)
+        print(
+            f"\nNext steps:\n"
+            f"  cd {escape(str(project_path))} && make check   [dim]# install deps, lint, typecheck, test[/]\n"
+            f"  cat AGENTS.md                  [dim]# orientation map; scaffold metadata in .kickstart/scaffold.json[/]"
+        )
 
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
+        # Conventional SIGINT exit status; cancel must not read as success.
+        raise typer.Exit(code=130) from None
+    except EOFError as exc:
+        print(
+            "[bold red]Interactive input ended before required arguments were provided. "
+            "Pass them explicitly, for example: kickstart create service my-api --lang python[/]"
+        )
+        raise typer.Exit(code=2) from exc
     except KickstartError as exc:
+        print(f"[bold red]Failed to create project: {exc}[/]")
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        # Stack-registry validation errors (unknown runtime/cloud/...) are
+        # user-input problems: report them cleanly without a traceback.
         print(f"[bold red]Failed to create project: {exc}[/]")
         raise typer.Exit(code=1) from exc
     except Exception as exc:
@@ -462,7 +554,7 @@ def create(
 
 def main() -> None:
     """Run the Typer application when executed as a script."""
-    app()
+    app(prog_name="kickstart")
 
 
 if __name__ == "__main__":

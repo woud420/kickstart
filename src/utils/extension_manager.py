@@ -133,6 +133,7 @@ class ExtensionManager:
             extension_type="database",
             templates=(
                 TemplateConfig("src/clients/database.py", "python/extensions/database/dao.py.tpl"),
+                TemplateConfig("tests/unit/clients/test_database.py", "python/extensions/database/test_postgres_client.py.tpl"),
                 TemplateConfig("migrations/001_initial.sql", "python/extensions/database/migrations.sql.tpl"),
             ),
             requirements_file="python/extensions/database/requirements.txt.tpl",
@@ -146,6 +147,7 @@ class ExtensionManager:
             extension_type="cache",
             templates=(
                 TemplateConfig("src/clients/cache.py", "python/extensions/cache/redis_client.py.tpl"),
+                TemplateConfig("tests/unit/clients/test_cache.py", "python/extensions/cache/test_redis_client.py.tpl"),
             ),
             requirements_file="python/extensions/cache/requirements.txt.tpl",
         )
@@ -157,6 +159,7 @@ class ExtensionManager:
             extension_type="auth",
             templates=(
                 TemplateConfig("src/handler/auth.py", "python/extensions/auth/jwt_auth.py.tpl"),
+                TemplateConfig("tests/unit/handler/test_auth.py", "python/extensions/auth/test_jwt_auth.py.tpl"),
             ),
             requirements_file="python/extensions/auth/requirements.txt.tpl",
         )

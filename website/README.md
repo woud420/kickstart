@@ -32,6 +32,12 @@ GitHub Actions requires the `CLOUDFLARE_WEBSITE_API_TOKEN` repository secret
 and the `CLOUDFLARE_ACCOUNT_ID` repository variable before it will deploy the
 website. Local deploys use your default Alchemy stage unless you pass `--stage`.
 
+CI deploys run with `ALCHEMY_CI_STATE_STORE_CHECK=false` because the Worker and
+its custom domain use `adopt: true` — every deploy converges on the same named
+resources, so ephemeral runner state cannot orphan infrastructure. Setting the
+optional `ALCHEMY_PASSWORD` and `ALCHEMY_STATE_TOKEN` repository secrets makes
+`alchemy.run.ts` use the persistent Cloudflare state store instead.
+
 Production deploys bind the Worker to `kickstart-cli.org` through Alchemy. The
 release workflow reads `CLOUDFLARE_ACCOUNT_ID` from repository variables and
 `CLOUDFLARE_WEBSITE_API_TOKEN` from repository secrets, then exposes them to

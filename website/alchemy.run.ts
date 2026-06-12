@@ -8,7 +8,17 @@ import { resolveReleaseConfig } from "./scripts/render-release-config";
 const config = resolveReleaseConfig(Bun.argv.slice(2), process.env);
 
 function alchemyStateStore() {
-  if (!process.env.ALCHEMY_PASSWORD || !process.env.ALCHEMY_STATE_TOKEN) {
+  const hasPassword = Boolean(process.env.ALCHEMY_PASSWORD);
+  const hasStateToken = Boolean(process.env.ALCHEMY_STATE_TOKEN);
+
+  if (hasPassword !== hasStateToken) {
+    throw new Error(
+      "Persistent state is half-configured: set both ALCHEMY_PASSWORD and ALCHEMY_STATE_TOKEN " +
+        "(or neither, to deploy with ephemeral state). Refusing to silently fall back.",
+    );
+  }
+
+  if (!hasPassword) {
     return undefined;
   }
 

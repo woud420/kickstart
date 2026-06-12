@@ -47,10 +47,19 @@ def test_init_basic_structure(base_generator, tmp_path):
 
 def test_create_architecture_docs(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path):
-        base_generator.create_architecture_docs("My Docs")
+        contract = ScaffoldContract(
+            project_kind="service",
+            execution_models=("container",),
+            runtime_platforms=("local",),
+            entrypoint="src/main.py",
+        )
+        base_generator.create_architecture_docs("My Docs", ["src/routes", "src/clients"], contract)
         arch = tmp_path / "docs/architecture/README.md"
         assert arch.exists()
-        assert arch.read_text() == "# My Docs\n"
+        content = arch.read_text()
+        assert content.startswith("# My Docs\n")
+        assert "`src/routes/` — HTTP surface" in content
+        assert "Entrypoint: `src/main.py`" in content
 
 def test_create_scaffold_contract_docs(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path):

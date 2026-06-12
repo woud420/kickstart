@@ -198,7 +198,7 @@ jobs:
 
             ### Manual binary install
 
-            Binary archives are attached for Linux and macOS across the supported Python minor versions. Pick the asset for your platform, extract it, and run `kickstart install` to place the binary payload in a user-writable directory and configure `PATH`:
+            Binary archives are attached for `linux-x64`, `linux-arm64`, and `macos-arm64` (Python 3.14). Other platforms install from PyPI. Pick the asset for your platform, extract it, and run `kickstart install` to place the binary payload in a user-writable directory and configure `PATH`:
 
             ```bash
             curl -L -o kickstart-linux-x64-py3.14.tar.gz "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/kickstart-linux-x64-py3.14.tar.gz"
@@ -248,6 +248,15 @@ jobs:
         if: ${{ steps.website-deploy.outputs.ready == 'true' }}
         env:
           ALCHEMY_TELEMETRY_DISABLED: "1"
+          # The Worker and its custom domain are created with `adopt: true`, so
+          # every deploy converges on the same named resources. Ephemeral CI
+          # state cannot orphan infrastructure here, which makes Alchemy's CI
+          # local-state-store guard safe to disable. When the optional
+          # ALCHEMY_PASSWORD / ALCHEMY_STATE_TOKEN secrets are configured,
+          # alchemy.run.ts upgrades to the persistent CloudflareStateStore.
+          ALCHEMY_CI_STATE_STORE_CHECK: "false"
+          ALCHEMY_PASSWORD: ${{ secrets.ALCHEMY_PASSWORD }}
+          ALCHEMY_STATE_TOKEN: ${{ secrets.ALCHEMY_STATE_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WEBSITE_API_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}

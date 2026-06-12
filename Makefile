@@ -5,8 +5,8 @@ PY := PYTHONPATH=$(CURDIR) $(POETRY_RUN) python
 PYTEST := $(POETRY_RUN) python -c "import pytest, sys; raise SystemExit(pytest.main(sys.argv[1:]))"
 
 # Directories that Ruff scans for lint + format. Keep mypy narrower (no tests).
-LINT_DIRS := src tests ci
-MYPY_DIRS := src ci
+LINT_DIRS := src tests ci scripts
+MYPY_DIRS := src ci scripts
 
 # Modules PyInstaller can't auto-discover from imports alone.
 PYINSTALLER_HIDDEN_IMPORTS := typer rich requests toml jinja2
@@ -108,7 +108,7 @@ build: package binary
 release-check:
 	@test -n "$(TAG)" || (echo "Usage: make release-check TAG=v0.4.1" && exit 1)
 	@$(call log,Validating release tag $(TAG))
-	@$(PYTHON) ci/release_policy.py --tag "$(TAG)" --version-file pyproject.toml
+	@$(PYTHON) ci/release_policy.py --tag "$(TAG)" --version-file pyproject.toml --init-file src/__init__.py
 
 clean:
 	@$(call log,Removing local build and test artifacts)

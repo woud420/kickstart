@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.monorepo import MonorepoGenerator
 from src.generator.system import SystemGenerator
+from src.utils.error_handling import ProjectCreationError
 
 
 def _template_written(mock_write_template, target, template):
@@ -214,7 +215,8 @@ def test_create_success_with_kustomize_and_gh(
     for target, template in expected_templates:
         assert _template_written(mock_write_template, target, template)
     
-    mock_create_architecture_docs.assert_called_once_with("test-monorepo System Docs")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-monorepo System Docs"
     mock_log_success.assert_called_once_with(
         "System 'test-monorepo' scaffolded as a monorepo for Kubernetes with Kustomize artifacts in 'test-monorepo'."
     )
@@ -277,9 +279,10 @@ def test_create_success_with_cloudflare_workers_runtime(
 @patch.object(MonorepoGenerator, 'create_project')
 def test_create_fails_when_create_project_fails(mock_create_project, monorepo_generator):
     mock_create_project.return_value = False
-    
-    monorepo_generator.create()
-    
+
+    with pytest.raises(ProjectCreationError, match="was not created"):
+        monorepo_generator.create()
+
     mock_create_project.assert_called_once()
 
 

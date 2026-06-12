@@ -55,6 +55,26 @@ class LanguageNotSupportedError(KickstartError):
     pass
 
 
+class InvalidProjectNameError(KickstartError):
+    """Raised when a project name fails validation."""
+    pass
+
+
+class UnsupportedProjectTypeError(KickstartError):
+    """Raised when a project type has no creator."""
+    pass
+
+
+class UnsupportedOptionError(KickstartError):
+    """Raised when an option does not apply to the selected project type."""
+    pass
+
+
+class MissingCreateArgumentsError(KickstartError):
+    """Raised when required create arguments are absent after prompting."""
+    pass
+
+
 class ExtensionError(KickstartError):
     """Raised when extension setup fails."""
     pass

@@ -238,6 +238,7 @@ def _components_for_project(
     max_system_depth: int,
     include_known_gaps: bool,
 ) -> tuple[ComponentPlan, ...]:
+    components: tuple[ComponentPlan, ...]
     if scale == "micro":
         components = (_micro_component(index, rng),)
     elif scale == "small":

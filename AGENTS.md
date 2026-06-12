@@ -16,6 +16,10 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - System generator/templates currently use historical `monorepo` file paths.
 - Website: `website/`
 - Docs: `docs/`
+- Changelog: `CHANGELOG.md` (mirrored on the website by `website/src/site/content.ts`)
+- Release policy: `docs/release-policy.md`, enforced by `ci/release_policy.py`
+- Agent skills: `.agents/skills/` (`.claude/skills` is a symlink to it)
+- Agent daemons: `.agents/daemons/`
 
 ## Current Model
 
@@ -44,4 +48,30 @@ make tests
 make check
 ```
 
-For generator wiring changes, also run the evals in `docs/evals.md` and report both command output and failure classes.
+For website changes, also run:
+
+```bash
+cd website && bun run check
+```
+
+For generator wiring changes, also run the evals in `docs/evals.md` and report both command output and failure classes (see the `scaffold-evals` skill).
+
+## Releases
+
+Follow `docs/release-policy.md` (see the `cut-release` skill):
+
+- Bump `pyproject.toml` and `src/__init__.py:__version__` together; `make release-check TAG=vX.Y.Z` fails when they disagree.
+- Add the release entry to `CHANGELOG.md` and `website/src/site/content.ts`; website tests fail when the current version has no release note.
+- Release tags are stable semver only (`vX.Y.Z`), tagged on `master` after merge.
+
+## Skills
+
+Reusable agent workflows live in `.agents/skills/`, one directory per skill with a `SKILL.md`:
+
+- `kickstart`: scaffold projects with the installed `kickstart` binary.
+- `cut-release`: cut, tag, and verify a kickstart release.
+- `scaffold-evals`: run the scaffold-shape, generated-`make test`, and token-savings evals and report failure classes.
+- `backstage-catalog`: derive `catalog-info.yaml` from `.kickstart/scaffold.json` for Backstage registration.
+- `website-update`: update kickstart-cli.org content against the tests that enforce it.
+
+`.claude/skills` is a symlink to `.agents/skills` so Claude Code discovers the same skills natively. Keep skills agent-neutral and add new ones under `.agents/skills/`.

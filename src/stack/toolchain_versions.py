@@ -14,8 +14,8 @@ BUN_VERSION: Final[str] = "1.3.0"
 PYTHON_DOCKER_TAG: Final[str] = "3.12-slim-bookworm"
 PYTHON_MATRIX: Final[tuple[str, ...]] = ("3.12", "3.13", "3.14")
 POETRY_VERSION: Final[str] = "1.8.4"
-RUST_TOOLCHAIN: Final[str] = "1.85"
-RUST_DOCKER_TAG: Final[str] = "1.85-bookworm"
+RUST_TOOLCHAIN: Final[str] = "1.88"
+RUST_DOCKER_TAG: Final[str] = "1.88-bookworm"
 GO_VERSION: Final[str] = "1.26"
 
 

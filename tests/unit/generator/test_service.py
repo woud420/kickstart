@@ -1,9 +1,10 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, call
+from src.generator.language_setup import CPP_MAIN_CONTENT, CPP_ROUTES_HEADER_CONTENT, CPP_USER_HEADER_CONTENT
 from src.generator.service import ServiceGenerator
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
-from src.utils.error_handling import ExtensionError, LanguageNotSupportedError
+from src.utils.error_handling import ProjectCreationError, ExtensionError, LanguageNotSupportedError
 
 
 @pytest.fixture
@@ -102,7 +103,8 @@ def test_create_success_python_with_helm_and_gh(
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
-    mock_create_architecture_docs.assert_called_once_with("test-service Architecture Notes")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-service Architecture Notes"
     mock_write_content.assert_called_once_with(".env.example", "EXAMPLE_ENV_VAR=value\n")
     mock_create_python_structure.assert_called_once()
     mock_create_helm_chart.assert_called_once()
@@ -178,23 +180,21 @@ def test_create_rejects_unimplemented_service_extension_values(option, value, kw
 @patch.object(ServiceGenerator, 'create_project')
 def test_create_fails_when_create_project_fails(mock_create_project, service_generator):
     mock_create_project.return_value = False
-    
-    service_generator.create()
-    
+
+    with pytest.raises(ProjectCreationError, match="was not created"):
+        service_generator.create()
+
     mock_create_project.assert_called_once()
 
 
-@patch('src.generator.service.warn')
 @patch.object(ServiceGenerator, 'create_project')
-def test_create_warns_when_language_template_missing(mock_create_project, mock_warn, tmp_path):
+def test_create_raises_when_language_template_missing(mock_create_project, tmp_path):
     generator = ServiceGenerator("test-service", "nonexistent", False, {})
     mock_create_project.return_value = True
     generator.lang_template_dir = tmp_path / "nonexistent"  # Directory doesn't exist
-    
+
     with pytest.raises(LanguageNotSupportedError):
         generator.create()
-
-    mock_warn.assert_not_called()
 
 
 @patch.object(ServiceGenerator, 'create_directories')
@@ -347,19 +347,12 @@ def test_create_cpp_structure(mock_write_content, mock_write_template, service_g
     generator = ServiceGenerator("test-service", "cpp", False, {})
     generator._create_cpp_structure()
 
+    # The sources are clang-format-clean constants; assert against the
+    # single source of truth instead of duplicating the formatted text here.
     expected_calls = [
-        call(
-            "src/api/routes.hpp",
-            "#pragma once\n\nnamespace api {\nclass Routes {\npublic:\n    Routes() = default;\n};\n}  // namespace api\n",
-        ),
-        call(
-            "src/model/user.hpp",
-            "#pragma once\n\n#include <string>\n\nnamespace model {\nstruct User {\n    std::string id;\n    std::string email;\n};\n}  // namespace model\n",
-        ),
-        call(
-            "src/main.cpp",
-            '#include <iostream>\n\nint main() {\n    std::cout << "Hello World" << std::endl;\n    return 0;\n}\n',
-        ),
+        call("src/api/routes.hpp", CPP_ROUTES_HEADER_CONTENT),
+        call("src/model/user.hpp", CPP_USER_HEADER_CONTENT),
+        call("src/main.cpp", CPP_MAIN_CONTENT),
     ]
 
     mock_write_content.assert_has_calls(expected_calls, any_order=True)

@@ -18,6 +18,8 @@ There is no separate root architecture document. `docs/architecture/` is the can
 
 ## Option Vocabulary
 
+`.kickstart/scaffold.json` carries a `semantics` URL pointing at this document instead of duplicating the vocabulary into every generated repo (schema 3.0). The definitions below are the source of truth for manifest field meanings.
+
 - `project.kind`: what kickstart generated, for example `service`, `worker`, `frontend`, `library`, `cli`, or `system`.
 - `project.repo_layout`: how generated projects are arranged, for example `single-project` or `monorepo`.
 - `project.architecture`: optional named source layout profile, for example `modular-cli`.

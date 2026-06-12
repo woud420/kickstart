@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.frontend import FrontendGenerator
+from src.utils.error_handling import ProjectCreationError
 
 
 @pytest.fixture
@@ -76,7 +77,8 @@ def test_create_success_with_gh(
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
-    mock_create_architecture_docs.assert_called_once_with("test-frontend Frontend Docs")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-frontend Frontend Docs"
     mock_log_success.assert_called_once_with("Frontend app 'test-frontend' created successfully in 'test-frontend'!")
     mock_create_repo.assert_called_once_with("test-frontend")
 
@@ -118,7 +120,8 @@ def test_create_success_without_gh(
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
-    mock_create_architecture_docs.assert_called_once_with("test-frontend Frontend Docs")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-frontend Frontend Docs"
     mock_log_success.assert_called_once_with("Frontend app 'test-frontend' created successfully in 'test-frontend'!")
     mock_create_repo.assert_not_called()
 
@@ -126,9 +129,10 @@ def test_create_success_without_gh(
 @patch.object(FrontendGenerator, 'create_project')
 def test_create_fails_when_create_project_fails(mock_create_project, frontend_generator):
     mock_create_project.return_value = False
-    
-    frontend_generator.create()
-    
+
+    with pytest.raises(ProjectCreationError, match="was not created"):
+        frontend_generator.create()
+
     mock_create_project.assert_called_once()
 
 
@@ -200,7 +204,8 @@ def test_architecture_docs_content():
         generator = FrontendGenerator("my-awesome-app", False, {})
         generator.create()
         
-        mock_create_arch_docs.assert_called_once_with("my-awesome-app Frontend Docs")
+        mock_create_arch_docs.assert_called_once()
+        assert mock_create_arch_docs.call_args.args[0] == "my-awesome-app Frontend Docs"
 
 
 def test_success_message_format():

@@ -8,7 +8,7 @@ vMAJOR.MINOR.PATCH
 
 Examples: `v0.4.0`, `v0.4.1`, `v0.4.2`.
 
-The tag version must match `[project].version` in `pyproject.toml`. Tags such as `v0.4`, `v0.4.1-rc.1`, and `v0.4.1+build.1` are rejected by CI.
+The tag version must match `[project].version` in `pyproject.toml`, and `pyproject.toml` must agree with the runtime `src/__init__.py:__version__` (the constant `kickstart version` reports). Tags such as `v0.4`, `v0.4.1-rc.1`, and `v0.4.1+build.1` are rejected by CI, and so are desynced version files.
 
 Validate the release tag locally with:
 
@@ -20,12 +20,19 @@ make release-check TAG=v0.4.1
 
 Use a new version when generated behavior, installable output, public CLI behavior, or release assets change.
 
-1. Update `pyproject.toml`.
-2. Merge the change to `master`.
-3. Tag the merged commit with `vX.Y.Z`.
-4. Push the tag.
+1. Update `pyproject.toml` and `src/__init__.py:__version__` together.
+2. Add the release entry to `CHANGELOG.md` and `website/src/site/content.ts` (website tests fail when the current version has no release note).
+3. Merge the change to `master`.
+4. The `Auto Tag Release` workflow tags the merge commit with `vX.Y.Z` automatically when the `RELEASE_TAG_TOKEN` secret (fine-grained PAT, `contents: read/write`) is configured. It never moves an existing tag and only tags after `make release-check` passes. Without the secret it skips with a notice — tag and push manually instead:
 
-The release workflow builds the Python package and Linux/macOS binary archives (`kickstart-<platform>-py<minor>.tar.gz`, one per supported Python minor), publishes or updates the GitHub Release, and deploys the website with metadata for that tag.
+```bash
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+The tag push uses a PAT because tags pushed with the default `GITHUB_TOKEN` do not trigger the release workflow.
+
+The release workflow builds the Python package and Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz` for `linux-x64`, `linux-arm64`, and `macos-arm64`), publishes or updates the GitHub Release, and deploys the website with metadata for that tag.
 
 ## Same-Version Updates
 
@@ -36,3 +43,5 @@ Retag the current release line after the fix is merged. The release workflow upd
 ## Website
 
 The website deploys for every stable release tag, including patch tags such as `v0.4.1`. Local commits and branch pushes do not update the public release metadata.
+
+The deploy job runs with `ALCHEMY_CI_STATE_STORE_CHECK=false`: the Worker and its custom domain use `adopt: true`, so each deploy converges on the same named resources and ephemeral CI state cannot orphan infrastructure. Configure the optional `ALCHEMY_PASSWORD` and `ALCHEMY_STATE_TOKEN` repository secrets to upgrade deploys to the persistent Cloudflare state store.

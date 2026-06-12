@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from src.generator.file_plan import ContentFile
+from src.generator.layouts import render_architecture_readme
 from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
 from src.stack.toolchain_versions import toolchain_vars
@@ -15,10 +16,30 @@ from src.utils.types import GeneratorConfig, TemplateValue, TemplateVars
 from src.utils.error_handling import (
     ErrorCollector, batch_operation_wrapper, handle_file_operations,
     handle_template_operations, safe_operation_context,
-    ensure_directory_exists, TemplateError
+    ensure_directory_exists, InvalidProjectNameError, ProjectCreationError, TemplateError
 )
 
 logger = logging.getLogger(__name__)
+
+# Lowercase letter first, then lowercase letters, digits, dashes, or
+# underscores. Rejects path separators (and with them traversal like
+# `../evil`), dots, spaces, uppercase, and leading dashes.
+PROJECT_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_-]*$")
+PROJECT_NAME_MAX_LENGTH = 64
+
+
+def validate_project_name(name: str) -> str:
+    """Return the name when valid; raise a specific error otherwise."""
+    if len(name) > PROJECT_NAME_MAX_LENGTH:
+        raise InvalidProjectNameError(
+            f"Project name '{name}' is longer than {PROJECT_NAME_MAX_LENGTH} characters."
+        )
+    if PROJECT_NAME_PATTERN.fullmatch(name) is None:
+        raise InvalidProjectNameError(
+            f"Project name '{name}' is not allowed. Use a lowercase name that starts with a letter "
+            "and contains only letters, digits, dashes, or underscores (for example: my-api)."
+        )
+    return name
 
 class BaseGenerator:
     """Base class for all project generators.
@@ -48,7 +69,7 @@ class BaseGenerator:
             config: Configuration dictionary with user preferences
             root: Root directory for project creation (optional)
         """
-        self.name = name
+        self.name = validate_project_name(name)
         self.config = config
         self.project = Path(root) / name if root else Path(name)
         self.template_dir = Path(__file__).parent.parent / "templates"
@@ -219,18 +240,28 @@ class BaseGenerator:
         """
         return self.create_directories(dirs)
 
-    def create_architecture_docs(self, title: str) -> bool:
-        """Create the canonical architecture documentation directory and README.
-        
+    def create_architecture_docs(
+        self,
+        title: str,
+        directories: Sequence[str] = (),
+        contract: ScaffoldContract | None = None,
+    ) -> bool:
+        """Create the architecture README with a human-oriented module map.
+
         Args:
             title: Title for the architecture documentation
-            
+            directories: Generated directory layout to describe
+            contract: Scaffold contract supplying capabilities and entrypoint
+
         Returns:
             True if architecture docs were created successfully, False otherwise
         """
         if not self.create_directories(["docs/architecture"]):
             return False
-        return self.write_content("docs/architecture/README.md", f"# {title}\n")
+        return self.write_content(
+            "docs/architecture/README.md",
+            render_architecture_readme(title, directories, contract),
+        )
 
     def create_scaffold_contract_docs(self, contract: ScaffoldContract) -> bool:
         """Create agent-facing docs and the machine-readable scaffold manifest."""
@@ -372,10 +403,11 @@ class BaseGenerator:
             True if project was created successfully, False otherwise
         """
         if not self.create_project():
-            return False
+            raise ProjectCreationError(
+                f"Project '{self.name}' was not created: directory '{self.project}' "
+                "already exists or is not accessible."
+            )
 
-        errors = []
-        
         # Use error collector for standardized error tracking
         error_collector = ErrorCollector("Project creation")
 
@@ -395,7 +427,7 @@ class BaseGenerator:
 
         # Create architecture docs
         with safe_operation_context("Architecture documentation creation", log_errors=True):
-            if not self.create_architecture_docs(architecture_title):
+            if not self.create_architecture_docs(architecture_title, directories, scaffold_contract):
                 error_collector.add_error("Failed to create architecture documentation")
             else:
                 error_collector.increment_success()
@@ -427,23 +459,20 @@ class BaseGenerator:
                     error_collector.increment_success()
             error_collector.increment_total()
 
-        errors = error_collector.errors
+        # Fail before announcing success or creating a GitHub repo: a partial
+        # scaffold must never produce a success banner or remote side effects.
+        if error_collector.has_errors():
+            error_collector.log_summary()
+            error_collector.report_failures()
+            raise ProjectCreationError(
+                f"Project '{self.name}' was generated with errors: {'; '.join(error_collector.errors)}"
+            )
 
-        # Log results
-        if errors:
-            warn(f"Project created with errors: {'; '.join(errors)}")
-            # Still log success but mention the issues
-            logger.warning(f"Project '{self.name}' created with {len(errors)} error(s)")
-        
         # Success message and GitHub integration
         with safe_operation_context("GitHub integration", log_errors=True):
             self.create_with_github(success_message, github_create_fn)
             error_collector.increment_success()
         error_collector.increment_total()
 
-        # Final error reporting
         error_collector.log_summary()
-        if error_collector.has_errors():
-            error_collector.report_failures()
-        
-        return not error_collector.has_errors()
+        return True

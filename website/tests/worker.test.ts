@@ -29,8 +29,11 @@ describe("kickstart website worker", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     const html = await response.text();
     expect(html).toContain('<h1 id="hero-title">kickstart</h1>');
-    expect(html).toContain("/assets/site.css?v=0.4.0");
-    expect(html).toContain("/assets/site.js?v=0.4.0");
+    expect(html).toContain("/assets/site.css?v=0.4.2");
+    expect(html).toContain("/assets/site.js?v=0.4.2");
+    expect(html).toContain("v0.4.2");
+    expect(html).toContain("Trustworthy releases, leaner manifests, adopt preview");
+    expect(html).toContain("Scaffold contract convergence");
   });
 
   it("renders version and repository metadata from Worker vars", async () => {
@@ -91,7 +94,7 @@ describe("kickstart website worker", () => {
   });
 
   it("serves script assets", async () => {
-    const request = new Request("https://example.test/assets/site.js?v=0.4.0") as Parameters<typeof worker.fetch>[0];
+    const request = new Request("https://example.test/assets/site.js?v=0.4.2") as Parameters<typeof worker.fetch>[0];
 
     const response = await worker.fetch(request, defaultEnv);
     const script = await response.text();

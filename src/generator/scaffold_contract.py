@@ -4,9 +4,18 @@ from dataclasses import dataclass, field
 import json
 from typing import Literal, NotRequired, TypedDict
 
+from src import __version__
+
 
 ProjectKind = Literal["service", "worker", "frontend", "library", "cli", "system"]
 RepoLayout = Literal["single-project", "monorepo"]
+
+# Field meanings live in one place instead of being duplicated into every
+# generated repo; the manifest carries this pointer so agents can resolve the
+# vocabulary without kickstart re-emitting it per project. Pinned to the
+# generating version's tag so the referenced semantics cannot drift under a
+# manifest that has already been written.
+SEMANTICS_REFERENCE = f"https://github.com/woud420/kickstart/blob/v{__version__}/docs/scaffold-contract.md"
 
 
 class ScaffoldProjectManifest(TypedDict):
@@ -76,25 +85,6 @@ class ScaffoldDocsManifest(TypedDict):
     decisions: str
 
 
-class ScaffoldOptionSemanticsManifest(TypedDict):
-    project_kind: str
-    repo_layout: str
-    architecture: str
-    cli_framework: str
-    command_root: str
-    entrypoint: str
-    operation_root: str
-    src_root_files: str
-    execution_models: str
-    runtime_platforms: str
-    artifacts: str
-    provider_targets: str
-    capabilities: str
-    lifecycle: str
-    composition: str
-    knowledge_adapter: str
-
-
 class ScaffoldManifest(TypedDict):
     schema_version: str
     generated_by: str
@@ -106,7 +96,7 @@ class ScaffoldManifest(TypedDict):
     lifecycle: ScaffoldLifecycleManifest
     knowledge_adapter: str
     docs: ScaffoldDocsManifest
-    option_semantics: ScaffoldOptionSemanticsManifest
+    semantics: str
 
 
 class SystemScaffoldManifest(ScaffoldManifest):
@@ -217,7 +207,9 @@ class ScaffoldContract:
     entrypoint: str | None = None
     operation_root: str | None = None
     src_root_files: tuple[str, ...] = ()
-    schema_version: str = "2.0"
+    # 3.0: option_semantics (a static glossary object) was removed in favor
+    # of the `semantics` reference URL — a field removal, hence a major bump.
+    schema_version: str = "3.0"
 
     def manifest(self, project_name: str) -> ScaffoldManifest:
         """Return the JSON-serializable scaffold manifest."""
@@ -259,24 +251,7 @@ class ScaffoldContract:
                 "operations": "docs/operations/",
                 "decisions": "docs/decisions/",
             },
-            "option_semantics": {
-                "project_kind": "what kickstart generated",
-                "repo_layout": "how generated projects are arranged in the repository",
-                "architecture": "named source layout profile when a scaffold has one",
-                "cli_framework": "CLI parser/framework selected by a CLI scaffold",
-                "command_root": "where framework-native command adapter files belong",
-                "entrypoint": "process entrypoint for the generated project",
-                "operation_root": "where CLI use-case implementation belongs",
-                "src_root_files": "files expected directly under src/ for source-root hygiene",
-                "execution_models": "how generated code is meant to execute",
-                "runtime_platforms": "where generated runtime artifacts are meant to run",
-                "artifacts": "files and tool configs emitted by the scaffold",
-                "provider_targets": "infrastructure providers targeted by generated IaC or platform config",
-                "capabilities": "selected optional capabilities that have generated code and validation support",
-                "lifecycle": "project-local commands that agents and humans can run to install, test, and check the scaffold",
-                "composition": "system-only metadata for discovering contained project manifests",
-                "knowledge_adapter": "external knowledge integration metadata",
-            },
+            "semantics": SEMANTICS_REFERENCE,
         }
         if self.project_kind == "system":
             system_manifest = SystemScaffoldManifest(

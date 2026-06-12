@@ -123,6 +123,25 @@ jobs:
 
           test -d /tmp/test-cli-tool
 
+      # Dogfood gate: kickstart must bootstrap a kickstart-like project that
+      # passes taste rules and its own `make check`. CI runs the headline
+      # python case; the full matrix stays a local eval (docs/evals.md).
+      - name: Restore bootstrap eval dependency cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/bootstrap-eval-cache
+          key: bootstrap-eval-${{ runner.os }}-${{ hashFiles('src/stack/toolchain_versions.py', 'src/templates/python/**') }}
+          restore-keys: |
+            bootstrap-eval-${{ runner.os }}-
+
+      - name: Bootstrap eval (python CLI + full-extension service, TS worker, Rust CLI)
+        run: |
+          PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
+            --cases python-cli-kickstart-like python-service typescript-worker rust-cli \
+            --output-root /tmp/bootstrap-eval \
+            --cache-root /tmp/bootstrap-eval-cache \
+            --report /tmp/bootstrap-eval.md
+
       - name: Smoke test kickstart install subcommand
         run: |
           scripts/ci/smoke-install.sh \

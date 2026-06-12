@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ '{{ include "example-service.fullname" . }}' }}
+  name: {{ '{{ include "' ~ service_name ~ '.fullname" . }}' }}
 spec:
   type: {{ '{{ .Values.service.type }}' }}
   selector:
-    app.kubernetes.io/name: {{ '{{ include "example-service.name" . }}' }}
+    app.kubernetes.io/name: {{ '{{ include "' ~ service_name ~ '.name" . }}' }}
   ports:
     - name: http
       port: {{ '{{ .Values.service.port }}' }}

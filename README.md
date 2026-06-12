@@ -6,9 +6,11 @@ The goal is to eliminate the repeated setup work that humans and agents otherwis
 
 It is intentionally not a product architect. Use it to create a deterministic starting repo, then add the domain model, APIs, security choices, and tests that belong to the product.
 
+Release history lives in [CHANGELOG.md](CHANGELOG.md) and on [kickstart-cli.org](https://kickstart-cli.org).
+
 ## Install
 
-One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux + macOS, x64 + arm64):
+One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux x64/arm64 and macOS arm64; other platforms install from PyPI with `pip install kickstart`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh | bash
@@ -89,6 +91,13 @@ Add Bun + Turbo workspace tooling when you want a TypeScript workspace at the sy
 
 ```bash
 poetry run kickstart create system product-stack --workspace-tooling bun-turbo
+```
+
+Check an existing repo against the scaffold standard (read-only; exit 0 = matches, 1 = gaps, 2 = usage error):
+
+```bash
+poetry run kickstart adopt path/to/repo --check          # human report
+poetry run kickstart adopt path/to/repo --check --json   # machine-readable, for agents and CI
 ```
 
 ## What It Generates

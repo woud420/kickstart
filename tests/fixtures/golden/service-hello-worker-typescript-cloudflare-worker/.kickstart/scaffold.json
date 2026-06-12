@@ -27,24 +27,6 @@
     "install": "make install",
     "test": "make test"
   },
-  "option_semantics": {
-    "architecture": "named source layout profile when a scaffold has one",
-    "artifacts": "files and tool configs emitted by the scaffold",
-    "capabilities": "selected optional capabilities that have generated code and validation support",
-    "cli_framework": "CLI parser/framework selected by a CLI scaffold",
-    "command_root": "where framework-native command adapter files belong",
-    "composition": "system-only metadata for discovering contained project manifests",
-    "entrypoint": "process entrypoint for the generated project",
-    "execution_models": "how generated code is meant to execute",
-    "knowledge_adapter": "external knowledge integration metadata",
-    "lifecycle": "project-local commands that agents and humans can run to install, test, and check the scaffold",
-    "operation_root": "where CLI use-case implementation belongs",
-    "project_kind": "what kickstart generated",
-    "provider_targets": "infrastructure providers targeted by generated IaC or platform config",
-    "repo_layout": "how generated projects are arranged in the repository",
-    "runtime_platforms": "where generated runtime artifacts are meant to run",
-    "src_root_files": "files expected directly under src/ for source-root hygiene"
-  },
   "project": {
     "kind": "worker",
     "name": "hello-worker",
@@ -55,5 +37,6 @@
       "cloudflare"
     ]
   },
-  "schema_version": "2.0"
+  "schema_version": "3.0",
+  "semantics": "https://github.com/woud420/kickstart/blob/v0.4.2/docs/scaffold-contract.md"
 }

@@ -33,12 +33,12 @@ build: install
 fmt:
 	@$(call log,Formatting C++ sources)
 	@command -v clang-format
-	@clang-format -i src/**/*.hpp src/**/*.cpp tests/**/*.cpp
+	@find src tests -type f \( -name '*.hpp' -o -name '*.cpp' \) 2>/dev/null | xargs -r clang-format -i
 
 format-check:
 	@$(call log,Checking C++ formatting)
 	@command -v clang-format
-	@clang-format --dry-run --Werror src/**/*.hpp src/**/*.cpp tests/**/*.cpp
+	@find src tests -type f \( -name '*.hpp' -o -name '*.cpp' \) 2>/dev/null | xargs -r clang-format --dry-run --Werror
 
 lint: format-check
 

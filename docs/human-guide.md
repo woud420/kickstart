@@ -41,6 +41,14 @@ Support is intentionally narrow:
 
 Other language/runtime/framework combinations fail loudly until their templates are implemented.
 
+## Adopting Existing Repos
+
+`kickstart adopt REPO --check` reports which standard artifacts (scaffold
+manifest, `AGENTS.md`, `README.md`, a Makefile with a `check` target, the
+`docs/` areas, CI workflows) an existing repo is missing. It never writes;
+`--json` emits a machine-readable report. Exit codes: 0 complete, 1 gaps
+found, 2 usage error. Applying the standard automatically is planned.
+
 ## Library And CLI Options
 
 Python and Rust are the supported library targets. Python, Rust, and TypeScript are the supported CLI targets.

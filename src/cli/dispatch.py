@@ -3,14 +3,16 @@
 from dataclasses import dataclass
 from typing import Protocol, Unpack
 
-from rich import print
 
 from src.cli.options import CreateOptions, ServiceCreateKwargs, SystemCreateKwargs
+from src.utils.error_handling import UnsupportedOptionError, UnsupportedProjectTypeError
 from src.utils.types import GeneratorConfig
 
 
 SYSTEM_PROJECT_TYPES = {"system"}
 LEGACY_MONOREPO_PROJECT_TYPES = {"mono", "monorepo"}
+HELM_PROJECT_TYPES = SYSTEM_PROJECT_TYPES | LEGACY_MONOREPO_PROJECT_TYPES | {"service"}
+KNOWN_PROJECT_TYPES = {"service", "frontend", "lib", "cli"} | SYSTEM_PROJECT_TYPES | LEGACY_MONOREPO_PROJECT_TYPES
 
 
 class ServiceCreator(Protocol):
@@ -76,8 +78,57 @@ class ProjectCreators:
     monorepo: SystemCreator
 
 
+def _reject_inapplicable_options(options: CreateOptions) -> None:
+    """Refuse options that the selected project type would silently drop."""
+    project_type = options.project_type
+    system_like = project_type in SYSTEM_PROJECT_TYPES | LEGACY_MONOREPO_PROJECT_TYPES
+
+    if options.helm and project_type not in HELM_PROJECT_TYPES:
+        raise UnsupportedOptionError(
+            f"--helm only applies to services and systems, not '{project_type}' projects."
+        )
+
+    if project_type != "service":
+        service_only = {
+            "--database": options.database,
+            "--cache": options.cache,
+            "--auth": options.auth,
+            "--framework": options.framework,
+        }
+        rejected = [flag for flag, value in service_only.items() if value not in (None, "none")]
+        if rejected:
+            raise UnsupportedOptionError(
+                f"{', '.join(rejected)} only applies to services, not '{project_type}' projects."
+            )
+
+    if options.runtime is not None and project_type != "service" and not system_like:
+        raise UnsupportedOptionError(
+            f"--runtime only applies to services and systems, not '{project_type}' projects."
+        )
+
+    if not system_like:
+        system_only = {
+            "--cloud": None if options.cloud == "multi" else options.cloud,
+            "--knowledge": None if options.knowledge == "none" else options.knowledge,
+            "--workspace-tooling": options.workspace_tooling,
+        }
+        rejected = [flag for flag, value in system_only.items() if value is not None]
+        if rejected:
+            raise UnsupportedOptionError(
+                f"{', '.join(rejected)} only applies to systems, not '{project_type}' projects."
+            )
+
+
 def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, creators: ProjectCreators) -> None:
     """Dispatch resolved create options to the appropriate project creator."""
+    if options.project_type not in KNOWN_PROJECT_TYPES:
+        raise UnsupportedProjectTypeError(
+            f"Type '{options.project_type}' not supported. "
+            "Use one of: service, frontend, lib, cli, system."
+        )
+
+    _reject_inapplicable_options(options)
+
     if options.project_type == "service":
         service_kwargs: ServiceCreateKwargs = {"helm": options.helm, "root": options.root}
         if options.database is not None and options.database != "none":
@@ -110,11 +161,7 @@ def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, c
         creators.system(options.name, options.gh, config, **_system_kwargs(options))
         return
 
-    if options.project_type in LEGACY_MONOREPO_PROJECT_TYPES:
-        creators.monorepo(options.name, options.gh, config, **_system_kwargs(options))
-        return
-
-    print(f"[bold red]Type '{options.project_type}' not supported.[/]")
+    creators.monorepo(options.name, options.gh, config, **_system_kwargs(options))
 
 
 def _system_kwargs(options: CreateOptions) -> SystemCreateKwargs:
