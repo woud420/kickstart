@@ -417,12 +417,28 @@ def _dispatch_project_creation(
     )
 
 
-@app.command()
+@app.command(
+    epilog=(
+        "Examples:\n\n"
+        "  kickstart create service my-api --lang python --database postgres --auth jwt\n\n"
+        "  kickstart create service edge --lang typescript --runtime cloudflare-workers\n\n"
+        "  kickstart create cli ops-tool --lang rust\n\n"
+        "  kickstart create system platform --cloud aws --runtime kubernetes\n\n"
+        "Every project generates with tests, docs, and a Makefile; verify with: make check"
+    )
+)
 def create(
-    project_type: Optional[str] = typer.Argument(None),
-    name: Optional[str] = typer.Argument(None),
+    project_type: Optional[str] = typer.Argument(None, help="service, frontend, lib, cli, or system"),
+    name: Optional[str] = typer.Argument(
+        None, help="Lowercase project name: letters, digits, dashes, underscores (e.g. my-api)"
+    ),
     root: Optional[str] = typer.Option(None, "--root", "-r", help="Root directory where the project will be created"),
-    lang: str = typer.Option("python", "--lang", "-l"),
+    lang: str = typer.Option(
+        "python",
+        "--lang",
+        "-l",
+        help="Language: python, rust, typescript, go, cpp (services); python, rust, typescript (libs/CLIs)",
+    ),
     gh: bool = typer.Option(False, "--gh", help="Create GitHub repo"),
     helm: bool = typer.Option(False, "--helm", help="Add Helm scaffolding (services or systems only)"),
     database: Optional[str] = typer.Option(
@@ -483,6 +499,12 @@ def create(
             confirm=cast(ConfirmReader, Confirm),
         )
         dispatch_project_creation(options, config, _project_creators())
+        project_path = Path(options.root) / options.name if options.root else Path(options.name)
+        print(
+            f"\nNext steps:\n"
+            f"  cd {escape(str(project_path))} && make check   [dim]# install deps, lint, typecheck, test[/]\n"
+            f"  cat AGENTS.md                  [dim]# orientation map; scaffold metadata in .kickstart/scaffold.json[/]"
+        )
 
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
@@ -510,7 +532,7 @@ def create(
 
 def main() -> None:
     """Run the Typer application when executed as a script."""
-    app()
+    app(prog_name="kickstart")
 
 
 if __name__ == "__main__":
