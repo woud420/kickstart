@@ -2,9 +2,10 @@
 
 from typing import Protocol, cast
 
-import typer
+from rich import print
 
 from src.cli.options import CreateCommandOptions, CreateOptions
+from src.utils.error_handling import MissingCreateArgumentsError
 from src.utils.types import GeneratorConfig
 
 
@@ -56,7 +57,7 @@ def prompt_for_missing_args(
         root = prompt.ask("Where should the project be created?")
 
     if not project_type:
-        typer.echo("[bold cyan]Launching interactive wizard...\n[/]")
+        print("[bold cyan]Launching interactive wizard...\n[/]")
         project_type = prompt.ask(
             "What do you want to create?",
             choices=["service", "frontend", "lib", "cli", "system"],
@@ -108,8 +109,11 @@ def prompt_for_missing_args(
                 if auth == "none":
                     auth = None
 
-    assert project_type is not None, "project_type should be set by now"
-    assert name is not None, "name should be set by now"
+    if project_type is None or name is None:
+        raise MissingCreateArgumentsError(
+            "Project type and name are required. "
+            "Pass them explicitly, for example: kickstart create service my-api --lang python"
+        )
 
     return CreateOptions(
         project_type=project_type,

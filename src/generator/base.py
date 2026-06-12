@@ -397,8 +397,6 @@ class BaseGenerator:
                 "already exists or is not accessible."
             )
 
-        errors = []
-        
         # Use error collector for standardized error tracking
         error_collector = ErrorCollector("Project creation")
 
@@ -450,26 +448,20 @@ class BaseGenerator:
                     error_collector.increment_success()
             error_collector.increment_total()
 
-        errors = error_collector.errors
+        # Fail before announcing success or creating a GitHub repo: a partial
+        # scaffold must never produce a success banner or remote side effects.
+        if error_collector.has_errors():
+            error_collector.log_summary()
+            error_collector.report_failures()
+            raise ProjectCreationError(
+                f"Project '{self.name}' was generated with errors: {'; '.join(error_collector.errors)}"
+            )
 
-        # Log results
-        if errors:
-            warn(f"Project created with errors: {'; '.join(errors)}")
-            # Still log success but mention the issues
-            logger.warning(f"Project '{self.name}' created with {len(errors)} error(s)")
-        
         # Success message and GitHub integration
         with safe_operation_context("GitHub integration", log_errors=True):
             self.create_with_github(success_message, github_create_fn)
             error_collector.increment_success()
         error_collector.increment_total()
 
-        # Final error reporting
         error_collector.log_summary()
-        if error_collector.has_errors():
-            error_collector.report_failures()
-            raise ProjectCreationError(
-                f"Project '{self.name}' was generated with errors: {'; '.join(error_collector.errors)}"
-            )
-
         return True

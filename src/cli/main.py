@@ -486,6 +486,8 @@ def create(
 
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
+        # Conventional SIGINT exit status; cancel must not read as success.
+        raise typer.Exit(code=130) from None
     except EOFError as exc:
         print(
             "[bold red]Interactive input ended before required arguments were provided. "
@@ -493,6 +495,11 @@ def create(
         )
         raise typer.Exit(code=2) from exc
     except KickstartError as exc:
+        print(f"[bold red]Failed to create project: {exc}[/]")
+        raise typer.Exit(code=1) from exc
+    except ValueError as exc:
+        # Stack-registry validation errors (unknown runtime/cloud/...) are
+        # user-input problems: report them cleanly without a traceback.
         print(f"[bold red]Failed to create project: {exc}[/]")
         raise typer.Exit(code=1) from exc
     except Exception as exc:

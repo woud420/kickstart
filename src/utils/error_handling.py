@@ -70,6 +70,11 @@ class UnsupportedOptionError(KickstartError):
     pass
 
 
+class MissingCreateArgumentsError(KickstartError):
+    """Raised when required create arguments are absent after prompting."""
+    pass
+
+
 class ExtensionError(KickstartError):
     """Raised when extension setup fails."""
     pass
