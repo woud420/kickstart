@@ -49,6 +49,20 @@ PYTHONPATH=$(pwd) poetry run python scripts/generated_make_test_eval.py \
 May need network access when dependencies are not cached. The dependency
 cache is a performance tool, not part of generated behavior.
 
+## Token Savings
+
+Quantify how many output tokens scaffolding saves an agent versus authoring
+the files by hand (useful for release notes and positioning claims):
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py \
+  --output-root /private/tmp/kickstart-token-savings \
+  --report /private/tmp/kickstart-token-savings.md
+```
+
+Report the per-scaffold and aggregate savings ratios and state the
+bytes-per-token heuristic; pass `--json` for machine-readable output.
+
 ## Rules
 
 - Write reports to scratch paths such as `/private/tmp`. Never commit

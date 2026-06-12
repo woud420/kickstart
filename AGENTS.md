@@ -70,6 +70,7 @@ Reusable agent workflows live in `.agents/skills/`, one directory per skill with
 
 - `kickstart`: scaffold projects with the installed `kickstart` binary.
 - `cut-release`: cut, tag, and verify a kickstart release.
-- `scaffold-evals`: run the scaffold-shape and generated-`make test` evals and report failure classes.
+- `scaffold-evals`: run the scaffold-shape, generated-`make test`, and token-savings evals and report failure classes.
+- `backstage-catalog`: derive `catalog-info.yaml` from `.kickstart/scaffold.json` for Backstage registration.
 
 `.claude/skills` is a symlink to `.agents/skills` so Claude Code discovers the same skills natively. Keep skills agent-neutral and add new ones under `.agents/skills/`.

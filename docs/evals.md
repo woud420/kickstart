@@ -42,3 +42,23 @@ This eval may need network access when dependencies are not already cached. The 
 The most recent local cached-network run validated 4696 generated Makefiles: 4589 passed and 107 failed. The prewarm phase passed 21 of 21 targets. Remaining failures were classified into dependency, install, and toolchain failure classes, mostly Bun concurrent install/cache `EEXIST` errors and `workerd` install failures under Node 25.
 
 When reporting this eval, include the pass count and the failure classes. Do not compress failures into a single pass/fail number.
+
+## Token Savings
+
+kickstart's value to agents includes replacing thousands of hand-authored
+boilerplate tokens with one short command. Measure it:
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py \
+  --output-root /private/tmp/kickstart-token-savings \
+  --report /private/tmp/kickstart-token-savings.md
+```
+
+The eval generates representative scaffolds (service, worker, CLI, library,
+system), counts the UTF-8 text content an agent would otherwise emit, and
+estimates tokens at ~4 bytes per token. The most recent local run measured a
+208x aggregate saving: ~17,500 output tokens of generated starter files
+versus ~84 tokens of `kickstart create` commands (135x-288x per scaffold).
+
+Pass `--json` for machine-readable results. The heuristic is intentionally
+model-agnostic; report bytes alongside tokens when precision matters.
