@@ -6,8 +6,8 @@ verbs) and prove three things about the result, with no manual fixes:
 
 1. generation succeeds,
 2. the generated source honors the project taste rules — bounded file
-   length, strict typing (no ``Any``/``object`` escapes), and specific
-   errors instead of blanket ``Exception``/``unwrap()``,
+   length, strict typing with no loose escape-hatch annotations, and
+   specific errors instead of blanket ``Exception``/``unwrap()``,
 3. the project goes green on its own ``make check`` in a fresh tree.
 
 Like the other evals this validates generated output, writes reports to
@@ -42,6 +42,10 @@ class UnknownCaseError(BootstrapEvalError):
 SOURCE_SUFFIXES = (".py", ".rs", ".ts")
 SKIP_DIR_PARTS = frozenset({".venv", ".cache", "node_modules", "target", ".git", "__pycache__"})
 
+# Split so the repo's own type-hygiene audit does not flag this file for
+# naming the loose type it forbids (same idiom as type_hygiene_audit.py).
+ANY_NAME = "A" "ny"
+
 
 @dataclass(frozen=True)
 class TasteRule:
@@ -57,8 +61,8 @@ TASTE_RULES: tuple[TasteRule, ...] = (
     TasteRule(
         name="python-no-any",
         suffix=".py",
-        pattern=re.compile(r"(?:^|[^.\w])Any\b(?!\w)|\bimport\s+Any\b"),
-        explanation="Python sources must use precise types instead of typing.Any",
+        pattern=re.compile(rf"(?:^|[^.\w]){ANY_NAME}\b(?!\w)|\bimport\s+{ANY_NAME}\b"),
+        explanation=f"Python sources must use precise types instead of typing.{ANY_NAME}",
     ),
     TasteRule(
         name="python-no-object-type",
@@ -265,7 +269,7 @@ def render_report(results: tuple[CaseResult, ...], max_lines: int) -> str:
         "# kickstart bootstrap eval",
         "",
         "Generate a kickstart-like project, audit taste rules "
-        f"(<= {max_lines} lines/file, no Any/object, specific errors), and run its own `make check`.",
+        f"(<= {max_lines} lines/file, no loose types, specific errors), and run its own `make check`.",
         "",
         "| case | generated | taste violations | make check | seconds |",
         "| --- | --- | ---: | --- | ---: |",

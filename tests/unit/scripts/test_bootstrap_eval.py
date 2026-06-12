@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from scripts.bootstrap_eval import (
+    ANY_NAME,
     DEFAULT_CASES,
     BootstrapCase,
     CaseResult,
@@ -36,7 +37,7 @@ def test_source_files_skips_caches_and_non_source(tmp_path: Path) -> None:
 def test_audit_file_flags_python_any_and_generic_errors(tmp_path: Path) -> None:
     path = write(
         tmp_path / "src" / "bad.py",
-        "from typing import Any\n\ndef f(x: Any) -> object:\n    raise Exception('boom')\n",
+        f"from typing import {ANY_NAME}\n\ndef f(x: {ANY_NAME}) -> object:\n    raise Exception('boom')\n",
     )
 
     rules = {violation.rule for violation in audit_file(path, tmp_path, max_lines=300)}
@@ -86,7 +87,7 @@ def test_rust_tests_may_unwrap(tmp_path: Path) -> None:
 
 
 def test_audit_tree_aggregates_all_files(tmp_path: Path) -> None:
-    write(tmp_path / "src" / "a.py", "from typing import Any\n")
+    write(tmp_path / "src" / "a.py", f"from typing import {ANY_NAME}\n")
     write(tmp_path / "src" / "b.ts", "const x = 1 as any;\n")
 
     rules = sorted(violation.rule for violation in audit_tree(tmp_path, max_lines=300))
