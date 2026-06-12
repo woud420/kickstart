@@ -5,6 +5,7 @@ to final project structure, ensuring all components work together correctly.
 """
 
 from collections.abc import Iterator
+import os
 import pytest
 import tempfile
 import shutil
@@ -759,14 +760,21 @@ class TestErrorRecovery:
         # The method should fail before creating the project directory.
     
     def test_permission_error_handling(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test handling of permission errors during file creation."""
+        """Permission failures surface as a specific error, never a quiet success.
+
+        Skipped when running as root (e.g. some containers), where read-only
+        permission bits don't apply and the failure cannot be provoked.
+        """
+        if os.geteuid() == 0:
+            pytest.skip("permission bits are ignored when running as root")
+
         service_name = "test-permissions"
-        
+
         # Create read-only directory
         readonly_dir = temp_project_dir / "readonly"
         readonly_dir.mkdir()
         readonly_dir.chmod(0o444)  # Read-only
-        
+
         try:
             generator = ServiceGenerator(
                 name=service_name,
@@ -775,13 +783,11 @@ class TestErrorRecovery:
                 config=mock_config,
                 root=str(readonly_dir)
             )
-            
-            # Should handle permission errors gracefully
-            generator.create()
-            
-            # Verify it doesn't crash the application
-            assert True  # If we get here, no unhandled exception occurred
-            
+
+            # The failure must be loud and typed so callers exit non-zero.
+            with pytest.raises(ProjectCreationError):
+                generator.create()
+
         finally:
             # Restore permissions for cleanup
             readonly_dir.chmod(0o755)
