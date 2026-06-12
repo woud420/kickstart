@@ -9,6 +9,7 @@ never writes; applying the standard to a repo is a later, explicit step.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -95,6 +96,17 @@ def _manifest_issue(manifest_file: Path) -> str:
     return ""
 
 
+def _makefile_issue(makefile: Path) -> str:
+    """A Makefile must expose the canonical check verb to count as standard."""
+    try:
+        content = makefile.read_text(encoding="utf-8")
+    except OSError as error:
+        return f"unreadable Makefile: {error}"
+    if not re.search(r"^check\s*:", content, re.MULTILINE):
+        return "Makefile has no 'check' target (the canonical verification verb)"
+    return ""
+
+
 def _artifact_status(root: Path, artifact: str) -> ArtifactStatus:
     """Inspect one standard artifact path."""
     target = root / artifact
@@ -105,7 +117,11 @@ def _artifact_status(root: Path, artifact: str) -> ArtifactStatus:
     if not target.is_file():
         return ArtifactStatus(path=artifact, present=False, issue="missing file")
 
-    issue = _manifest_issue(target) if artifact == MANIFEST_PATH else ""
+    issue = ""
+    if artifact == MANIFEST_PATH:
+        issue = _manifest_issue(target)
+    elif artifact == "Makefile":
+        issue = _makefile_issue(target)
     return ArtifactStatus(path=artifact, present=True, issue=issue)
 
 

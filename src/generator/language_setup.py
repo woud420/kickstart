@@ -12,9 +12,9 @@ CPP_ROUTES_HEADER_CONTENT = """#pragma once
 namespace api {
 class Routes {
 public:
-    Routes() = default;
+  Routes() = default;
 };
-}  // namespace api
+} // namespace api
 """
 
 CPP_USER_HEADER_CONTENT = """#pragma once
@@ -23,17 +23,17 @@ CPP_USER_HEADER_CONTENT = """#pragma once
 
 namespace model {
 struct User {
-    std::string id;
-    std::string email;
+  std::string id;
+  std::string email;
 };
-}  // namespace model
+} // namespace model
 """
 
 CPP_MAIN_CONTENT = """#include <iostream>
 
 int main() {
-    std::cout << "Hello World" << std::endl;
-    return 0;
+  std::cout << "Hello World" << std::endl;
+  return 0;
 }
 """
 

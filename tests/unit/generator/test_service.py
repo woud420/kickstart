@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, call
+from src.generator.language_setup import CPP_MAIN_CONTENT, CPP_ROUTES_HEADER_CONTENT, CPP_USER_HEADER_CONTENT
 from src.generator.service import ServiceGenerator
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.utils.error_handling import ProjectCreationError, ExtensionError, LanguageNotSupportedError
@@ -346,19 +347,12 @@ def test_create_cpp_structure(mock_write_content, mock_write_template, service_g
     generator = ServiceGenerator("test-service", "cpp", False, {})
     generator._create_cpp_structure()
 
+    # The sources are clang-format-clean constants; assert against the
+    # single source of truth instead of duplicating the formatted text here.
     expected_calls = [
-        call(
-            "src/api/routes.hpp",
-            "#pragma once\n\nnamespace api {\nclass Routes {\npublic:\n    Routes() = default;\n};\n}  // namespace api\n",
-        ),
-        call(
-            "src/model/user.hpp",
-            "#pragma once\n\n#include <string>\n\nnamespace model {\nstruct User {\n    std::string id;\n    std::string email;\n};\n}  // namespace model\n",
-        ),
-        call(
-            "src/main.cpp",
-            '#include <iostream>\n\nint main() {\n    std::cout << "Hello World" << std::endl;\n    return 0;\n}\n',
-        ),
+        call("src/api/routes.hpp", CPP_ROUTES_HEADER_CONTENT),
+        call("src/model/user.hpp", CPP_USER_HEADER_CONTENT),
+        call("src/main.cpp", CPP_MAIN_CONTENT),
     ]
 
     mock_write_content.assert_has_calls(expected_calls, any_order=True)

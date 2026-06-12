@@ -1,8 +1,8 @@
-{{ '{{- define "example-service.name" -}}' }}
+{{ '{{- define "' ~ service_name ~ '.name" -}}' }}
 {{ '{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}' }}
 {{ '{{- end -}}' }}
 
-{{ '{{- define "example-service.fullname" -}}' }}
+{{ '{{- define "' ~ service_name ~ '.fullname" -}}' }}
 {{ '{{- if .Values.fullnameOverride -}}' }}
 {{ '{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}' }}
 {{ '{{- else -}}' }}

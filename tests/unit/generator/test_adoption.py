@@ -19,8 +19,9 @@ def scaffold_standard_repo(root: Path) -> None:
     }
     (root / ".kickstart").mkdir(parents=True)
     (root / MANIFEST_PATH).write_text(json.dumps(manifest), encoding="utf-8")
-    for name in ("AGENTS.md", "README.md", "Makefile"):
+    for name in ("AGENTS.md", "README.md"):
         (root / name).write_text("content\n", encoding="utf-8")
+    (root / "Makefile").write_text("check:\n\ttrue\n", encoding="utf-8")
     for directory in ("docs/architecture", "docs/contracts", "docs/operations", "docs/decisions", ".github/workflows"):
         (root / directory).mkdir(parents=True)
 
@@ -72,6 +73,18 @@ def test_inspect_repo_flags_manifest_missing_keys(tmp_path: Path) -> None:
 def test_inspect_repo_rejects_missing_target(tmp_path: Path) -> None:
     with pytest.raises(AdoptionTargetError, match="not an existing directory"):
         inspect_repo(tmp_path / "nope")
+
+
+def test_makefile_without_check_target_is_flagged(tmp_path: Path) -> None:
+    scaffold_standard_repo(tmp_path)
+    (tmp_path / "Makefile").write_text("build:\n\ttrue\n", encoding="utf-8")
+
+    report = inspect_repo(tmp_path)
+
+    makefile_status = next(status for status in report.artifacts if status.path == "Makefile")
+    assert makefile_status.present
+    assert "no 'check' target" in makefile_status.issue
+    assert not report.complete
 
 
 def test_report_json_is_machine_readable(tmp_path: Path) -> None:

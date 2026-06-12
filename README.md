@@ -93,6 +93,13 @@ Add Bun + Turbo workspace tooling when you want a TypeScript workspace at the sy
 poetry run kickstart create system product-stack --workspace-tooling bun-turbo
 ```
 
+Check an existing repo against the scaffold standard (read-only; exit 0 = matches, 1 = gaps, 2 = usage error):
+
+```bash
+poetry run kickstart adopt path/to/repo --check          # human report
+poetry run kickstart adopt path/to/repo --check --json   # machine-readable, for agents and CI
+```
+
 ## What It Generates
 
 - `service`: Python, TypeScript, Rust, C++, or Go backend service structure.

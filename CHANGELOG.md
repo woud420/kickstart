@@ -35,6 +35,22 @@ Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
   setting, so running `make install` inside any activated venv installed
   the generated project there. The Makefiles now unset `VIRTUAL_ENV` so
   Poetry always uses the in-project `.venv`.
+- A 20-run cold-start agent evaluation surfaced and fixed four more
+  generated-project bugs: the minimal-framework Python service failed
+  strict mypy and disagreed with its own smoke test; Rust services with
+  extensions stopped compiling when `time >= 0.3.48` met actix-web's
+  `cookie 0.16` (the generated Cargo.toml now pins `time < 0.3.48` with
+  a removal note); the C++ Makefile's `**` globs silently matched
+  nothing under `/bin/sh` and hid unformatted sources (now `find`-based,
+  sources clang-format-clean); Helm charts hardcoded `example-service`
+  instead of the project name (now parameterized).
+- First-contact ergonomics from the same evaluation: `--version` flag,
+  `--root` defaults to the working directory instead of prompting,
+  enumerated project types/languages and an examples epilog in
+  `create --help`, and a post-create next-steps line naming `make check`.
+- `kickstart adopt --check` now verifies the Makefile exposes a `check`
+  target instead of only checking existence, and documents its exit
+  codes (0 complete / 1 gaps / 2 usage error).
 - The interactive wizard exits with a specific message on EOF instead of
   dumping a traceback and exiting 0.
 - The release website deploy job no longer fails on Alchemy's CI

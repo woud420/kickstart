@@ -90,7 +90,8 @@ PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
 ```
 
 Default cases: python CLI (the kickstart-like headline case), python lib,
-python service with all extensions, typescript worker, rust CLI. Use
+python service with all extensions, python service on the minimal stdlib
+framework, typescript worker, rust CLI, and C++ service. Use
 `--cases` to iterate on a single scaffold. Beyond the taste rules, every
 capability declared in `.kickstart/scaffold.json` must be exercised by at
 least one generated test (`capability-tests` rule). The eval exits non-zero

@@ -2,6 +2,11 @@
 
 Date: 2026-05-08
 
+> Superseded (v0.4.2): the maintained methodology lives in `docs/evals.md`
+> (Token Savings) and `scripts/token_savings_eval.py`. The all-bytes baseline
+> below is now reported explicitly as an upper bound, with a separate
+> app-code ratio that excludes scaffold metadata.
+
 ## Decision
 
 Keep the kickstart skill short and treat kickstart as a deterministic create-once scaffold tool.

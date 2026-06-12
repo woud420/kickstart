@@ -89,7 +89,10 @@ def adopt(
     check: bool = typer.Option(False, "--check", help="Report standard-artifact status without writing"),
     json_output: bool = typer.Option(False, "--json", help="Emit a machine-readable report"),
 ) -> None:
-    """Check an existing repo against the kickstart scaffold standard (read-only)."""
+    """Check an existing repo against the kickstart scaffold standard (read-only).
+
+    Exit codes: 0 = repo matches the standard, 1 = gaps found, 2 = usage error.
+    """
     if not check:
         print("[red]kickstart adopt only supports --check for now; writing is a future, explicit step.[/]")
         raise typer.Exit(code=2)

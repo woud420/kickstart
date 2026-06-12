@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ '{{ include "example-service.fullname" . }}' }}
+  name: {{ '{{ include "' ~ service_name ~ '.fullname" . }}' }}
   labels:
-    app.kubernetes.io/name: {{ '{{ include "example-service.name" . }}' }}
+    app.kubernetes.io/name: {{ '{{ include "' ~ service_name ~ '.name" . }}' }}
 spec:
   replicas: {{ '{{ .Values.replicaCount }}' }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ '{{ include "example-service.name" . }}' }}
+      app.kubernetes.io/name: {{ '{{ include "' ~ service_name ~ '.name" . }}' }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ '{{ include "example-service.name" . }}' }}
+        app.kubernetes.io/name: {{ '{{ include "' ~ service_name ~ '.name" . }}' }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -27,7 +27,7 @@ spec:
               containerPort: {{ '{{ .Values.service.targetPort }}' }}
           envFrom:
             - configMapRef:
-                name: {{ '{{ include "example-service.fullname" . }}' }}-config
+                name: {{ '{{ include "' ~ service_name ~ '.fullname" . }}' }}-config
           readinessProbe:
             httpGet:
               path: /readyz

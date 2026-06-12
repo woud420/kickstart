@@ -38,6 +38,11 @@ Outputs:
 
 Do not infer unsupported options. Use existing registries and typed plans.
 
+Adoption: `kickstart adopt REPO --check --json` reports standard-artifact
+gaps for repos kickstart did not create (read-only; exit 0 complete / 1
+gaps / 2 usage error). Generated projects verify themselves with
+`make check`; the success output names it.
+
 ## Source Of Truth
 
 - Public API: `src/api.py`

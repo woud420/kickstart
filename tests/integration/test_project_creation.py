@@ -194,7 +194,8 @@ class TestServiceCreation:
         assert (helm_path / "templates/_helpers.tpl").exists()
 
         deployment_yaml = (helm_path / "templates/deployment.yaml").read_text()
-        assert 'name: {{ include "example-service.fullname" . }}' in deployment_yaml
+        assert f'name: {{{{ include "{service_name}.fullname" . }}}}' in deployment_yaml
+        assert "example-service" not in deployment_yaml
         assert "}}  labels" not in deployment_yaml
         assert "}}spec" not in deployment_yaml
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
