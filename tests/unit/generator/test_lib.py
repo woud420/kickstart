@@ -111,7 +111,8 @@ def test_library_create_python_success_with_gh(
     all_expected_calls = expected_common_calls + [expected_python_call]
     mock_write_template.assert_has_calls(all_expected_calls, any_order=True)
     
-    mock_create_architecture_docs.assert_called_once_with("test-lib Library Docs")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-lib Library Docs"
     mock_log_success.assert_called_once_with("Python library 'test-lib' created successfully in 'test-lib'!")
     mock_create_repo.assert_called_once_with("test-lib")
 
@@ -145,7 +146,8 @@ def test_library_create_rust_success(
     all_expected_calls = expected_common_calls + [expected_rust_call]
     mock_write_template.assert_has_calls(all_expected_calls, any_order=True)
     
-    mock_create_architecture_docs.assert_called_once_with("test-lib Library Docs")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-lib Library Docs"
     mock_log_success.assert_called_once_with("Rust library 'test-lib' created successfully in 'test-lib'!")
     mock_create_repo.assert_not_called()
 
@@ -198,7 +200,8 @@ def test_cli_create_python_success_with_gh(
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     mock_write_content.assert_called_once_with("src/__init__.py", '__version__ = "0.1.0"\n')
     
-    mock_create_architecture_docs.assert_called_once_with("test-cli CLI Docs")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
     mock_log_success.assert_called_once_with("Python CLI 'test-cli' created successfully in 'test-cli'!")
     mock_create_repo.assert_called_once_with("test-cli")
 
@@ -234,7 +237,8 @@ def test_cli_create_rust_success(
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     mock_write_content.assert_not_called()
     
-    mock_create_architecture_docs.assert_called_once_with("test-cli CLI Docs")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
     mock_log_success.assert_called_once_with("Rust CLI 'test-cli' created successfully in 'test-cli'!")
     mock_create_repo.assert_not_called()
 
@@ -271,7 +275,8 @@ def test_cli_create_typescript_success(
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     mock_write_content.assert_not_called()
-    mock_create_architecture_docs.assert_called_once_with("test-cli CLI Docs")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
     mock_log_success.assert_called_once_with("Typescript CLI 'test-cli' created successfully in 'test-cli'!")
     mock_create_repo.assert_not_called()
 
@@ -384,7 +389,8 @@ def test_library_vs_cli_architecture_docs_difference():
         lib_generator = LibraryGenerator("my-lib", "python", False, {})
         lib_generator.create()
         
-        mock_lib_arch_docs.assert_called_once_with("my-lib Library Docs")
+        mock_lib_arch_docs.assert_called_once()
+        assert mock_lib_arch_docs.call_args.args[0] == "my-lib Library Docs"
     
     # Test CLI
     with patch.object(CLIGenerator, 'create_project', return_value=True), \
@@ -397,7 +403,8 @@ def test_library_vs_cli_architecture_docs_difference():
         cli_generator = CLIGenerator("my-cli", "python", False, {})
         cli_generator.create()
         
-        mock_cli_arch_docs.assert_called_once_with("my-cli CLI Docs")
+        mock_cli_arch_docs.assert_called_once()
+        assert mock_cli_arch_docs.call_args.args[0] == "my-cli CLI Docs"
 
 
 def test_library_vs_cli_success_message_difference():

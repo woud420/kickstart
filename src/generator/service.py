@@ -417,6 +417,7 @@ class ServiceGenerator(BaseGenerator):
             python_service_content_files(
                 env_content=self._read_template_text("python/core/env.example.tpl"),
                 migration_content=self._read_template_text("python/core/migrations/001_initial.sql.tpl"),
+                framework=self.framework,
             )
         )
         
@@ -453,6 +454,15 @@ class ServiceGenerator(BaseGenerator):
             except FileNotFoundError:
                 # If core requirements don't exist, create with extensions only
                 self.write_content("requirements.txt", "\n".join(all_extension_requirements))
+
+        # Extension tests live in packages the base layout does not create.
+        test_packages = []
+        if self.auth == "jwt":
+            test_packages.append("tests/unit/handler")
+        if self.cache == "redis" or self.database == "postgres":
+            test_packages.append("tests/unit/clients")
+        if test_packages:
+            self.write_content_files(python_init_content_files(test_packages))
 
         # Log what was added
         if extensions_added:

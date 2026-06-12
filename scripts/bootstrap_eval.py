@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import re
 import shutil
@@ -145,7 +146,19 @@ DEFAULT_CASES: tuple[BootstrapCase, ...] = (
     BootstrapCase(slug="python-lib", args=("create", "lib", "shared-models", "--lang", "python")),
     BootstrapCase(
         slug="python-service",
-        args=("create", "service", "api", "--lang", "python", "--database", "postgres"),
+        args=(
+            "create",
+            "service",
+            "api",
+            "--lang",
+            "python",
+            "--database",
+            "postgres",
+            "--cache",
+            "redis",
+            "--auth",
+            "jwt",
+        ),
     ),
     BootstrapCase(
         slug="typescript-worker",
@@ -264,6 +277,55 @@ def audit_tree(root: Path, max_lines: int) -> tuple[Violation, ...]:
     return tuple(found)
 
 
+def _is_test_source(path: Path, root: Path) -> bool:
+    """A file counts as a test when it lives in a test path or holds inline Rust tests."""
+    if is_test_path(path.relative_to(root)) or ".test." in path.name:
+        return True
+    return path.suffix == ".rs" and "#[cfg(test)]" in path.read_text(encoding="utf-8")
+
+
+def audit_capability_tests(root: Path) -> tuple[Violation, ...]:
+    """Every capability the manifest declares must be exercised by a test.
+
+    The check is a keyword heuristic over test sources (a test mentioning
+    `auth`/`cache`/`database`), matching the taste rules' controlled-template
+    threat model: it catches capabilities shipped without any test, not
+    adversarially mislabeled tests.
+    """
+    manifest_path = root / ".kickstart" / "scaffold.json"
+    if not manifest_path.is_file():
+        return (
+            Violation(
+                rule="capability-tests",
+                file=".kickstart/scaffold.json",
+                line=0,
+                detail="missing scaffold manifest; cannot verify capability coverage",
+            ),
+        )
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    extensions = manifest.get("capabilities", {}).get("service_extensions", {})
+    if not extensions:
+        return ()
+
+    test_corpus = "\n".join(
+        path.read_text(encoding="utf-8") for path in source_files(root) if _is_test_source(path, root)
+    )
+
+    violations = []
+    for kind, selected in sorted(extensions.items()):
+        if kind not in test_corpus and str(selected) not in test_corpus:
+            violations.append(
+                Violation(
+                    rule="capability-tests",
+                    file=".kickstart/scaffold.json",
+                    line=0,
+                    detail=f"capability {kind}={selected} has no test mentioning '{kind}' or '{selected}'",
+                )
+            )
+    return tuple(violations)
+
+
 def generate_case(case: BootstrapCase, root: Path, repo_root: Path) -> subprocess.CompletedProcess[str]:
     """Generate one scaffold via the CLI module, mirroring agent usage."""
     command = (sys.executable, "-m", "src.cli.main", *case.args, "--root", str(root))
@@ -307,7 +369,7 @@ def run_case(
         names = ", ".join(path.name for path in project_dirs) or "none"
         return CaseResult(case, True, (), False, 0.0, f"expected exactly one generated directory, got: {names}")
     project = project_dirs[0]
-    violations = audit_tree(project, max_lines)
+    violations = (*audit_tree(project, max_lines), *audit_capability_tests(project))
 
     started = time.monotonic()
     try:

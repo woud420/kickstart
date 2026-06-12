@@ -13,3 +13,18 @@ pub async fn create_connection(client: &Client) -> RedisResult<MultiplexedConnec
 pub async fn ping(connection: &mut MultiplexedConnection) -> RedisResult<String> {
     redis::cmd("PING").query_async(connection).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_client_parses_url_without_connecting() {
+        assert!(create_client("redis://127.0.0.1:6379/2").is_ok());
+    }
+
+    #[test]
+    fn invalid_url_is_rejected() {
+        assert!(create_client("not-a-redis-url").is_err());
+    }
+}

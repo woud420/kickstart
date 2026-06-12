@@ -102,7 +102,8 @@ def test_create_success_python_with_helm_and_gh(
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
     
-    mock_create_architecture_docs.assert_called_once_with("test-service Architecture Notes")
+    mock_create_architecture_docs.assert_called_once()
+    assert mock_create_architecture_docs.call_args.args[0] == "test-service Architecture Notes"
     mock_write_content.assert_called_once_with(".env.example", "EXAMPLE_ENV_VAR=value\n")
     mock_create_python_structure.assert_called_once()
     mock_create_helm_chart.assert_called_once()

@@ -90,6 +90,13 @@ PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
 ```
 
 Default cases: python CLI (the kickstart-like headline case), python lib,
-python service, typescript worker, rust CLI. Use `--cases` to iterate on a
-single scaffold. The eval exits non-zero when any case fails generation,
-taste, or `make check`, so it can gate template changes locally.
+python service with all extensions, typescript worker, rust CLI. Use
+`--cases` to iterate on a single scaffold. Beyond the taste rules, every
+capability declared in `.kickstart/scaffold.json` must be exercised by at
+least one generated test (`capability-tests` rule). The eval exits non-zero
+when any case fails generation, taste, capability coverage, or `make check`.
+
+CI gates four cases on every PR (python CLI, full-extension python service,
+typescript worker, rust CLI); the `Scheduled Evals` workflow runs the full
+matrix plus the website-examples drift check weekly against live
+toolchains, so template rot surfaces within a week without slowing PRs.

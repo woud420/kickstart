@@ -45,7 +45,34 @@ LOG_LEVEL=info
 TYPESCRIPT_POSTGRES_ENV_EXAMPLE_CONTENT = (
     f"{TYPESCRIPT_ENV_EXAMPLE_CONTENT}DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres\n"
 )
-PYTHON_SMOKE_TEST_CONTENT = "def test_generated_scaffold() -> None:\n    assert True\n"
+PYTHON_FASTAPI_SMOKE_TEST_CONTENT = '''"""Smoke tests: the generated service must serve its own health route."""
+
+from fastapi.testclient import TestClient
+
+from src.main import create_app
+
+
+def test_healthz_reports_ok() -> None:
+    client = TestClient(create_app())
+
+    response = client.get("/healthz")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["service"]
+'''
+
+PYTHON_MINIMAL_SMOKE_TEST_CONTENT = '''"""Smoke tests: the generated service must report its own health."""
+
+from src.main import health_check
+
+
+async def test_health_check_reports_ok() -> None:
+    payload = await health_check()
+
+    assert payload["status"] == "ok"
+'''
 
 
 def python_init_content_files(package_paths: Sequence[str]) -> tuple[ContentFile, ...]:
@@ -53,12 +80,15 @@ def python_init_content_files(package_paths: Sequence[str]) -> tuple[ContentFile
     return tuple(ContentFile(f"{package_path}/__init__.py", "") for package_path in package_paths)
 
 
-def python_service_content_files(*, env_content: str, migration_content: str) -> tuple[ContentFile, ...]:
+def python_service_content_files(
+    *, env_content: str, migration_content: str, framework: str | None = None
+) -> tuple[ContentFile, ...]:
     """Return direct content files for Python services."""
+    smoke_test = PYTHON_MINIMAL_SMOKE_TEST_CONTENT if framework == "minimal" else PYTHON_FASTAPI_SMOKE_TEST_CONTENT
     return (
         ContentFile(".env.example", env_content),
         ContentFile("migrations/001_initial.sql", migration_content),
-        ContentFile("tests/test_smoke.py", PYTHON_SMOKE_TEST_CONTENT),
+        ContentFile("tests/test_smoke.py", smoke_test),
     )
 
 
@@ -121,12 +151,18 @@ def go_service_content_templates() -> tuple[TemplateConfig, ...]:
 def typescript_service_templates(*, include_postgres_database: bool = False) -> tuple[TemplateConfig, ...]:
     """Return template files for TypeScript services."""
     template_vars: TemplateVars = {"database": "postgres"} if include_postgres_database else {}
-    return (
+    templates: tuple[TemplateConfig, ...] = (
         TemplateConfig("src/main.ts", "typescript/src/main.ts.tpl", template_vars),
         TemplateConfig("src/config/env.ts", "typescript/src/config/env.ts.tpl", template_vars),
         TemplateConfig("src/routes/health.ts", "typescript/src/routes/health.ts.tpl", template_vars),
         TemplateConfig("tests/health.test.ts", "typescript/tests/health.test.ts.tpl", template_vars),
     )
+    if include_postgres_database:
+        templates = (
+            *templates,
+            TemplateConfig("tests/database.test.ts", "typescript/tests/database.test.ts.tpl", template_vars),
+        )
+    return templates
 
 
 def typescript_service_content_files(*, include_postgres_database: bool = False) -> tuple[ContentFile, ...]:

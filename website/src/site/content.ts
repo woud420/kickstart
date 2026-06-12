@@ -254,7 +254,7 @@ export const releaseNotes: ReleaseNote[] = [
       "kickstart version reports the released version, gated by a pyproject/runtime version-sync check.",
       "Trustworthy CLI: validated project names, non-zero exit codes on every failure, no silent option swallowing.",
       "kickstart adopt --check inspects existing repos against the scaffold standard (read-only, --json for agents).",
-      "scaffold.json schema 3.0 cuts every manifest by more than half; bootstrap, token, and determinism evals keep scaffolds green, cheap, and reproducible.",
+      "Generated projects ship real tests (health route, JWT, client behavior) and a human-oriented architecture map, enforced by eval gates in CI and a weekly live-toolchain run.",
     ],
   },
   {

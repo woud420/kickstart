@@ -9,6 +9,7 @@ from scripts.bootstrap_eval import (
     BootstrapCase,
     CaseResult,
     UnknownCaseError,
+    audit_capability_tests,
     audit_depth,
     audit_file,
     audit_tree,
@@ -164,3 +165,35 @@ def test_render_report_marks_failures() -> None:
     assert "| demo | yes | 0 | green | 2.0 |" in report
     assert "| demo | yes | 0 | RED | 1.0 |" in report
     assert "make check failed: boom" in report
+
+
+def test_capability_tests_rule_requires_a_test_per_extension(tmp_path: Path) -> None:
+    (tmp_path / ".kickstart").mkdir()
+    (tmp_path / ".kickstart" / "scaffold.json").write_text(
+        '{"capabilities": {"service_extensions": {"auth": "jwt", "cache": "redis"}}}',
+        encoding="utf-8",
+    )
+    write(tmp_path / "tests" / "unit" / "handler" / "test_auth.py", "from src.handler.auth import JWTAuth\n")
+
+    violations = audit_capability_tests(tmp_path)
+
+    assert [violation.rule for violation in violations] == ["capability-tests"]
+    assert "cache=redis" in violations[0].detail
+
+
+def test_capability_tests_rule_accepts_covered_extensions(tmp_path: Path) -> None:
+    (tmp_path / ".kickstart").mkdir()
+    (tmp_path / ".kickstart" / "scaffold.json").write_text(
+        '{"capabilities": {"service_extensions": {"auth": "jwt"}}}',
+        encoding="utf-8",
+    )
+    write(tmp_path / "src" / "handler" / "auth.rs", "#[cfg(test)]\nmod tests { use jsonwebtoken as jwt; }\n")
+
+    assert audit_capability_tests(tmp_path) == ()
+
+
+def test_capability_tests_rule_passes_without_extensions(tmp_path: Path) -> None:
+    (tmp_path / ".kickstart").mkdir()
+    (tmp_path / ".kickstart" / "scaffold.json").write_text('{"capabilities": {}}', encoding="utf-8")
+
+    assert audit_capability_tests(tmp_path) == ()

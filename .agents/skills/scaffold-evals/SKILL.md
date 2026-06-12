@@ -64,8 +64,11 @@ PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
   --report /tmp/kickstart-bootstrap-eval.md
 ```
 
-Non-zero exit means a case failed generation, taste, or check — fix the
-template, rerun, and stop iterating only after consecutive clean runs.
+Non-zero exit means a case failed generation, taste, capability-test
+coverage (every manifest capability needs a generated test), or check —
+fix the template, rerun, and stop iterating only after consecutive clean
+runs. CI gates four cases per PR; the Scheduled Evals workflow runs the
+full matrix weekly against live toolchains.
 
 ## Token Savings
 

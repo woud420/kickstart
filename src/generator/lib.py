@@ -27,7 +27,14 @@ class PackageSetupPlan:
     content_files: tuple[ContentFile, ...] = ()
 
 
-PYTHON_LIBRARY_TEST_CONTENT = "def test_generated_scaffold() -> None:\n    assert True\n"
+PYTHON_LIBRARY_TEST_CONTENT = '''"""Smoke tests: the generated library package must import."""
+
+import src
+
+
+def test_package_imports() -> None:
+    assert src is not None
+'''
 RUST_LIBRARY_CONTENT = "pub fn generated_scaffold_ready() -> bool {\n    true\n}\n"
 LIBRARY_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
     "python": PackageSetupPlan(

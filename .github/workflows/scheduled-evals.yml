@@ -1,0 +1,55 @@
+name: Scheduled Evals
+
+# Weekly canary against live toolchains. Generated projects resolve their
+# dependencies fresh, so template rot (new ruff/mypy/clippy releases, crate
+# MSRV bumps, registry changes) surfaces here within a week even when no PR
+# touches the templates. PRs gate the fast bootstrap cases; this run covers
+# the full matrix.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.14"
+  POETRY_VERSION: "2.3.3"
+
+jobs:
+  full-evals:
+    name: Full Bootstrap + Website Examples
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.5"
+
+      - name: Full bootstrap eval (all cases, live dependencies)
+        run: |
+          PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
+            --output-root /tmp/bootstrap-eval \
+            --cache-root /tmp/bootstrap-eval-cache \
+            --report /tmp/bootstrap-eval.md
+
+      - name: Website examples drift check
+        run: |
+          PYTHONPATH=$(pwd) poetry run python -m pytest tests/integration/test_website_examples.py -q
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootstrap-eval-report
+          path: /tmp/bootstrap-eval.md
+          retention-days: 30

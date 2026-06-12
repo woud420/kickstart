@@ -25,7 +25,11 @@ Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
   through rich, which hard-wrapped long paths (invalid JSON) and ate
   bracketed path segments.
 - Generated Python JWT services pass their own `make check` again
-  (modern `type` aliases instead of `TypeAlias`, import-block spacing).
+  (modern `type` aliases instead of `TypeAlias`, import-block spacing),
+  and password hashing uses maintained `bcrypt` directly — the new
+  generated tests caught `passlib` breaking against `bcrypt>=4.1`.
+- Generated Rust toolchain pin bumped to 1.88 (extension dependency
+  trees now require it; caught by generating and checking for real).
 - The interactive wizard exits with a specific message on EOF instead of
   dumping a traceback and exiting 0.
 - The release website deploy job no longer fails on Alchemy's CI
@@ -46,8 +50,19 @@ Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
   curated highlights, kept current by tests; showcased command examples
   are regenerated and verified against real output in CI.
 - Evals: bootstrap gate (kickstart must bootstrap a kickstart-like project
-  that passes taste rules and its own `make check` — also run in CI),
-  token-savings measurement, and byte-identical determinism tests.
+  that passes taste rules and its own `make check` — four cases gate every
+  PR, the full matrix runs weekly against live toolchains), token-savings
+  measurement, and byte-identical determinism tests.
+- Generated projects ship real tests instead of `assert True`: services
+  verify their own health route, and every selected extension carries
+  infrastructure-free tests (JWT roundtrip/tamper/password, Redis and
+  Postgres client behavior — Python, Rust, and TypeScript). A
+  `capability-tests` eval rule fails any scaffold whose manifest declares
+  a capability no test exercises.
+- Generated `docs/architecture/README.md` is a real module map (each
+  directory with its purpose, selected capabilities, where to start
+  reading) instead of a bare heading — written for humans navigating
+  agent-written repos.
 - Auto-tagging: merging a version bump to `master` creates the release tag
   automatically (gated on `make release-check`, idempotent, requires the
   `RELEASE_TAG_TOKEN` secret so the tag push can trigger the release).

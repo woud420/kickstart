@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from src.generator.file_plan import ContentFile
+from src.generator.layouts import render_architecture_readme
 from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
 from src.stack.toolchain_versions import toolchain_vars
@@ -239,18 +240,28 @@ class BaseGenerator:
         """
         return self.create_directories(dirs)
 
-    def create_architecture_docs(self, title: str) -> bool:
-        """Create the canonical architecture documentation directory and README.
-        
+    def create_architecture_docs(
+        self,
+        title: str,
+        directories: Sequence[str] = (),
+        contract: ScaffoldContract | None = None,
+    ) -> bool:
+        """Create the architecture README with a human-oriented module map.
+
         Args:
             title: Title for the architecture documentation
-            
+            directories: Generated directory layout to describe
+            contract: Scaffold contract supplying capabilities and entrypoint
+
         Returns:
             True if architecture docs were created successfully, False otherwise
         """
         if not self.create_directories(["docs/architecture"]):
             return False
-        return self.write_content("docs/architecture/README.md", f"# {title}\n")
+        return self.write_content(
+            "docs/architecture/README.md",
+            render_architecture_readme(title, directories, contract),
+        )
 
     def create_scaffold_contract_docs(self, contract: ScaffoldContract) -> bool:
         """Create agent-facing docs and the machine-readable scaffold manifest."""
@@ -416,7 +427,7 @@ class BaseGenerator:
 
         # Create architecture docs
         with safe_operation_context("Architecture documentation creation", log_errors=True):
-            if not self.create_architecture_docs(architecture_title):
+            if not self.create_architecture_docs(architecture_title, directories, scaffold_contract):
                 error_collector.add_error("Failed to create architecture documentation")
             else:
                 error_collector.increment_success()
