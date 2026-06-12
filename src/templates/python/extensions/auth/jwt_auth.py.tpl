@@ -1,14 +1,13 @@
 """JWT helpers for {{ service_name }}."""
 
 from datetime import UTC, datetime, timedelta
-from typing import TypeAlias, TypedDict
+from typing import TypedDict
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-
-JwtClaim: TypeAlias = str | int | datetime
-JwtPayload: TypeAlias = dict[str, JwtClaim]
+type JwtClaim = str | int | datetime
+type JwtPayload = dict[str, JwtClaim]
 
 
 class VerifiedToken(TypedDict):
