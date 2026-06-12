@@ -50,11 +50,11 @@ make check
 ```
 
 Use `make package` to build the wheel/source distribution and `make binary` to build the local kickstart binary (a PyInstaller `--onedir` payload under `dist/kickstart/`).
-GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Linux/macOS x64 and arm64 binary archives (`kickstart-<platform>-py<minor>.tar.gz`) for each supported Python minor.
+GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`. Other platforms install from PyPI.
 
 ## Releases
 
-Release tags must be stable semantic versions like `v0.4.1`, and the tag must match `[project].version` in `pyproject.toml`.
+Release tags must be stable semantic versions like `v0.4.1`. The tag must match `[project].version` in `pyproject.toml`, and `pyproject.toml` must agree with the runtime `src/__init__.py:__version__`.
 
 Run `make release-check TAG=v0.4.1` before pushing a release tag.
 

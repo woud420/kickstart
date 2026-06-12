@@ -198,7 +198,7 @@ jobs:
 
             ### Manual binary install
 
-            Binary archives are attached for Linux and macOS across the supported Python minor versions. Pick the asset for your platform, extract it, and run `kickstart install` to place the binary payload in a user-writable directory and configure `PATH`:
+            Binary archives are attached for `linux-x64`, `linux-arm64`, and `macos-arm64` (Python 3.14). Other platforms install from PyPI. Pick the asset for your platform, extract it, and run `kickstart install` to place the binary payload in a user-writable directory and configure `PATH`:
 
             ```bash
             curl -L -o kickstart-linux-x64-py3.14.tar.gz "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/kickstart-linux-x64-py3.14.tar.gz"

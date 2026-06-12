@@ -10,7 +10,7 @@ Release history lives in [CHANGELOG.md](CHANGELOG.md) and on [kickstart-cli.org]
 
 ## Install
 
-One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux + macOS, x64 + arm64):
+One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux x64/arm64 and macOS arm64; other platforms install from PyPI with `pip install kickstart`):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh | bash

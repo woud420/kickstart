@@ -4,22 +4,21 @@ Release tags publish a prebuilt kickstart binary as a `.tar.gz` archive for:
 
 - `linux-x64`
 - `linux-arm64`
-- `macos-x64`
 - `macos-arm64`
 
-Each platform is built for Python `3.12`, `3.13`, and `3.14`.
+Each platform is built for Python `3.14`. Platforms outside this matrix
+(for example Intel macOS) install from PyPI with `pip install kickstart`.
 
 ## Asset Names
 
 ```text
 kickstart-linux-x64-py3.14.tar.gz
 kickstart-linux-arm64-py3.14.tar.gz
-kickstart-macos-x64-py3.14.tar.gz
 kickstart-macos-arm64-py3.14.tar.gz
 ```
 
-Older supported Python minors use the same pattern, for example
-`kickstart-macos-arm64-py3.12.tar.gz`. Each archive has a matching
+Releases before `v0.4.1` also shipped `macos-x64` and Python `3.12`/`3.13`
+variants using the same naming pattern. Each archive has a matching
 `<asset>.tar.gz.sha256` file for integrity checks.
 
 ## Quick Install
