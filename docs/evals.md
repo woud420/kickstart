@@ -5,7 +5,7 @@ kickstart has two useful local eval layers:
 - Scaffold shape: generate many supported project combinations and verify the generator commands succeed.
 - Generated project validation: run generated `make test` targets to catch template wiring, dependency, and toolchain issues.
 
-Reports should be written to scratch paths such as `/private/tmp`. Do not commit reports.
+Reports should be written to scratch paths such as `/tmp`. Do not commit reports.
 
 ## Scaffold Shape
 
@@ -16,8 +16,8 @@ PYTHONPATH=$(pwd) poetry run python scripts/scaffold_matrix_eval.py \
   --max-components-per-project 15 \
   --max-system-depth 2 \
   --exclude-known-gaps \
-  --output-root /private/tmp/kickstart-scaffold-matrix-supported \
-  --report /private/tmp/kickstart-scaffold-matrix-supported.md
+  --output-root /tmp/kickstart-scaffold-matrix-supported \
+  --report /tmp/kickstart-scaffold-matrix-supported.md
 ```
 
 Expected result for the supported matrix is zero failed commands. The most recent local run generated 500 projects and 4696 components with 0 failed commands.
@@ -26,11 +26,11 @@ Expected result for the supported matrix is zero failed commands. The most recen
 
 ```bash
 PYTHONPATH=$(pwd) poetry run python scripts/generated_make_test_eval.py \
-  --output-root /private/tmp/kickstart-scaffold-matrix-supported \
+  --output-root /tmp/kickstart-scaffold-matrix-supported \
   --target test \
   --dependency-mode cached \
-  --cache-root /private/tmp/kickstart-eval-cache \
-  --report /private/tmp/kickstart-generated-make-test-supported.md \
+  --cache-root /tmp/kickstart-eval-cache \
+  --report /tmp/kickstart-generated-make-test-supported.md \
   --timeout-seconds 90 \
   --workers 12 \
   --prewarm \
@@ -45,25 +45,32 @@ When reporting this eval, include the pass count and the failure classes. Do not
 
 ## Token Savings
 
-kickstart's value to agents includes replacing thousands of hand-authored
-boilerplate tokens with one short command. Measure it:
+kickstart's value to agents includes replacing hand-authored boilerplate
+tokens with one short command. Measure it honestly:
 
 ```bash
 PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py \
-  --output-root /private/tmp/kickstart-token-savings \
-  --report /private/tmp/kickstart-token-savings.md
+  --output-root /tmp/kickstart-token-savings \
+  --report /tmp/kickstart-token-savings.md
 ```
 
 The eval generates representative scaffolds (service, worker, CLI, library,
-system), counts the UTF-8 text content an agent would otherwise emit, and
-estimates tokens at ~4 bytes per token. The most recent local run measured a
-191x aggregate saving: ~16,000 output tokens of generated starter files
-versus ~84 tokens of `kickstart create` commands (120x-273x per scaffold).
-The scaffold.json schema 2.1 slimming cut ~295 recurring read-tokens per
-generated repo on top of this.
+system), counts UTF-8 text content, and estimates tokens at ~4 bytes per
+token. It reports two ratios:
 
-Pass `--json` for machine-readable results. The heuristic is intentionally
-model-agnostic; report bytes alongside tokens when precision matters.
+- **Full-output ratio (upper bound)**: assumes the agent would retype every
+  generated file. Measured at v0.4.2: ~190x aggregate.
+- **App-code ratio**: excludes scaffold metadata (manifest, agent map, docs
+  skeleton, CI), approximating a minimal hand-written equivalent. Measured
+  at v0.4.2: ~129x aggregate.
+
+Both denominators count only the command string, not skill or tool-call
+overhead, so treat ratios as comparative rather than absolute. For a truly
+minimal script the honest answer is that `uv init`/`cargo new` plus a couple
+of files is competitive; the savings are real when the task wants the full
+production shape (tests, CI, container, docs, uniform Make verbs). Re-run
+the eval rather than quoting stale numbers; pass `--json` for
+machine-readable results.
 
 ## Bootstrap (kickstart-like) Eval
 
@@ -77,9 +84,9 @@ own `make check`:
 
 ```bash
 PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
-  --output-root /private/tmp/kickstart-bootstrap-eval \
-  --cache-root /private/tmp/kickstart-eval-cache \
-  --report /private/tmp/kickstart-bootstrap-eval.md
+  --output-root /tmp/kickstart-bootstrap-eval \
+  --cache-root /tmp/kickstart-eval-cache \
+  --report /tmp/kickstart-bootstrap-eval.md
 ```
 
 Default cases: python CLI (the kickstart-like headline case), python lib,

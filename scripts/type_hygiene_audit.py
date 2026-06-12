@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 
-from template_wiring_audit import TEMPLATE_ROOT, _active_templates, _referenced_templates, _template_files
+from scripts.template_wiring_audit import TEMPLATE_ROOT, _active_templates, _referenced_templates, _template_files
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

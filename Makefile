@@ -5,8 +5,8 @@ PY := PYTHONPATH=$(CURDIR) $(POETRY_RUN) python
 PYTEST := $(POETRY_RUN) python -c "import pytest, sys; raise SystemExit(pytest.main(sys.argv[1:]))"
 
 # Directories that Ruff scans for lint + format. Keep mypy narrower (no tests).
-LINT_DIRS := src tests ci
-MYPY_DIRS := src ci
+LINT_DIRS := src tests ci scripts
+MYPY_DIRS := src ci scripts
 
 # Modules PyInstaller can't auto-discover from imports alone.
 PYINSTALLER_HIDDEN_IMPORTS := typer rich requests toml jinja2

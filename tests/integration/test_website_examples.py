@@ -29,6 +29,11 @@ def website_examples() -> tuple[tuple[str, tuple[str, ...]], ...]:
         for command, block in EXAMPLE_PATTERN.findall(source)
     )
     assert examples, f"no command examples parsed from {CONTENT_PATH}"
+    command_count = len(re.findall(r'command:\s*"', source))
+    assert len(examples) == command_count, (
+        f"parsed {len(examples)} command/output pairs but found {command_count} command literals; "
+        "the regex mis-paired an example - keep command and output adjacent per entry"
+    )
     return examples
 
 

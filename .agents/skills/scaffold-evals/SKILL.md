@@ -23,8 +23,8 @@ PYTHONPATH=$(pwd) poetry run python scripts/scaffold_matrix_eval.py \
   --max-components-per-project 15 \
   --max-system-depth 2 \
   --exclude-known-gaps \
-  --output-root /private/tmp/kickstart-scaffold-matrix-supported \
-  --report /private/tmp/kickstart-scaffold-matrix-supported.md
+  --output-root /tmp/kickstart-scaffold-matrix-supported \
+  --report /tmp/kickstart-scaffold-matrix-supported.md
 ```
 
 Expected: zero failed commands on the supported matrix.
@@ -35,11 +35,11 @@ Run generated `make test` targets against the matrix output:
 
 ```bash
 PYTHONPATH=$(pwd) poetry run python scripts/generated_make_test_eval.py \
-  --output-root /private/tmp/kickstart-scaffold-matrix-supported \
+  --output-root /tmp/kickstart-scaffold-matrix-supported \
   --target test \
   --dependency-mode cached \
-  --cache-root /private/tmp/kickstart-eval-cache \
-  --report /private/tmp/kickstart-generated-make-test-supported.md \
+  --cache-root /tmp/kickstart-eval-cache \
+  --report /tmp/kickstart-generated-make-test-supported.md \
   --timeout-seconds 90 \
   --workers 12 \
   --prewarm \
@@ -59,9 +59,9 @@ green:
 
 ```bash
 PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
-  --output-root /private/tmp/kickstart-bootstrap-eval \
-  --cache-root /private/tmp/kickstart-eval-cache \
-  --report /private/tmp/kickstart-bootstrap-eval.md
+  --output-root /tmp/kickstart-bootstrap-eval \
+  --cache-root /tmp/kickstart-eval-cache \
+  --report /tmp/kickstart-bootstrap-eval.md
 ```
 
 Non-zero exit means a case failed generation, taste, or check — fix the
@@ -74,8 +74,8 @@ the files by hand (useful for release notes and positioning claims):
 
 ```bash
 PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py \
-  --output-root /private/tmp/kickstart-token-savings \
-  --report /private/tmp/kickstart-token-savings.md
+  --output-root /tmp/kickstart-token-savings \
+  --report /tmp/kickstart-token-savings.md
 ```
 
 Report the per-scaffold and aggregate savings ratios and state the
@@ -83,7 +83,7 @@ bytes-per-token heuristic; pass `--json` for machine-readable output.
 
 ## Rules
 
-- Write reports to scratch paths such as `/private/tmp`. Never commit
+- Write reports to scratch paths such as `/tmp`. Never commit
   reports, generated matrices, or caches.
 - Classify failures (template wiring vs dependency vs toolchain) instead of
   compressing them into one pass/fail number. Dependency and toolchain

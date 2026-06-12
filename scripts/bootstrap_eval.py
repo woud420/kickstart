@@ -10,8 +10,15 @@ verbs) and prove three things about the result, with no manual fixes:
    specific errors instead of blanket ``Exception``/``unwrap()``,
 3. the project goes green on its own ``make check`` in a fresh tree.
 
-Like the other evals this validates generated output, writes reports to
-scratch paths, and is meant for local design iteration, not release CI.
+Like the other evals this validates generated output and writes reports to
+scratch paths. The headline python-cli case also gates repo CI; the full
+matrix stays a local design-iteration run.
+
+The taste rules are a comment-stripping regex heuristic, not a parser: they
+are tuned for kickstart's own templates (which they fully control), trading
+exhaustive detection for zero dependencies. Template text mentioning a
+forbidden token inside a string literal can still false-positive; rewriting
+the template is the intended response.
 """
 
 from __future__ import annotations
@@ -23,6 +30,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 from scripts.generated_make_test_eval import eval_environment
@@ -49,6 +57,9 @@ ANY_NAME = "A" "ny"
 # Generated source trees stay shallow: at most src/<area>/<group>/<file>.
 MAX_SRC_DEPTH = 3
 
+# The enforced default for generated source files; CI gates at this value.
+DEFAULT_MAX_FILE_LINES = 200
+
 
 @dataclass(frozen=True)
 class TasteRule:
@@ -58,19 +69,22 @@ class TasteRule:
     suffix: str
     pattern: re.Pattern[str]
     explanation: str
+    # Suppression markers live inside comments, so those rules must see the
+    # raw line; code rules see the line with its trailing comment stripped.
+    matches_comments: bool = False
 
 
 TASTE_RULES: tuple[TasteRule, ...] = (
     TasteRule(
         name="python-no-any",
         suffix=".py",
-        pattern=re.compile(rf"(?:^|[^.\w]){ANY_NAME}\b(?!\w)|\bimport\s+{ANY_NAME}\b"),
+        pattern=re.compile(rf"(?:^|[^.\w]){ANY_NAME}\b(?!\w)|\btyping\s*\.\s*{ANY_NAME}\b|\bimport\s+{ANY_NAME}\b"),
         explanation=f"Python sources must use precise types instead of typing.{ANY_NAME}",
     ),
     TasteRule(
         name="python-no-object-type",
         suffix=".py",
-        pattern=re.compile(r":\s*object\b|->\s*object\b|\[\s*object\s*\]"),
+        pattern=re.compile(r":\s*object\b|->\s*object\b|[\[,]\s*object\s*[\],]"),
         explanation="Python annotations must not fall back to object",
     ),
     TasteRule(
@@ -84,6 +98,7 @@ TASTE_RULES: tuple[TasteRule, ...] = (
         suffix=".py",
         pattern=re.compile(r"#\s*type:\s*ignore"),
         explanation="Python sources must fix types instead of suppressing the checker",
+        matches_comments=True,
     ),
     TasteRule(
         name="typescript-no-any",
@@ -96,6 +111,7 @@ TASTE_RULES: tuple[TasteRule, ...] = (
         suffix=".ts",
         pattern=re.compile(r"@ts-ignore|@ts-expect-error"),
         explanation="TypeScript sources must fix types instead of suppressing the checker",
+        matches_comments=True,
     ),
     TasteRule(
         name="rust-no-panic-paths",
@@ -160,6 +176,21 @@ def is_test_path(path: Path) -> bool:
     return any(part in {"tests", "test"} for part in path.parts) or path.name.startswith("test_")
 
 
+LINE_COMMENT_MARKERS = {".py": "#", ".ts": "//", ".rs": "//"}
+
+
+def strip_line_comment(line: str, suffix: str) -> str:
+    """Drop the trailing line comment so prose cannot trip the taste rules.
+
+    Heuristic: ignores markers inside string literals, which is acceptable
+    for auditing generated templates the project controls.
+    """
+    marker = LINE_COMMENT_MARKERS.get(suffix)
+    if marker is None or marker not in line:
+        return line
+    return line.split(marker, 1)[0]
+
+
 def source_files(root: Path) -> tuple[Path, ...]:
     """Generated source files eligible for taste rules, caches excluded."""
     files = (
@@ -194,8 +225,10 @@ def audit_file(path: Path, root: Path, max_lines: int) -> tuple[Violation, ...]:
         return tuple(violations)
 
     for number, line in enumerate(lines, start=1):
+        code = strip_line_comment(line, path.suffix)
         for rule in rules:
-            if rule.pattern.search(line):
+            subject = line if rule.matches_comments else code
+            if rule.pattern.search(subject):
                 violations.append(
                     Violation(rule=rule.name, file=relative, line=number, detail=rule.explanation)
                 )
@@ -270,6 +303,9 @@ def run_case(
         return CaseResult(case, False, (), False, 0.0, f"generation failed: {detail}")
 
     project_dirs = [path for path in case_root.iterdir() if path.is_dir()]
+    if len(project_dirs) != 1:
+        names = ", ".join(path.name for path in project_dirs) or "none"
+        return CaseResult(case, True, (), False, 0.0, f"expected exactly one generated directory, got: {names}")
     project = project_dirs[0]
     violations = audit_tree(project, max_lines)
 
@@ -326,10 +362,11 @@ def select_cases(requested: tuple[str, ...]) -> tuple[BootstrapCase, ...]:
 def main() -> int:
     """Run the bootstrap eval from the command line."""
     parser = argparse.ArgumentParser(description="Bootstrap and verify kickstart-like projects.")
-    parser.add_argument("--output-root", type=Path, default=Path("/private/tmp/kickstart-bootstrap-eval"))
-    parser.add_argument("--cache-root", type=Path, default=Path("/private/tmp/kickstart-eval-cache"))
-    parser.add_argument("--report", type=Path, default=Path("/private/tmp/kickstart-bootstrap-eval.md"))
-    parser.add_argument("--max-file-lines", type=int, default=200)
+    scratch = Path(tempfile.gettempdir())
+    parser.add_argument("--output-root", type=Path, default=scratch / "kickstart-bootstrap-eval")
+    parser.add_argument("--cache-root", type=Path, default=scratch / "kickstart-eval-cache")
+    parser.add_argument("--report", type=Path, default=scratch / "kickstart-bootstrap-eval.md")
+    parser.add_argument("--max-file-lines", type=int, default=DEFAULT_MAX_FILE_LINES)
     parser.add_argument("--timeout-seconds", type=int, default=600)
     parser.add_argument("--cases", nargs="*", default=[], help="Case slugs to run (default: all)")
     args = parser.parse_args()

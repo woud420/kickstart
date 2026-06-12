@@ -11,6 +11,11 @@ Repo skills are agent-neutral and live in [`.agents/skills/`](.agents/skills/).
 them natively. Add or edit skills under `.agents/skills/`, never under
 `.claude/` directly.
 
+Note: on checkouts without symlink support (Windows without Developer Mode,
+`core.symlinks=false`, ZIP exports) the symlink materializes as a plain text
+file and skill discovery silently degrades — read skills from
+`.agents/skills/` directly in that case.
+
 ## Quick verification
 
 ```bash

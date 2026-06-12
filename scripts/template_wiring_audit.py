@@ -134,10 +134,10 @@ def _active_templates() -> set[str]:
             for runtime in stack_registry.monorepo_runtimes:
                 for helm in (False, True):
                     try:
-                        selection = stack_registry.monorepo_selection(cloud, knowledge, runtime, helm=helm)
+                        system_selection = stack_registry.monorepo_selection(cloud, knowledge, runtime, helm=helm)
                     except Exception:
                         continue
-                    active.update(f"monorepo/{template.template}" for template in selection.templates)
+                    active.update(f"monorepo/{template.template}" for template in system_selection.templates)
 
     active.update(f"monorepo/{template.template}" for template in stack_registry.helm_template_configs())
     active.update(f"monorepo/{template.template}" for template in stack_registry.kustomize_template_configs())

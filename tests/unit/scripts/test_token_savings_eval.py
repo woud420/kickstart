@@ -27,16 +27,20 @@ def test_is_text_file_accepts_utf8_and_rejects_binary(tmp_path: Path) -> None:
     assert not is_text_file(binary)
 
 
-def test_measure_tree_counts_text_files_only(tmp_path: Path) -> None:
+def test_measure_tree_counts_text_files_and_splits_metadata(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "main.py").write_text("x = 1\n", encoding="utf-8")
     (tmp_path / "README.md").write_text("# hi\n", encoding="utf-8")
+    (tmp_path / ".kickstart").mkdir()
+    (tmp_path / ".kickstart" / "scaffold.json").write_text("{}\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("# map\n", encoding="utf-8")
     (tmp_path / "blob.bin").write_bytes(b"\x00\x01")
 
-    file_count, content_bytes = measure_tree(tmp_path)
+    file_count, content_bytes, app_code_bytes = measure_tree(tmp_path)
 
-    assert file_count == 2
-    assert content_bytes == len(b"x = 1\n") + len(b"# hi\n")
+    assert file_count == 4
+    assert content_bytes == len(b"x = 1\n") + len(b"# hi\n") + len(b"{}\n") + len(b"# map\n")
+    assert app_code_bytes == len(b"x = 1\n") + len(b"# hi\n")
 
 
 def test_user_facing_command_targets_installed_binary() -> None:
@@ -45,17 +49,20 @@ def test_user_facing_command_targets_installed_binary() -> None:
     assert user_facing_command(case) == "kickstart create cli tool --lang rust"
 
 
-def test_case_result_savings_ratio() -> None:
+def test_case_result_savings_ratios() -> None:
     result = CaseResult(
         case=ScaffoldCase(slug="demo", args=("create", "cli", "tool")),
         command_text="kickstart create cli tool",
         file_count=10,
         content_bytes=40_000,
+        app_code_bytes=30_000,
     )
 
     assert result.output_tokens == 10_000
+    assert result.app_code_tokens == 7_500
     assert result.command_tokens == estimate_tokens("kickstart create cli tool")
     assert result.savings_ratio == result.output_tokens / result.command_tokens
+    assert result.app_code_ratio == result.app_code_tokens / result.command_tokens
 
 
 def test_render_report_lists_every_case_and_total() -> None:
@@ -65,6 +72,7 @@ def test_render_report_lists_every_case_and_total() -> None:
             command_text=user_facing_command(case),
             file_count=5,
             content_bytes=20_000,
+            app_code_bytes=15_000,
         )
         for case in DEFAULT_CASES[:2]
     )
@@ -75,3 +83,4 @@ def test_render_report_lists_every_case_and_total() -> None:
         assert result.case.slug in report
     assert "| total |" in report
     assert "bytes per token" in report
+    assert "upper bound" in report

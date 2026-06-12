@@ -5,6 +5,7 @@ import pytest
 from scripts.bootstrap_eval import (
     ANY_NAME,
     DEFAULT_CASES,
+    DEFAULT_MAX_FILE_LINES,
     BootstrapCase,
     CaseResult,
     UnknownCaseError,
@@ -63,12 +64,42 @@ def test_audit_file_enforces_line_cap(tmp_path: Path) -> None:
     assert [violation.rule for violation in violations] == ["max-file-lines"]
 
 
+def test_default_line_cap_is_enforced_at_its_real_value(tmp_path: Path) -> None:
+    assert DEFAULT_MAX_FILE_LINES == 200
+    at_cap = write(tmp_path / "src" / "at_cap.py", "x = 1\n" * DEFAULT_MAX_FILE_LINES)
+    over_cap = write(tmp_path / "src" / "over_cap.py", "x = 1\n" * (DEFAULT_MAX_FILE_LINES + 1))
+
+    assert audit_file(at_cap, tmp_path, max_lines=DEFAULT_MAX_FILE_LINES) == ()
+    rules = [violation.rule for violation in audit_file(over_cap, tmp_path, max_lines=DEFAULT_MAX_FILE_LINES)]
+    assert rules == ["max-file-lines"]
+
+
 def test_audit_file_flags_typescript_any_and_rust_panics(tmp_path: Path) -> None:
     ts = write(tmp_path / "src" / "index.ts", "const x: any = 1;\n")
     rs = write(tmp_path / "src" / "main.rs", "let v = result.unwrap();\n")
 
     assert [violation.rule for violation in audit_file(ts, tmp_path, max_lines=300)] == ["typescript-no-any"]
     assert [violation.rule for violation in audit_file(rs, tmp_path, max_lines=300)] == ["rust-no-panic-paths"]
+
+
+def test_audit_file_catches_dotted_any_and_nested_object(tmp_path: Path) -> None:
+    object_name = "obj" "ect"
+    path = write(
+        tmp_path / "src" / "sneaky.py",
+        f"import typing\n\ndef f(x: typing.{ANY_NAME}) -> dict[str, {object_name}]:\n    return {{}}\n",
+    )
+
+    rules = {violation.rule for violation in audit_file(path, tmp_path, max_lines=300)}
+
+    assert rules == {"python-no-any", "python-no-object-type"}
+
+
+def test_audit_file_ignores_forbidden_tokens_in_comments(tmp_path: Path) -> None:
+    py = write(tmp_path / "src" / "noted.py", f"x = 1  # never use {ANY_NAME} here\n")
+    ts = write(tmp_path / "src" / "noted.ts", "const x = 1; // if it has any flaws, fix them\n")
+
+    assert audit_file(py, tmp_path, max_lines=300) == ()
+    assert audit_file(ts, tmp_path, max_lines=300) == ()
 
 
 def test_audit_file_flags_checker_suppressions(tmp_path: Path) -> None:
