@@ -123,6 +123,17 @@ jobs:
 
           test -d /tmp/test-cli-tool
 
+      # Dogfood gate: kickstart must bootstrap a kickstart-like project that
+      # passes taste rules and its own `make check`. CI runs the headline
+      # python case; the full matrix stays a local eval (docs/evals.md).
+      - name: Bootstrap eval (kickstart-like python CLI)
+        run: |
+          PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
+            --cases python-cli-kickstart-like \
+            --output-root /tmp/bootstrap-eval \
+            --cache-root /tmp/bootstrap-eval-cache \
+            --report /tmp/bootstrap-eval.md
+
       - name: Smoke test kickstart install subcommand
         run: |
           scripts/ci/smoke-install.sh \

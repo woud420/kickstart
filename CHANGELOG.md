@@ -22,11 +22,25 @@ Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 
 ### Added
 
+- `kickstart adopt --check`: read-only inspection of an existing repo
+  against the scaffold standard, with `--json` output for agents and CI.
+  Writing/applying remains a future, explicit step.
 - `make release-check` (and the release workflow) now fails when
   `pyproject.toml` and `src/__init__.py` disagree, closing the version
   desync class of bug for good.
 - Website changelog: the release section now lists every release with
-  curated highlights, kept current by tests.
+  curated highlights, kept current by tests; showcased command examples
+  are regenerated and verified against real output in CI.
+- Evals: bootstrap gate (kickstart must bootstrap a kickstart-like project
+  that passes taste rules and its own `make check` — also run in CI),
+  token-savings measurement, and byte-identical determinism tests.
+
+### Changed
+
+- `.kickstart/scaffold.json` schema 2.1: the static `option_semantics`
+  glossary is replaced by a `semantics` URL pointing at
+  `docs/scaffold-contract.md`, shrinking every generated manifest by more
+  than half (~300 tokens saved per agent read, per repo).
 
 ## v0.4.1 - 2026-06-04
 

@@ -32,7 +32,7 @@ describe("kickstart website worker", () => {
     expect(html).toContain("/assets/site.css?v=0.4.2");
     expect(html).toContain("/assets/site.js?v=0.4.2");
     expect(html).toContain("v0.4.2");
-    expect(html).toContain("Trustworthy version reporting");
+    expect(html).toContain("Trustworthy releases, leaner manifests, adopt preview");
     expect(html).toContain("Scaffold contract convergence");
   });
 

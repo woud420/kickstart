@@ -57,8 +57,10 @@ PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py \
 The eval generates representative scaffolds (service, worker, CLI, library,
 system), counts the UTF-8 text content an agent would otherwise emit, and
 estimates tokens at ~4 bytes per token. The most recent local run measured a
-208x aggregate saving: ~17,500 output tokens of generated starter files
-versus ~84 tokens of `kickstart create` commands (135x-288x per scaffold).
+191x aggregate saving: ~16,000 output tokens of generated starter files
+versus ~84 tokens of `kickstart create` commands (120x-273x per scaffold).
+The scaffold.json schema 2.1 slimming cut ~295 recurring read-tokens per
+generated repo on top of this.
 
 Pass `--json` for machine-readable results. The heuristic is intentionally
 model-agnostic; report bytes alongside tokens when precision matters.

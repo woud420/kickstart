@@ -248,12 +248,13 @@ export const isNotPoints: PositioningPoint[] = [
 export const releaseNotes: ReleaseNote[] = [
   {
     version: "0.4.2",
-    title: "Trustworthy version reporting",
-    body: "Installed binaries report the release they came from, and the release pipeline now runs green end to end, website deploy included.",
+    title: "Trustworthy releases, leaner manifests, adopt preview",
+    body: "Installed binaries report the release they came from, the release pipeline runs green end to end, and generated metadata got cheaper for agents to read.",
     highlights: [
-      "kickstart version reports the released version (0.4.1 binaries printed v0.4.0).",
-      "Release checks fail when pyproject.toml and the runtime __version__ disagree.",
-      "Release website deploys work from CI again, and this changelog is enforced by tests.",
+      "kickstart version reports the released version, gated by a pyproject/runtime version-sync check.",
+      "kickstart adopt --check inspects existing repos against the scaffold standard (read-only, --json for agents).",
+      "scaffold.json schema 2.1: the static semantics glossary became a docs pointer, cutting every manifest by more than half.",
+      "Bootstrap, token-savings, and determinism evals enforce that scaffolds stay green, cheap, and reproducible; this changelog is test-enforced.",
     ],
   },
   {
