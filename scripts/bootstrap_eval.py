@@ -46,6 +46,9 @@ SKIP_DIR_PARTS = frozenset({".venv", ".cache", "node_modules", "target", ".git",
 # naming the loose type it forbids (same idiom as type_hygiene_audit.py).
 ANY_NAME = "A" "ny"
 
+# Generated source trees stay shallow: at most src/<area>/<group>/<file>.
+MAX_SRC_DEPTH = 3
+
 
 @dataclass(frozen=True)
 class TasteRule:
@@ -199,11 +202,32 @@ def audit_file(path: Path, root: Path, max_lines: int) -> tuple[Violation, ...]:
     return tuple(violations)
 
 
+def audit_depth(path: Path, root: Path) -> Violation | None:
+    """Flag files nested deeper than MAX_SRC_DEPTH segments below src/."""
+    parts = path.relative_to(root).parts
+    if "src" not in parts:
+        return None
+
+    depth = len(parts) - parts.index("src") - 1
+    if depth <= MAX_SRC_DEPTH:
+        return None
+
+    return Violation(
+        rule="max-src-depth",
+        file=str(path.relative_to(root)),
+        line=0,
+        detail=f"{depth} segments below src/ exceeds the {MAX_SRC_DEPTH}-level cap; flatten the layout",
+    )
+
+
 def audit_tree(root: Path, max_lines: int) -> tuple[Violation, ...]:
     """Audit every eligible source file under a generated project."""
     found: list[Violation] = []
     for path in source_files(root):
         found.extend(audit_file(path, root, max_lines))
+        depth_violation = audit_depth(path, root)
+        if depth_violation is not None:
+            found.append(depth_violation)
     return tuple(found)
 
 

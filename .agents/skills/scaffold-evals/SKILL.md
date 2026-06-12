@@ -52,9 +52,10 @@ cache is a performance tool, not part of generated behavior.
 ## Bootstrap (kickstart-like)
 
 The dogfood gate: generate a kickstart-like project (typed modular CLI plus
-the other supported kinds), audit taste rules (file-length cap, no
-`Any`/`object`/`any`, specific errors, no panic paths), and run each
-generated project's own `make check` to green:
+the other supported kinds), audit taste rules (file-length cap, at most 3
+directory levels below `src/`, no `Any`/`object`/`any`, specific errors,
+no panic paths), and run each generated project's own `make check` to
+green:
 
 ```bash
 PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \

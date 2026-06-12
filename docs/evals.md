@@ -68,7 +68,7 @@ model-agnostic; report bytes alongside tokens when precision matters.
 The dogfood standard: kickstart must bootstrap a project shaped like
 kickstart itself — a typed, modular CLI with docs, tests, and canonical Make
 verbs — that is green with no manual fixes. Each case is generated, audited
-against the taste rules (<= 200 lines per source file, no `Any`/`object` in
+against the taste rules (<= 200 lines per source file, <= 3 directory levels below `src/`, no `Any`/`object` in
 Python, no `any`/`Object` in TypeScript, no `unwrap()`/`panic!` outside Rust
 tests, specific exception types), then verified with the generated project's
 own `make check`:

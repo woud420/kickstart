@@ -8,6 +8,7 @@ from scripts.bootstrap_eval import (
     BootstrapCase,
     CaseResult,
     UnknownCaseError,
+    audit_depth,
     audit_file,
     audit_tree,
     is_test_path,
@@ -84,6 +85,24 @@ def test_rust_tests_may_unwrap(tmp_path: Path) -> None:
     assert audit_file(path, tmp_path, max_lines=300) == ()
     assert is_test_path(Path("tests/cli_smoke.rs"))
     assert not is_test_path(Path("src/main.rs"))
+
+
+def test_audit_depth_allows_three_levels_and_flags_four(tmp_path: Path) -> None:
+    fine = write(tmp_path / "src" / "cli" / "commands" / "check.py", "x = 1\n")
+    deep = write(tmp_path / "src" / "cli" / "commands" / "nested" / "extra.py", "x = 1\n")
+
+    assert audit_depth(fine, tmp_path) is None
+    violation = audit_depth(deep, tmp_path)
+    assert violation is not None and violation.rule == "max-src-depth"
+    assert audit_depth(write(tmp_path / "docs" / "a" / "b" / "c" / "d.py", "x = 1\n"), tmp_path) is None
+
+
+def test_audit_tree_includes_depth_violations(tmp_path: Path) -> None:
+    write(tmp_path / "src" / "a" / "b" / "c" / "deep.py", "x = 1\n")
+
+    rules = [violation.rule for violation in audit_tree(tmp_path, max_lines=300)]
+
+    assert rules == ["max-src-depth"]
 
 
 def test_audit_tree_aggregates_all_files(tmp_path: Path) -> None:
