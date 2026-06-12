@@ -21,6 +21,7 @@ from src.api import (
     create_system,
 )
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
+from src.generator.adoption import AdoptionTargetError, inspect_repo
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
 from src.utils.error_handling import KickstartError
@@ -60,6 +61,36 @@ def version() -> None:
 def upgrade() -> None:
     """Upgrade to the latest version."""
     check_for_update()
+
+
+@app.command()
+def adopt(
+    path: Path = typer.Argument(Path("."), help="Existing repository to inspect"),
+    check: bool = typer.Option(False, "--check", help="Report standard-artifact status without writing"),
+    json_output: bool = typer.Option(False, "--json", help="Emit a machine-readable report"),
+) -> None:
+    """Check an existing repo against the kickstart scaffold standard (read-only)."""
+    if not check:
+        print("[red]kickstart adopt only supports --check for now; writing is a future, explicit step.[/]")
+        raise typer.Exit(code=2)
+
+    try:
+        report = inspect_repo(path)
+    except AdoptionTargetError as error:
+        print(f"[red]{error}[/]")
+        raise typer.Exit(code=2) from error
+
+    if json_output:
+        print(report.to_json(), end="")
+    else:
+        print(f"[bold]Adoption check for {report.root}[/]")
+        for status in report.artifacts:
+            if status.ok:
+                print(f"  [green]ok[/]      {status.path}")
+            else:
+                print(f"  [red]needed[/]  {status.path} ({status.issue})")
+
+    raise typer.Exit(code=0 if report.complete else 1)
 
 
 @dataclass(frozen=True)
