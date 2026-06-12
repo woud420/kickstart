@@ -20,7 +20,7 @@ LOG_RESET :=
 endif
 log = printf "$(LOG_COLOR)==>$(LOG_RESET) %s\n" "$(1)"
 
-.PHONY: help setup install run tests test-unit test-integration typecheck lint format format-check type-hygiene template-audit check package binary build release-check clean
+.PHONY: help setup install run tests test-unit test-integration coverage typecheck lint format format-check type-hygiene template-audit check package binary build release-check clean
 
 help:
 	@echo "Usage:"
@@ -29,6 +29,7 @@ help:
 	@echo "  make tests            Run the full test suite"
 	@echo "  make test-unit        Run unit tests"
 	@echo "  make test-integration Run integration tests"
+	@echo "  make coverage         Run tests with coverage (terminal + coverage.xml)"
 	@echo "  make typecheck        Run mypy"
 	@echo "  make lint             Run Ruff lint checks"
 	@echo "  make format           Format source, tests, and CI Python with Ruff"
@@ -49,6 +50,10 @@ setup install:
 run:
 	@$(call log,Showing CLI help)
 	@$(POETRY_RUN) kickstart --help
+
+coverage:
+	@$(call log,Running tests with coverage)
+	@PYTHONPATH=$(CURDIR) $(PYTEST) tests/ --cov --cov-report=term --cov-report=xml
 
 tests:
 	@$(call log,Running full test suite)
