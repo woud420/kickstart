@@ -6,6 +6,8 @@ The goal is to eliminate the repeated setup work that humans and agents otherwis
 
 It is intentionally not a product architect. Use it to create a deterministic starting repo, then add the domain model, APIs, security choices, and tests that belong to the product.
 
+Release history lives in [CHANGELOG.md](CHANGELOG.md) and on [kickstart-cli.org](https://kickstart-cli.org).
+
 ## Install
 
 One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux + macOS, x64 + arm64):
