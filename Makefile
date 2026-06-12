@@ -108,7 +108,7 @@ build: package binary
 release-check:
 	@test -n "$(TAG)" || (echo "Usage: make release-check TAG=v0.4.1" && exit 1)
 	@$(call log,Validating release tag $(TAG))
-	@$(PYTHON) ci/release_policy.py --tag "$(TAG)" --version-file pyproject.toml
+	@$(PYTHON) ci/release_policy.py --tag "$(TAG)" --version-file pyproject.toml --init-file src/__init__.py
 
 clean:
 	@$(call log,Removing local build and test artifacts)
