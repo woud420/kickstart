@@ -53,9 +53,6 @@ def prompt_for_missing_args(
     workspace_tooling = options.workspace_tooling
     interactive_mode = not project_type or not name
 
-    if project_type and root is None:
-        root = prompt.ask("Where should the project be created?")
-
     if not project_type:
         print("[bold cyan]Launching interactive wizard...\n[/]")
         project_type = prompt.ask(

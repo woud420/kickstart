@@ -428,18 +428,17 @@ def test_create_unsupported_type(mock_load_config, runner, mock_config):
 
 @patch('src.cli.main.load_config') 
 @patch('src.cli.main.Prompt')
-def test_create_prompts_for_root_when_missing(mock_prompt, mock_load_config, runner, mock_config):
-    """Test that root directory is prompted for when missing with project_type specified."""
+def test_create_defaults_root_to_cwd_without_prompting(mock_prompt, mock_load_config, runner, mock_config):
+    """A fully specified create must not ambush automation with a root prompt."""
     mock_load_config.return_value = mock_config
-    mock_prompt.ask.return_value = "/custom/path"
-    
+
     with patch('src.cli.main.create_service') as mock_create_service:
         result = runner.invoke(app, ["create", "service", "test-service"])
-        
+
         assert result.exit_code == 0
-        mock_prompt.ask.assert_called_with("Where should the project be created?")
+        mock_prompt.ask.assert_not_called()
         mock_create_service.assert_called_once_with(
-            "test-service", "python", False, mock_config, helm=False, root="/custom/path"
+            "test-service", "python", False, mock_config, helm=False, root=None
         )
 
 

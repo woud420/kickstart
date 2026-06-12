@@ -52,6 +52,25 @@ logger = logging.getLogger(__name__)
 app: typer.Typer = typer.Typer(help="kickstart: Full-stack project scaffolding CLI")
 
 
+def _print_version_and_exit(value: bool) -> None:
+    if value:
+        print(f"[bold cyan]kickstart v{__version__}[/]")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root_options(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        callback=_print_version_and_exit,
+        is_eager=True,
+        help="Show the version and exit.",
+    ),
+) -> None:
+    """kickstart: Full-stack project scaffolding CLI."""
+
+
 @app.command()
 def version() -> None:
     """Show the current version."""
