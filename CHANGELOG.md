@@ -30,6 +30,11 @@ Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
   generated tests caught `passlib` breaking against `bcrypt>=4.1`.
 - Generated Rust toolchain pin bumped to 1.88 (extension dependency
   trees now require it; caught by generating and checking for real).
+- Generated Python Makefiles no longer leak the project into an active
+  virtualenv: `POETRY_IGNORE_ACTIVE_VIRTUALENVS` is not a real Poetry
+  setting, so running `make install` inside any activated venv installed
+  the generated project there. The Makefiles now unset `VIRTUAL_ENV` so
+  Poetry always uses the in-project `.venv`.
 - The interactive wizard exits with a specific message on EOF instead of
   dumping a traceback and exiting 0.
 - The release website deploy job no longer fails on Alchemy's CI
