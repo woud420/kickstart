@@ -3,14 +3,15 @@
 from dataclasses import dataclass
 from typing import Protocol, Unpack
 
-from rich import print
 
 from src.cli.options import CreateOptions, ServiceCreateKwargs, SystemCreateKwargs
+from src.utils.error_handling import UnsupportedOptionError, UnsupportedProjectTypeError
 from src.utils.types import GeneratorConfig
 
 
 SYSTEM_PROJECT_TYPES = {"system"}
 LEGACY_MONOREPO_PROJECT_TYPES = {"mono", "monorepo"}
+HELM_PROJECT_TYPES = SYSTEM_PROJECT_TYPES | LEGACY_MONOREPO_PROJECT_TYPES | {"service"}
 
 
 class ServiceCreator(Protocol):
@@ -78,6 +79,11 @@ class ProjectCreators:
 
 def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, creators: ProjectCreators) -> None:
     """Dispatch resolved create options to the appropriate project creator."""
+    if options.helm and options.project_type not in HELM_PROJECT_TYPES:
+        raise UnsupportedOptionError(
+            f"--helm only applies to services and systems, not '{options.project_type}' projects."
+        )
+
     if options.project_type == "service":
         service_kwargs: ServiceCreateKwargs = {"helm": options.helm, "root": options.root}
         if options.database is not None and options.database != "none":
@@ -114,7 +120,10 @@ def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, c
         creators.monorepo(options.name, options.gh, config, **_system_kwargs(options))
         return
 
-    print(f"[bold red]Type '{options.project_type}' not supported.[/]")
+    raise UnsupportedProjectTypeError(
+        f"Type '{options.project_type}' not supported. "
+        "Use one of: service, frontend, lib, cli, system."
+    )
 
 
 def _system_kwargs(options: CreateOptions) -> SystemCreateKwargs:

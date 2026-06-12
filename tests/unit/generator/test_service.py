@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.service import ServiceGenerator
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
-from src.utils.error_handling import ExtensionError, LanguageNotSupportedError
+from src.utils.error_handling import ProjectCreationError, ExtensionError, LanguageNotSupportedError
 
 
 @pytest.fixture
@@ -178,23 +178,21 @@ def test_create_rejects_unimplemented_service_extension_values(option, value, kw
 @patch.object(ServiceGenerator, 'create_project')
 def test_create_fails_when_create_project_fails(mock_create_project, service_generator):
     mock_create_project.return_value = False
-    
-    service_generator.create()
-    
+
+    with pytest.raises(ProjectCreationError, match="was not created"):
+        service_generator.create()
+
     mock_create_project.assert_called_once()
 
 
-@patch('src.generator.service.warn')
 @patch.object(ServiceGenerator, 'create_project')
-def test_create_warns_when_language_template_missing(mock_create_project, mock_warn, tmp_path):
+def test_create_raises_when_language_template_missing(mock_create_project, tmp_path):
     generator = ServiceGenerator("test-service", "nonexistent", False, {})
     mock_create_project.return_value = True
     generator.lang_template_dir = tmp_path / "nonexistent"  # Directory doesn't exist
-    
+
     with pytest.raises(LanguageNotSupportedError):
         generator.create()
-
-    mock_warn.assert_not_called()
 
 
 @patch.object(ServiceGenerator, 'create_directories')

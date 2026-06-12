@@ -15,10 +15,30 @@ from src.utils.types import GeneratorConfig, TemplateValue, TemplateVars
 from src.utils.error_handling import (
     ErrorCollector, batch_operation_wrapper, handle_file_operations,
     handle_template_operations, safe_operation_context,
-    ensure_directory_exists, TemplateError
+    ensure_directory_exists, InvalidProjectNameError, ProjectCreationError, TemplateError
 )
 
 logger = logging.getLogger(__name__)
+
+# Lowercase letter first, then lowercase letters, digits, dashes, or
+# underscores. Rejects path separators (and with them traversal like
+# `../evil`), dots, spaces, uppercase, and leading dashes.
+PROJECT_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_-]*$")
+PROJECT_NAME_MAX_LENGTH = 64
+
+
+def validate_project_name(name: str) -> str:
+    """Return the name when valid; raise a specific error otherwise."""
+    if len(name) > PROJECT_NAME_MAX_LENGTH:
+        raise InvalidProjectNameError(
+            f"Project name '{name}' is longer than {PROJECT_NAME_MAX_LENGTH} characters."
+        )
+    if PROJECT_NAME_PATTERN.fullmatch(name) is None:
+        raise InvalidProjectNameError(
+            f"Project name '{name}' is not allowed. Use a lowercase name that starts with a letter "
+            "and contains only letters, digits, dashes, or underscores (for example: my-api)."
+        )
+    return name
 
 class BaseGenerator:
     """Base class for all project generators.
@@ -48,7 +68,7 @@ class BaseGenerator:
             config: Configuration dictionary with user preferences
             root: Root directory for project creation (optional)
         """
-        self.name = name
+        self.name = validate_project_name(name)
         self.config = config
         self.project = Path(root) / name if root else Path(name)
         self.template_dir = Path(__file__).parent.parent / "templates"
@@ -372,7 +392,10 @@ class BaseGenerator:
             True if project was created successfully, False otherwise
         """
         if not self.create_project():
-            return False
+            raise ProjectCreationError(
+                f"Project '{self.name}' was not created: directory '{self.project}' "
+                "already exists or is not accessible."
+            )
 
         errors = []
         
@@ -445,5 +468,8 @@ class BaseGenerator:
         error_collector.log_summary()
         if error_collector.has_errors():
             error_collector.report_failures()
-        
-        return not error_collector.has_errors()
+            raise ProjectCreationError(
+                f"Project '{self.name}' was generated with errors: {'; '.join(error_collector.errors)}"
+            )
+
+        return True

@@ -9,6 +9,7 @@ from typing import Optional, cast
 
 import typer
 from rich import print
+from rich.markup import escape
 from rich.prompt import Confirm, Prompt
 
 from src import __version__
@@ -81,14 +82,17 @@ def adopt(
         raise typer.Exit(code=2) from error
 
     if json_output:
-        print(report.to_json(), end="")
+        # Machine-readable output must bypass rich: console printing wraps
+        # long lines and interprets bracketed path segments as markup, both
+        # of which corrupt the JSON.
+        typer.echo(report.to_json(), nl=False)
     else:
-        print(f"[bold]Adoption check for {report.root}[/]")
+        print(f"[bold]Adoption check for {escape(str(report.root))}[/]")
         for status in report.artifacts:
             if status.ok:
-                print(f"  [green]ok[/]      {status.path}")
+                print(f"  [green]ok[/]      {escape(status.path)}")
             else:
-                print(f"  [red]needed[/]  {status.path} ({status.issue})")
+                print(f"  [red]needed[/]  {escape(status.path)} ({escape(status.issue)})")
 
     raise typer.Exit(code=0 if report.complete else 1)
 
@@ -482,6 +486,12 @@ def create(
 
     except KeyboardInterrupt:
         print("\n[yellow]Operation cancelled by user.[/]")
+    except EOFError as exc:
+        print(
+            "[bold red]Interactive input ended before required arguments were provided. "
+            "Pass them explicitly, for example: kickstart create service my-api --lang python[/]"
+        )
+        raise typer.Exit(code=2) from exc
     except KickstartError as exc:
         print(f"[bold red]Failed to create project: {exc}[/]")
         raise typer.Exit(code=1) from exc

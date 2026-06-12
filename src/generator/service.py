@@ -12,7 +12,7 @@ from src.generator.language_setup import (
     typescript_service_templates,
 )
 from src.generator.template_plans import python_service_core_template_plan
-from src.utils.logger import success, warn
+from src.utils.logger import success
 from src.utils.github import create_repo
 from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
@@ -165,7 +165,7 @@ class ServiceGenerator(BaseGenerator):
             return create_repo(self.name) if self.gh else None
 
         # Execute common create flow with service-specific setup
-        success = self.execute_create_flow(
+        self.execute_create_flow(
             directories=directories,
             template_plan=template_plan,
             architecture_title=architecture_title,
@@ -184,9 +184,6 @@ class ServiceGenerator(BaseGenerator):
             additional_setup_fn=self._setup_helm_if_requested,
             github_create_fn=github_create_fn if self.gh else None
         )
-
-        if not success:
-            warn(f"Failed to create {self.lang} service '{self.name}'")
 
     def _validate_extension_selection(self) -> ServiceExtensionSelection:
         """Validate database, cache, and auth extensions for this service."""
@@ -232,7 +229,7 @@ class ServiceGenerator(BaseGenerator):
         def github_create_fn() -> bool | None:
             return create_repo(self.name) if self.gh else None
 
-        success = self.execute_create_flow(
+        self.execute_create_flow(
             directories=directories,
             template_plan=template_plan,
             architecture_title=architecture_title,
@@ -247,9 +244,6 @@ class ServiceGenerator(BaseGenerator):
             success_message=success_message,
             github_create_fn=github_create_fn if self.gh else None,
         )
-
-        if not success:
-            warn(f"Failed to create {self.lang} Cloudflare Worker '{self.name}'")
 
     def _cloudflare_worker_template_configs(self) -> list[TemplatePathConfig]:
         """Return template mappings for Cloudflare Worker services."""

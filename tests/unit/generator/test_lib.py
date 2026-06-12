@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.lib import LibraryGenerator, CLIGenerator
-from src.utils.error_handling import LanguageNotSupportedError
+from src.utils.error_handling import ProjectCreationError, LanguageNotSupportedError
 
 
 @pytest.fixture
@@ -153,9 +153,10 @@ def test_library_create_rust_success(
 @patch.object(LibraryGenerator, 'create_project')
 def test_library_create_fails_when_create_project_fails(mock_create_project, library_generator):
     mock_create_project.return_value = False
-    
-    library_generator.create()
-    
+
+    with pytest.raises(ProjectCreationError, match="was not created"):
+        library_generator.create()
+
     mock_create_project.assert_called_once()
 
 
@@ -278,9 +279,10 @@ def test_cli_create_typescript_success(
 @patch.object(CLIGenerator, 'create_project')
 def test_cli_create_fails_when_create_project_fails(mock_create_project, cli_generator):
     mock_create_project.return_value = False
-    
-    cli_generator.create()
-    
+
+    with pytest.raises(ProjectCreationError, match="was not created"):
+        cli_generator.create()
+
     mock_create_project.assert_called_once()
 
 

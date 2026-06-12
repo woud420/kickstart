@@ -421,8 +421,8 @@ def test_create_unsupported_type(mock_load_config, runner, mock_config):
     mock_load_config.return_value = mock_config
     
     result = runner.invoke(app, ["create", "unsupported", "test", "--root", "/tmp"])
-    
-    assert result.exit_code == 0
+
+    assert result.exit_code == 1
     assert "Type 'unsupported' not supported" in result.stdout
 
 

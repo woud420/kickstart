@@ -2,6 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.frontend import FrontendGenerator
+from src.utils.error_handling import ProjectCreationError
 
 
 @pytest.fixture
@@ -126,9 +127,10 @@ def test_create_success_without_gh(
 @patch.object(FrontendGenerator, 'create_project')
 def test_create_fails_when_create_project_fails(mock_create_project, frontend_generator):
     mock_create_project.return_value = False
-    
-    frontend_generator.create()
-    
+
+    with pytest.raises(ProjectCreationError, match="was not created"):
+        frontend_generator.create()
+
     mock_create_project.assert_called_once()
 
 

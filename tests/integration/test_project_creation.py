@@ -17,7 +17,7 @@ from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibGenerator
 from src.generator.monorepo import MonorepoGenerator
-from src.utils.error_handling import LanguageNotSupportedError
+from src.utils.error_handling import ProjectCreationError, LanguageNotSupportedError
 from src.utils.types import GeneratorConfig
 
 
@@ -391,9 +391,10 @@ class TestServiceCreation:
             root=str(temp_project_dir)
         )
         
-        # Should not overwrite existing directory
-        generator.create()
-        
+        # Should refuse loudly instead of overwriting the existing directory
+        with pytest.raises(ProjectCreationError, match="was not created"):
+            generator.create()
+
         # Verify it doesn't overwrite (no src directory should be created)
         assert not (existing_dir / "src").exists()
 
