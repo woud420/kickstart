@@ -4,14 +4,18 @@ from dataclasses import dataclass, field
 import json
 from typing import Literal, NotRequired, TypedDict
 
+from src import __version__
+
 
 ProjectKind = Literal["service", "worker", "frontend", "library", "cli", "system"]
 RepoLayout = Literal["single-project", "monorepo"]
 
 # Field meanings live in one place instead of being duplicated into every
 # generated repo; the manifest carries this pointer so agents can resolve the
-# vocabulary without kickstart re-emitting it per project.
-SEMANTICS_REFERENCE = "https://github.com/woud420/kickstart/blob/master/docs/scaffold-contract.md"
+# vocabulary without kickstart re-emitting it per project. Pinned to the
+# generating version's tag so the referenced semantics cannot drift under a
+# manifest that has already been written.
+SEMANTICS_REFERENCE = f"https://github.com/woud420/kickstart/blob/v{__version__}/docs/scaffold-contract.md"
 
 
 class ScaffoldProjectManifest(TypedDict):
@@ -203,7 +207,9 @@ class ScaffoldContract:
     entrypoint: str | None = None
     operation_root: str | None = None
     src_root_files: tuple[str, ...] = ()
-    schema_version: str = "2.1"
+    # 3.0: option_semantics (a static glossary object) was removed in favor
+    # of the `semantics` reference URL — a field removal, hence a major bump.
+    schema_version: str = "3.0"
 
     def manifest(self, project_name: str) -> ScaffoldManifest:
         """Return the JSON-serializable scaffold manifest."""

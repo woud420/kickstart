@@ -252,9 +252,9 @@ export const releaseNotes: ReleaseNote[] = [
     body: "Installed binaries report the release they came from, the release pipeline runs green end to end, and generated metadata got cheaper for agents to read.",
     highlights: [
       "kickstart version reports the released version, gated by a pyproject/runtime version-sync check.",
+      "Trustworthy CLI: validated project names, non-zero exit codes on every failure, no silent option swallowing.",
       "kickstart adopt --check inspects existing repos against the scaffold standard (read-only, --json for agents).",
-      "scaffold.json schema 2.1: the static semantics glossary became a docs pointer, cutting every manifest by more than half.",
-      "Bootstrap, token-savings, and determinism evals enforce that scaffolds stay green, cheap, and reproducible; this changelog is test-enforced.",
+      "scaffold.json schema 3.0 cuts every manifest by more than half; bootstrap, token, and determinism evals keep scaffolds green, cheap, and reproducible.",
     ],
   },
   {

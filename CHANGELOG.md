@@ -14,6 +14,20 @@ Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 - `kickstart version` reports the installed release again. The 0.4.1
   binaries printed `v0.4.0` because the release bumped `pyproject.toml`
   but not the runtime `src/__init__.py:__version__` that the CLI reads.
+- CLI exit codes are trustworthy: unsupported project types, failed or
+  skipped creation (existing directory), and misapplied options
+  (`--helm` on a CLI) now exit non-zero with specific errors instead of
+  printing a warning and exiting 0.
+- Project names are validated (lowercase, starts with a letter; letters,
+  digits, dashes, underscores). Path traversal via names like `../evil`
+  previously wrote outside `--root` with a success banner.
+- `kickstart adopt --check --json` emits raw JSON; it previously routed
+  through rich, which hard-wrapped long paths (invalid JSON) and ate
+  bracketed path segments.
+- Generated Python JWT services pass their own `make check` again
+  (modern `type` aliases instead of `TypeAlias`, import-block spacing).
+- The interactive wizard exits with a specific message on EOF instead of
+  dumping a traceback and exiting 0.
 - The release website deploy job no longer fails on Alchemy's CI
   local-state-store guard. The Worker and its custom domain deploy with
   `adopt: true`, so ephemeral CI state converges on the same named
@@ -40,10 +54,10 @@ Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 
 ### Changed
 
-- `.kickstart/scaffold.json` schema 2.1: the static `option_semantics`
+- `.kickstart/scaffold.json` schema 3.0: the static `option_semantics`
   glossary is replaced by a `semantics` URL pointing at
   `docs/scaffold-contract.md`, shrinking every generated manifest by more
-  than half (~300 tokens saved per agent read, per repo).
+  than half (~295 tokens saved per agent read, per repo).
 
 ## v0.4.1 - 2026-06-04
 

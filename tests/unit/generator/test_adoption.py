@@ -13,7 +13,7 @@ from src.generator.adoption import (
 
 def scaffold_standard_repo(root: Path) -> None:
     manifest = {
-        "schema_version": "2.1",
+        "schema_version": "3.0",
         "project": {"name": "demo", "kind": "cli", "repo_layout": "single-project"},
         "lifecycle": {"check": "make check"},
     }
@@ -61,7 +61,7 @@ def test_inspect_repo_flags_malformed_manifest(tmp_path: Path) -> None:
 
 def test_inspect_repo_flags_manifest_missing_keys(tmp_path: Path) -> None:
     scaffold_standard_repo(tmp_path)
-    (tmp_path / MANIFEST_PATH).write_text('{"schema_version": "2.1"}', encoding="utf-8")
+    (tmp_path / MANIFEST_PATH).write_text('{"schema_version": "3.0"}', encoding="utf-8")
 
     report = inspect_repo(tmp_path)
 
