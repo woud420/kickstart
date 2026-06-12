@@ -62,3 +62,25 @@ versus ~84 tokens of `kickstart create` commands (135x-288x per scaffold).
 
 Pass `--json` for machine-readable results. The heuristic is intentionally
 model-agnostic; report bytes alongside tokens when precision matters.
+
+## Bootstrap (kickstart-like) Eval
+
+The dogfood standard: kickstart must bootstrap a project shaped like
+kickstart itself — a typed, modular CLI with docs, tests, and canonical Make
+verbs — that is green with no manual fixes. Each case is generated, audited
+against the taste rules (<= 200 lines per source file, no `Any`/`object` in
+Python, no `any`/`Object` in TypeScript, no `unwrap()`/`panic!` outside Rust
+tests, specific exception types), then verified with the generated project's
+own `make check`:
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
+  --output-root /private/tmp/kickstart-bootstrap-eval \
+  --cache-root /private/tmp/kickstart-eval-cache \
+  --report /private/tmp/kickstart-bootstrap-eval.md
+```
+
+Default cases: python CLI (the kickstart-like headline case), python lib,
+python service, typescript worker, rust CLI. Use `--cases` to iterate on a
+single scaffold. The eval exits non-zero when any case fails generation,
+taste, or `make check`, so it can gate template changes locally.

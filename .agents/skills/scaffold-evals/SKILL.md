@@ -49,6 +49,23 @@ PYTHONPATH=$(pwd) poetry run python scripts/generated_make_test_eval.py \
 May need network access when dependencies are not cached. The dependency
 cache is a performance tool, not part of generated behavior.
 
+## Bootstrap (kickstart-like)
+
+The dogfood gate: generate a kickstart-like project (typed modular CLI plus
+the other supported kinds), audit taste rules (file-length cap, no
+`Any`/`object`/`any`, specific errors, no panic paths), and run each
+generated project's own `make check` to green:
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
+  --output-root /private/tmp/kickstart-bootstrap-eval \
+  --cache-root /private/tmp/kickstart-eval-cache \
+  --report /private/tmp/kickstart-bootstrap-eval.md
+```
+
+Non-zero exit means a case failed generation, taste, or check — fix the
+template, rerun, and stop iterating only after consecutive clean runs.
+
 ## Token Savings
 
 Quantify how many output tokens scaffolding saves an agent versus authoring
