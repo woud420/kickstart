@@ -1,0 +1,21 @@
+src/__init__.py
+  s_33eee8735b7018::t_5f13cdc649e7ef 1
+pyproject.toml
+  s_33eee8735b7018::t_cfaef6f69f0f63 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.5",
+  "base_commit_sha": "5bd71bb77c1c95659c4c1fe1631d8e3a2ae64778",
+  "prompts": {},
+  "sessions": {
+    "s_33eee8735b7018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b39f7d0a-dc8b-481b-8471-d50be4798fa6",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jean-Michel Bouchard <jim@polarcoordinates.org>"
+    }
+  }
+}
