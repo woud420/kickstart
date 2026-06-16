@@ -1,0 +1,19 @@
+README.md
+  s_64137122403b0d::t_0a6c83a7c0cdd9 3-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "8a04cb7b1bf7f559b2c7064ae0f53847b9152d4b",
+  "prompts": {},
+  "sessions": {
+    "s_64137122403b0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6a7c58c-bde4-467a-8635-89693a286dc1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jean-Michel Bouchard <jim@polarcoordinates.org>"
+    }
+  }
+}
