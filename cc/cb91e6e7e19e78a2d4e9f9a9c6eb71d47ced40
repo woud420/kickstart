@@ -1,0 +1,19 @@
+README.md
+  s_b1818223da42a5::t_bff8ce09ad43f6 3,29-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "cccb91e6e7e19e78a2d4e9f9a9c6eb71d47ced40",
+  "prompts": {},
+  "sessions": {
+    "s_b1818223da42a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019edc73-fafe-7d33-85e3-f8439da7556f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Jean-Michel Bouchard <jim@polarcoordinates.org>"
+    }
+  }
+}
