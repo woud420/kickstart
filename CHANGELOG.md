@@ -7,6 +7,35 @@ public changelog cannot silently fall behind a release.
 
 Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 
+## v0.4.3 - 2026-06-26
+
+Repo-quality release: no change to generated project behavior or installed CLI,
+but the development and release machinery around kickstart got materially better.
+
+### Added
+
+- SessionStart hook (`.claude/hooks/session-start.sh`) bootstraps the Claude
+  Code on the web sandbox: pins Poetry to a supported interpreter, installs
+  Python and website dependencies, so `make check` and the website checks work
+  immediately in a fresh remote session.
+- Tiered eval runner: `scripts/run_evals.py --tier smoke|pr|full` runs the eval
+  suite from one entrypoint with a single summary table and a non-zero exit on
+  any failing step.
+- Scaffold-weight regression baselines: `token_savings_eval.py --check-baselines`
+  fails when generated output changes file count or drifts beyond ±10% of the
+  committed `tests/fixtures/scaffold-weight-baselines.json`; `--update-baselines`
+  acknowledges deliberate changes. The regression guard for the token-efficiency
+  promise, modeled on practices studied from the headroom benchmark suite
+  (`docs/decisions/headroom-benchmark-learnings.md`).
+- Test coverage: `make coverage` measures `src/` + `ci/` (88.1% baseline); a CI
+  job uploads to Codecov (fail-soft without the token). The README leads with
+  CI, Release, Scheduled Evals, Codecov, latest-release, and PyPI badges.
+
+### Changed
+
+- Docs and the `kickstart` skill standardized scratch paths on `/tmp` (the
+  macOS-specific `/private/tmp` is not canonical on Linux sandboxes).
+
 ## v0.4.2 - 2026-06-12
 
 ### Fixed
