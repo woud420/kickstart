@@ -4,7 +4,7 @@ compatibility_date = "2026-05-02"
 
 [vars]
 SERVICE_NAME = "kickstart-site"
-PROJECT_VERSION = "0.4.2"
+PROJECT_VERSION = "0.4.3"
 SUPPORTED_FROM_VERSION = "0.4.0"
 REPOSITORY_URL = "https://github.com/woud420/kickstart"
-RELEASE_URL = "https://github.com/woud420/kickstart/releases/tag/v0.4.2"
+RELEASE_URL = "https://github.com/woud420/kickstart/releases/tag/v0.4.3"

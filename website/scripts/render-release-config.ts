@@ -13,11 +13,11 @@ interface ReleaseConfig {
 const defaultConfig: ReleaseConfig = {
   domain: "kickstart-cli.org",
   output: "wrangler.release.toml",
-  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.2",
+  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.3",
   repositoryUrl: "https://github.com/woud420/kickstart",
   serviceName: "kickstart-site",
   supportedFrom: "0.4.0",
-  version: "0.4.2",
+  version: "0.4.3",
 };
 
 function argumentValue(args: string[], name: string): string | undefined {

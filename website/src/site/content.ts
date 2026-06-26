@@ -33,10 +33,10 @@ export interface ReleaseNote {
 }
 
 export const defaultProjectMeta: ProjectMeta = {
-  latestVersion: "0.4.2",
+  latestVersion: "0.4.3",
   supportedFrom: "0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
-  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.2",
+  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.3",
 };
 
 export const commandExamples: CommandExample[] = [
@@ -246,6 +246,18 @@ export const isNotPoints: PositioningPoint[] = [
 ];
 
 export const releaseNotes: ReleaseNote[] = [
+  {
+    version: "0.4.3",
+    title: "Sandbox bootstrap, tiered eval runner, coverage and badges",
+    body: "A repo-quality release: the web sandbox bootstraps itself, the eval suite runs from one tiered entrypoint with a regression guard on generated weight, and CI now publishes coverage and status badges.",
+    highlights: [
+      "A SessionStart hook bootstraps the Claude Code on the web sandbox (Python 3.13 + Bun) so checks work immediately.",
+      "scripts/run_evals.py --tier smoke|pr|full runs the whole eval suite from one entrypoint with one summary table.",
+      "Scaffold-weight regression baselines fail any template change that bloats generated output or drops files.",
+      "Test coverage is measured (88.1%) and published to Codecov; the README leads with CI, release, and coverage badges.",
+      "Docs and the kickstart skill standardized scratch paths on /tmp for Linux portability.",
+    ],
+  },
   {
     version: "0.4.2",
     title: "Trustworthy releases, leaner manifests, adopt preview",
