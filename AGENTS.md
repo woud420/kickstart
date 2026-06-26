@@ -20,6 +20,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - Release policy: `docs/release-policy.md`, enforced by `ci/release_policy.py`
 - Agent skills: `.agents/skills/` (`.claude/skills` is a symlink to it)
 - Agent daemons: `.agents/daemons/`
+- Agent hooks: `.agents/hooks/` (vendor-neutral scripts; Claude wires them in via `.claude/settings.json`, e.g. the sandbox `session-start.sh`)
 
 ## Current Model
 
@@ -75,3 +76,11 @@ Reusable agent workflows live in `.agents/skills/`, one directory per skill with
 - `website-update`: update kickstart-cli.org content against the tests that enforce it.
 
 `.claude/skills` is a symlink to `.agents/skills` so Claude Code discovers the same skills natively. Keep skills agent-neutral and add new ones under `.agents/skills/`.
+
+## Agent assets convention
+
+Vendor-neutral agent assets live under `.agents/` (`skills/`, `daemons/`, `hooks/`); vendor-specific wiring is a thin shim on top, anchored by the cross-tool `AGENTS.md` standard:
+
+- **Instructions**: `AGENTS.md` is the source of truth; `CLAUDE.md` is a thin pointer to it.
+- **Skills**: content in `.agents/skills/`; `.claude/skills` symlinks to it (Claude discovers skills by directory scan).
+- **Hooks**: scripts in `.agents/hooks/`; `.claude/settings.json` registers them by path (hooks are not directory-scanned, so no symlink is needed). The hook contract itself (event names, `CLAUDE_*` env vars) is Claude-specific; another runner reuses the same script from its own config.
