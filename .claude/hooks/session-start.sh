@@ -2,10 +2,9 @@
 #
 # SessionStart hook for the Claude Code on the web sandbox.
 #
-# Lives in the agent-neutral .agents/hooks/ namespace (alongside
-# .agents/skills and .agents/daemons); Claude wires it in via the thin
-# registration in .claude/settings.json. Other agent runners can invoke
-# this same script from their own config.
+# Claude Code-specific: registered in .claude/settings.json and fired on
+# the SessionStart lifecycle event. Hooks have no cross-vendor standard,
+# so this stays under .claude/ rather than the neutral .agents/ namespace.
 #
 # Bootstraps the kickstart toolchain in a fresh remote sandbox so that
 # `make check` and the website checks work immediately, instead of every
