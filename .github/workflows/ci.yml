@@ -225,8 +225,10 @@ jobs:
             platform: linux-x64
           - runner: ubuntu-24.04-arm
             platform: linux-arm64
-          - runner: macos-15-intel
-            platform: macos-x64
+          # macos-x64 is intentionally omitted: the macos-15-intel runner
+          # schedules on arm64 hardware in this org, so PyInstaller fails with
+          # IncompatibleBinaryArchError. This matches the release matrix, which
+          # dropped macos-x64 in v0.4.1 (PR #66); x64 macOS installs via PyPI.
           - runner: macos-15
             platform: macos-arm64
 
