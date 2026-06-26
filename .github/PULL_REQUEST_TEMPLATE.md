@@ -11,20 +11,22 @@ Preserve existing valid `Refs` or `Resolves` keywords.
 
 ## Primary changes
 
-- <concise summary of the user-visible or reviewer-relevant changes>
+<!-- concise summary of the user-visible or reviewer-relevant changes. -->
 
 ## Reviewer walkthrough
 
-- <ordered files, areas, or flows reviewers should inspect>
+<!-- ordered files, areas, or flows reviewers should inspect. -->
 
 ## Correctness and invariants
 
-- <important invariants, assumptions, compatibility notes, or risk controls>
+<!-- important invariants, assumptions, compatibility notes, or risk controls. -->
 
 ## Testing and QA
 
-- <commands run, checks observed, or manual validation performed>
+<!-- commands run, checks observed, or manual validation performed. -->
 
+## Risk / Rollout
+<!-- Blast radius, migration/ordering notes, follow-ups. -->
 
 Resolves <ISSUE-ID>
 Refs <ISSUE-ID>
