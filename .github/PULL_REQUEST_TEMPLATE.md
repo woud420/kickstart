@@ -1,7 +1,7 @@
 <!--
 Use this template as the canonical PR body shape when creating, repairing, or refreshing pull request bodies.
 
-Required headings are the four `##` headings below, normalized exactly. Preserve accurate existing section content when it still matches the PR, and end the body with one explicit issue reference line for every confidently relevant issue ID:
+Required headings are the five `##` headings below, normalized exactly. Preserve accurate existing section content when it still matches the PR, and end the body with one explicit issue reference line for every confidently relevant issue ID:
 
 - `Resolves <ISSUE-ID>` when the issue appears to be resolved by the PR.
 - `Refs <ISSUE-ID>` when the issue is related but not clearly resolved.
