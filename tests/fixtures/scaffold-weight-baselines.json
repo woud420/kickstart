@@ -1,0 +1,22 @@
+{
+  "aws-kubernetes-system": {
+    "content_bytes": 23323,
+    "files": 41
+  },
+  "python-lib": {
+    "content_bytes": 6897,
+    "files": 13
+  },
+  "python-service-full": {
+    "content_bytes": 23632,
+    "files": 48
+  },
+  "rust-cli": {
+    "content_bytes": 9106,
+    "files": 24
+  },
+  "typescript-worker": {
+    "content_bytes": 10379,
+    "files": 19
+  }
+}

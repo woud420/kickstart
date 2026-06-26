@@ -1,5 +1,12 @@
 # kickstart
 
+[![CI](https://github.com/woud420/kickstart/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/woud420/kickstart/actions/workflows/ci.yml)
+[![Release](https://github.com/woud420/kickstart/actions/workflows/release.yml/badge.svg)](https://github.com/woud420/kickstart/actions/workflows/release.yml)
+[![Scheduled Evals](https://github.com/woud420/kickstart/actions/workflows/scheduled-evals.yml/badge.svg)](https://github.com/woud420/kickstart/actions/workflows/scheduled-evals.yml)
+[![codecov](https://codecov.io/gh/woud420/kickstart/branch/master/graph/badge.svg)](https://codecov.io/gh/woud420/kickstart)
+[![GitHub release](https://img.shields.io/github/v/release/woud420/kickstart)](https://github.com/woud420/kickstart/releases/latest)
+[![PyPI](https://img.shields.io/pypi/v/kickstart)](https://pypi.org/project/kickstart/)
+
 kickstart is a scaffolding tool for generating project structure, services, workers, frontends, libraries, CLIs, and systems.
 
 The goal is to eliminate the repeated setup work that humans and agents otherwise redo at the start of every project: directories, templates, Docker/Kubernetes/Cloudflare files, typed language defaults, basic docs, and standard commands.
@@ -163,4 +170,4 @@ make binary
 
 kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 binary archives (`kickstart-<platform>-py<minor>.tar.gz`) for each supported Python minor.
 
-Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/private/tmp` or another scratch path and are not committed.
+Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/tmp` or another scratch path and are not committed.

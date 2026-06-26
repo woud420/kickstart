@@ -32,6 +32,15 @@ types-requests = "^2.33.0.20260408"
 pytest = "^9.0.3"
 ruff = "^0.15.12"
 pyinstaller = "^6.20.0"
+pytest-cov = "^7.0"
+
+[tool.coverage.run]
+source = ["src", "ci"]
+omit = ["src/templates/*"]
+
+[tool.coverage.report]
+precision = 1
+skip_empty = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

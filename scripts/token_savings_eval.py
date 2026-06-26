@@ -262,6 +262,82 @@ def results_as_json(results: tuple[CaseResult, ...]) -> str:
     return json.dumps(payload, indent=2)
 
 
+# Scaffold weight regression baselines: file counts must match exactly
+# (file additions/removals are deliberate acts), content bytes may move
+# within this tolerance before the change must be acknowledged by
+# re-running with --update-baselines.
+BASELINE_BYTES_TOLERANCE = 0.10
+BASELINES_PATH = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "scaffold-weight-baselines.json"
+
+
+class BaselineError(Exception):
+    """Raised when committed scaffold-weight baselines cannot be used."""
+
+
+@dataclass(frozen=True)
+class BaselineDrift:
+    """One scaffold whose generated weight drifted from its baseline."""
+
+    slug: str
+    detail: str
+
+
+def baselines_payload(results: tuple[CaseResult, ...]) -> str:
+    """Render the committed baseline file content for the measured cases."""
+    payload = {
+        result.case.slug: {"files": result.file_count, "content_bytes": result.content_bytes}
+        for result in results
+    }
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+
+def compare_baselines(
+    results: tuple[CaseResult, ...],
+    baselines: dict[str, dict[str, int]],
+    *,
+    tolerance: float = BASELINE_BYTES_TOLERANCE,
+) -> tuple[BaselineDrift, ...]:
+    """Compare measured scaffold weight against committed baselines."""
+    drifts: list[BaselineDrift] = []
+    for result in results:
+        baseline = baselines.get(result.case.slug)
+        if baseline is None:
+            drifts.append(BaselineDrift(result.case.slug, "no committed baseline; run --update-baselines"))
+            continue
+
+        if result.file_count != baseline["files"]:
+            drifts.append(
+                BaselineDrift(
+                    result.case.slug,
+                    f"file count {result.file_count} != baseline {baseline['files']} "
+                    "(file additions/removals must be deliberate; re-baseline if so)",
+                )
+            )
+
+        allowed = baseline["content_bytes"] * tolerance
+        delta = result.content_bytes - baseline["content_bytes"]
+        if abs(delta) > allowed:
+            direction = "grew" if delta > 0 else "shrank"
+            drifts.append(
+                BaselineDrift(
+                    result.case.slug,
+                    f"content {direction} {abs(delta)} bytes ({delta / baseline['content_bytes']:+.1%}) "
+                    f"vs baseline {baseline['content_bytes']}; tolerance is ±{tolerance:.0%}",
+                )
+            )
+    return tuple(drifts)
+
+
+def load_baselines(path: Path) -> dict[str, dict[str, int]]:
+    """Load committed baselines, failing with a specific error when absent."""
+    if not path.is_file():
+        raise BaselineError(f"baseline file {path} is missing; run with --update-baselines first")
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise BaselineError(f"baseline file {path} is not a JSON object")
+    return raw
+
+
 def main() -> int:
     """Run the token savings eval from the command line."""
     parser = argparse.ArgumentParser(description="Measure agent token savings per kickstart scaffold.")
@@ -269,6 +345,16 @@ def main() -> int:
     parser.add_argument("--output-root", type=Path, default=scratch / "kickstart-token-savings")
     parser.add_argument("--report", type=Path, default=scratch / "kickstart-token-savings.md")
     parser.add_argument("--json", action="store_true", help="Print machine-readable results to stdout")
+    parser.add_argument(
+        "--check-baselines",
+        action="store_true",
+        help="Fail when generated scaffold weight drifts from the committed baselines",
+    )
+    parser.add_argument(
+        "--update-baselines",
+        action="store_true",
+        help="Rewrite the committed scaffold-weight baselines from this run",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
@@ -283,6 +369,20 @@ def main() -> int:
     else:
         print(report)
     print(f"Report written to {args.report}", file=sys.stderr)
+
+    if args.update_baselines:
+        BASELINES_PATH.write_text(baselines_payload(results), encoding="utf-8")
+        print(f"Baselines written to {BASELINES_PATH}", file=sys.stderr)
+        return 0
+
+    if args.check_baselines:
+        drifts = compare_baselines(results, load_baselines(BASELINES_PATH))
+        for drift in drifts:
+            print(f"baseline drift: {drift.slug}: {drift.detail}", file=sys.stderr)
+        if drifts:
+            return 1
+        print("Scaffold weight matches committed baselines.", file=sys.stderr)
+
     return 0
 
 

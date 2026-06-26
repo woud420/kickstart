@@ -1,5 +1,17 @@
 # Local Evals
 
+One entrypoint runs the suite by tier (see
+`docs/decisions/headroom-benchmark-learnings.md` for where this design
+comes from):
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier smoke   # headline bootstrap case
+PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier pr      # what CI gates per PR + weight baselines
+PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier full    # full matrix + tokens + determinism + website
+```
+
+Individual evals below remain directly runnable for iteration.
+
 kickstart has two useful local eval layers:
 
 - Scaffold shape: generate many supported project combinations and verify the generator commands succeed.

@@ -20,6 +20,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - Release policy: `docs/release-policy.md`, enforced by `ci/release_policy.py`
 - Agent skills: `.agents/skills/` (`.claude/skills` is a symlink to it)
 - Agent daemons: `.agents/daemons/`
+- Claude Code specifics (skill discovery, hooks): `CLAUDE.md`
 
 ## Current Model
 
@@ -74,4 +75,4 @@ Reusable agent workflows live in `.agents/skills/`, one directory per skill with
 - `backstage-catalog`: derive `catalog-info.yaml` from `.kickstart/scaffold.json` for Backstage registration.
 - `website-update`: update kickstart-cli.org content against the tests that enforce it.
 
-`.claude/skills` is a symlink to `.agents/skills` so Claude Code discovers the same skills natively. Keep skills agent-neutral and add new ones under `.agents/skills/`.
+Keep skills agent-neutral and add new ones under `.agents/skills/`. Per-vendor discovery wiring stays thin and lives with the vendor (Claude Code: see `CLAUDE.md`).

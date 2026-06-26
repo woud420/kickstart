@@ -5,6 +5,20 @@ description: Run kickstart's scaffold-shape and generated-make-test evals after 
 
 # Scaffold Evals
 
+## Hot Path
+
+One entrypoint, tiered:
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier pr    # or smoke / full
+```
+
+After deliberate template weight changes, re-baseline:
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py --update-baselines
+```
+
 ## Use When
 
 Use this skill after changing generators, layouts, template plans, language

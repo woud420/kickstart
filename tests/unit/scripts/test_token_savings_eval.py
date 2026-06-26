@@ -1,9 +1,17 @@
 from pathlib import Path
 
+import json
+
+import pytest
+
 from scripts.token_savings_eval import (
+    BaselineError,
     DEFAULT_CASES,
     CaseResult,
     ScaffoldCase,
+    baselines_payload,
+    compare_baselines,
+    load_baselines,
     estimate_tokens,
     is_text_file,
     measure_tree,
@@ -84,3 +92,55 @@ def test_render_report_lists_every_case_and_total() -> None:
     assert "| total |" in report
     assert "bytes per token" in report
     assert "upper bound" in report
+
+
+def make_result(slug: str, files: int, content_bytes: int) -> CaseResult:
+    return CaseResult(
+        case=ScaffoldCase(slug=slug, args=("create", "cli", slug)),
+        command_text=f"kickstart create cli {slug}",
+        file_count=files,
+        content_bytes=content_bytes,
+        app_code_bytes=content_bytes // 2,
+    )
+
+
+def test_compare_baselines_accepts_drift_within_tolerance() -> None:
+    results = (make_result("demo", files=10, content_bytes=10_500),)
+    baselines = {"demo": {"files": 10, "content_bytes": 10_000}}
+
+    assert compare_baselines(results, baselines, tolerance=0.10) == ()
+
+
+def test_compare_baselines_flags_bloat_and_file_changes() -> None:
+    results = (make_result("demo", files=11, content_bytes=12_000),)
+    baselines = {"demo": {"files": 10, "content_bytes": 10_000}}
+
+    drifts = compare_baselines(results, baselines, tolerance=0.10)
+
+    details = [drift.detail for drift in drifts]
+    assert any("file count 11 != baseline 10" in detail for detail in details)
+    assert any("grew 2000 bytes" in detail for detail in details)
+
+
+def test_compare_baselines_flags_shrinkage_and_missing_baseline() -> None:
+    results = (make_result("demo", files=10, content_bytes=8_000), make_result("new-case", files=5, content_bytes=1_000))
+    baselines = {"demo": {"files": 10, "content_bytes": 10_000}}
+
+    drifts = compare_baselines(results, baselines, tolerance=0.10)
+
+    details = {drift.slug: drift.detail for drift in drifts}
+    assert "shrank 2000 bytes" in details["demo"]
+    assert "no committed baseline" in details["new-case"]
+
+
+def test_baselines_payload_round_trips_through_compare() -> None:
+    results = (make_result("demo", files=10, content_bytes=10_000),)
+
+    baselines = json.loads(baselines_payload(results))
+
+    assert compare_baselines(results, baselines) == ()
+
+
+def test_load_baselines_requires_existing_file(tmp_path: Path) -> None:
+    with pytest.raises(BaselineError, match="missing; run with --update-baselines"):
+        load_baselines(tmp_path / "absent.json")
