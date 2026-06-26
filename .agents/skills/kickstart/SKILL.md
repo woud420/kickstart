@@ -16,9 +16,9 @@ Confirm `kickstart` exists. Read `kickstart create --help` only when syntax is u
 Common patterns:
 
 ```bash
-kickstart create cli ops-tool --lang rust --root /private/tmp/kickstart-output
-kickstart create service my-api --lang python --root /private/tmp/kickstart-output
-kickstart create system platform --cloud aws --runtime kubernetes --knowledge none --root /private/tmp/kickstart-output
+kickstart create cli ops-tool --lang rust --root /tmp/kickstart-output
+kickstart create service my-api --lang python --root /tmp/kickstart-output
+kickstart create system platform --cloud aws --runtime kubernetes --knowledge none --root /tmp/kickstart-output
 ```
 
 Use `create frontend NAME --root ...` for frontends and `create lib NAME --lang python|rust --root ...` for libraries.

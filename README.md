@@ -163,4 +163,4 @@ make binary
 
 kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 binary archives (`kickstart-<platform>-py<minor>.tar.gz`) for each supported Python minor.
 
-Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/private/tmp` or another scratch path and are not committed.
+Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/tmp` or another scratch path and are not committed.
