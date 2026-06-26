@@ -1,28 +1,18 @@
 # CLAUDE.md
 
-Project guidance lives in [AGENTS.md](AGENTS.md): the source-of-truth map,
-current scaffold model, change rules, validation commands, and release
-process. Read it first; this file only adds Claude Code specifics.
+[AGENTS.md](AGENTS.md) is the source of truth for this repo — the map, scaffold
+model, change rules, validation commands, and release process. Read it first;
+everything that applies to any agent lives there.
 
-## Skills
+This file carries only Claude Code-specific wiring:
 
-Repo skills are agent-neutral and live in [`.agents/skills/`](.agents/skills/).
-`.claude/skills` is a symlink to that directory, so Claude Code discovers
-them natively. Add or edit skills under `.agents/skills/`, never under
-`.claude/` directly.
-
-Note: on checkouts without symlink support (Windows without Developer Mode,
-`core.symlinks=false`, ZIP exports) the symlink materializes as a plain text
-file and skill discovery silently degrades — read skills from
-`.agents/skills/` directly in that case.
-
-## Quick verification
-
-```bash
-make check                      # lint, typecheck, hygiene audits, tests
-cd website && bun run check     # website typecheck + tests
-make release-check TAG=vX.Y.Z   # release tag policy (docs/release-policy.md)
-```
-
-For generator or template wiring changes, run the evals in
-[docs/evals.md](docs/evals.md) and report failure classes, not just totals.
+- **Skills** — the agent-neutral skills in [`.agents/skills/`](.agents/skills/)
+  are discovered through the `.claude/skills` symlink. Add or edit skills under
+  `.agents/skills/`, never under `.claude/`. On checkouts without symlink
+  support (Windows without Developer Mode, `core.symlinks=false`, ZIP exports)
+  the symlink materializes as a plain text file and discovery silently
+  degrades — read `.agents/skills/` directly.
+- **Hooks** — Claude Code-specific hooks live in `.claude/hooks/`, registered in
+  `.claude/settings.json` (e.g. the sandbox `session-start.sh`, which bootstraps
+  Python + website dependencies on session start). Hooks have no cross-vendor
+  standard, so they stay under `.claude/` rather than the neutral `.agents/`.
