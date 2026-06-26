@@ -14,7 +14,7 @@ but the development and release machinery around kickstart got materially better
 
 ### Added
 
-- SessionStart hook (`.agents/hooks/session-start.sh`) bootstraps the Claude
+- SessionStart hook (`.claude/hooks/session-start.sh`) bootstraps the Claude
   Code on the web sandbox: pins Poetry to a supported interpreter, installs
   Python and website dependencies, so `make check` and the website checks work
   immediately in a fresh remote session.
