@@ -5,7 +5,6 @@
 [![Scheduled Evals](https://github.com/woud420/kickstart/actions/workflows/scheduled-evals.yml/badge.svg)](https://github.com/woud420/kickstart/actions/workflows/scheduled-evals.yml)
 [![codecov](https://codecov.io/gh/woud420/kickstart/branch/master/graph/badge.svg)](https://codecov.io/gh/woud420/kickstart)
 [![GitHub release](https://img.shields.io/github/v/release/woud420/kickstart)](https://github.com/woud420/kickstart/releases/latest)
-[![PyPI](https://img.shields.io/pypi/v/kickstart)](https://pypi.org/project/kickstart/)
 
 kickstart is a scaffolding tool for generating project structure, services, workers, frontends, libraries, CLIs, and systems.
 
