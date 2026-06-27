@@ -11,6 +11,14 @@ interface Env {
   RELEASE_URL?: string;
 }
 
+const PUBLIC_HOSTNAME = "kickstart-cli.org";
+const HSTS_HEADER_VALUE = "max-age=15552000";
+const SECURITY_TXT = `Contact: mailto:jm@polarcoordinates.org
+Expires: 2027-06-26T00:00:00Z
+Preferred-Languages: en
+Canonical: https://${PUBLIC_HOSTNAME}/.well-known/security.txt
+`;
+
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
     ...init,
@@ -27,6 +35,39 @@ function assetResponse(body: string, contentType: string): Response {
       "cache-control": "no-store",
       "content-type": contentType,
     },
+  });
+}
+
+function securityTextResponse(): Response {
+  return new Response(SECURITY_TXT, {
+    headers: {
+      "cache-control": "public, max-age=3600",
+      "content-type": "text/plain; charset=utf-8",
+    },
+  });
+}
+
+function isPublicHostname(hostname: string): boolean {
+  return hostname.toLowerCase() === PUBLIC_HOSTNAME;
+}
+
+function httpsRedirect(url: URL): Response {
+  const redirectUrl = new URL(url);
+  redirectUrl.protocol = "https:";
+  return Response.redirect(redirectUrl.toString(), 308);
+}
+
+function withSecurityHeaders(response: Response, url: URL): Response {
+  if (url.protocol !== "https:" || !isPublicHostname(url.hostname)) {
+    return response;
+  }
+
+  const headers = new Headers(response.headers);
+  headers.set("strict-transport-security", HSTS_HEADER_VALUE);
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
   });
 }
 
@@ -61,18 +102,32 @@ export default {
     const url = new URL(request.url);
     const service = env.SERVICE_NAME ?? "kickstart-site";
 
+    if (url.protocol === "http:" && isPublicHostname(url.hostname)) {
+      return httpsRedirect(url);
+    }
+
+    if (url.pathname === "/.well-known/security.txt") {
+      return withSecurityHeaders(securityTextResponse(), url);
+    }
+
     if (url.pathname === "/healthz") {
-      return jsonResponse({ status: "ok", service });
+      return withSecurityHeaders(jsonResponse({ status: "ok", service }), url);
     }
 
     if (url.pathname === "/assets/site.css") {
-      return assetResponse(siteStyles, "text/css; charset=utf-8");
+      return withSecurityHeaders(
+        assetResponse(siteStyles, "text/css; charset=utf-8"),
+        url,
+      );
     }
 
     if (url.pathname === "/assets/site.js") {
-      return assetResponse(siteScript, "application/javascript; charset=utf-8");
+      return withSecurityHeaders(
+        assetResponse(siteScript, "application/javascript; charset=utf-8"),
+        url,
+      );
     }
 
-    return htmlResponse(resolveProjectMeta(env));
+    return withSecurityHeaders(htmlResponse(resolveProjectMeta(env)), url);
   },
 } satisfies ExportedHandler<Env>;

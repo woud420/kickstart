@@ -1,6 +1,6 @@
 import alchemy from "alchemy";
 import type { Scope } from "alchemy";
-import { Worker } from "alchemy/cloudflare";
+import { Worker, Zone } from "alchemy/cloudflare";
 import { CloudflareStateStore } from "alchemy/state";
 
 import { resolveReleaseConfig } from "./scripts/render-release-config";
@@ -47,6 +47,23 @@ const workerDomains =
   app.stage === "prod" && config.domain !== ""
     ? [{ domainName: config.domain, adopt: true }]
     : undefined;
+
+if (app.stage === "prod" && config.domain !== "") {
+  await Zone("zone-security", {
+    name: config.domain,
+    type: "full",
+    settings: {
+      ssl: "strict",
+      alwaysUseHttps: "on",
+      automaticHttpsRewrites: "on",
+    },
+    botManagement: {
+      fightMode: true,
+      aiBotsProtection: "block",
+      crawlerProtection: "enabled",
+    },
+  });
+}
 
 export const worker = await Worker("website", {
   name: workerName,
