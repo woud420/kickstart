@@ -19,6 +19,43 @@ describe("kickstart website worker", () => {
     });
   });
 
+  it("redirects the production hostname from HTTP to HTTPS", async () => {
+    const request = new Request("http://kickstart-cli.org/generate") as Parameters<
+      typeof worker.fetch
+    >[0];
+
+    const response = await worker.fetch(request, defaultEnv);
+
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(
+      "https://kickstart-cli.org/generate",
+    );
+  });
+
+  it("adds HSTS on the production hostname", async () => {
+    const request = new Request("https://kickstart-cli.org/") as Parameters<typeof worker.fetch>[0];
+
+    const response = await worker.fetch(request, defaultEnv);
+
+    expect(response.headers.get("strict-transport-security")).toBe(
+      "max-age=15552000",
+    );
+  });
+
+  it("serves security.txt", async () => {
+    const request = new Request("https://kickstart-cli.org/.well-known/security.txt") as Parameters<
+      typeof worker.fetch
+    >[0];
+
+    const response = await worker.fetch(request, defaultEnv);
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/plain");
+    expect(body).toContain("Contact: mailto:jm@polarcoordinates.org");
+    expect(body).toContain("Canonical: https://kickstart-cli.org/.well-known/security.txt");
+  });
+
   it("serves the SPA shell", async () => {
     const request = new Request("https://example.test/") as Parameters<typeof worker.fetch>[0];
 
