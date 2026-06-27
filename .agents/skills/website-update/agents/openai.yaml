@@ -1,0 +1,7 @@
+interface:
+  display_name: "Website Update"
+  short_description: "Update kickstart-cli.org content and verify it"
+  default_prompt: "Use $website-update to update kickstart-cli.org release notes, version metadata, or command examples and verify against the enforcing tests."
+
+policy:
+  allow_implicit_invocation: true

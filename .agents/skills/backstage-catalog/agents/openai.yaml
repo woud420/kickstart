@@ -1,0 +1,7 @@
+interface:
+  display_name: "Backstage Catalog Mapping"
+  short_description: "Derive catalog-info.yaml from kickstart scaffolds"
+  default_prompt: "Use $backstage-catalog to derive a Backstage catalog-info.yaml from this repo's .kickstart/scaffold.json."
+
+policy:
+  allow_implicit_invocation: true

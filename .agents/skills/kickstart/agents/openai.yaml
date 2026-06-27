@@ -1,0 +1,7 @@
+interface:
+  display_name: "Kickstart"
+  short_description: "Scaffold starter repos with the kickstart CLI"
+  default_prompt: "Use $kickstart to scaffold this project with the installed kickstart binary."
+
+policy:
+  allow_implicit_invocation: true

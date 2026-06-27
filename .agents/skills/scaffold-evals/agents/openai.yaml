@@ -1,0 +1,7 @@
+interface:
+  display_name: "Scaffold Evals"
+  short_description: "Run kickstart scaffold and template evals"
+  default_prompt: "Use $scaffold-evals to run kickstart's scaffold-shape, generated make test, bootstrap, and token-savings evals and report results by failure class."
+
+policy:
+  allow_implicit_invocation: true

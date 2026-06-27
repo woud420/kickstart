@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cut Release"
+  short_description: "Cut, tag, and verify a kickstart release"
+  default_prompt: "Use $cut-release to cut, tag, and verify the next kickstart release."
