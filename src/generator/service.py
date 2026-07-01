@@ -29,9 +29,8 @@ from src.generator.specs import ServiceSpec
 from src.generator.template_plan import TemplatePlan
 from src.utils.types import GeneratorConfig
 from src.utils.types import TemplatePathConfig
-from src.utils.error_handling import (
-    safe_operation_context, LanguageNotSupportedError
-)
+from src.utils.error_handling import safe_operation_context
+from src.utils.errors import LanguageNotSupportedError
 
 logger = logging.getLogger(__name__)
 

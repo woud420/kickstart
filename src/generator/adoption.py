@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.utils.error_handling import KickstartError
+from src.utils.errors import KickstartError
 
 
 class AdoptionTargetError(KickstartError):

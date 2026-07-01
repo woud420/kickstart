@@ -11,7 +11,7 @@ from src.generator.template_plan import TemplatePlan
 from src.generator.template_plans import cli_template_plan, library_template_plan
 from src.stack.profile import stack_registry
 from src.stack.types import TemplateConfig
-from src.utils.error_handling import LanguageNotSupportedError
+from src.utils.errors import LanguageNotSupportedError
 from src.utils.github import create_repo
 from src.utils.types import GeneratorConfig
 

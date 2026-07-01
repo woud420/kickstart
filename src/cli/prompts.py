@@ -5,7 +5,7 @@ from typing import Protocol, cast
 from rich import print
 
 from src.cli.options import CreateCommandOptions, CreateOptions
-from src.utils.error_handling import MissingCreateArgumentsError
+from src.utils.errors import MissingCreateArgumentsError
 from src.utils.types import GeneratorConfig
 
 

@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.frontend import FrontendGenerator
-from src.utils.error_handling import ProjectCreationError
+from src.utils.errors import ProjectCreationError
 
 
 @pytest.fixture

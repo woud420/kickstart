@@ -5,7 +5,7 @@ from typing import Protocol, Unpack
 
 
 from src.cli.options import CreateOptions, ServiceCreateKwargs, SystemCreateKwargs
-from src.utils.error_handling import UnsupportedOptionError, UnsupportedProjectTypeError
+from src.utils.errors import UnsupportedOptionError, UnsupportedProjectTypeError
 from src.utils.types import GeneratorConfig
 
 

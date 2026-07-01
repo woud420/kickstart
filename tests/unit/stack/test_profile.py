@@ -1,7 +1,7 @@
 import pytest
 
 from src.stack.profile import stack_registry
-from src.utils.error_handling import LanguageNotSupportedError
+from src.utils.errors import LanguageNotSupportedError
 
 
 def test_language_and_runtime_aliases_normalize_to_canonical_ids():

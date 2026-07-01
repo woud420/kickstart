@@ -3,7 +3,7 @@
 import pytest
 
 from src.generator.service_capabilities import validate_service_extensions
-from src.utils.error_handling import ExtensionError
+from src.utils.errors import ExtensionError
 
 
 def test_python_fastapi_container_accepts_implemented_extensions() -> None:

@@ -4,7 +4,7 @@ from unittest.mock import patch, call
 from src.generator.language_setup import CPP_MAIN_CONTENT, CPP_ROUTES_HEADER_CONTENT, CPP_USER_HEADER_CONTENT
 from src.generator.service import ServiceGenerator
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
-from src.utils.error_handling import ProjectCreationError, ExtensionError, LanguageNotSupportedError
+from src.utils.errors import ProjectCreationError, ExtensionError, LanguageNotSupportedError
 
 
 @pytest.fixture

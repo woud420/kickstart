@@ -18,7 +18,7 @@ from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibGenerator
 from src.generator.monorepo import MonorepoGenerator
-from src.utils.error_handling import ProjectCreationError, LanguageNotSupportedError
+from src.utils.errors import ProjectCreationError, LanguageNotSupportedError
 from src.utils.types import GeneratorConfig
 
 
