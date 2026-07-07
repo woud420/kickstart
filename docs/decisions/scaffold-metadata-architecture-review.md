@@ -6,14 +6,34 @@ Scope: evaluate the proposal to evolve `.kickstart/scaffold.json` from scaffold
 metadata into a generalized "capability contract" describing runtime
 operations, effects, policies, adapters, approvals, and retry semantics.
 
-> **Revision note.** This revision corrects v1's central field-selection test.
-> v1 judged every manifest field by "does the shipped tool read this today?"
-> and recommended stripping the descriptive middle tier (`execution`,
-> `artifacts`, `provider`, `capabilities`). That test was wrong: those fields
-> are the desired-state spec a reconciler must read to regenerate the managed
-> envelope — the drift-detection feature this review names as the moat.
-> Applying the corrected test shows the manifest is *incomplete*, not bloated.
-> The rejection of the capability-contract runtime layer is unchanged.
+> **Revision note.** v1 judged every manifest field by "does the shipped tool
+> read this today?" and recommended stripping the descriptive middle tier
+> (`execution`, `artifacts`, `provider`, `capabilities`). That test was wrong:
+> those fields are the desired-state spec a reconciler must read to regenerate
+> what kickstart owns — the drift-detection feature this review names as the
+> moat. This revision also incorporates an adversarial review pass that
+> corrected the earlier draft's overclaims about how mechanical that test is
+> and how feasible the reconciler is today. The rejection of the
+> capability-contract runtime layer is unchanged throughout.
+
+## Vocabulary
+
+Four terms carry this review; each is bounded here and used in no other sense.
+
+- **Generated set** — every file kickstart emits at scaffold time, from
+  `AGENTS.md` down to starter source files.
+- **Managed envelope** — the subset of the generated set kickstart keeps
+  aligned with the current standard over time: `.kickstart/scaffold.json`
+  itself, `AGENTS.md`, the `docs/` skeleton (architecture/contracts/
+  operations/decisions), the CI workflow file(s), the Makefile's standard
+  targets, and the directory layout conventions.
+- **Seeds** — the rest of the generated set: starter source code, extension
+  wiring (database clients, auth handlers), migrations, example tests, README
+  prose. Generated once, owned by the user from the first commit, never
+  re-aligned.
+- **Co-owned file** — a file that mixes envelope content with user content
+  (the Makefile carries kickstart's standard targets and the user's own; a CI
+  workflow carries the standard check job and the user's added jobs).
 
 ## Bottom Line
 
@@ -23,34 +43,39 @@ policies, authorization, retry/idempotency declarations, tool registries,
 workflow). Keep — and rename — the narrow, already-shipping
 `capabilities.service_extensions` field, because that is the one part backed by
 real generated code. Nothing in the rest of this review softens that
-conclusion; if anything, it hardens it (§6).
+conclusion (§7).
 
 On the metadata itself, this review reverses its own v1. The question that
 decides every field is not "does anything read this today?" but:
 
-> **Can the managed envelope be regenerated purely from `scaffold.json`?**
+> **Can the generated set be re-derived purely from `scaffold.json`?**
 
-The managed envelope is the bounded set of files kickstart owns and must keep
-aligned with the current standard: the manifest itself, `AGENTS.md`, the
-`docs/` skeleton, the CI workflow file(s), the Makefile's standard verbs, and
-the directory layout conventions. Reconciliation — the write step `adopt`
-explicitly defers (`src/generator/adoption.py:1-7`) — means regenerating that
-envelope from the manifest and re-aligning the working tree with it. Under
-that model, `execution`, `artifacts`, `provider`, and `extensions` are not
+Reconciliation — the write step `adopt` explicitly defers
+(`src/generator/adoption.py:1-7`) — means re-deriving what the current
+standard would generate for this project and re-aligning the *managed
+envelope* against it, leaving seeds and user files untouched. Under that
+model, `execution`, `artifacts`, `provider`, and the extensions field are not
 emitted-only documentation; they are the reconciler's input. Stripping them
 (v1's recommendation) would have broken the moat feature before it was built.
 
-Applied honestly, the regeneration test cuts both ways:
+Two honest limits on that test, both surfaced by adversarial review:
 
-- It **fails today in three concrete places**: a Python service and a Go
+- **It is necessary, not sufficient.** The test admits any field a template
+  varies on — including, in principle, a smuggled runtime-semantics field
+  shipped with a new template. A second, explicitly non-mechanical gate does
+  the excluding: the mission boundary (§4).
+- **It fails today in three concrete places**: a Python service and a Go
   service produce *identical manifests* (service language is never recorded),
   worker language is likewise unrecorded, and the Python `--framework` choice
-  (fastapi vs minimal) appears nowhere. The fix is three narrow fields, not a
-  new abstraction.
-- It **still removes** `docs` and `semantics` (constants that feed no
-  regeneration decision) and **still rejects** every runtime-semantics field:
-  no generated file varies on `retry_safe`, so the test excludes the entire
-  capability-contract layer by construction.
+  (fastapi vs minimal) appears nowhere. An exhaustive sweep of every other
+  generation input (`--cloud`, system runtime profiles, workspace tooling,
+  `--helm`, `gh`/`root`/config — the last three never feed template content)
+  found no fourth gap. The fix is narrow fields, not a new abstraction —
+  though fields alone are not the whole fix (§6 step 1).
+
+The test still removes `docs` and `semantics` (constants that feed no
+regeneration decision — with one sequencing caution on `semantics`, §3), and
+the two gates together still exclude every runtime-semantics field.
 
 ---
 
@@ -65,42 +90,56 @@ field is not justified by having a reader *today*; it is justified by the
 reader the design intends. This review left "who consumes this, and what
 decision do they make with it?" open. Closing it:
 
-**The consumer is the reconciler.** Its algorithm:
+**The consumer is the reconciler.** Its intended algorithm:
 
 1. Read `scaffold.json` → know the project's kind, language, runtime,
    extensions, and artifact choices.
 2. Re-derive the managed envelope the *current* kickstart standard would
    generate for that spec.
-3. Three-way merge co-owned files (base: the template as of the version
-   recorded in `generated_by`; theirs: the current template; ours: the working
-   tree).
-4. Apply non-conflicting updates; surface conflicts to the human. Never touch
-   anything outside the envelope.
+3. For co-owned files, reconcile using the version recorded in `generated_by`
+   as the base reference (§6 details what this actually requires — the
+   version string alone is not enough).
+4. Apply updates only inside kickstart-owned regions; surface everything else
+   to the human. Never touch seeds or user files.
 
-This is the Terraform posture, correctly scoped. Terraform does not reconcile
-an entire cloud account; it reconciles only the resources it declares and
-ignores everything else. Its plan/apply loop exists precisely *because* drift
-is normal within that managed set — drift is the expected condition the tool
-is built around, not an anomaly. Kickstart's analog: product code, domain
-logic, and user-added files sit outside the envelope the way undeclared
-resources sit outside Terraform state. "The user is supposed to build on top
-of the scaffold" stops being an objection to drift detection the moment the
-reconciler's scope is the envelope, not the repo.
+This is the Terraform posture at the repository boundary: Terraform does not
+reconcile an entire cloud account; it reconciles only the resources it
+declares and ignores everything else. Its plan/apply loop exists precisely
+*because* drift is normal within that managed set. Kickstart's analog: seeds
+and user files sit outside the envelope the way undeclared resources sit
+outside Terraform state, and "the user is supposed to build on top of the
+scaffold" stops being an objection to drift detection once the reconciler's
+scope is the envelope, not the repo.
 
-Two facts about the current codebase keep this honest:
+The analogy must be qualified where it breaks: a Terraform-managed resource is
+*wholly* owned — users are not expected to hand-edit it. Kickstart's envelope
+includes co-owned files, where owned and user content interleave line-by-line
+within a single file. Terraform never reconciles a half-declared object; the
+reconciler must, on every Makefile and CI workflow. That intra-file boundary —
+not the repo-vs-envelope boundary — is the unproven part of the whole design,
+and §6 sequences the roadmap around proving or abandoning it.
+
+Three facts about the current codebase keep this honest:
 
 - **Reconciliation is entirely greenfield.** `kickstart upgrade` self-updates
   the installed binary (`src/utils/updater.py:1-8`); it never touches a
   scaffolded repo. `adopt` rejects anything but `--check`
   (`src/cli/main.py:96-98`). Nothing diffs generated content against current
   templates anywhere in `src/`.
-- **No generated file carries ownership markers today.** No Makefile or CI
-  template has any owned-vs-free boundary convention — no fences, no
-  "managed by" comments (verified across `src/templates/`). The one existing
-  precedent is internal: the installer maintains a `MARKER_BEGIN`/`MARKER_END`
-  managed block inside user-owned shell rc files, refreshing only its block
-  and preserving surrounding content (`src/utils/installer.py:263-303`). The
-  mechanism exists in-repo; it has never been applied to templates.
+- **No envelope-membership record exists.** Envelope files and seeds are
+  written through the identical generation path
+  (`src/generator/base.py:381-478`) with no tag or manifest entry
+  distinguishing them. "Re-derive the envelope" today would re-derive the
+  entire generated set with nothing marking which regenerated files the
+  reconciler may act on. A persisted per-file ownership classification
+  (envelope vs seed) is prerequisite work, not a byproduct of adding fields.
+- **No generated file carries ownership markers.** No Makefile or CI template
+  has any owned-vs-free boundary convention (verified across
+  `src/templates/`). The one in-repo precedent is the installer's
+  `MARKER_BEGIN`/`MARKER_END` block in shell rc files
+  (`src/utils/installer.py:263-303`) — and it is *whole-block replacement*,
+  not a merge: it substitutes the fenced region wholesale and would discard a
+  user's edit inside it. It demonstrates region boundaries, nothing more.
 
 ---
 
@@ -108,16 +147,17 @@ Two facts about the current codebase keep this honest:
 
 ### 2.1 The real defect is incompleteness, not bloat
 
-Testing "can the envelope be regenerated purely from the manifest?" against the
-six `ScaffoldContract` construction sites:
+Testing "can the generated set be re-derived purely from the manifest?"
+against the six `ScaffoldContract` construction sites:
 
-| Input that shapes the envelope | Recorded in manifest? | Evidence |
+| Input that shapes generated output | Recorded in manifest? | Evidence |
 |---|---|---|
 | Service language (python/rust/ts/go/cpp) | **No — gap** | `service.py:172-181` sets no language; templates select `{language}/Makefile.tpl`, `ci-{language}.yml.tpl` (`stack/templates.py:12-40,157-170`) |
 | Worker language (rust/ts) | **No — gap** | `service.py:236-243`; Rust emits `Cargo.toml`, TS emits `package.json` (`stack/templates.py:173-200`); only a fragile lifecycle proxy distinguishes them |
 | Python service framework (fastapi/minimal) | **No — gap** | `service.py:410`; different `src/` tree and requirements (`template_plans.py:66-92`) |
 | `--helm` for services | Yes | `runtime_platforms` + `artifacts.kubernetes` (`service.py:175-178`) |
 | helm vs kustomize for systems | Yes | `artifacts.kubernetes` (`monorepo.py:170`, `registry.py:208-209`) |
+| System `--cloud` (aws/gcp/cloudflare/multi/none) | Yes | `provider.targets` (`monorepo.py:92`) |
 | Library/CLI language | Yes | `artifacts.package` (`lib.py:141,218`) plus CLI profile fields |
 | Frontend stack | Yes (implied) | fixed React/TS by kind (`frontend.py:17`) |
 | Knowledge adapter, workspace tooling (system) | Yes | `monorepo.py:93-94` |
@@ -130,12 +170,12 @@ problem is the opposite of the one v1 diagnosed.
 
 ### 2.2 Criticisms from v1 that stand
 
-- **`capabilities` is misnamed.** It holds exactly one thing —
-  `service_extensions` (database/cache/auth), generation-time options backed
-  by real code and a validated support matrix
+- **The current `capabilities` field is misnamed.** It holds exactly one
+  thing — `service_extensions` (database/cache/auth), generation-time options
+  backed by real code and a validated support matrix
   (`src/generator/service_capabilities.py:34-47`). The word "capabilities" is
   a pre-installed on-ramp to the runtime-contract scope creep this review
-  rejects. Rename it for what it is: `extensions`.
+  rejects. Rename it for what it is: `extensions` (§3 specifies the shape).
 - **The `worker` kind is a live inconsistency.** `project_kind: "worker"` is
   emitted for `kickstart service --runtime cloudflare-workers`
   (`service.py:236-243`), yet `worker` is not an exposed project type
@@ -144,45 +184,60 @@ problem is the opposite of the one v1 diagnosed.
   stories. Workers should be `kind: "service"` with execution model
   `cloudflare-worker`; the `worker` branches in `_lifecycle()` and
   `contract_subjects` key off the runtime profile instead.
-- **Two fields are genuinely inert under any test.** `docs` is five hardcoded
-  paths identical in every manifest — the paths are fixed by convention, so
-  regeneration never consults the field. `semantics` is a pure function of
-  `schema_version` (`scaffold_contract.py:18`); serializing it per repo adds
-  nothing the version doesn't already say.
+- **Two fields are genuinely inert.** `docs` is five hardcoded paths identical
+  in every manifest — the paths are fixed by convention, so regeneration never
+  consults the field, and nothing reads it (the Backstage skill keys techdocs
+  on the presence of the `docs/` *directory*, not the manifest field).
+  `semantics` is a constant URL per release. Both go — but see §3 for a
+  sequencing constraint the earlier draft missed.
 
-### 2.3 A v1 criticism this revision withdraws
+### 2.3 A v1 criticism this revision withdraws, and what that admits
 
 v1 flagged `execution.models`/`execution.platforms` as redundant (they co-vary
-for every single-project kind) and proposed collapsing them. Under the
-reconciler model the pair is load-bearing where it matters — `system` repos
-carry genuinely independent multi-valued sets, and services split platform
-from model on `--helm` — and harmless where it co-varies. Collapsing fields to
-save bytes in a spec whose only reader is a machine is tidiness, not design.
-Withdrawn.
+for every single-project kind) and proposed collapsing them. This revision
+keeps the pair: `system` repos carry genuinely independent multi-valued sets,
+services split platform from model on `--helm`, and collapsing fields to save
+bytes in a machine-read spec is tidiness, not design.
 
-Likewise `generated_by` and `knowledge_adapter` are rehabilitated, not
-stripped:
+Keeping them is, however, a judgment call the field-selection test does not
+make. The same is true of the CLI profile fields (`cli_framework`,
+`command_root`, `entrypoint`, `operation_root`, `src_root_files`,
+`architecture`): once `project.language` exists, all of them are pure
+functions of language and kind (`lib.py:235-265`), so strict necessity would
+drop them. They stay because they serve a different, existing reader — agents
+orienting in a generated repo read them directly rather than re-deriving
+kickstart's language conventions. The rule, stated honestly: **necessity
+mandates a field's presence; redundancy is permitted where a named reader
+benefits.** The test yields a floor, not a unique field set.
 
-- `generated_by` today emits the constant `"kickstart"` — useless. But the
-  reconciler's three-way merge needs the *base version*: which release's
-  templates originally produced this repo. Emit `kickstart@<version>` and the
-  field becomes the merge base selector, the single most load-bearing datum in
-  the file.
+Two rehabilitations, with corrections from adversarial review:
+
+- `generated_by` today emits the constant `"kickstart"`. Emit
+  `kickstart@<version>` and it records which release produced the repo — the
+  base reference any reconciliation needs. (The earlier draft called this "the
+  single most load-bearing datum"; that presumed the three-way merge design
+  ships. If the fallback posture wins instead — §6 step 4 — git supplies the
+  base and this field matters far less. It is load-bearing *if* the merge path
+  is taken.)
 - `knowledge_adapter` selects generated files (Backstage `template.yaml`,
-  `.obsidian/` config — `stack/templates.py:99-112`). It passes the
-  regeneration test on its own merits. v1's suggestion to exile it to an
-  exporter concern is withdrawn; fields that choose which files exist in the
-  envelope belong in the spec.
+  `.obsidian/` config — `stack/templates.py:99-112`) and passes the test on
+  its own merits. v1's suggestion to exile it to an exporter concern is
+  withdrawn.
 
 ---
 
 ## 3. Concepts To Remove, Add, Or Rename
 
-**Remove:**
+**Remove (with one ordering constraint):**
 
-- `docs` — constant paths, fixed by convention, feed no regeneration decision.
-- `semantics` — derivable from `schema_version`; keep the prose
-  `scaffold-contract.md`, stop emitting the URL per repo.
+- `docs` — constant paths, fixed by convention, feed no regeneration decision,
+  no reader anywhere.
+- `semantics` — a constant URL per release. Correction from review: it is a
+  function of the generating *tool version* (`__version__`), not of
+  `schema_version` (`scaffold_contract.py:18` embeds `v{__version__}`), which
+  means it is currently the **only place the generating version is recorded**.
+  Version `generated_by` first; drop `semantics` after. Dropping it first
+  would destroy the one datum the reconciler needs from existing repos.
 
 **Add (the three gaps, as narrow fields — not abstractions):**
 
@@ -195,59 +250,100 @@ stripped:
 
 **Rename / restructure:**
 
-- `capabilities` → `extensions`. Same content, honest name, closes the
-  semantic door.
+- `capabilities` → `extensions`, and the `service_extensions` nesting level is
+  deliberately collapsed: `capabilities.service_extensions.{database,cache,auth}`
+  becomes `extensions.{database,cache,auth}`. This is a structural change, not
+  a pure rename — schema 4.0 breaks the old access path, and consumers (the
+  Backstage skill reads `capabilities.service_extensions` today) migrate with
+  the schema bump.
 - `project_kind: "worker"` → retired. Workers become `kind: "service"` +
   `execution.models: ["cloudflare-worker"]`. Reconcile README/AGENTS/manifest
   to the runtime-profile story.
 - `generated_by` → keep the key, change the value: `kickstart@<version>`.
 
-**Keep as-is (now with a named consumer):**
+**Keep as-is (now with a named reader):**
 
 - `schema_version`, `project`, `lifecycle` — consumed by `adopt` today.
-- `execution`, `artifacts`, `provider`, `extensions`, `knowledge_adapter`,
-  `composition` (system) — the reconciler's desired-state spec.
+- `execution`, `artifacts`, `provider`, the renamed extensions field, and (for
+  systems) `knowledge_adapter` and `composition` — the reconciler's
+  desired-state spec, plus direct agent consumption.
+
+A naming note the review surfaced: an `execution` block in a manifest whose
+mission disowns "execution" is the same vocabulary hazard that motivated
+renaming `capabilities`. Its content is legitimate — the values select which
+packaging and deploy files exist (Dockerfile vs wrangler config), nothing
+more. Renaming it (`packaging`, `runtime_target`) is defensible but breaks
+more consumers than it protects; the cheaper guard is this explicit scope
+statement, which `scaffold-contract.md` should carry: **`execution` records
+which runtime-artifact files the scaffold generated, never how code behaves.**
 
 ---
 
 ## 4. Architectural Boundary: What Kickstart Owns
 
 **Kickstart owns the managed envelope of a repository and its conformance to
-the current standard.** It is Terraform for repository structure: a bounded
-declared scope, reconciled; everything outside it, untouched.
+the current standard.** Everything else it generates once — seeds — and then
+treats as the user's.
 
 | Kickstart OWNS | Kickstart does NOT own |
 |---|---|
-| The managed envelope: manifest, `AGENTS.md`, `docs/` skeleton, CI workflow, Makefile standard verbs, layout conventions | Product/domain code and any user-added file |
-| Regenerating that envelope from `scaffold.json` | Runtime behavior / execution |
-| Lifecycle **verbs** (`make check`, etc.) | What those verbs *do* at runtime |
-| Generation-time extensions that produced code | API contracts (→ OpenAPI/AsyncAPI) |
+| The managed envelope (see Vocabulary) | Seeds after first commit; product/domain code; any user-added file |
+| Re-deriving the generated set from `scaffold.json` | Runtime behavior / execution |
+| Standard target *existence* and marker-fenced standard recipe bodies | Recipe content users have customized; what any target does at runtime |
+| Generation-time extensions, as a closed allowlist | API contracts (→ OpenAPI/AsyncAPI) |
 | Conformance: adopt, drift, audit, repair, upgrade | Effect systems / idempotency / retry semantics |
 | **Exports** to existing ecosystems | Authorization / policy (→ OPA); workflow (→ Temporal); tool registries (→ MCP) |
 
-The regeneration test polices this boundary mechanically, and its scope must
-be stated to close a loophole: **a field earns its place only by determining
-which generated file exists or what its generated content is.** "Needed for
-regeneration" can never justify `retry_safe`, `idempotent`,
-`requires_approval`, effects, or policy — no template varies on them, so they
-fail the test by construction. If a future template *were* made to vary on
-such a field, that template would be generating runtime behavior, which the
-mission statement already forbids; the field and the template fail together.
-The test is not a backdoor.
+### Two gates, stated honestly
 
-One scope caution on the reconciler itself: conflict resolution must stay
-**structural, not semantic**. The three-way merge compares text/structure of
-generated files; it never interprets what a user's Makefile target or CI job
-*does*, and it resolves nothing by policy — conflicts go to the human. A
-reconciler that "decides whose change wins" by reasoning about behavior would
-be the capability-contract mistake re-entering through the back door.
+The earlier draft claimed the regeneration test polices this boundary
+"mechanically, without exception." Adversarial review broke that claim, and it
+deserved to break: `extensions.auth: "jwt"` makes a template emit JWT
+verification code — runtime behavior — and passes the test. A smuggled
+`idempotent: true` shipped with an idempotency-middleware template would be
+structurally indistinguishable. The test cannot draw the line by itself.
+
+The boundary is therefore two gates:
+
+1. **The regeneration test (mechanical).** A field earns manifest presence
+   only by determining which generated file exists or what its generated
+   content is. This is checkable and excludes free-floating declarations —
+   `retry_safe: true` with no template behind it selects nothing and fails
+   here.
+2. **The mission gate (policy).** Among fields that pass gate 1, kickstart
+   blesses a deliberately closed allowlist of generated behaviors: today,
+   database/cache/auth wiring with a validated support matrix
+   (`service_capabilities.py:34-47`), emitted as *seeds* — generated once,
+   never reconciled, never enforced. Extending the allowlist (an
+   idempotency-middleware extension, an approval-flow extension) is a
+   deliberate scope decision to be argued against the mission statement, not
+   something any test grants. This gate is a judgment; pretending otherwise
+   was the earlier draft's error.
+
+The distinction between an extension and a capability contract is exactly the
+seed/envelope distinction: an extension generates starter code the user owns
+from day one; a capability contract asserts an ongoing property of runtime
+behavior that no scaffold can keep true. Kickstart may do the former, narrowly;
+it must never do the latter.
+
+One scope caution on the reconciler: for make and CI YAML, **a textually clean
+merge is not behavior-preserving** — make resolves duplicate targets by last
+definition, variable effects depend on ordering and `include`s, and a merged
+workflow can silently change the job graph. The reconciler therefore never
+auto-applies into co-owned files outside explicitly marker-fenced regions, and
+it resolves nothing by judgment: whole fenced regions are kickstart's to
+replace, everything else goes to the human (or to git, in the fallback
+posture). A reconciler that reasoned about what a user's target *does* in
+order to merge it would be the capability-contract mistake re-entering through
+the back door.
 
 ---
 
 ## 5. Target Metadata Model
 
-Every field either is consumed by `adopt` today or feeds envelope
-regeneration. Illustrative service manifest (schema 4.0):
+Every field either is consumed by `adopt` today, feeds re-derivation of the
+generated set, or serves a named reader. Illustrative service manifest
+(schema 4.0):
 
 ```json
 {
@@ -266,8 +362,7 @@ regeneration. Illustrative service manifest (schema 4.0):
   },
   "artifacts": {
     "image": "dockerfile",
-    "kubernetes": "helm",
-    "ci": "github-actions"
+    "kubernetes": "helm"
   },
   "provider": {
     "targets": []
@@ -289,17 +384,21 @@ regeneration. Illustrative service manifest (schema 4.0):
 
 Changes from 3.0: add `project.language` and `project.framework` (the
 regeneration gaps); `generated_by` carries the version; `capabilities` →
-`extensions`; `docs` and `semantics` dropped; `worker` retired as a kind
-(a Cloudflare Worker is `kind: "service"`, `execution.models:
-["cloudflare-worker"]`, `artifacts.worker: "wrangler"`, `provider.targets:
-["cloudflare"]`). Systems keep `composition` and `knowledge_adapter`; both
-select generated files, so both pass the test.
+`extensions` with the `service_extensions` level collapsed (declared breaking
+change, §3); `docs` and `semantics` dropped (in that order — `semantics` only
+after `generated_by` is versioned); `worker` retired as a kind (a Cloudflare
+Worker is `kind: "service"`, `execution.models: ["cloudflare-worker"]`,
+`artifacts.worker: "wrangler"`, `provider.targets: ["cloudflare"]`). Systems
+additionally keep `composition` and `knowledge_adapter`; both select generated
+files. (Services do not emit `artifacts.ci` today — the CI workflow is
+derivable from kind + language — so the example omits it.)
 
 Ship a **JSON Schema** generated from the TypedDicts as the structural source
-of truth; `scaffold-contract.md` remains commentary, not authority. Schema
-migration 3.0 → 4.0 needs a documented, tested upgrade path — which is itself
-the first small exercise of the reconciler (the manifest is the first co-owned
-file it learns to rewrite).
+of truth; `scaffold-contract.md` remains commentary, not authority. The
+3.0 → 4.0 migration needs a documented, tested upgrade path — a deterministic,
+tool-owned rewrite of a file users don't hand-edit. That makes it safe early
+work, and deliberately *not* evidence about the co-owned merge problem, which
+it resembles in neither difficulty nor risk.
 
 ---
 
@@ -309,34 +408,52 @@ file it learns to rewrite).
 
 The reconciler is the feature; everything here exists to de-risk it. Today
 `adopt --check` verifies presence of nine artifacts, three manifest keys, and
-a Makefile `check` target (`src/generator/adoption.py`). From there:
+a Makefile `check` target (`src/generator/adoption.py`). The honest scope of
+the work, incorporating the feasibility review:
 
-1. **Complete the spec.** Add `project.language` / `project.framework`,
-   version `generated_by`. Without this, step 3 cannot even select templates.
-2. **Drift report (read-only).** `adopt --check` grows a mode that regenerates
-   the envelope from the manifest into a temp tree and reports file-level
-   divergence by class: scaffold drift, docs drift, CI drift, artifact drift.
-   Read-only, so it is safe to ship early and it measures the real-world
-   signal-to-noise of drift detection before any write path exists.
-3. **Three-way merge prototype — one file type only.** Makefile standard
-   targets first: base = template at `generated_by`'s version, theirs =
-   current template, ours = working tree. The `installer.py` managed-block
-   mechanism (`src/utils/installer.py:263-303`) is the in-repo precedent for
-   maintaining an owned region inside a user-edited file; new templates can
-   adopt explicit markers so future repos merge trivially, while pre-marker
-   repos rely on the structural merge.
+1. **Complete the spec — fields plus regeneration inputs.** Add
+   `project.language`/`project.framework`, version `generated_by`. But fields
+   alone do not make the manifest executable: generators take CLI-style
+   arguments and inject render inputs the manifest never records — toolchain
+   pins via `toolchain_vars()` (`base.py:146-152`), extension conditionals,
+   post-write mutations like the requirements append (`service.py:445-456`).
+   Re-derivation therefore needs (a) a manifest→generator-arguments driver,
+   (b) persisted render inputs (or hashes of rendered envelope files) so a
+   faithful base can be reconstructed, and (c) a persisted per-file ownership
+   classification (envelope vs seed), which does not exist today. A version
+   string alone cannot rebuild the base file.
+2. **Drift report (read-only), scoped to what is decidable.** Regenerate the
+   envelope from the manifest into a temp tree and report divergence by class
+   (scaffold, docs, CI, artifact). For co-owned files in pre-marker repos,
+   report only structural facts — standard target missing, standard job
+   absent — not content diffs, which would misread legitimate user
+   customization as drift. User-owned surfaces inside artifact files (Helm
+   values, k8s configuration) are out of scope by definition. This step is
+   also the instrument that *verifies* manifest sufficiency: the three gaps
+   were found by inspection, and regenerate-and-diff is what proves no others
+   remain.
+3. **Ownership markers + a merge prototype on one file type.** New templates
+   gain explicit owned-region markers (the installer's block mechanism
+   demonstrates the boundary pattern — and also its limit: block replacement
+   clobbers edits inside the region, so fenced regions must be ones users are
+   told not to edit). Prototype reconciliation on a *structured* file first —
+   the CI workflow, where YAML parses into nodes and kickstart's job is
+   separable — before attempting Makefiles, which have no structure, no
+   in-repo parser, and last-definition-wins semantics. Templates would also
+   need to be retrievable per release (bundled sets or fetched by tag);
+   today the binary ships only the current generation
+   (`base.py:75`, `updater.py:1-8`).
 4. **Go/no-go.** Only if the prototype shows acceptable conflict rates does
-   `repair`/`upgrade` become a flagship commitment. This is greenfield work —
-   no reconciliation code exists today and no template carries ownership
-   markers — and the roadmap should not pretend otherwise. If the prototype
-   drowns in conflicts, the fallback posture is still valuable: read-only
-   drift reporting plus regenerate-into-a-branch, letting git and the human do
-   the merge.
+   `repair`/`upgrade` become a flagship commitment. This is greenfield work
+   with named prerequisites, and the roadmap should not pretend otherwise. If
+   the prototype drowns in conflicts, the fallback posture is still valuable:
+   read-only drift reporting plus regenerate-into-a-branch, letting git and
+   the human do the merge.
 
 ### Simplify
 
-- Drop `docs` and `semantics`; version `generated_by`.
-- Rename `capabilities` → `extensions`.
+- Version `generated_by`; then drop `semantics`; drop `docs`.
+- Rename `capabilities` → `extensions` (nesting collapsed, declared breaking).
 - Retire the `worker` kind; reconcile README/AGENTS/manifest on the
   runtime-profile story.
 - Publish the JSON Schema.
@@ -369,18 +486,21 @@ a Makefile `check` target (`src/generator/adoption.py`). From there:
   semantics, tool registries, workflow, generalized capability DSL. These
   belong to OpenAPI/AsyncAPI, OPA, Temporal, and MCP; kickstart exports to
   them, full stop.
-- **Narrow:** the only "capability" with real backing is
-  `service_extensions` — code kickstart actually generates and validates.
-  Keep that, renamed, and nothing more under this heading.
+- **Narrow:** the only "capability" with real backing is the extension set —
+  code kickstart actually generates and validates, emitted as seeds. Keep
+  that, renamed, and nothing more under this heading. The allowlist is closed;
+  additions are mission decisions, not schema decisions.
 - **Rename:** `extensions`. The word "capability" is itself a scope-creep
   vector.
 
-The reconciliation reframe *strengthens* this rejection. Under the
-regeneration test, a manifest field must select generated files or content.
-`retry_safe: true` selects nothing — kickstart generates no code whose shape
-depends on it, and a declaration without a generator behind it is a claim the
-repo cannot keep. The capability-contract layer is not just off-mission; under
-the governing test it is unexpressible.
+The reconciliation reframe sharpens *why*: a manifest field must select
+generated files or content (gate 1), and kickstart only generates behaviors on
+a closed, deliberately narrow allowlist (gate 2). A `retry_safe: true` with no
+generator behind it fails gate 1 — it is a claim the repo cannot keep. The
+same declaration *with* a generator behind it fails gate 2 — expanding the
+blessed behavior set toward runtime semantics is exactly the mission creep the
+original brief warned against. Neither gate alone rejects the proposal; the
+two together, with the seed/envelope distinction (§4), do.
 
 ---
 
@@ -395,32 +515,39 @@ the governing test it is unexpressible.
    `project`, `lifecycle` (presence-only, `adoption.py:92`). By internal
    evals: `execution`, `artifacts`, `provider`, `capabilities`,
    `composition`. By the Backstage skill: `project`, `execution.models`,
-   `capabilities`, `docs`. Going forward the reconciler consumes the entire
-   spec — that is the design intent the fields were waiting on.
-4. **Which exist only for documentation?** After this revision, two:
-   `docs` and `semantics` — and they should be dropped. v1's longer list
-   (`generated_by`, `knowledge_adapter`) was wrong: both feed regeneration.
+   `capabilities.service_extensions`. Going forward the reconciler consumes
+   the whole spec — the design intent the fields were waiting on.
+4. **Which exist only for documentation?** Two: `docs` and `semantics`, and
+   both should be dropped (`semantics` only after `generated_by` is
+   versioned, since its URL is currently the sole record of the generating
+   version). v1's longer list (`generated_by`, `knowledge_adapter`) was
+   wrong: both feed regeneration.
 5. **Can existing metadata be simplified?** Marginally (drop two constants,
-   one rename) — but the accurate statement is that it must be *completed*:
-   `project.language` and `project.framework` are missing, and without them
-   the manifest cannot distinguish a Python service from a Go one.
+   one rename-and-collapse) — but the accurate statement is that it must be
+   *completed*: `project.language` and `project.framework` are missing, and
+   without them the manifest cannot distinguish a Python service from a Go
+   one.
 6. **Should knowledge adapters be a plugin/export mechanism?** The *adapter
    outputs* (Backstage/Obsidian files) are export-shaped, but the field stays
    in the manifest: it selects generated files, so the reconciler needs it.
 7. **Should provider-specific concepts move toward deployment artifacts?**
    Yes for runtime detail; `provider.targets` stays only as the coarse
-   selector of which IaC templates the envelope contains.
+   selector of which IaC templates the generated set contains.
 8. **Is the semantics reference document still justified?** The prose doc yes,
-   as commentary; the per-repo `semantics` URL field no. The JSON Schema
-   becomes the structural authority.
+   as commentary; the per-repo `semantics` URL field no — after its version
+   datum migrates to `generated_by`. The JSON Schema becomes the structural
+   authority.
 9. **Should project kinds be simplified — is "worker" a kind?** Not a kind: an
    execution profile of `service`. Retire it and reconcile the docs.
 10. **Is the long-term moat conformance rather than generation?** Yes, with an
     honest caveat: the moat is *earned* by solving co-owned-file
-    reconciliation, which is greenfield and unproven here. Sequence it
-    (complete spec → read-only drift report → single-file merge prototype →
-    go/no-go) rather than declaring it. Generation remains the on-ramp and the
-    thing that makes the manifest trustworthy in the first place.
+    reconciliation, which is greenfield, has named prerequisites (ownership
+    classification, persisted render inputs, per-release template retrieval),
+    and may land in the fallback posture (drift report + regenerate-into-a-
+    branch) rather than the full merge. Sequence it — complete spec →
+    read-only drift report → marker + structured-file prototype → go/no-go —
+    rather than declaring it. Generation remains the on-ramp and the thing
+    that makes the manifest trustworthy in the first place.
 
 ---
 
@@ -428,9 +555,12 @@ the governing test it is unexpressible.
 
 Every kept field answers "does this improve deterministic repository
 scaffolding without making kickstart responsible for application behavior?"
-with yes, and now for a checkable reason: each one selects generated files or
-their content, so the envelope can be regenerated from the manifest alone.
-Every rejected field fails the same test — the runtime-semantics layer
-describes behavior no template generates, and the two dropped constants
-select nothing at all. The boundary is no longer a matter of taste; it is the
-regeneration test, applied without exception.
+with yes, for a stated reason: it selects generated files or content (the
+mechanical gate), and any behavior it generates is a seed on a closed
+allowlist, owned by the user from first commit (the mission gate). Every
+rejected field fails one gate or the other — the runtime-semantics layer
+describes behavior kickstart either does not generate or must not bless, and
+the two dropped constants select nothing at all. The boundary is one
+mechanical test plus one deliberate, narrow policy — named as such, so the
+next proposal to widen it has to argue with the mission statement rather than
+with a schema.
