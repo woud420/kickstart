@@ -1,7 +1,8 @@
 from pathlib import Path
 import logging
 from jinja2 import Environment, FileSystemLoader, DictLoader, Template
-from jinja2.exceptions import TemplateError, TemplateNotFound
+from jinja2.exceptions import TemplateError as Jinja2TemplateError, TemplateNotFound
+from src.utils.error_handling import TemplateError
 from src.utils.types import MutableRenderVars, RenderValue, RenderVars
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ class TemplateEngine:
         except TemplateNotFound as e:
             logger.error(f"Template not found: {template_path}")
             raise FileNotFoundError(f"Template not found: {template_path}") from e
-        except TemplateError as e:
+        except Jinja2TemplateError as e:
             logger.error(f"Template rendering error in {template_path}: {e}")
             raise TemplateError(f"Template rendering failed: {e}") from e
         except UnicodeDecodeError as e:
@@ -114,7 +115,7 @@ class TemplateEngine:
         try:
             template = self.env.from_string(template_content)
             return template.render(**variables)
-        except TemplateError as e:
+        except Jinja2TemplateError as e:
             logger.error(f"String template rendering error: {e}")
             raise TemplateError(f"String template rendering failed: {e}") from e
 
@@ -144,7 +145,9 @@ def write_file(path: Path, template: Path | str, **vars: RenderValue) -> None:
 
     Raises:
         OSError: If file cannot be written
-        TemplateError: If template rendering fails
+
+    Template rendering failures do not raise; they fall back to legacy
+    placeholder replacement.
     """
     render_vars = _with_legacy_variable_aliases(vars)
 
