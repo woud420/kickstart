@@ -16,8 +16,9 @@ from src.utils.types import GeneratorConfig, TemplateValue, TemplateVars
 from src.utils.error_handling import (
     ErrorCollector, batch_operation_wrapper, handle_file_operations,
     handle_template_operations, safe_operation_context,
-    ensure_directory_exists, InvalidProjectNameError, ProjectCreationError, TemplateError
+    ensure_directory_exists,
 )
+from src.utils.errors import InvalidProjectNameError, ProjectCreationError, TemplateError
 
 logger = logging.getLogger(__name__)
 

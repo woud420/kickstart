@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.monorepo import MonorepoGenerator
 from src.generator.system import SystemGenerator
-from src.utils.error_handling import ProjectCreationError
+from src.utils.errors import ProjectCreationError
 
 
 def _template_written(mock_write_template, target, template):

@@ -12,7 +12,7 @@ from src.stack.types import (
     SystemSelection,
     TemplateConfig,
 )
-from src.utils.error_handling import LanguageNotSupportedError
+from src.utils.errors import LanguageNotSupportedError
 from src.utils.types import TemplatePathConfig
 
 

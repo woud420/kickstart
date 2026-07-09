@@ -25,7 +25,7 @@ from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.generator.adoption import AdoptionTargetError, inspect_repo
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
-from src.utils.error_handling import KickstartError
+from src.utils.errors import KickstartError
 from src.utils.config import load_config
 from src.utils.installer import (
     BINARY_NAME,

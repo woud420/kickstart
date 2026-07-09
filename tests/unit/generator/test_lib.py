@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.lib import LibraryGenerator, CLIGenerator
-from src.utils.error_handling import ProjectCreationError, LanguageNotSupportedError
+from src.utils.errors import ProjectCreationError, LanguageNotSupportedError
 
 
 @pytest.fixture

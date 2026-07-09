@@ -1,7 +1,8 @@
 """Centralized error handling utilities for kickstart generators.
 
-This module provides standardized error handling patterns, custom exceptions,
-decorators, and utilities to eliminate duplication across the codebase.
+This module provides standardized error handling decorators, context
+managers, and utilities to eliminate duplication across the codebase. The
+exception types themselves live in `src.utils.errors`.
 """
 
 import logging
@@ -10,74 +11,20 @@ from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import ParamSpec, TypeVar
+from src.utils.errors import (
+    DirectoryCreationError,
+    FileOperationError,
+    KickstartError,
+    LanguageNotSupportedError,
+)
 from src.utils.logger import warn
-from src.utils.types import ErrorContext, ErrorContextValue, MutableErrorContext
+from src.utils.types import ErrorContext, ErrorContextValue
 
 logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 R = TypeVar("R")
 T = TypeVar("T")
-
-
-# Custom Exceptions
-class KickstartError(Exception):
-    """Base exception for all kickstart-related errors."""
-
-    def __init__(self, message: str, context: ErrorContext | None = None) -> None:
-        super().__init__(message)
-        self.message = message
-        self.context: MutableErrorContext = dict(context or {})
-
-
-class ProjectCreationError(KickstartError):
-    """Raised when project creation fails."""
-    pass
-
-
-class TemplateError(KickstartError):
-    """Raised when template operations fail."""
-    pass
-
-
-class DirectoryCreationError(KickstartError):
-    """Raised when directory creation fails."""
-    pass
-
-
-class FileOperationError(KickstartError):
-    """Raised when file operations fail."""
-    pass
-
-
-class LanguageNotSupportedError(KickstartError):
-    """Raised when an unsupported language is specified."""
-    pass
-
-
-class InvalidProjectNameError(KickstartError):
-    """Raised when a project name fails validation."""
-    pass
-
-
-class UnsupportedProjectTypeError(KickstartError):
-    """Raised when a project type has no creator."""
-    pass
-
-
-class UnsupportedOptionError(KickstartError):
-    """Raised when an option does not apply to the selected project type."""
-    pass
-
-
-class MissingCreateArgumentsError(KickstartError):
-    """Raised when required create arguments are absent after prompting."""
-    pass
-
-
-class ExtensionError(KickstartError):
-    """Raised when extension setup fails."""
-    pass
 
 
 # Error Context Manager
@@ -104,7 +51,7 @@ def error_context(operation: str, **context: ErrorContextValue) -> Generator[Non
         raise
     except Exception as e:
         error_msg = f"Operation '{operation}' failed: {e}"
-        logger.error(error_msg, extra=context)
+        logger.error(error_msg, extra=context, exc_info=True)
         raise KickstartError(error_msg, context) from e
 
 
@@ -131,7 +78,7 @@ def handle_file_operations(
                 return func(*args, **kwargs)
             except (OSError, FileNotFoundError, PermissionError) as e:
                 if log_errors:
-                    logger.error(f"File operation failed in {func.__name__}: {e}")
+                    logger.error(f"File operation failed in {func.__name__}: {e}", exc_info=True)
                 if reraise:
                     raise FileOperationError(f"File operation failed: {e}") from e
                 return default_return
@@ -159,7 +106,7 @@ def handle_template_operations(
                 return func(*args, **kwargs)
             except Exception as e:
                 if log_errors:
-                    logger.error(f"Template operation failed in {func.__name__}: {e}")
+                    logger.error(f"Template operation failed in {func.__name__}: {e}", exc_info=True)
                 # Always use warn for user-facing feedback
                 warn(f"Template operation failed: {e}")
                 return default_return
@@ -187,7 +134,7 @@ def handle_directory_operations(
                 return func(*args, **kwargs)
             except OSError as e:
                 if log_errors:
-                    logger.error(f"Directory operation failed in {func.__name__}: {e}")
+                    logger.error(f"Directory operation failed in {func.__name__}: {e}", exc_info=True)
                 warn(f"Directory operation failed: {e}")
                 return default_return
         return wrapper
@@ -232,7 +179,7 @@ def handle_http_operations(
                         error_msg = f"{operation_name} failed with network error: {e}"
 
                 if log_errors:
-                    logger.error(f"HTTP operation failed in {func.__name__}: {error_msg}")
+                    logger.error(f"HTTP operation failed in {func.__name__}: {error_msg}", exc_info=True)
 
                 if reraise:
                     raise KickstartError(error_msg) from e
@@ -266,7 +213,7 @@ def safe_operation(
                 return func(*args, **kwargs)
             except Exception as e:
                 if log_errors:
-                    logger.error(f"{operation_name} failed in {func.__name__}: {e}")
+                    logger.error(f"{operation_name} failed in {func.__name__}: {e}", exc_info=True)
 
                 if reraise_as:
                     raise reraise_as(f"{operation_name} failed: {e}") from e
@@ -298,7 +245,7 @@ def safe_operation_context(
         logger.debug(f"Completed safe operation: {operation_name}")
     except Exception as e:
         if log_errors:
-            logger.error(f"Safe operation '{operation_name}' failed: {e}")
+            logger.error(f"Safe operation '{operation_name}' failed: {e}", exc_info=True)
         if not suppress_exceptions:
             raise
 
@@ -423,8 +370,9 @@ def log_operation_result(
     if success:
         logger.debug(f"{operation} succeeded{target_str}")
     else:
-        error_msg = format_error_message(operation, target or "unknown", error or Exception("Unknown error"), context)
-        logger.error(error_msg)
+        resolved_error = error or Exception("Unknown error")
+        error_msg = format_error_message(operation, target or "unknown", resolved_error, context)
+        logger.error(error_msg, exc_info=resolved_error)
 
 
 def batch_operation_wrapper(

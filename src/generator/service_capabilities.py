@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from src.utils.error_handling import ExtensionError
+from src.utils.errors import ExtensionError
 
 
 @dataclass(frozen=True)

@@ -11,7 +11,7 @@ from src.cli.main import (
     _resolve_install_context,
     app,
 )
-from src.utils.error_handling import ExtensionError, KickstartError
+from src.utils.errors import ExtensionError, KickstartError
 
 
 @pytest.fixture
