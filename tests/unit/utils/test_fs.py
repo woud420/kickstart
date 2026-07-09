@@ -1,4 +1,7 @@
-from src.utils.fs import write_file
+import pytest
+
+from src.utils.error_handling import KickstartError, TemplateError
+from src.utils.fs import TemplateEngine, write_file
 
 def test_write_file_with_path_template(tmp_path):
     template_path = tmp_path / "template.txt"
@@ -35,6 +38,27 @@ def test_write_file_with_multiple_variables(tmp_path):
 def test_write_file_with_no_variables(tmp_path):
     output_path = tmp_path / "output.txt"
     write_file(output_path, "Hello World")
-    
+
     assert output_path.exists()
-    assert output_path.read_text() == "Hello World" 
+    assert output_path.read_text() == "Hello World"
+
+def test_render_string_with_invalid_syntax_raises_kickstart_template_error():
+    engine = TemplateEngine()
+
+    with pytest.raises(TemplateError) as exc_info:
+        engine.render_string("Hello {% if name %}", {"name": "World"})
+
+    assert isinstance(exc_info.value, KickstartError)
+    assert exc_info.value.__cause__ is not None
+
+def test_render_template_with_invalid_syntax_raises_kickstart_template_error(tmp_path):
+    template_path = tmp_path / "broken.txt"
+    template_path.write_text("Hello {% if name %}")
+
+    engine = TemplateEngine()
+
+    with pytest.raises(TemplateError) as exc_info:
+        engine.render_template(template_path, {"name": "World"})
+
+    assert isinstance(exc_info.value, KickstartError)
+    assert exc_info.value.__cause__ is not None
