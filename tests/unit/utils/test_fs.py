@@ -1,6 +1,6 @@
 import pytest
 
-from src.utils.error_handling import KickstartError, TemplateError
+from src.utils.errors import KickstartError, TemplateError
 from src.utils.fs import TemplateEngine, write_file
 
 def test_write_file_with_path_template(tmp_path):

@@ -2,7 +2,7 @@ from pathlib import Path
 import logging
 from jinja2 import Environment, FileSystemLoader, DictLoader, Template
 from jinja2.exceptions import TemplateError as Jinja2TemplateError, TemplateNotFound
-from src.utils.error_handling import TemplateError
+from src.utils.errors import TemplateError
 from src.utils.types import MutableRenderVars, RenderValue, RenderVars
 
 logger = logging.getLogger(__name__)
