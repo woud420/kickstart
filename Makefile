@@ -20,7 +20,7 @@ LOG_RESET :=
 endif
 log = printf "$(LOG_COLOR)==>$(LOG_RESET) %s\n" "$(1)"
 
-.PHONY: help setup install run tests test-unit test-integration coverage typecheck lint format format-check type-hygiene template-audit check package binary build release-check clean
+.PHONY: help setup install run tests test-unit test-integration coverage typecheck lint format format-check type-hygiene import-hygiene template-audit check package binary build release-check clean
 
 help:
 	@echo "Usage:"
@@ -35,6 +35,7 @@ help:
 	@echo "  make format           Format source, tests, and CI Python with Ruff"
 	@echo "  make format-check     Check Ruff formatting without changing files"
 	@echo "  make type-hygiene     Check for loose Any/object-style type annotations"
+	@echo "  make import-hygiene   Check error classes are imported from src.utils.errors"
 	@echo "  make template-audit   Check template wiring inventory"
 	@echo "  make check            Run lint, typecheck, and tests"
 	@echo "  make package          Build wheel and source distribution"
@@ -87,11 +88,15 @@ type-hygiene:
 	@$(call log,Auditing type hygiene)
 	@$(PY) scripts/type_hygiene_audit.py
 
+import-hygiene:
+	@$(call log,Auditing import provenance)
+	@$(PY) scripts/import_hygiene_audit.py
+
 template-audit:
 	@$(call log,Auditing template wiring)
 	@$(PY) scripts/template_wiring_audit.py --strict
 
-check: lint typecheck type-hygiene template-audit tests
+check: lint typecheck type-hygiene import-hygiene template-audit tests
 
 package:
 	@$(call log,Building Python package)
