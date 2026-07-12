@@ -2,8 +2,12 @@
 
 Notable changes per release. The website release section
 (`website/src/site/content.ts`) carries the same entries and is
-test-enforced to include the current `pyproject.toml` version, so the
-public changelog cannot silently fall behind a release.
+test-enforced to include the current `pyproject.toml` version — in
+`bun run check`, per-PR CI, and the release workflow's verify job — so
+the website source cannot fall behind a version bump. Deployed-site
+parity is a release-time property: the site updates when the release
+tag's Deploy Website job runs, and the weekly release-drift check fails
+if a merged version ever sits untagged.
 
 Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 
@@ -29,7 +33,7 @@ but the development and release machinery around kickstart got materially better
   (`docs/decisions/headroom-benchmark-learnings.md`).
 - Test coverage: `make coverage` measures `src/` + `ci/` (88.1% baseline); a CI
   job uploads to Codecov (fail-soft without the token). The README leads with
-  CI, Release, Scheduled Evals, Codecov, latest-release, and PyPI badges.
+  CI, Release, Scheduled Evals, Codecov, and latest-release badges.
 
 ### Changed
 

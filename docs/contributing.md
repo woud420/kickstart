@@ -25,7 +25,7 @@ The TypeScript Cloudflare Worker scaffold has a committed golden fixture at:
 - `tests/fixtures/golden/service-hello-worker-typescript-cloudflare-worker`
 - validated by `tests/integration/test_scaffold_golden.py`
 
-When intentional generator changes affect this scaffold, regenerate and review the fixture diff:
+When intentional generator changes affect this scaffold — including version bumps, which change the `semantics` URL inside the fixture's `.kickstart/scaffold.json` — regenerate and review the fixture diff:
 
 ```bash
 tmpdir=$(mktemp -d)
@@ -58,7 +58,7 @@ Release tags must be stable semantic versions like `v0.4.1`. The tag must match 
 
 Run `make release-check TAG=v0.4.1` before pushing a release tag.
 
-Use a new patch/minor/major version for behavior or installable output changes. For docs, website copy, tests, or other same-version fixes, retag the current release line after merge so CI updates the existing GitHub Release instead of creating a new version. On reused tags, GitHub Release assets are overwritten while PyPI publish skips already-existing package artifacts for that version.
+Use a new patch/minor/major version for behavior or installable output changes. For docs, website copy, tests, or other same-version fixes, retag the current release line after merge so CI updates the existing GitHub Release instead of creating a new version. On reused tags, GitHub Release assets are overwritten. Same-version retags only work while the current version is actually tagged — a merged-but-untagged version bump fails `release-check` on every retag until the pending version ships, so tag pending bumps first.
 
 See [Release Policy](release-policy.md) for the full contract.
 
