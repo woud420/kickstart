@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import worker from "../src/index";
+import { defaultProjectMeta } from "../src/site/content";
 
 const defaultEnv = {
   SERVICE_NAME: "kickstart-site",
 };
 
+// The current version comes from content.ts (itself test-pinned to
+// pyproject.toml), so a release bump updates these assertions for free
+// instead of requiring four hand-edited version strings.
+const latestVersion = defaultProjectMeta.latestVersion;
+
 describe("kickstart website worker", () => {
-  it("returns health status", async () => {
+  it("returns health status with the served version", async () => {
     const request = new Request("https://example.test/healthz") as Parameters<typeof worker.fetch>[0];
 
     const response = await worker.fetch(request, defaultEnv);
@@ -16,6 +22,19 @@ describe("kickstart website worker", () => {
     expect(await response.json()).toEqual({
       status: "ok",
       service: "kickstart-site",
+      version: latestVersion,
+    });
+  });
+
+  it("reports the deployed version from Worker vars in /healthz", async () => {
+    const request = new Request("https://example.test/healthz") as Parameters<typeof worker.fetch>[0];
+
+    const response = await worker.fetch(request, { ...defaultEnv, PROJECT_VERSION: "v9.9.9" });
+
+    expect(await response.json()).toEqual({
+      status: "ok",
+      service: "kickstart-site",
+      version: "9.9.9",
     });
   });
 
@@ -52,7 +71,7 @@ describe("kickstart website worker", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/plain");
-    expect(body).toContain("Contact: mailto:jm@polarcoordinates.org");
+    expect(body).toContain("Contact: mailto:jim@polarcoordinates.org");
     expect(body).toContain("Canonical: https://kickstart-cli.org/.well-known/security.txt");
   });
 
@@ -66,9 +85,9 @@ describe("kickstart website worker", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     const html = await response.text();
     expect(html).toContain('<h1 id="hero-title">kickstart</h1>');
-    expect(html).toContain("/assets/site.css?v=0.4.3");
-    expect(html).toContain("/assets/site.js?v=0.4.3");
-    expect(html).toContain("v0.4.3");
+    expect(html).toContain(`/assets/site.css?v=${latestVersion}`);
+    expect(html).toContain(`/assets/site.js?v=${latestVersion}`);
+    expect(html).toContain(`v${latestVersion}`);
     expect(html).toContain("Sandbox bootstrap, tiered eval runner, coverage and badges");
     expect(html).toContain("Scaffold contract convergence");
   });
@@ -131,7 +150,7 @@ describe("kickstart website worker", () => {
   });
 
   it("serves script assets", async () => {
-    const request = new Request("https://example.test/assets/site.js?v=0.4.3") as Parameters<typeof worker.fetch>[0];
+    const request = new Request(`https://example.test/assets/site.js?v=${latestVersion}`) as Parameters<typeof worker.fetch>[0];
 
     const response = await worker.fetch(request, defaultEnv);
     const script = await response.text();

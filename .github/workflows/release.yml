@@ -282,3 +282,22 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WEBSITE_API_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: bun run deploy:release
+
+      # Deployed-vs-source parity is otherwise unobservable: the site can
+      # serve a stale version for weeks with every check green. /healthz
+      # reports the served version; assert it matches the tag we released.
+      - name: Verify the deployed website serves this release
+        if: ${{ steps.website-deploy.outputs.ready == 'true' }}
+        run: |
+          EXPECTED="${GITHUB_REF_NAME#v}"
+          for attempt in 1 2 3 4 5; do
+            DEPLOYED=$(curl -fsSL https://kickstart-cli.org/healthz | python3 -c "import json,sys; print(json.load(sys.stdin).get('version',''))" || true)
+            if [ "$DEPLOYED" = "$EXPECTED" ]; then
+              echo "kickstart-cli.org serves v${DEPLOYED}."
+              exit 0
+            fi
+            echo "Attempt ${attempt}: deployed version '${DEPLOYED}' != '${EXPECTED}'; retrying in 15s..."
+            sleep 15
+          done
+          echo "::error::kickstart-cli.org still serves '${DEPLOYED}' instead of '${EXPECTED}' after deploy."
+          exit 1

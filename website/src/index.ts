@@ -13,7 +13,7 @@ interface Env {
 
 const PUBLIC_HOSTNAME = "kickstart-cli.org";
 const HSTS_HEADER_VALUE = "max-age=15552000";
-const SECURITY_TXT = `Contact: mailto:jm@polarcoordinates.org
+const SECURITY_TXT = `Contact: mailto:jim@polarcoordinates.org
 Expires: 2027-06-26T00:00:00Z
 Preferred-Languages: en
 Canonical: https://${PUBLIC_HOSTNAME}/.well-known/security.txt
@@ -111,7 +111,10 @@ export default {
     }
 
     if (url.pathname === "/healthz") {
-      return withSecurityHeaders(jsonResponse({ status: "ok", service }), url);
+      // Version in the health payload makes deployed-vs-source drift
+      // observable: the release pipeline asserts this equals the tag.
+      const version = stripVersionPrefix(env.PROJECT_VERSION ?? defaultProjectMeta.latestVersion);
+      return withSecurityHeaders(jsonResponse({ status: "ok", service, version }), url);
     }
 
     if (url.pathname === "/assets/site.css") {
