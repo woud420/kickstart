@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import signal
 import subprocess
+import tempfile
 import time
 from typing import Literal, cast
 
@@ -349,13 +350,14 @@ def write_report(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run make targets across generated scaffolds.")
-    parser.add_argument("--output-root", type=Path, default=Path("/private/tmp/kickstart-scaffold-matrix"))
-    parser.add_argument("--report", type=Path, default=Path("reports/generated-make-test-eval.md"))
+    scratch = Path(tempfile.gettempdir())
+    parser.add_argument("--output-root", type=Path, default=scratch / "kickstart-scaffold-matrix")
+    parser.add_argument("--report", type=Path, default=scratch / "kickstart-generated-make-test-eval.md")
     parser.add_argument("--timeout-seconds", type=int, default=35)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--target", default="test")
     parser.add_argument("--dependency-mode", choices=("network", "cached", "offline"), default="cached")
-    parser.add_argument("--cache-root", type=Path, default=Path("/private/tmp/kickstart-eval-cache"))
+    parser.add_argument("--cache-root", type=Path, default=scratch / "kickstart-eval-cache")
     parser.add_argument("--prewarm", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--prewarm-workers", type=int, default=2)
     args = parser.parse_args()

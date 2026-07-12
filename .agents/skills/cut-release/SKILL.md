@@ -33,6 +33,7 @@ current release line, or prepare a release PR. The full policy is
    make check
    cd website && bun run check && cd ..
    make release-check TAG=vX.Y.Z
+   PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier full
    ```
 
 6. Merge to `master`. The `Auto Tag Release` workflow tags the merge commit

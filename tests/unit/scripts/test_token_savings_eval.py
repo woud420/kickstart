@@ -144,3 +144,13 @@ def test_baselines_payload_round_trips_through_compare() -> None:
 def test_load_baselines_requires_existing_file(tmp_path: Path) -> None:
     with pytest.raises(BaselineError, match="missing; run with --update-baselines"):
         load_baselines(tmp_path / "absent.json")
+
+
+def test_every_default_case_has_a_committed_baseline() -> None:
+    """New weight-eval cases cannot land unguarded: the committed baseline
+    file must cover exactly the DEFAULT_CASES slugs (audit finding: the
+    python CLI flagship was measured but never baseline-guarded)."""
+    from scripts.token_savings_eval import BASELINES_PATH
+
+    baselines = json.loads(BASELINES_PATH.read_text(encoding="utf-8"))
+    assert sorted(baselines) == sorted(case.slug for case in DEFAULT_CASES)

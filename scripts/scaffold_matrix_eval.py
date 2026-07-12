@@ -15,6 +15,7 @@ import random
 import shutil
 import subprocess
 import sys
+import tempfile
 from typing import Literal, TypeGuard, cast
 
 
@@ -831,8 +832,9 @@ def main() -> int:
     parser.add_argument("--max-components-per-project", type=int, default=9)
     parser.add_argument("--max-system-depth", type=int, default=1)
     parser.add_argument("--exclude-known-gaps", action="store_true")
-    parser.add_argument("--output-root", type=Path, default=Path("/private/tmp/kickstart-scaffold-matrix"))
-    parser.add_argument("--report", type=Path, default=Path("reports/scaffold-eval-120.md"))
+    scratch = Path(tempfile.gettempdir())
+    parser.add_argument("--output-root", type=Path, default=scratch / "kickstart-scaffold-matrix")
+    parser.add_argument("--report", type=Path, default=scratch / "kickstart-scaffold-eval-120.md")
     args = parser.parse_args()
 
     if args.max_components_per_project < 1:
