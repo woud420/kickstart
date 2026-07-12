@@ -11,8 +11,10 @@ name: Auto Tag Release
 #     not trigger other workflows (GitHub's anti-recursion rule), so the
 #     release pipeline would silently never run. The push therefore
 #     requires the RELEASE_TAG_TOKEN secret (fine-grained PAT with
-#     contents: read/write); without it this workflow skips loudly
-#     instead of creating a tag that goes nowhere.
+#     contents: read/write); without it this workflow FAILS, so a merged
+#     version bump can never sit untagged unnoticed (v0.4.3 was stranded
+#     for two weeks by a green "skip"). The failure email to the merge
+#     author is the alarm; it also catches a PAT that silently expired.
 
 on:
   push:
@@ -21,8 +23,11 @@ on:
     paths:
       - pyproject.toml
       - src/__init__.py
-  # Manual trigger for versions whose bump merged before this workflow
-  # existed (e.g. v0.4.2); the same gates apply.
+  # Manual trigger for versions whose bump merged while the workflow or
+  # its secret was missing; the same gates apply. Careful: a dispatch tags
+  # the checked-out HEAD of the selected ref. When master has advanced
+  # past the version bump, do NOT dispatch — tag the bump commit manually
+  # per docs/release-policy.md instead.
   workflow_dispatch:
 
 permissions:
@@ -61,21 +66,22 @@ jobs:
         if: steps.version.outputs.exists == 'false'
         run: make release-check TAG="${{ steps.version.outputs.tag }}"
 
+      # This step only executes when a new tag is genuinely needed (the
+      # paths trigger plus the exists guard above), so failing here has
+      # zero false positives — and unlike a notice on a green run, a
+      # failed run notifies the merge author.
       - name: Check tagging credentials
-        id: credentials
         if: steps.version.outputs.exists == 'false'
         env:
           RELEASE_TAG_TOKEN: ${{ secrets.RELEASE_TAG_TOKEN }}
         run: |
-          if [ -n "$RELEASE_TAG_TOKEN" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::RELEASE_TAG_TOKEN is not configured. Skipping auto-tag for ${{ steps.version.outputs.tag }} — tags pushed with the default GITHUB_TOKEN cannot trigger the release workflow. Tag manually per docs/release-policy.md."
+          if [ -z "$RELEASE_TAG_TOKEN" ]; then
+            echo "::error::RELEASE_TAG_TOKEN is not configured — ${{ steps.version.outputs.tag }} is merged but cannot be auto-tagged, and tags pushed with the default GITHUB_TOKEN cannot trigger the release workflow. Tag manually per docs/release-policy.md, then configure the secret so the next bump tags itself."
+            exit 1
           fi
 
       - name: Create and push release tag
-        if: steps.version.outputs.exists == 'false' && steps.credentials.outputs.ready == 'true'
+        if: steps.version.outputs.exists == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

@@ -53,3 +53,43 @@ jobs:
           name: bootstrap-eval-report
           path: /tmp/bootstrap-eval.md
           retention-days: 30
+
+  # A merged version bump whose tag never got pushed is a stranded release:
+  # master, the changelog, and generated manifests claim a version that users
+  # cannot install and whose semantics URL 404s. Auto Tag Release now fails
+  # loudly at bump time, but this weekly check also catches the strand modes
+  # that happen later: a tag pushed while the Release workflow failed, or a
+  # revoked/expired credential discovered only on the next release.
+  release-drift:
+    name: Release Drift Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify the current version is tagged and released
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if ! git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::pyproject.toml is ${VERSION} but tag v${VERSION} does not exist — the release is stranded. Tag the version-bump commit per docs/release-policy.md."
+            exit 1
+          fi
+          if ! gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION}" --silent; then
+            echo "::error::Tag v${VERSION} exists but has no GitHub Release — the release workflow likely failed. Re-run it for the tag."
+            exit 1
+          fi
+
+      # Every generated .kickstart/scaffold.json pins its semantics URL to
+      # the generating version's tag; a 404 here means every manifest cut
+      # from this source tree carries a dead contract link.
+      - name: Verify the manifest semantics URL resolves
+        run: |
+          VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          URL="https://github.com/${GITHUB_REPOSITORY}/blob/v${VERSION}/docs/scaffold-contract.md"
+          if ! curl -fsSLo /dev/null "$URL"; then
+            echo "::error::Manifest semantics URL does not resolve: ${URL}"
+            exit 1
+          fi

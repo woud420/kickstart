@@ -47,6 +47,21 @@ jobs:
       - name: Run checks
         run: make check
 
+      # The website version-sync test (content.ts <-> pyproject.toml) must
+      # gate the release BEFORE anything publishes; the website job below
+      # runs after the GitHub Release exists, which is too late to stop a
+      # desynced changelog from shipping.
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.5"
+
+      - name: Check website (version sync gate)
+        working-directory: website
+        run: |
+          bun install --frozen-lockfile
+          bun run check
+
   package:
     name: Build Python Package
     runs-on: ubuntu-latest
@@ -239,9 +254,15 @@ jobs:
         run: |
           if [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$CLOUDFLARE_API_TOKEN" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_REPOSITORY" = "woud420/kickstart" ]; then
+            # On the canonical repo a missing credential means the public
+            # site silently stops tracking releases — fail instead of
+            # green-skipping (the pattern that stranded v0.4.3 untagged).
+            echo "::error::Cloudflare website credentials are not configured; the release website deploy cannot run. Configure the CLOUDFLARE_ACCOUNT_ID variable and CLOUDFLARE_WEBSITE_API_TOKEN secret."
+            exit 1
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Cloudflare website credentials are not configured; skipping website deploy."
+            echo "Cloudflare website credentials are not configured; skipping website deploy (fork)."
           fi
 
       - name: Deploy website with Alchemy
