@@ -71,8 +71,11 @@ the pending version first.
 - Stable semver tags only (`vX.Y.Z`). Release candidates and build suffixes
   are rejected by CI.
 - Only tag commits already merged to `master`; the workflow enforces this.
-- PyPI artifacts are immutable. If a bad version shipped, fix forward with a
-  new patch version instead of retagging it.
+- There is no PyPI publish: the name `kickstart` on PyPI belongs to an
+  unrelated, abandoned project. The wheel/sdist attach to the GitHub
+  Release. Never document `pip install kickstart`.
+- If a bad version shipped, fix forward with a new patch version instead
+  of retagging it.
 - Do not start the tag step until `make release-check` passes locally.
 
 ## Report Back

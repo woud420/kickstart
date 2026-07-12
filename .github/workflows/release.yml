@@ -62,12 +62,15 @@ jobs:
           bun install --frozen-lockfile
           bun run check
 
+  # No PyPI publish on purpose: the PyPI name "kickstart" belongs to an
+  # unrelated, abandoned 2011 project, so a publish step could only fail
+  # or mislead. The wheel/sdist attach to the GitHub Release instead. If
+  # the project ever gets a PyPI identity (rename or PEP 541 transfer),
+  # reintroduce publishing as a fail-loud step, not a skip-on-missing-token.
   package:
     name: Build Python Package
     runs-on: ubuntu-latest
     needs: verify
-    permissions:
-      id-token: write
 
     steps:
       - name: Checkout code
@@ -81,17 +84,6 @@ jobs:
 
       - name: Build package
         run: make package
-
-      - name: Publish to PyPI
-        if: ${{ !contains(github.ref_name, 'rc') && !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'alpha') }}
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          if [ -n "$POETRY_PYPI_TOKEN_PYPI" ]; then
-            poetry publish --no-interaction --skip-existing
-          else
-            echo "PYPI_API_TOKEN not set, skipping PyPI publish"
-          fi
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -205,15 +197,18 @@ jobs:
 
             The script downloads the matching binary archive, verifies its SHA-256, installs the binary payload under a stable directory, and exposes `kickstart` on `PATH`.
 
-            ### From PyPI
+            ### From source or wheel (platforms without a binary archive)
+
+            Do **not** `pip install kickstart` — that PyPI name belongs to an unrelated, abandoned 2011 project. Install from source, or from the wheel attached to this release:
 
             ```bash
-            pip install kickstart
+            pipx install git+https://github.com/${{ github.repository }}
+            pip install ./kickstart-*-py3-none-any.whl
             ```
 
             ### Manual binary install
 
-            Binary archives are attached for `linux-x64`, `linux-arm64`, and `macos-arm64` (Python 3.14). Other platforms install from PyPI. Pick the asset for your platform, extract it, and run `kickstart install` to place the binary payload in a user-writable directory and configure `PATH`:
+            Binary archives are attached for `linux-x64`, `linux-arm64`, and `macos-arm64` (Python 3.14). Pick the asset for your platform, extract it, and run `kickstart install` to place the binary payload in a user-writable directory and configure `PATH`:
 
             ```bash
             curl -L -o kickstart-linux-x64-py3.14.tar.gz "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/kickstart-linux-x64-py3.14.tar.gz"
