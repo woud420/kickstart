@@ -127,6 +127,22 @@ DEFAULT_CASES: tuple[ScaffoldCase, ...] = (
             "none",
         ),
     ),
+    ScaffoldCase(
+        slug="python-cli",
+        args=("create", "cli", "ops-cli", "--lang", "python"),
+    ),
+    ScaffoldCase(
+        slug="go-service",
+        args=("create", "service", "api-go", "--lang", "go"),
+    ),
+    ScaffoldCase(
+        slug="cpp-service",
+        args=("create", "service", "api-cpp", "--lang", "cpp"),
+    ),
+    ScaffoldCase(
+        slug="frontend",
+        args=("create", "frontend", "web-app"),
+    ),
 )
 
 

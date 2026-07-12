@@ -3,8 +3,13 @@ name: Scheduled Evals
 # Weekly canary against live toolchains. Generated projects resolve their
 # dependencies fresh, so template rot (new ruff/mypy/clippy releases, crate
 # MSRV bumps, registry changes) surfaces here within a week even when no PR
-# touches the templates. PRs gate the fast bootstrap cases; this run covers
-# the full matrix.
+# touches the templates. PRs gate eval tier `pr` (four fast bootstrap
+# cases + weight baselines); this run covers tier `full`: the whole
+# bootstrap matrix (python cli/lib/service/service-minimal, typescript
+# worker, rust cli, cpp service), weight baselines, determinism, and the
+# website-examples drift check. Go services and frontend scaffolds are not
+# yet bootstrap-validated here — extending the matrix is tracked on the
+# board — so rot in those templates does NOT surface within a week.
 
 on:
   schedule:
@@ -35,23 +40,18 @@ jobs:
         with:
           bun-version: "1.3.5"
 
-      - name: Full bootstrap eval (all cases, live dependencies)
-        run: |
-          PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
-            --output-root /tmp/bootstrap-eval \
-            --cache-root /tmp/bootstrap-eval-cache \
-            --report /tmp/bootstrap-eval.md
+      # Tier `full` = full bootstrap matrix + weight baselines +
+      # determinism tests + website-examples drift check, from the same
+      # entrypoint CI and local runs use.
+      - name: Eval suite (tier full)
+        run: PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier full
 
-      - name: Website examples drift check
-        run: |
-          PYTHONPATH=$(pwd) poetry run python -m pytest tests/integration/test_website_examples.py -q
-
-      - name: Upload eval report
+      - name: Upload eval reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bootstrap-eval-report
-          path: /tmp/bootstrap-eval.md
+          name: eval-reports-full
+          path: /tmp/kickstart-run-evals-*.md
           retention-days: 30
 
   # A merged version bump whose tag never got pushed is a stranded release:

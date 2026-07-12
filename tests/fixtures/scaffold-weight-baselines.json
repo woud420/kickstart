@@ -3,6 +3,22 @@
     "content_bytes": 23323,
     "files": 41
   },
+  "cpp-service": {
+    "content_bytes": 6635,
+    "files": 16
+  },
+  "frontend": {
+    "content_bytes": 8704,
+    "files": 21
+  },
+  "go-service": {
+    "content_bytes": 6368,
+    "files": 21
+  },
+  "python-cli": {
+    "content_bytes": 11057,
+    "files": 25
+  },
   "python-lib": {
     "content_bytes": 6897,
     "files": 13
