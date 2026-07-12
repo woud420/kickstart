@@ -19,15 +19,12 @@ current release line, or prepare a release PR. The full policy is
 2. Add the release entry to `CHANGELOG.md` and to `releaseNotes` in
    `website/src/site/content.ts`, and bump `defaultProjectMeta.latestVersion`
    there. Website tests fail when the current version has no release note.
-3. Update the dev-vars fallback in `website/wrangler.toml`
-   (`PROJECT_VERSION`, `RELEASE_URL`) and the `defaultConfig` fallback in
-   `website/scripts/render-release-config.ts`.
-4. Regenerate the committed golden fixture (procedure in
+3. Regenerate the committed golden fixture (procedure in
    `docs/contributing.md`). The version bump changes the `semantics` URL
    inside the fixture's `.kickstart/scaffold.json`, so `make check` fails
    with a golden-fixture diff until the fixture is regenerated — this is
    expected, not a template bug.
-5. Verify everything locally:
+4. Verify everything locally:
 
    ```bash
    make check
@@ -36,7 +33,7 @@ current release line, or prepare a release PR. The full policy is
    PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier full
    ```
 
-6. Merge to `master`. The `Auto Tag Release` workflow tags the merge commit
+5. Merge to `master`. The `Auto Tag Release` workflow tags the merge commit
    automatically when the `RELEASE_TAG_TOKEN` secret is configured (it
    re-runs `make release-check` first and never moves an existing tag).
    Without the secret the workflow fails — tag and push manually, pointing
@@ -48,11 +45,12 @@ current release line, or prepare a release PR. The full policy is
    git push origin vX.Y.Z
    ```
 
-7. Watch the release workflow: verify (incl. the website version-sync
+6. Watch the release workflow: verify (incl. the website version-sync
    gate) → package → binary (linux-x64, linux-arm64, macos-arm64 at
-   py3.14) → GitHub Release → website deploy. All jobs must be green,
-   including Deploy Website.
-8. Confirm the release is not stranded before reporting done:
+   py3.14) → GitHub Release → website deploy (which asserts the deployed
+   /healthz version equals the tag). All jobs must be green, including
+   Deploy Website.
+7. Confirm the release is not stranded before reporting done:
    `git ls-remote --tags origin` lists `vX.Y.Z`, the GitHub Release for
    the tag exists, and https://kickstart-cli.org shows the new version.
    A merged bump with no tag blocks all same-version retags until fixed.
