@@ -2,9 +2,10 @@
 
 from dataclasses import dataclass, field
 import json
-from typing import Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict, cast
 
 from src import __version__
+from src.utils.errors import ManifestShapeError
 
 
 ProjectKind = Literal["service", "worker", "frontend", "library", "cli", "system"]
@@ -16,6 +17,43 @@ RepoLayout = Literal["single-project", "monorepo"]
 # generating version's tag so the referenced semantics cannot drift under a
 # manifest that has already been written.
 SEMANTICS_REFERENCE = f"https://github.com/woud420/kickstart/blob/v{__version__}/docs/scaffold-contract.md"
+
+_PROJECT_KINDS: frozenset[str] = frozenset({"service", "worker", "frontend", "library", "cli", "system"})
+_REPO_LAYOUTS: frozenset[str] = frozenset({"single-project", "monorepo"})
+
+# Parsed-JSON shape for on-disk manifests: precise about what json.loads can
+# actually produce, unlike a loose catch-all annotation.
+JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
+ParsedManifest = dict[str, JsonValue]
+
+
+def _require_mapping(value: "JsonValue | None", description: str) -> ParsedManifest:
+    """Return the value as a JSON object or fail with its manifest path."""
+    if not isinstance(value, dict):
+        raise ManifestShapeError(f"manifest {description} is not an object")
+    return value
+
+
+def _optional_string(mapping: ParsedManifest, key: str) -> str | None:
+    """Return a string field or None; a present non-string value is a shape error."""
+    value = mapping.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ManifestShapeError(f"manifest field '{key}' is not a string")
+    return value
+
+
+def _string_items(value: "JsonValue | None", description: str) -> tuple[str, ...]:
+    """Return a list-of-strings field as a tuple, failing on other shapes."""
+    if not isinstance(value, list):
+        raise ManifestShapeError(f"manifest {description} is not a list of strings")
+    items: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise ManifestShapeError(f"manifest {description} is not a list of strings")
+        items.append(item)
+    return tuple(items)
 
 
 class ScaffoldProjectManifest(TypedDict):
@@ -320,6 +358,83 @@ class ScaffoldContract:
             install="make install",
             test="make test",
             check="make check",
+        )
+
+    @classmethod
+    def from_manifest(cls, manifest: ParsedManifest) -> "ScaffoldContract":
+        """Rebuild the contract fields tooling consumes from a parsed manifest.
+
+        Inverse of ``manifest()`` for schema 3.x, written defensively because
+        the input is an on-disk file: required keys and shapes raise
+        ``ManifestShapeError`` instead of guessing. Generation-time inputs the
+        manifest never recorded (docs projection profile, architecture title
+        and directories) cannot be recovered here; consumers own that gap.
+        """
+        project = _require_mapping(manifest.get("project"), "project")
+        execution = _require_mapping(manifest.get("execution"), "execution")
+        kind = project.get("kind")
+        if not isinstance(kind, str) or kind not in _PROJECT_KINDS:
+            raise ManifestShapeError(f"unsupported project.kind: {kind!r}")
+        repo_layout = project.get("repo_layout", "single-project")
+        if not isinstance(repo_layout, str) or repo_layout not in _REPO_LAYOUTS:
+            raise ManifestShapeError(f"unsupported project.repo_layout: {repo_layout!r}")
+
+        artifacts = _require_mapping(manifest.get("artifacts", {}), "artifacts")
+        lifecycle = _require_mapping(manifest.get("lifecycle", {}), "lifecycle")
+        capabilities = _require_mapping(manifest.get("capabilities", {}), "capabilities")
+        extensions = _require_mapping(
+            capabilities.get("service_extensions", {}), "capabilities.service_extensions"
+        )
+        provider = _require_mapping(manifest.get("provider", {}), "provider")
+
+        workspace_tooling = "none"
+        composition = manifest.get("composition")
+        if isinstance(composition, dict):
+            tooling = composition.get("workspace_tooling")
+            if isinstance(tooling, str):
+                workspace_tooling = tooling
+
+        knowledge_adapter = manifest.get("knowledge_adapter", "none")
+        schema_version = manifest.get("schema_version", "3.0")
+
+        return cls(
+            project_kind=cast(ProjectKind, kind),
+            execution_models=_string_items(execution.get("models", []), "execution.models"),
+            runtime_platforms=_string_items(execution.get("platforms", []), "execution.platforms"),
+            artifacts=ScaffoldArtifacts(
+                image=_optional_string(artifacts, "image"),
+                kubernetes=_optional_string(artifacts, "kubernetes"),
+                local=_optional_string(artifacts, "local"),
+                package=_optional_string(artifacts, "package"),
+                static_site=_optional_string(artifacts, "static_site"),
+                worker=_optional_string(artifacts, "worker"),
+                iac=_optional_string(artifacts, "iac"),
+                ci=_optional_string(artifacts, "ci"),
+            ),
+            lifecycle=ScaffoldLifecycle(
+                install=_optional_string(lifecycle, "install"),
+                test=_optional_string(lifecycle, "test"),
+                check=_optional_string(lifecycle, "check"),
+                build=_optional_string(lifecycle, "build"),
+                dev=_optional_string(lifecycle, "dev"),
+                deploy=_optional_string(lifecycle, "deploy"),
+            ),
+            service_extensions=ScaffoldServiceExtensions(
+                database=_optional_string(extensions, "database"),
+                cache=_optional_string(extensions, "cache"),
+                auth=_optional_string(extensions, "auth"),
+            ),
+            provider_targets=_string_items(provider.get("targets", []), "provider.targets"),
+            knowledge_adapter=knowledge_adapter if isinstance(knowledge_adapter, str) else "none",
+            repo_layout=cast(RepoLayout, repo_layout),
+            workspace_tooling=workspace_tooling,
+            architecture=_optional_string(project, "architecture"),
+            cli_framework=_optional_string(project, "cli_framework"),
+            command_root=_optional_string(project, "command_root"),
+            entrypoint=_optional_string(project, "entrypoint"),
+            operation_root=_optional_string(project, "operation_root"),
+            src_root_files=_string_items(project.get("src_root_files", []), "project.src_root_files"),
+            schema_version=schema_version if isinstance(schema_version, str) else "3.0",
         )
 
     @property

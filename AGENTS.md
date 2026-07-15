@@ -9,6 +9,8 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
 - Managed docs projections: `src/generator/projections.py`
+- Ownership fences: `src/generator/markers.py`
+- Docs drift plan: `src/generator/docs_plan.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`
 - Scaffold metadata: `src/generator/scaffold_contract.py`

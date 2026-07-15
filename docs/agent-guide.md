@@ -45,6 +45,11 @@ gaps for repos kickstart did not create (read-only; exit 0 complete / 1
 gaps / 2 usage error). Generated projects verify themselves with
 `make check`; the success output names it.
 
+Docs drift: `kickstart plan REPO --json` re-renders the managed docs
+projections from `.kickstart/scaffold.json` and reports per-artifact status
+(read-only; exit 0 in sync / 1 findings / 2 usage error). Scope contract:
+`docs/contracts/plan-drift-scope.md`.
+
 ## Source Of Truth
 
 - Public API: `src/api.py`

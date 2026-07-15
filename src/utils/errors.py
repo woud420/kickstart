@@ -64,6 +64,11 @@ class MarkerError(KickstartError):
     pass
 
 
+class ManifestShapeError(KickstartError):
+    """Raised when a scaffold manifest cannot be interpreted as a contract."""
+    pass
+
+
 class UnsupportedOptionError(KickstartError):
     """Raised when an option does not apply to the selected project type."""
     pass

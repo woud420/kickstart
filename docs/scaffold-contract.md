@@ -10,7 +10,7 @@ The standard interface a generated (or adopted) repository exposes is the vendor
 
 ## Managed Regions
 
-Generated managed docs (`AGENTS.md` and the `docs/` READMEs) are wrapped in ownership fences — `<!-- kickstart:begin <artifact-id> -->` / `<!-- kickstart:end <artifact-id> -->` comment markers, invisible in rendered markdown. kickstart only ever writes inside its own fences: the fenced block is whole-block replaced when the standard changes, so do not edit inside it; everything outside a fence is user-owned and never read or rewritten. Rationale and the MDX caveat: [Docs Ownership Fences](decisions/docs-ownership-fences.md).
+Generated managed docs (`AGENTS.md` and the `docs/` READMEs) are wrapped in ownership fences — `<!-- kickstart:begin <artifact-id> -->` / `<!-- kickstart:end <artifact-id> -->` comment markers, invisible in rendered markdown. kickstart only ever writes inside its own fences: the fenced block is whole-block replaced when the standard changes, so do not edit inside it; everything outside a fence is user-owned and never read or rewritten. `kickstart plan` verifies the fenced regions against the current standard, read-only ([scope contract](contracts/plan-drift-scope.md)). Rationale and the MDX caveat: [Docs Ownership Fences](decisions/docs-ownership-fences.md).
 
 ## Always Generated
 
