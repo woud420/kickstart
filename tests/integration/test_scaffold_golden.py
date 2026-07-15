@@ -9,6 +9,8 @@ from tests.integration.golden_assertions import assert_matches_golden_scaffold
 REQUIRED_KEY_FILES = (
     ".kickstart/scaffold.json",
     "AGENTS.md",
+    "CLAUDE.md",
+    ".agents/skills/README.md",
     "Makefile",
     "README.md",
     "docs/architecture/README.md",

@@ -12,7 +12,7 @@ from src.generator.projections import (
     operations_content,
     scaffold_docs_projections,
 )
-from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract, ScaffoldLifecycle
 
 
 def _service_contract() -> ScaffoldContract:
@@ -52,12 +52,16 @@ def test_registry_ids_and_targets_are_stable() -> None:
 
     assert [projection.id for projection in projections] == [
         "agent-map",
+        "claude-pointer",
+        "agents-skills-readme",
         "contracts-readme",
         "operations-readme",
         "decisions-readme",
     ]
     assert [projection.target for projection in projections] == [
         "AGENTS.md",
+        "CLAUDE.md",
+        ".agents/skills/README.md",
         "docs/contracts/README.md",
         "docs/operations/README.md",
         "docs/decisions/README.md",
@@ -77,7 +81,7 @@ def test_renders_are_deterministic_across_kinds_and_profiles() -> None:
 
 
 def test_default_agent_map_is_orientation_first() -> None:
-    content = agent_map_content()
+    content = agent_map_content(_service_contract())
 
     assert "docs/architecture/" in content
     assert "orientation surface" in content
@@ -89,7 +93,7 @@ def test_worker_profile_variants_are_contract_gated() -> None:
     service = _service_contract()
     profile = PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER
 
-    assert "Do not hand-edit generated contract files" in agent_map_content(profile)
+    assert "Do not hand-edit generated contract files" in agent_map_content(worker, profile)
     assert "Scaffold identity" in contracts_content(worker, profile)
     assert "Lifecycle flow" in operations_content(worker, profile)
     # Contracts/operations variants require a worker-kind contract; other
@@ -129,7 +133,7 @@ def test_projection_contents_are_single_owned_regions() -> None:
         # The generated file is exactly one owned region: fence + body, nothing outside.
         assert projection.content == fence(projection.id, projection.body)
         assert region.inner == projection.body
-    assert projections[0].body == agent_map_content()
+    assert projections[0].body == agent_map_content(_service_contract())
 
 
 def test_decisions_content_asks_for_durable_entries() -> None:
@@ -137,3 +141,27 @@ def test_decisions_content_asks_for_durable_entries() -> None:
 
     assert content.startswith("# Decisions")
     assert "short, dated" in content
+
+
+def test_worker_agent_map_derives_commands_from_contract_lifecycle() -> None:
+    contract = ScaffoldContract(
+        project_kind="worker",
+        execution_models=("cloudflare-worker",),
+        runtime_platforms=("cloudflare-workers",),
+        artifacts=ScaffoldArtifacts(worker="wrangler"),
+        provider_targets=("cloudflare",),
+        lifecycle=ScaffoldLifecycle(
+            install="npm ci",
+            test="npm test",
+            check="npm run verify",
+            dev="npm run dev",
+            deploy="npm run deploy",
+        ),
+    )
+
+    content = agent_map_content(contract, PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER)
+
+    assert "`npm run verify`" in content
+    assert "`npm ci`" in content
+    assert "before `npm run deploy`" in content
+    assert "make check" not in content

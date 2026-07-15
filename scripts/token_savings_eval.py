@@ -36,8 +36,8 @@ BYTES_PER_TOKEN = 4
 
 # Paths that are kickstart's scaffold bookkeeping rather than app code an
 # agent would have authored anyway when asked for a working project.
-METADATA_PREFIXES = (".kickstart", ".github", "docs")
-METADATA_NAMES = frozenset({"AGENTS.md"})
+METADATA_PREFIXES = (".kickstart", ".github", ".agents", ".claude", "docs")
+METADATA_NAMES = frozenset({"AGENTS.md", "CLAUDE.md"})
 
 
 def is_scaffold_metadata(relative: Path) -> bool:

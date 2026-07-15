@@ -29,6 +29,8 @@ Outputs:
 - rendered templates
 - direct content files
 - `AGENTS.md`
+- `CLAUDE.md` (thin pointer to `AGENTS.md`)
+- `.agents/skills/README.md` and the `.claude/skills` symlink
 - `docs/architecture/`
 - `docs/contracts/`
 - `docs/operations/`
@@ -40,10 +42,12 @@ Generated docs and `AGENTS.md` are the orientation interface for humans and agen
 
 Do not infer unsupported options. Use existing registries and typed plans.
 
-Adoption: `kickstart adopt REPO --check --json` reports standard-artifact
-gaps for repos kickstart did not create (read-only; exit 0 complete / 1
-gaps / 2 usage error). Generated projects verify themselves with
-`make check`; the success output names it.
+Adoption: `kickstart adopt REPO --check --json` reports two levels
+(read-only; exit 0 claimed level satisfied / 1 gaps / 2 usage error):
+Level 1 conformant is the vendor-neutral interface without the manifest;
+Level 2 managed adds a valid manifest driving fence-managed docs. Tiers
+contract: `docs/contracts/adoption-tiers.md`. Generated projects verify
+themselves with `make check`; the success output names it.
 
 Docs drift: `kickstart plan REPO --json` re-renders the managed docs
 projections from `.kickstart/scaffold.json` and reports per-artifact status

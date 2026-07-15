@@ -66,7 +66,9 @@ class DocsProjection:
 def scaffold_docs_projections(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> tuple[DocsProjection, ...]:
     """Render the managed docs set emitted with every scaffold contract."""
     return (
-        _fenced_projection("agent-map", "AGENTS.md", agent_map_content(profile)),
+        _fenced_projection("agent-map", "AGENTS.md", agent_map_content(contract, profile)),
+        _fenced_projection("claude-pointer", "CLAUDE.md", claude_pointer_content()),
+        _fenced_projection("agents-skills-readme", ".agents/skills/README.md", agents_skills_readme_content()),
         _fenced_projection("contracts-readme", "docs/contracts/README.md", contracts_content(contract, profile)),
         _fenced_projection("operations-readme", "docs/operations/README.md", operations_content(contract, profile)),
         _fenced_projection("decisions-readme", "docs/decisions/README.md", decisions_content()),
@@ -99,20 +101,86 @@ def _fenced_projection(artifact_id: str, target: str, body: str) -> DocsProjecti
     return DocsProjection(id=artifact_id, target=target, content=fence(artifact_id, body), body=body)
 
 
-def agent_map_content(profile: ProjectionProfile = PROFILE_DEFAULT) -> str:
+def agent_map_content(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> str:
     """Render ``AGENTS.md``, the repo's orientation map."""
     if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER:
-        return _worker_agent_map_content()
+        return _worker_agent_map_content(contract)
     return (
         "# Agent Map\n\n"
+        "## Orientation\n"
         "- Start with `README.md` for project intent and first commands.\n"
         "- Use `docs/architecture/` for structure and boundaries.\n"
         "- Use `docs/contracts/` for public and external surfaces.\n"
         "- Use `docs/operations/` for local dev, validation, and deployment notes.\n"
-        "- Use `docs/decisions/` for durable design decisions.\n"
+        "- Use `docs/decisions/` for durable design decisions; research artifacts land "
+        "there as `*-research.md`.\n\n"
+        "## Validation\n"
+        f"{_validation_lines(contract)}\n"
+        "## Skills\n"
+        "- Repo-local agent skills live in `.agents/skills/`, one directory per skill "
+        "with a `SKILL.md`; `.agents/skills/README.md` describes the format and the "
+        "promotion path.\n"
+        "- `.claude/skills` links to `.agents/skills` for Claude Code discovery (a "
+        "symlink, or a plain pointer file where symlinks are unsupported); `CLAUDE.md` "
+        "carries Claude-specific wiring only.\n\n"
+        "## Change rules\n"
         "- The docs above are the orientation surface. `.kickstart/scaffold.json` is "
         "kickstart's machine-readable scaffold state, consumed by tooling such as "
-        "`kickstart adopt --check`.\n"
+        "`kickstart adopt --check` and `kickstart plan`.\n"
+        "- Managed docs are wrapped in `kickstart:begin`/`kickstart:end` comment fences: "
+        "do not edit inside a fence; add your content outside it.\n"
+    )
+
+
+_LIFECYCLE_GLOSSES = (
+    ("check", "the canonical verification (lint + typecheck + tests)"),
+    ("install", "install dependencies"),
+    ("test", "run the test suite"),
+    ("build", "build the project"),
+    ("dev", "run in development mode"),
+    ("deploy", "deploy the project"),
+)
+
+
+def _validation_lines(contract: ScaffoldContract) -> str:
+    """Render the lifecycle commands the scaffold contract declares."""
+    lifecycle = contract.resolved_lifecycle()
+    lines = [
+        f"- `{command}` — {gloss}.\n"
+        for verb, gloss in _LIFECYCLE_GLOSSES
+        if (command := getattr(lifecycle, verb)) is not None
+    ]
+    return "".join(lines)
+
+
+def claude_pointer_content() -> str:
+    """Render the thin ``CLAUDE.md`` that defers to ``AGENTS.md``."""
+    return (
+        "# CLAUDE.md\n\n"
+        "[AGENTS.md](AGENTS.md) is the canonical agent map for this repo — read it "
+        "first. This file carries only Claude Code-specific wiring:\n\n"
+        "- **Skills** — `.claude/skills` is a symlink to the agent-neutral "
+        "`.agents/skills/`. Add or edit skills there, never under `.claude/`. On "
+        "checkouts without symlink support the link materializes as a plain text "
+        "file and discovery silently degrades — read `.agents/skills/` directly.\n"
+    )
+
+
+def agents_skills_readme_content() -> str:
+    """Render the repo-local skills directory README."""
+    return (
+        "# Agent Skills\n\n"
+        "Repo-local agent skills live here, one directory per skill with a "
+        "`SKILL.md` carrying the portable core instructions (keep any frontmatter "
+        "spec-only so every agent runtime can load it).\n\n"
+        "- Add a skill: create `<skill-name>/SKILL.md` stating when to use it and "
+        "the exact procedure.\n"
+        "- Keep skills agent-neutral; vendor-specific wiring stays with the vendor "
+        "(Claude Code discovers this directory through the `.claude/skills` "
+        "symlink).\n"
+        "- Promote a skill beyond this repo only on reuse evidence — a workflow "
+        "recurring across repos, devices, or sessions; repo-specific workflows "
+        "stay here.\n"
     )
 
 
@@ -177,10 +245,16 @@ def decisions_content() -> str:
         "# Decisions\n\n"
         "Record architecture and implementation decisions here. Keep entries short, dated, and "
         "linked to the generated scaffold contract when relevant.\n"
+        "\n"
+        "Keep speculative ideas in your tracker until they earn research; research "
+        "artifacts land here as `*-research.md` files feeding a decision.\n"
     )
 
 
-def _worker_agent_map_content() -> str:
+def _worker_agent_map_content(contract: ScaffoldContract) -> str:
+    # Commands come from the contract lifecycle, not hard-coded make verbs, so
+    # a worker whose manifest declares different commands renders truthfully.
+    deploy_command = contract.resolved_lifecycle().deploy or "make deploy"
     return (
         "# Agent Map\n\n"
         "## Scope\n"
@@ -193,13 +267,14 @@ def _worker_agent_map_content() -> str:
         "- Runtime config: `wrangler.toml`\n"
         "- Tooling config: `package.json`, `tsconfig.json`, `Makefile`\n"
         "- Local env template: `.dev.vars.example` (copy to `.dev.vars` for local secrets)\n\n"
-        "## Commands\n"
-        "- Verify contract: `make check`\n"
-        "- Local development: `make dev`\n"
-        "- Deploy: `make deploy`\n\n"
+        "## Validation\n"
+        f"{_validation_lines(contract)}\n"
+        "## Skills\n"
+        "- Repo-local agent skills: `.agents/skills/` (Claude Code discovers them "
+        "via the `.claude/skills` symlink; `CLAUDE.md` carries Claude wiring only).\n\n"
         "## Deploy assumptions\n"
         "- Wrangler is authenticated (`wrangler login` locally or `CLOUDFLARE_API_TOKEN` in CI).\n"
-        "- Cloudflare bindings and secrets are configured before `make deploy`.\n"
+        f"- Cloudflare bindings and secrets are configured before `{deploy_command}`.\n"
         "- Keep `SERVICE_NAME` bindings aligned between `wrangler.toml`, `.dev.vars`, and tests.\n\n"
         "## Do not hand-edit generated contract files\n"
         "- `.kickstart/scaffold.json`\n"

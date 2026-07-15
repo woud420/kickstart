@@ -19,6 +19,8 @@ RepoLayout = Literal["single-project", "monorepo"]
 # manifest that has already been written.
 SEMANTICS_REFERENCE = f"https://github.com/woud420/kickstart/blob/v{__version__}/docs/scaffold-contract.md"
 
+MANIFEST_PATH = ".kickstart/scaffold.json"
+
 _PROJECT_KINDS: frozenset[str] = frozenset({"service", "worker", "frontend", "library", "cli", "system"})
 _REPO_LAYOUTS: frozenset[str] = frozenset({"single-project", "monorepo"})
 
@@ -299,7 +301,7 @@ class ScaffoldContract:
             "artifacts": self.artifacts.manifest(),
             "provider": {"targets": list(self.provider_targets)},
             "capabilities": self._capabilities_manifest(),
-            "lifecycle": self._lifecycle().manifest(),
+            "lifecycle": self.resolved_lifecycle().manifest(),
             "knowledge_adapter": self.knowledge_adapter,
             "docs": {
                 "agent_map": "AGENTS.md",
@@ -343,8 +345,8 @@ class ScaffoldContract:
         """Return stable, pretty JSON for `.kickstart/scaffold.json`."""
         return json.dumps(self.manifest(project_name), indent=2, sort_keys=True) + "\n"
 
-    def _lifecycle(self) -> ScaffoldLifecycle:
-        """Return lifecycle commands for this project kind."""
+    def resolved_lifecycle(self) -> ScaffoldLifecycle:
+        """Return the effective lifecycle commands (explicit or kind defaults)."""
         if self.lifecycle is not None:
             return self.lifecycle
 

@@ -94,6 +94,7 @@ def test_create_success_python_with_helm_and_gh(
         "tests/integration/api", "tests/integration/clients",
         "tests/fixtures",
         ".kickstart",
+        ".agents/skills",
         "docs/architecture",
         "docs/contracts",
         "docs/operations",
@@ -620,8 +621,15 @@ def test_cloudflare_worker_template_configs_for_rust():
 def test_typescript_cloudflare_worker_agent_map_is_explicit():
     generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
 
+    contract = ScaffoldContract(
+        project_kind="worker",
+        execution_models=("cloudflare-worker",),
+        runtime_platforms=("cloudflare-workers",),
+        artifacts=ScaffoldArtifacts(worker="wrangler"),
+        provider_targets=("cloudflare",),
+    )
     profile = generator._projection_profile()
-    content = agent_map_content(profile)
+    content = agent_map_content(contract, profile)
 
     assert profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER
     assert "src/index.ts" in content
@@ -678,6 +686,7 @@ def test_create_cloudflare_worker_uses_worker_flow(mock_execute_create_flow, tmp
         "src",
         "tests",
         ".kickstart",
+        ".agents/skills",
         "docs/architecture",
         "docs/contracts",
         "docs/operations",
