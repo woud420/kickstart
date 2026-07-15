@@ -101,7 +101,7 @@ Knowledge adapter:
 - `backstage`: adds Backstage catalog/template files
 - `both`: adds both knowledge-system integrations
 
-Generated project docs are not optional. Every project gets `AGENTS.md`, `docs/architecture/`, `docs/contracts/`, `docs/operations/`, `docs/decisions/`, and `.kickstart/scaffold.json`.
+Generated project docs are not optional. Every project gets `AGENTS.md`, `docs/architecture/`, `docs/contracts/`, `docs/operations/`, `docs/decisions/`, and `.kickstart/scaffold.json`. The docs and `AGENTS.md` are the repository's orientation interface; `.kickstart/scaffold.json` is kickstart's machine-readable scaffold state for tooling.
 
 ## Building On Top
 

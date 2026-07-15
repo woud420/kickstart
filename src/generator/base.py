@@ -293,7 +293,9 @@ class BaseGenerator:
             "- Use `docs/contracts/` for public and external surfaces.\n"
             "- Use `docs/operations/` for local dev, validation, and deployment notes.\n"
             "- Use `docs/decisions/` for durable design decisions.\n"
-            "- Read `.kickstart/scaffold.json` before changing generated conventions.\n"
+            "- The docs above are the orientation surface. `.kickstart/scaffold.json` is "
+            "kickstart's machine-readable scaffold state, consumed by tooling such as "
+            "`kickstart adopt --check`.\n"
         )
 
     def _contracts_content(self, contract: ScaffoldContract) -> str:

@@ -111,6 +111,10 @@ class TestServiceCreation:
         assert arch_readme.exists()
         assert service_name in arch_readme.read_text()
         assert (project_path / "AGENTS.md").exists()
+        agents_doc = (project_path / "AGENTS.md").read_text()
+        assert "docs/architecture/" in agents_doc
+        assert "orientation surface" in agents_doc
+        assert "before changing generated conventions" not in agents_doc
         assert (project_path / ".kickstart/scaffold.json").exists()
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
         assert manifest["project"] == {
@@ -332,6 +336,8 @@ class TestServiceCreation:
         assert "make dev" in agents_doc
         assert "make deploy" in agents_doc
         assert ".kickstart/scaffold.json" in agents_doc
+        assert "orientation surface" in agents_doc
+        assert "before changing generated conventions" not in agents_doc
 
         contracts_doc = (project_path / "docs/contracts/README.md").read_text()
         assert "Scaffold identity" in contracts_doc
