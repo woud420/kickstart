@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from src.utils.errors import KickstartError, TemplateError
@@ -62,3 +64,27 @@ def test_render_template_with_invalid_syntax_raises_kickstart_template_error(tmp
 
     assert isinstance(exc_info.value, KickstartError)
     assert exc_info.value.__cause__ is not None
+
+
+def test_write_file_with_broken_path_template_warns_and_uses_legacy_substitution(tmp_path):
+    template_path = tmp_path / "broken.txt"
+    template_path.write_text("Hello {{NAME}} {% if broken %}")
+    output_path = tmp_path / "output.txt"
+
+    with patch("src.utils.fs.warn") as mock_warn:
+        write_file(output_path, template_path, name="World")
+
+    assert output_path.read_text() == "Hello World {% if broken %}"
+    mock_warn.assert_called_once()
+    assert "legacy {{NAME}} substitution" in mock_warn.call_args.args[0]
+
+
+def test_write_file_with_broken_inline_template_warns_and_uses_legacy_substitution(tmp_path):
+    output_path = tmp_path / "output.txt"
+
+    with patch("src.utils.fs.warn") as mock_warn:
+        write_file(output_path, "Hello {{NAME}} {% if broken %}", name="World")
+
+    assert output_path.read_text() == "Hello World {% if broken %}"
+    mock_warn.assert_called_once()
+    assert "legacy {{NAME}} substitution" in mock_warn.call_args.args[0]
