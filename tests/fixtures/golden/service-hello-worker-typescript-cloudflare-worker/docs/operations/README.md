@@ -1,3 +1,4 @@
+<!-- kickstart:begin operations-readme -->
 # Operations
 
 ## Lifecycle flow
@@ -15,3 +16,4 @@
 - Wrangler authentication is available.
 - Required bindings and secrets are configured before deploy.
 - Deployment target details live in `wrangler.toml`.
+<!-- kickstart:end operations-readme -->

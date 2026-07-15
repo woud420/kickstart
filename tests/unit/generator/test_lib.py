@@ -94,7 +94,7 @@ def test_library_create_python_success_with_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "tests", ".kickstart", "docs/architecture",
+        "src", "tests", ".kickstart", ".agents/skills", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
@@ -181,7 +181,7 @@ def test_cli_create_python_success_with_gh(
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
         "src/cli", "src/cli/commands", "src/config", "src/clients", "src/model", "src/operations",
-        "src/output", "src/error", "tests", ".kickstart", "docs/architecture",
+        "src/output", "src/error", "tests", ".kickstart", ".agents/skills", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
@@ -438,12 +438,12 @@ def test_library_vs_cli_success_message_difference():
 def test_library_and_cli_directory_structures():
     """Test library stays minimal while CLI gets the modular command layout."""
     library_directories = [
-        "src", "tests", ".kickstart", "docs/architecture",
+        "src", "tests", ".kickstart", ".agents/skills", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ]
     cli_directories = [
         "src/cli", "src/cli/commands", "src/config", "src/clients", "src/model", "src/operations",
-        "src/output", "src/error", "tests", ".kickstart", "docs/architecture",
+        "src/output", "src/error", "tests", ".kickstart", ".agents/skills", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ]
     

@@ -6,13 +6,19 @@ kickstart generates a stable project map for humans and agents. The goal is not 
 
 The standard interface a generated (or adopted) repository exposes is the vendor-neutral, human-readable artifact set: `AGENTS.md`, the `docs/` skeleton, the Makefile verification targets, and the CI workflow. Humans and agents orient through those artifacts; nothing in the orientation path requires reading `.kickstart/`.
 
-`.kickstart/scaffold.json` is kickstart's machine-readable scaffold state: the record tooling consumes (`kickstart adopt --check` today; drift reporting and reconciliation on the roadmap in `decisions/scaffold-metadata-architecture-review.md`) to verify and re-derive what kickstart generated. A repository that follows the docs standard without the manifest still exposes the standard interface; the manifest is what makes it verifiable and reconcilable by kickstart.
+`.kickstart/scaffold.json` is kickstart's machine-readable scaffold state: the record tooling consumes (`kickstart adopt --check` and `kickstart plan` today; reconciliation on the roadmap in `decisions/scaffold-metadata-architecture-review.md`) to verify and re-derive what kickstart generated. A repository that follows the docs standard without the manifest still exposes the standard interface — `adopt --check` reports it as **Level 1 conformant** (exit 0); the manifest is what makes it **Level 2 managed**, verifiable and reconcilable by kickstart ([adoption tiers](contracts/adoption-tiers.md)).
+
+## Managed Regions
+
+Generated managed docs (`AGENTS.md` and the `docs/` READMEs) are wrapped in ownership fences — `<!-- kickstart:begin <artifact-id> -->` / `<!-- kickstart:end <artifact-id> -->` comment markers, invisible in rendered markdown. kickstart only ever writes inside its own fences: the fenced block is whole-block replaced when the standard changes, so do not edit inside it; everything outside a fence is user-owned and never read or rewritten. `kickstart plan` verifies the fenced regions against the current standard, read-only ([scope contract](contracts/plan-drift-scope.md)). Rationale and the MDX caveat: [Docs Ownership Fences](decisions/docs-ownership-fences.md).
 
 ## Always Generated
 
 Every project type gets:
 
-- `AGENTS.md`: short agent map for where to look first.
+- `AGENTS.md`: the Agent Map — orientation, validation commands, skills, and change rules.
+- `CLAUDE.md`: thin Claude Code wiring that defers to `AGENTS.md`.
+- `.agents/skills/`: repo-local agent skills (one directory per skill with a `SKILL.md`), plus a README stating the format and promotion path; `.claude/skills` is a symlink to it for Claude Code discovery (a plain pointer file on platforms without symlinks).
 - `docs/architecture/`: structure, boundaries, and architecture notes.
 - `docs/contracts/`: project-specific public surface. For a service this may be HTTP, env vars, ports, and queues; for a CLI it may be commands, flags, config files, and exit codes; for a library it may be public APIs and package metadata.
 - `docs/operations/`: project-specific development, validation, packaging, deployment, and runbook notes.

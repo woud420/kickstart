@@ -1,3 +1,4 @@
+import os
 import re
 import logging
 from collections.abc import Callable, Sequence
@@ -284,7 +285,32 @@ class BaseGenerator:
             for projection in scaffold_docs_projections(contract, self._projection_profile())
         ]
         docs.append(ContentFile(".kickstart/scaffold.json", contract.manifest_json(self.name)))
-        return self.write_content_files(docs)
+        if not self.write_content_files(docs):
+            return False
+        return self._create_claude_skills_link()
+
+    # Forward slashes always: symlink targets are stored verbatim, and git
+    # materializes symlinks with POSIX separators on every platform.
+    CLAUDE_SKILLS_LINK_TARGET = "../.agents/skills"
+
+    def _create_claude_skills_link(self) -> bool:
+        """Point ``.claude/skills`` at the agent-neutral ``.agents/skills``.
+
+        Claude Code only discovers skills under ``.claude/skills``, so the
+        scaffold links it to the vendor-neutral directory. Platforms without
+        symlink support degrade to a plain pointer file carrying the target
+        path — the same shape git materializes symlinks as on such checkouts.
+        """
+        link = self.project / ".claude" / "skills"
+        try:
+            ensure_directory_exists(link.parent)
+            if link.is_symlink() or link.exists():
+                return True
+            os.symlink(self.CLAUDE_SKILLS_LINK_TARGET, link, target_is_directory=True)
+            return True
+        except OSError as error:
+            warn(f".claude/skills symlink unavailable ({error}); writing a pointer file instead.")
+            return self.write_content(".claude/skills", self.CLAUDE_SKILLS_LINK_TARGET)
 
     def _projection_profile(self) -> ProjectionProfile:
         """Return the docs projection profile used for managed docs renders."""

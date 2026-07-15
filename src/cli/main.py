@@ -23,6 +23,12 @@ from src.api import (
 )
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.generator.adoption import AdoptionTargetError, inspect_repo
+from src.generator.backstage_export import (
+    BackstageExportError,
+    BackstageExportUsageError,
+    export_backstage,
+)
+from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
 from src.utils.errors import KickstartError
@@ -83,6 +89,73 @@ def upgrade() -> None:
     check_for_update()
 
 
+export_app: typer.Typer = typer.Typer(help="Deterministic exporters derived from scaffold state.")
+app.add_typer(export_app, name="export")
+
+
+@export_app.command()
+def backstage(
+    path: Path = typer.Argument(Path("."), help="Repository to export"),
+) -> None:
+    """Write or refresh catalog-info.yaml from .kickstart/scaffold.json.
+
+    Derived fields live inside kickstart fences and are refreshed on every
+    export; spec.owner/lifecycle/type and everything else outside the fences
+    are user-owned and never rewritten. Exit codes: 0 = exported cleanly,
+    1 = exported with validation issues or refused (unfenced existing file),
+    2 = usage error (no repo or no usable manifest).
+    """
+    try:
+        result = export_backstage(path)
+    except BackstageExportUsageError as error:
+        print(f"[red]{escape(str(error))}[/]")
+        raise typer.Exit(code=2) from error
+    except BackstageExportError as error:
+        print(f"[red]{escape(str(error))}[/]")
+        raise typer.Exit(code=1) from error
+
+    print(f"[bold]{result.action}[/] {escape(str(result.path))}")
+    for issue in result.issues:
+        print(f"  [yellow]warning[/] {escape(issue)}")
+    raise typer.Exit(code=1 if result.issues else 0)
+
+
+@app.command()
+def plan(
+    path: Path = typer.Argument(Path("."), help="Repository to inspect"),
+    json_output: bool = typer.Option(False, "--json", help="Emit a machine-readable report"),
+) -> None:
+    """Show how managed docs differ from the standard's render (read-only).
+
+    Compares each fenced managed doc against what the current standard would
+    render from `.kickstart/scaffold.json`. Exit codes: 0 = in sync, 1 = drift
+    or structural findings, 2 = usage error (no repo or no plannable manifest).
+    """
+    try:
+        report = inspect_docs(path)
+    except DocsPlanTargetError as error:
+        print(f"[red]{escape(str(error))}[/]")
+        raise typer.Exit(code=2) from error
+
+    if json_output:
+        # Machine-readable output must bypass rich: console printing wraps
+        # long lines and interprets bracketed path segments as markup, both
+        # of which corrupt the JSON.
+        typer.echo(report.to_json(), nl=False)
+    else:
+        print(f"[bold]Docs plan for {escape(str(report.root))}[/]")
+        for entry in report.entries:
+            if entry.ok:
+                suffix = f" (profile: {escape(entry.profile)})" if entry.profile else ""
+                print(f"  [green]{entry.status}[/]  {escape(entry.target)}{suffix}")
+            else:
+                print(f"  [red]{entry.status}[/]  {escape(entry.target)} ({escape(entry.detail)})")
+                if entry.diff:
+                    typer.echo(entry.diff, nl=False)
+
+    raise typer.Exit(code=0 if report.in_sync else 1)
+
+
 @app.command()
 def adopt(
     path: Path = typer.Argument(Path("."), help="Existing repository to inspect"),
@@ -110,6 +183,11 @@ def adopt(
         typer.echo(report.to_json(), nl=False)
     else:
         print(f"[bold]Adoption check for {escape(str(report.root))}[/]")
+        level_color = "green" if report.complete else "red"
+        print(
+            f"  [{level_color}]level[/]   achieved: {escape(report.achieved_level)} / "
+            f"claimed: {escape(report.claimed_level)}"
+        )
         for status in report.artifacts:
             if status.ok:
                 print(f"  [green]ok[/]      {escape(status.path)}")

@@ -1,3 +1,4 @@
+<!-- kickstart:begin contracts-readme -->
 # Contracts
 
 ## Scaffold identity
@@ -18,3 +19,4 @@ See `.kickstart/scaffold.json` for the machine-readable source of truth.
 - Run `make check` before handoff.
 - `make check` runs `make typecheck` and `make test`.
 - `tests/worker.test.ts` validates the generated handler behavior.
+<!-- kickstart:end contracts-readme -->

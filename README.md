@@ -99,11 +99,24 @@ Add Bun + Turbo workspace tooling when you want a TypeScript workspace at the sy
 poetry run kickstart create system product-stack --workspace-tooling bun-turbo
 ```
 
-Check an existing repo against the scaffold standard (read-only; exit 0 = matches, 1 = gaps, 2 = usage error):
+Check an existing repo against the scaffold standard (read-only; exit 0 = claimed level satisfied, 1 = gaps, 2 = usage error). Repos without a manifest are judged at Level 1 (conformant, vendor-neutral); a manifest claims Level 2 (managed):
 
 ```bash
-poetry run kickstart adopt path/to/repo --check          # human report
+poetry run kickstart adopt path/to/repo --check          # human report with achieved/claimed level
 poetry run kickstart adopt path/to/repo --check --json   # machine-readable, for agents and CI
+```
+
+Show how a repo's managed docs differ from what the current standard would render (read-only; exit 0 = in sync, 1 = findings, 2 = usage error):
+
+```bash
+poetry run kickstart plan path/to/repo                   # human report with diffs inside owned fences
+poetry run kickstart plan path/to/repo --json            # machine-readable, for agents and CI
+```
+
+Derive a Backstage catalog entry from the scaffold manifest (derived fields fenced and refreshed on re-export; owner/lifecycle stay user-owned after the first emit):
+
+```bash
+poetry run kickstart export backstage path/to/repo
 ```
 
 ## What It Generates

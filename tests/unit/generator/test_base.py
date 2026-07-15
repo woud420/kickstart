@@ -57,9 +57,23 @@ def test_create_architecture_docs(base_generator, tmp_path):
         arch = tmp_path / "docs/architecture/README.md"
         assert arch.exists()
         content = arch.read_text()
-        assert content.startswith("# My Docs\n")
+        assert content.startswith("<!-- kickstart:begin architecture-readme -->\n# My Docs\n")
+        assert content.endswith("<!-- kickstart:end architecture-readme -->\n")
         assert "`src/routes/` — HTTP surface" in content
         assert "Entrypoint: `src/main.py`" in content
+
+def test_claude_skills_link_degrades_to_pointer_file(base_generator, tmp_path, monkeypatch):
+    def _no_symlinks(*args, **kwargs):
+        raise OSError("symlinks unsupported")
+
+    monkeypatch.setattr("src.generator.base.os.symlink", _no_symlinks)
+    with patch.object(base_generator, 'project', tmp_path):
+        assert base_generator._create_claude_skills_link()
+        pointer = tmp_path / ".claude" / "skills"
+        assert not pointer.is_symlink()
+        # Exact git-materialized symlink shape: POSIX separators, no newline.
+        assert pointer.read_text() == "../.agents/skills"
+
 
 def test_create_scaffold_contract_docs(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path):

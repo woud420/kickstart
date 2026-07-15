@@ -29,6 +29,8 @@ Outputs:
 - rendered templates
 - direct content files
 - `AGENTS.md`
+- `CLAUDE.md` (thin pointer to `AGENTS.md`)
+- `.agents/skills/README.md` and the `.claude/skills` symlink
 - `docs/architecture/`
 - `docs/contracts/`
 - `docs/operations/`
@@ -40,10 +42,21 @@ Generated docs and `AGENTS.md` are the orientation interface for humans and agen
 
 Do not infer unsupported options. Use existing registries and typed plans.
 
-Adoption: `kickstart adopt REPO --check --json` reports standard-artifact
-gaps for repos kickstart did not create (read-only; exit 0 complete / 1
-gaps / 2 usage error). Generated projects verify themselves with
-`make check`; the success output names it.
+Adoption: `kickstart adopt REPO --check --json` reports two levels
+(read-only; exit 0 claimed level satisfied / 1 gaps / 2 usage error):
+Level 1 conformant is the vendor-neutral interface without the manifest;
+Level 2 managed adds a valid manifest driving fence-managed docs. Tiers
+contract: `docs/contracts/adoption-tiers.md`. Generated projects verify
+themselves with `make check`; the success output names it.
+
+Catalog export: `kickstart export backstage REPO` derives catalog-info.yaml
+from the manifest (derived fields fenced and refreshed; owner/lifecycle/type
+user-owned after first emit). Contract: `docs/contracts/backstage-export.md`.
+
+Docs drift: `kickstart plan REPO --json` re-renders the managed docs
+projections from `.kickstart/scaffold.json` and reports per-artifact status
+(read-only; exit 0 in sync / 1 findings / 2 usage error). Scope contract:
+`docs/contracts/plan-drift-scope.md`.
 
 ## Source Of Truth
 
@@ -52,6 +65,7 @@ gaps / 2 usage error). Generated projects verify themselves with
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
 - Managed docs projections: `src/generator/projections.py`
+- Backstage export: `src/generator/backstage_export.py`
 - Scaffold contract: `src/generator/scaffold_contract.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`
