@@ -304,3 +304,16 @@ def test_name_beyond_backstage_limit_is_refused(tmp_path: Path) -> None:
 
     with pytest.raises(BackstageExportError, match="63-character"):
         export_backstage(tmp_path)
+
+
+def test_export_target_must_be_a_directory(tmp_path: Path) -> None:
+    with pytest.raises(BackstageExportError, match="not an existing directory"):
+        export_backstage(tmp_path / "absent")
+
+
+def test_unreadable_existing_catalog_is_refused(tmp_path: Path) -> None:
+    _service_repo(tmp_path)
+    (tmp_path / CATALOG_PATH).symlink_to(tmp_path / "dangling-target")
+
+    with pytest.raises(BackstageExportError, match="cannot read existing"):
+        export_backstage(tmp_path)
