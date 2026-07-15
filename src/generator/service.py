@@ -18,7 +18,7 @@ from src.utils.extension_manager import ExtensionManager
 from src.stack.profile import stack_registry
 from src.stack.types import TemplateConfig
 from src.generator.layouts import python_package_directories, service_directories, worker_directories
-from src.generator.projections import PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER
+from src.generator.projections import PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER, ProjectionProfile
 from src.generator.scaffold_contract import (
     ScaffoldArtifacts,
     ScaffoldContract,
@@ -272,12 +272,11 @@ class ServiceGenerator(BaseGenerator):
         """Return True when generating the TypeScript Cloudflare Worker profile."""
         return self.runtime == "cloudflare-workers" and self.lang == "typescript"
 
-    def _projection_profile(self) -> str:
+    def _projection_profile(self) -> ProjectionProfile:
         """Select the explicit worker docs profile when generating it."""
         if self._is_typescript_cloudflare_worker():
             return PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER
         return super()._projection_profile()
-
 
     def _setup_service_specific(self) -> bool:
         """Setup service-specific files and structure.

@@ -6,6 +6,7 @@ from pathlib import Path
 from src.generator.file_plan import ContentFile
 from src.generator.projections import (
     PROFILE_DEFAULT,
+    ProjectionProfile,
     architecture_readme_projection,
     scaffold_docs_projections,
 )
@@ -278,14 +279,14 @@ class BaseGenerator:
         ):
             return False
 
-        docs: dict[str, str] = {
-            projection.target: projection.content
+        docs = [
+            ContentFile(projection.target, projection.content)
             for projection in scaffold_docs_projections(contract, self._projection_profile())
-        }
-        docs[".kickstart/scaffold.json"] = contract.manifest_json(self.name)
-        return all(self.write_content(target, content) for target, content in docs.items())
+        ]
+        docs.append(ContentFile(".kickstart/scaffold.json", contract.manifest_json(self.name)))
+        return self.write_content_files(docs)
 
-    def _projection_profile(self) -> str:
+    def _projection_profile(self) -> ProjectionProfile:
         """Return the docs projection profile used for managed docs renders."""
         return PROFILE_DEFAULT
 

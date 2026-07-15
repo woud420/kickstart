@@ -3,25 +3,37 @@
 Every artifact here belongs to the managed envelope (see
 ``docs/decisions/scaffold-metadata-architecture-review.md``): the docs
 kickstart keeps aligned with the current standard. Each render is a pure
-function of the scaffold contract and explicit generation inputs — no
-timestamps, no environment reads — so tooling can re-derive the expected
-content of a generated repo's managed docs and compare byte-for-byte.
+function of its explicit inputs — the scaffold contract, a projection
+profile, and (for the architecture README) the generation-time title and
+directory list — with no timestamps or environment reads, so the same
+inputs always produce the same bytes.
 
-Profile variants cover scaffolds whose docs form an explicit contract
-(currently the TypeScript Cloudflare Worker profile). Generators select the
-profile; the render functions stay pure.
+Two of those inputs are generation-time knowledge the persisted manifest
+does not record yet: the projection profile and the architecture
+title/directories. Re-deriving expected docs from ``.kickstart/scaffold.json``
+alone therefore covers the default-profile docs set today; closing that gap
+is the render-inputs work in the metadata review's roadmap (§6 step 1).
+
+``DocsProjection`` deliberately parallels ``ContentFile``
+(``src/generator/file_plan.py``, the payload writes are converted into) and
+``AgentWorkflowArtifact`` (``src/stack/agent_workflows.py``, whose payload
+is a template reference instead of rendered content); it adds only the
+stable ``id`` tooling needs to enumerate managed docs.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 from src.generator.layouts import render_architecture_readme
 from src.generator.scaffold_contract import ScaffoldContract
 
-PROFILE_DEFAULT = "default"
-PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER = "typescript-cloudflare-worker"
+ProjectionProfile = Literal["default", "typescript-cloudflare-worker"]
+
+PROFILE_DEFAULT: ProjectionProfile = "default"
+PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER: ProjectionProfile = "typescript-cloudflare-worker"
 
 
 @dataclass(frozen=True)
@@ -33,7 +45,7 @@ class DocsProjection:
     content: str
 
 
-def scaffold_docs_projections(contract: ScaffoldContract, profile: str = PROFILE_DEFAULT) -> tuple[DocsProjection, ...]:
+def scaffold_docs_projections(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> tuple[DocsProjection, ...]:
     """Render the managed docs set emitted with every scaffold contract."""
     return (
         DocsProjection(id="agent-map", target="AGENTS.md", content=agent_map_content(profile)),
@@ -64,7 +76,7 @@ def architecture_readme_projection(
     )
 
 
-def agent_map_content(profile: str = PROFILE_DEFAULT) -> str:
+def agent_map_content(profile: ProjectionProfile = PROFILE_DEFAULT) -> str:
     """Render ``AGENTS.md``, the repo's orientation map."""
     if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER:
         return _worker_agent_map_content()
@@ -81,8 +93,13 @@ def agent_map_content(profile: str = PROFILE_DEFAULT) -> str:
     )
 
 
-def contracts_content(contract: ScaffoldContract, profile: str = PROFILE_DEFAULT) -> str:
+def contracts_content(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> str:
     """Render ``docs/contracts/README.md`` for the contract's project kind."""
+    # Gate asymmetry is inherited from the pre-registry generator semantics:
+    # the Agent Map keys off the profile alone, while contracts/operations
+    # additionally require a worker-kind contract. ServiceGenerator only
+    # selects the worker profile for worker-kind contracts today, so the
+    # extra gate matters only if a future generator reuses the profile.
     if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER and contract.project_kind == "worker":
         return _worker_contracts_content()
     if contract.project_kind == "cli":
@@ -104,7 +121,7 @@ def contracts_content(contract: ScaffoldContract, profile: str = PROFILE_DEFAULT
     )
 
 
-def operations_content(contract: ScaffoldContract, profile: str = PROFILE_DEFAULT) -> str:
+def operations_content(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> str:
     """Render ``docs/operations/README.md`` for the contract's project kind."""
     if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER and contract.project_kind == "worker":
         return _worker_operations_content()
