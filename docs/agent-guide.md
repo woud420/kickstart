@@ -36,6 +36,8 @@ Outputs:
 - `.kickstart/scaffold.json`
 - optional GitHub repository creation
 
+Generated docs and `AGENTS.md` are the orientation interface for humans and agents. `.kickstart/scaffold.json` is kickstart's scaffold state, consumed by tooling (`adopt --check` today; drift reporting on the roadmap) — orientation never requires reading it.
+
 Do not infer unsupported options. Use existing registries and typed plans.
 
 Adoption: `kickstart adopt REPO --check --json` reports standard-artifact
@@ -49,6 +51,7 @@ gaps / 2 usage error). Generated projects verify themselves with
 - kickstart CLI dispatch: `src/cli/`
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
+- Managed docs projections: `src/generator/projections.py`
 - Scaffold contract: `src/generator/scaffold_contract.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`

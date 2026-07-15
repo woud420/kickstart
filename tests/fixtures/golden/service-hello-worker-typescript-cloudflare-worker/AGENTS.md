@@ -2,7 +2,7 @@
 
 ## Scope
 - This scaffold is an explicit TypeScript Cloudflare Worker contract.
-- Read `.kickstart/scaffold.json` before changing generated conventions.
+- The docs below are the orientation surface; `.kickstart/scaffold.json` records the contract as machine-readable scaffold state for tooling.
 
 ## Code, tests, and config
 - Worker code: `src/index.ts`

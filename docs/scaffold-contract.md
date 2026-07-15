@@ -2,6 +2,12 @@
 
 kickstart generates a stable project map for humans and agents. The goal is not to finish the product architecture; it is to make the starting repo explicit, reviewable, and easy to extend.
 
+## Interface Versus State
+
+The standard interface a generated (or adopted) repository exposes is the vendor-neutral, human-readable artifact set: `AGENTS.md`, the `docs/` skeleton, the Makefile verification targets, and the CI workflow. Humans and agents orient through those artifacts; nothing in the orientation path requires reading `.kickstart/`.
+
+`.kickstart/scaffold.json` is kickstart's machine-readable scaffold state: the record tooling consumes (`kickstart adopt --check` today; drift reporting and reconciliation on the roadmap in `decisions/scaffold-metadata-architecture-review.md`) to verify and re-derive what kickstart generated. A repository that follows the docs standard without the manifest still exposes the standard interface; the manifest is what makes it verifiable and reconcilable by kickstart.
+
 ## Always Generated
 
 Every project type gets:
@@ -11,7 +17,7 @@ Every project type gets:
 - `docs/contracts/`: project-specific public surface. For a service this may be HTTP, env vars, ports, and queues; for a CLI it may be commands, flags, config files, and exit codes; for a library it may be public APIs and package metadata.
 - `docs/operations/`: project-specific development, validation, packaging, deployment, and runbook notes.
 - `docs/decisions/`: durable architecture and implementation decisions.
-- `.kickstart/scaffold.json`: machine-readable scaffold metadata.
+- `.kickstart/scaffold.json`: kickstart's machine-readable scaffold state (tooling input; not part of the orientation surface).
 - `.github/workflows/ci.yml`: per-language GitHub Actions workflow that runs `make check` (lint + typecheck + tests) on push and pull requests. The workflow is emitted for every service, CLI, library, and frontend; system scaffolds emit `build.yml`, `test.yml`, and `deploy.yml` at the same path instead.
 
 There is no separate root architecture document. `docs/architecture/` is the canonical architecture location.

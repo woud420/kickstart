@@ -4,7 +4,12 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from src.generator.file_plan import ContentFile
-from src.generator.layouts import render_architecture_readme
+from src.generator.projections import (
+    PROFILE_DEFAULT,
+    ProjectionProfile,
+    architecture_readme_projection,
+    scaffold_docs_projections,
+)
 from src.generator.scaffold_contract import ScaffoldContract
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
 from src.stack.toolchain_versions import toolchain_vars
@@ -259,10 +264,8 @@ class BaseGenerator:
         """
         if not self.create_directories(["docs/architecture"]):
             return False
-        return self.write_content(
-            "docs/architecture/README.md",
-            render_architecture_readme(title, directories, contract),
-        )
+        projection = architecture_readme_projection(title, directories, contract)
+        return self.write_content(projection.target, projection.content)
 
     def create_scaffold_contract_docs(self, contract: ScaffoldContract) -> bool:
         """Create agent-facing docs and the machine-readable scaffold manifest."""
@@ -276,74 +279,16 @@ class BaseGenerator:
         ):
             return False
 
-        docs: dict[str, str] = {
-            "AGENTS.md": self._agent_map_content(),
-            "docs/contracts/README.md": self._contracts_content(contract),
-            "docs/operations/README.md": self._operations_content(contract),
-            "docs/decisions/README.md": self._decisions_content(),
-            ".kickstart/scaffold.json": contract.manifest_json(self.name),
-        }
-        return all(self.write_content(target, content) for target, content in docs.items())
+        docs = [
+            ContentFile(projection.target, projection.content)
+            for projection in scaffold_docs_projections(contract, self._projection_profile())
+        ]
+        docs.append(ContentFile(".kickstart/scaffold.json", contract.manifest_json(self.name)))
+        return self.write_content_files(docs)
 
-    def _agent_map_content(self) -> str:
-        return (
-            "# Agent Map\n\n"
-            "- Start with `README.md` for project intent and first commands.\n"
-            "- Use `docs/architecture/` for structure and boundaries.\n"
-            "- Use `docs/contracts/` for public and external surfaces.\n"
-            "- Use `docs/operations/` for local dev, validation, and deployment notes.\n"
-            "- Use `docs/decisions/` for durable design decisions.\n"
-            "- Read `.kickstart/scaffold.json` before changing generated conventions.\n"
-        )
-
-    def _contracts_content(self, contract: ScaffoldContract) -> str:
-        if contract.project_kind == "cli":
-            cli_framework = contract.cli_framework or "language-native CLI framework"
-            command_root = contract.command_root or "src/cli"
-            operation_root = contract.operation_root or "src/operations"
-            entrypoint = contract.entrypoint or "the generated process entrypoint"
-            return (
-                "# Contracts\n\n"
-                f"- Command adapters use `{cli_framework}` and live under `{command_root}`.\n"
-                f"- Product behavior belongs under `{operation_root}`.\n"
-                f"- The process entrypoint is `{entrypoint}`.\n"
-                "- Document commands, flags, environment variables, config files, output formats, "
-                "exit codes, and package metadata here.\n"
-            )
-        return (
-            "# Contracts\n\n"
-            f"Document {contract.contract_subjects} here.\n"
-        )
-
-    def _operations_content(self, contract: ScaffoldContract) -> str:
-        if contract.project_kind == "cli":
-            return (
-                "# Operations\n\n"
-                "- `make install`: install package dependencies.\n"
-                "- `make test`: run generated CLI smoke tests.\n"
-                "- `make lint`: run the language linter (and clippy for Rust, ESLint for TypeScript).\n"
-                "- `make fmt`: format sources in place.\n"
-                "- `make typecheck`: run the language type checker.\n"
-                "- `make check`: run lint + typecheck + tests; CI emits `.github/workflows/ci.yml` "
-                "to invoke this same target.\n\n"
-                "Add packaging, installation, release, signing, and operator runbooks here as the "
-                "CLI matures.\n"
-            )
-        return (
-            "# Operations\n\n"
-            f"Document {contract.operations_subjects} here.\n"
-            "\n"
-            "Canonical make targets: `install`, `test`, `lint`, `fmt`, `typecheck`, `check`, "
-            "`build`. Services with a `Dockerfile` also expose `docker-build`. The generated "
-            "`.github/workflows/ci.yml` runs `make check` on push and pull requests.\n"
-        )
-
-    def _decisions_content(self) -> str:
-        return (
-            "# Decisions\n\n"
-            "Record architecture and implementation decisions here. Keep entries short, dated, and "
-            "linked to the generated scaffold contract when relevant.\n"
-        )
+    def _projection_profile(self) -> ProjectionProfile:
+        """Return the docs projection profile used for managed docs renders."""
+        return PROFILE_DEFAULT
 
     def write_templates_from_plan(self, template_plan: TemplatePlan) -> bool:
         """Write multiple template files from a typed plan.
