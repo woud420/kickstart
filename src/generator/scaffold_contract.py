@@ -299,7 +299,7 @@ class ScaffoldContract:
             "artifacts": self.artifacts.manifest(),
             "provider": {"targets": list(self.provider_targets)},
             "capabilities": self._capabilities_manifest(),
-            "lifecycle": self._lifecycle().manifest(),
+            "lifecycle": self.resolved_lifecycle().manifest(),
             "knowledge_adapter": self.knowledge_adapter,
             "docs": {
                 "agent_map": "AGENTS.md",
@@ -345,10 +345,6 @@ class ScaffoldContract:
 
     def resolved_lifecycle(self) -> ScaffoldLifecycle:
         """Return the effective lifecycle commands (explicit or kind defaults)."""
-        return self._lifecycle()
-
-    def _lifecycle(self) -> ScaffoldLifecycle:
-        """Return lifecycle commands for this project kind."""
         if self.lifecycle is not None:
             return self.lifecycle
 

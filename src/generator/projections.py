@@ -120,8 +120,9 @@ def agent_map_content(contract: ScaffoldContract, profile: ProjectionProfile = P
         "- Repo-local agent skills live in `.agents/skills/`, one directory per skill "
         "with a `SKILL.md`; `.agents/skills/README.md` describes the format and the "
         "promotion path.\n"
-        "- `.claude/skills` is a symlink to `.agents/skills` for Claude Code discovery; "
-        "`CLAUDE.md` carries Claude-specific wiring only.\n\n"
+        "- `.claude/skills` links to `.agents/skills` for Claude Code discovery (a "
+        "symlink, or a plain pointer file where symlinks are unsupported); `CLAUDE.md` "
+        "carries Claude-specific wiring only.\n\n"
         "## Change rules\n"
         "- The docs above are the orientation surface. `.kickstart/scaffold.json` is "
         "kickstart's machine-readable scaffold state, consumed by tooling such as "
@@ -144,18 +145,10 @@ _LIFECYCLE_GLOSSES = (
 def _validation_lines(contract: ScaffoldContract) -> str:
     """Render the lifecycle commands the scaffold contract declares."""
     lifecycle = contract.resolved_lifecycle()
-    commands = {
-        "install": lifecycle.install,
-        "test": lifecycle.test,
-        "check": lifecycle.check,
-        "build": lifecycle.build,
-        "dev": lifecycle.dev,
-        "deploy": lifecycle.deploy,
-    }
     lines = [
         f"- `{command}` — {gloss}.\n"
         for verb, gloss in _LIFECYCLE_GLOSSES
-        if (command := commands[verb]) is not None
+        if (command := getattr(lifecycle, verb)) is not None
     ]
     return "".join(lines)
 
