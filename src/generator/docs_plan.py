@@ -19,7 +19,8 @@ Statuses per managed artifact:
 - ``unreadable``: the file could not be read as UTF-8 text.
 - ``presence-only``: the architecture README, whose content needs
   generation-time inputs (title, directory list) a schema-3.0 manifest never
-  recorded; only its existence is checked.
+  recorded; its ownership fence is still parsed and verified, only the byte
+  comparison is skipped.
 
 A worker-kind manifest cannot say which language generated it (the schema-3.0
 expressiveness gap), so worker repos are compared against both the TypeScript
@@ -35,7 +36,7 @@ from pathlib import Path
 from typing import Literal
 
 from src.generator.adoption import MANIFEST_PATH
-from src.generator.markers import find_fenced_region
+from src.generator.markers import FencedRegion, find_fenced_region
 from src.generator.projections import (
     ARCHITECTURE_README_ID,
     ARCHITECTURE_README_TARGET,
@@ -147,32 +148,41 @@ def _candidate_profiles(contract: ScaffoldContract) -> tuple[ProjectionProfile, 
     return (PROFILE_DEFAULT,)
 
 
+def _owned_region_or_entry(resolved: Path, artifact_id: str, target: str) -> FencedRegion | DocsPlanEntry:
+    """Resolve a managed file to its owned region, or the entry explaining why not."""
+    path = resolved / target
+    if not path.is_file():
+        return DocsPlanEntry(artifact_id, target, "would-create", detail=_MISSING_DETAIL)
+
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        return DocsPlanEntry(artifact_id, target, "unreadable", detail=str(error))
+
+    try:
+        region = find_fenced_region(text, artifact_id)
+    except MarkerError as error:
+        return DocsPlanEntry(artifact_id, target, "malformed-markers", detail=str(error))
+    if region is None:
+        return DocsPlanEntry(
+            artifact_id,
+            target,
+            "unfenced",
+            detail="no ownership fence (pre-fence scaffold or hand-written file); content not compared",
+        )
+    return region
+
+
 def _plan_entry(
     resolved: Path,
     profiles: tuple[ProjectionProfile, ...],
     variants: tuple[DocsProjection, ...],
 ) -> DocsPlanEntry:
     projection = variants[0]
-    path = resolved / projection.target
-    if not path.is_file():
-        return DocsPlanEntry(projection.id, projection.target, "would-create", detail=_MISSING_DETAIL)
-
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as error:
-        return DocsPlanEntry(projection.id, projection.target, "unreadable", detail=str(error))
-
-    try:
-        region = find_fenced_region(text, projection.id)
-    except MarkerError as error:
-        return DocsPlanEntry(projection.id, projection.target, "malformed-markers", detail=str(error))
-    if region is None:
-        return DocsPlanEntry(
-            projection.id,
-            projection.target,
-            "unfenced",
-            detail="no ownership fence (pre-fence scaffold or hand-written file); content not compared",
-        )
+    resolution = _owned_region_or_entry(resolved, projection.id, projection.target)
+    if isinstance(resolution, DocsPlanEntry):
+        return resolution
+    region = resolution
 
     for profile, variant in zip(profiles, variants, strict=True):
         if region.inner == variant.body:
@@ -203,16 +213,17 @@ def _unified_diff(expected: str, actual: str, target: str) -> str:
 
 
 def _architecture_entry(resolved: Path) -> DocsPlanEntry:
-    if (resolved / ARCHITECTURE_README_TARGET).is_file():
-        return DocsPlanEntry(
-            ARCHITECTURE_README_ID,
-            ARCHITECTURE_README_TARGET,
-            "presence-only",
-            detail=(
-                "content needs generation-time inputs (title, directory list) a schema-3.0 "
-                "manifest does not record; presence checked only"
-            ),
-        )
+    # presence-only skips the byte comparison, never the ownership parsing:
+    # an unfenced or malformed architecture README must not read as managed.
+    resolution = _owned_region_or_entry(resolved, ARCHITECTURE_README_ID, ARCHITECTURE_README_TARGET)
+    if isinstance(resolution, DocsPlanEntry):
+        return resolution
     return DocsPlanEntry(
-        ARCHITECTURE_README_ID, ARCHITECTURE_README_TARGET, "would-create", detail=_MISSING_DETAIL
+        ARCHITECTURE_README_ID,
+        ARCHITECTURE_README_TARGET,
+        "presence-only",
+        detail=(
+            "fence verified; content needs generation-time inputs (title, directory list) "
+            "a schema-3.0 manifest does not record, so bytes are not compared"
+        ),
     )
