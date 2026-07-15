@@ -1,3 +1,4 @@
+<!-- kickstart:begin agent-map -->
 # Agent Map
 
 ## Scope
@@ -28,3 +29,4 @@
 - `docs/operations/README.md`
 
 Regenerate with kickstart when scaffold conventions change.
+<!-- kickstart:end agent-map -->

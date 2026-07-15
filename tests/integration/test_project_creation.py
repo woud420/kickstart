@@ -115,6 +115,9 @@ class TestServiceCreation:
         assert "docs/architecture/" in agents_doc
         assert "orientation surface" in agents_doc
         assert "before changing generated conventions" not in agents_doc
+        assert agents_doc.startswith("<!-- kickstart:begin agent-map -->\n")
+        assert agents_doc.endswith("<!-- kickstart:end agent-map -->\n")
+        assert "<!-- kickstart:begin architecture-readme -->" in arch_readme.read_text()
         assert (project_path / ".kickstart/scaffold.json").exists()
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
         assert manifest["project"] == {
@@ -338,6 +341,8 @@ class TestServiceCreation:
         assert ".kickstart/scaffold.json" in agents_doc
         assert "orientation surface" in agents_doc
         assert "before changing generated conventions" not in agents_doc
+        assert agents_doc.startswith("<!-- kickstart:begin agent-map -->\n")
+        assert agents_doc.endswith("<!-- kickstart:end agent-map -->\n")
 
         contracts_doc = (project_path / "docs/contracts/README.md").read_text()
         assert "Scaffold identity" in contracts_doc

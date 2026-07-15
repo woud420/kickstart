@@ -8,6 +8,10 @@ The standard interface a generated (or adopted) repository exposes is the vendor
 
 `.kickstart/scaffold.json` is kickstart's machine-readable scaffold state: the record tooling consumes (`kickstart adopt --check` today; drift reporting and reconciliation on the roadmap in `decisions/scaffold-metadata-architecture-review.md`) to verify and re-derive what kickstart generated. A repository that follows the docs standard without the manifest still exposes the standard interface; the manifest is what makes it verifiable and reconcilable by kickstart.
 
+## Managed Regions
+
+Generated managed docs (`AGENTS.md` and the `docs/` READMEs) are wrapped in ownership fences — `<!-- kickstart:begin <artifact-id> -->` / `<!-- kickstart:end <artifact-id> -->` comment markers, invisible in rendered markdown. kickstart only ever writes inside its own fences: the fenced block is whole-block replaced when the standard changes, so do not edit inside it; everything outside a fence is user-owned and never read or rewritten. Rationale and the MDX caveat: [Docs Ownership Fences](decisions/docs-ownership-fences.md).
+
 ## Always Generated
 
 Every project type gets:
