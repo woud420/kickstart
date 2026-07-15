@@ -12,10 +12,12 @@
 - Tooling config: `package.json`, `tsconfig.json`, `Makefile`
 - Local env template: `.dev.vars.example` (copy to `.dev.vars` for local secrets)
 
-## Commands
-- Verify contract: `make check`
-- Local development: `make dev`
-- Deploy: `make deploy`
+## Validation
+- `make check` — the canonical verification (lint + typecheck + tests).
+- `make install` — install dependencies.
+- `make test` — run the test suite.
+- `make dev` — run in development mode.
+- `make deploy` — deploy the project.
 
 ## Skills
 - Repo-local agent skills: `.agents/skills/` (Claude Code discovers them via the `.claude/skills` symlink; `CLAUDE.md` carries Claude wiring only).

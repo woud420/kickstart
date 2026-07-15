@@ -418,9 +418,13 @@ class ScaffoldContract:
         knowledge_adapter = manifest.get("knowledge_adapter", "none")
         if not isinstance(knowledge_adapter, str):
             raise ManifestShapeError("manifest field 'knowledge_adapter' is not a string")
-        schema_version = manifest.get("schema_version", "3.0")
+        schema_version = manifest.get("schema_version")
         if not isinstance(schema_version, str):
-            raise ManifestShapeError("manifest field 'schema_version' is not a string")
+            raise ManifestShapeError("manifest schema_version is missing or not a string")
+        if schema_version.split(".", 1)[0] != "3":
+            raise ManifestShapeError(
+                f"unsupported manifest schema_version '{schema_version}': this inverse understands 3.x only"
+            )
 
         return cls(
             project_kind=cast(ProjectKind, kind),

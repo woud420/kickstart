@@ -12,7 +12,7 @@ from src.generator.projections import (
     operations_content,
     scaffold_docs_projections,
 )
-from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract, ScaffoldLifecycle
 
 
 def _service_contract() -> ScaffoldContract:
@@ -141,3 +141,27 @@ def test_decisions_content_asks_for_durable_entries() -> None:
 
     assert content.startswith("# Decisions")
     assert "short, dated" in content
+
+
+def test_worker_agent_map_derives_commands_from_contract_lifecycle() -> None:
+    contract = ScaffoldContract(
+        project_kind="worker",
+        execution_models=("cloudflare-worker",),
+        runtime_platforms=("cloudflare-workers",),
+        artifacts=ScaffoldArtifacts(worker="wrangler"),
+        provider_targets=("cloudflare",),
+        lifecycle=ScaffoldLifecycle(
+            install="npm ci",
+            test="npm test",
+            check="npm run verify",
+            dev="npm run dev",
+            deploy="npm run deploy",
+        ),
+    )
+
+    content = agent_map_content(contract, PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER)
+
+    assert "`npm run verify`" in content
+    assert "`npm ci`" in content
+    assert "before `npm run deploy`" in content
+    assert "make check" not in content
