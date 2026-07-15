@@ -22,6 +22,31 @@ from src.utils.types import ErrorContext, ErrorContextValue
 
 logger = logging.getLogger(__name__)
 
+# The handling API only. Exception classes live in `src.utils.errors` and
+# are deliberately absent: importing an error class from this module
+# half-worked (only the four classes imported above resolved), which is
+# exactly how PR #81 merged green and broke master. Import error classes
+# from `src.utils.errors`; `make check` enforces this via the import
+# hygiene audit.
+__all__ = [
+    "error_context",
+    "handle_file_operations",
+    "handle_template_operations",
+    "handle_directory_operations",
+    "handle_http_operations",
+    "safe_operation",
+    "safe_operation_context",
+    "ErrorCollector",
+    "format_error_message",
+    "log_operation_result",
+    "batch_operation_wrapper",
+    "validate_language_support",
+    "ensure_directory_exists",
+    "safe_binary_write",
+    "safe_file_write",
+    "safe_file_copy",
+]
+
 P = ParamSpec("P")
 R = TypeVar("R")
 T = TypeVar("T")

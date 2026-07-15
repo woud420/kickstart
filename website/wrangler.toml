@@ -2,9 +2,8 @@ name = "kickstart-site"
 main = "src/index.ts"
 compatibility_date = "2026-05-02"
 
-[vars]
-SERVICE_NAME = "kickstart-site"
-PROJECT_VERSION = "0.4.3"
-SUPPORTED_FROM_VERSION = "0.4.0"
-REPOSITORY_URL = "https://github.com/woud420/kickstart"
-RELEASE_URL = "https://github.com/woud420/kickstart/releases/tag/v0.4.3"
+# No [vars] block on purpose: release deploys render wrangler.release.toml
+# from pyproject.toml (scripts/render-release-config.ts), and local dev
+# falls back to defaultProjectMeta in src/site/content.ts, which is
+# test-pinned to pyproject.toml. A hand-maintained copy here was one more
+# version string that could (and did) go stale.

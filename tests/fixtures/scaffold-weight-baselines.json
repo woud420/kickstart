@@ -1,22 +1,38 @@
 {
   "aws-kubernetes-system": {
-    "content_bytes": 25981,
+    "content_bytes": 26042,
     "files": 43
   },
+  "cpp-service": {
+    "content_bytes": 9434,
+    "files": 18
+  },
+  "frontend": {
+    "content_bytes": 11503,
+    "files": 23
+  },
+  "go-service": {
+    "content_bytes": 9167,
+    "files": 23
+  },
+  "python-cli": {
+    "content_bytes": 13776,
+    "files": 27
+  },
   "python-lib": {
-    "content_bytes": 9555,
+    "content_bytes": 9616,
     "files": 15
   },
   "python-service-full": {
-    "content_bytes": 26370,
+    "content_bytes": 26431,
     "files": 50
   },
   "rust-cli": {
-    "content_bytes": 11764,
+    "content_bytes": 11825,
     "files": 26
   },
   "typescript-worker": {
-    "content_bytes": 12445,
+    "content_bytes": 12596,
     "files": 21
   }
 }

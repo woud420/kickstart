@@ -65,6 +65,20 @@ if (app.stage === "prod" && config.domain !== "") {
   });
 }
 
+// Deploying a site whose hero and release-notes links point at a
+// nonexistent GitHub release publishes 404s (exactly the stranded-v0.4.3
+// failure mode). Make "the release URL resolves" a deploy precondition
+// instead of a timing coincidence.
+if (app.stage === "prod") {
+  const releaseCheck = await fetch(config.releaseUrl, { method: "HEAD", redirect: "follow" });
+  if (!releaseCheck.ok) {
+    throw new Error(
+      `release URL does not resolve (HTTP ${releaseCheck.status}): ${config.releaseUrl} — ` +
+        "publish the release (tag + release workflow) before deploying the website.",
+    );
+  }
+}
+
 export const worker = await Worker("website", {
   name: workerName,
   entrypoint: "./src/index.ts",

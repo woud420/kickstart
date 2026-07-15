@@ -109,7 +109,30 @@ capability declared in `.kickstart/scaffold.json` must be exercised by at
 least one generated test (`capability-tests` rule). The eval exits non-zero
 when any case fails generation, taste, capability coverage, or `make check`.
 
-CI gates four cases on every PR (python CLI, full-extension python service,
-typescript worker, rust CLI); the `Scheduled Evals` workflow runs the full
-matrix plus the website-examples drift check weekly against live
-toolchains, so template rot surfaces within a week without slowing PRs.
+CI runs `run_evals.py --tier pr` on every PR (python CLI, full-extension
+python service, typescript worker, rust CLI, plus the weight-baseline
+check); the `Scheduled Evals` workflow runs `--tier full` weekly against
+live toolchains — the whole bootstrap matrix, weight baselines,
+determinism, and the website-examples drift check. Template rot in the
+bootstrap matrix surfaces within a week without slowing PRs. Honest
+coverage note: go services and frontend scaffolds are not yet in the
+bootstrap matrix (their generation shape and weight are guarded, their
+generated `make test` is not), so rot there does not surface weekly —
+extending the matrix is tracked on the board.
+
+## Scaffold Weight Baselines
+
+`tests/fixtures/scaffold-weight-baselines.json` pins each scaffold's file
+count and content bytes. `token_savings_eval.py --check-baselines` fails
+when a scaffold's file count changes at all or its bytes drift beyond
+±10% of the committed baseline — the regression guard for the
+token-efficiency promise, run per PR (tier `pr`) and weekly (tier `full`):
+
+```bash
+PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py --check-baselines
+PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py --update-baselines  # acknowledge deliberate changes
+```
+
+Re-baseline (`--update-baselines`) only for deliberate template changes,
+and commit the fixture diff in the same PR as the template change so the
+review sees the weight delta.
