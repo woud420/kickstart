@@ -8,5 +8,5 @@ metadata:
 spec:
   type: service
   lifecycle: experimental
-  owner: group:default/platform
+  owner: group:default/unknown
   system: {{ monorepo_name }}

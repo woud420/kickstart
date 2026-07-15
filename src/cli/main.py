@@ -23,6 +23,7 @@ from src.api import (
 )
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.generator.adoption import AdoptionTargetError, inspect_repo
+from src.generator.backstage_export import BackstageExportError, export_backstage
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
@@ -82,6 +83,35 @@ def version() -> None:
 def upgrade() -> None:
     """Upgrade to the latest version."""
     check_for_update()
+
+
+export_app: typer.Typer = typer.Typer(help="Deterministic exporters derived from scaffold state.")
+app.add_typer(export_app, name="export")
+
+
+@export_app.command()
+def backstage(
+    path: Path = typer.Argument(Path("."), help="Repository to export"),
+) -> None:
+    """Write or refresh catalog-info.yaml from .kickstart/scaffold.json.
+
+    Derived fields live inside kickstart fences and are refreshed on every
+    export; spec.owner/lifecycle/type and everything else outside the fences
+    are user-owned and never rewritten. Exit codes: 0 = exported cleanly,
+    1 = exported with validation issues or refused (unfenced existing file),
+    2 = usage error (no repo or no usable manifest).
+    """
+    try:
+        result = export_backstage(path)
+    except BackstageExportError as error:
+        message = str(error)
+        print(f"[red]{escape(message)}[/]")
+        raise typer.Exit(code=2 if "manifest" in message or "directory" in message else 1)
+
+    print(f"[bold]{result.action}[/] {escape(str(result.path))}")
+    for issue in result.issues:
+        print(f"  [yellow]warning[/] {escape(issue)}")
+    raise typer.Exit(code=1 if result.issues else 0)
 
 
 @app.command()
