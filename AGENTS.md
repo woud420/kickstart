@@ -8,6 +8,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - CLI parsing and dispatch: `src/cli/`
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
+- Managed docs projections: `src/generator/projections.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`
 - Scaffold metadata: `src/generator/scaffold_contract.py`

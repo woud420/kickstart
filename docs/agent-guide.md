@@ -51,6 +51,7 @@ gaps / 2 usage error). Generated projects verify themselves with
 - kickstart CLI dispatch: `src/cli/`
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
+- Managed docs projections: `src/generator/projections.py`
 - Scaffold contract: `src/generator/scaffold_contract.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`

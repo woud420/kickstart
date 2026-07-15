@@ -2,6 +2,12 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.language_setup import CPP_MAIN_CONTENT, CPP_ROUTES_HEADER_CONTENT, CPP_USER_HEADER_CONTENT
+from src.generator.projections import (
+    PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER,
+    agent_map_content,
+    contracts_content,
+    operations_content,
+)
 from src.generator.service import ServiceGenerator
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.utils.errors import ProjectCreationError, ExtensionError, LanguageNotSupportedError
@@ -614,8 +620,10 @@ def test_cloudflare_worker_template_configs_for_rust():
 def test_typescript_cloudflare_worker_agent_map_is_explicit():
     generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
 
-    content = generator._agent_map_content()
+    profile = generator._projection_profile()
+    content = agent_map_content(profile)
 
+    assert profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER
     assert "src/index.ts" in content
     assert "tests/worker.test.ts" in content
     assert "wrangler.toml" in content
@@ -636,21 +644,22 @@ def test_typescript_cloudflare_worker_contract_and_operations_docs_are_explicit(
         provider_targets=("cloudflare",),
     )
 
-    contracts_content = generator._contracts_content(contract)
-    operations_content = generator._operations_content(contract)
+    profile = generator._projection_profile()
+    contracts_doc = contracts_content(contract, profile)
+    operations_doc = operations_content(contract, profile)
 
-    assert "Scaffold identity" in contracts_content
-    assert "Execution model: `cloudflare-worker`" in contracts_content
-    assert "Verification contract" in contracts_content
-    assert "make check" in contracts_content
-    assert "tests/worker.test.ts" in contracts_content
+    assert "Scaffold identity" in contracts_doc
+    assert "Execution model: `cloudflare-worker`" in contracts_doc
+    assert "Verification contract" in contracts_doc
+    assert "make check" in contracts_doc
+    assert "tests/worker.test.ts" in contracts_doc
 
-    assert "Lifecycle flow" in operations_content
-    assert "1. Install dependencies: `make install`" in operations_content
-    assert "2. Verify scaffold contract: `make check`" in operations_content
-    assert "3. Run local worker runtime: `make dev`" in operations_content
-    assert "4. Deploy to Cloudflare Workers: `make deploy`" in operations_content
-    assert "wrangler.toml" in operations_content
+    assert "Lifecycle flow" in operations_doc
+    assert "1. Install dependencies: `make install`" in operations_doc
+    assert "2. Verify scaffold contract: `make check`" in operations_doc
+    assert "3. Run local worker runtime: `make dev`" in operations_doc
+    assert "4. Deploy to Cloudflare Workers: `make deploy`" in operations_doc
+    assert "wrangler.toml" in operations_doc
 
 
 @patch.object(ServiceGenerator, 'execute_create_flow')
