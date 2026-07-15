@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
-from src.generator.markers import begin_marker
+from src.generator.markers import begin_marker, fence
 from src.generator.projections import (
     PROFILE_DEFAULT,
     PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER,
@@ -71,7 +71,7 @@ def _write_repo(root: Path, contract: ScaffoldContract, profile: ProjectionProfi
         path.write_text(projection.content, encoding="utf-8")
     architecture = root / "docs" / "architecture" / "README.md"
     architecture.parent.mkdir(parents=True, exist_ok=True)
-    architecture.write_text("# planned Architecture\n", encoding="utf-8")
+    architecture.write_text(fence("architecture-readme", "# planned Architecture\n"), encoding="utf-8")
 
 
 def test_fresh_scaffold_is_in_sync(tmp_path: Path) -> None:
@@ -152,6 +152,45 @@ def test_missing_architecture_readme_is_reported(tmp_path: Path) -> None:
     entry = next(entry for entry in report.entries if entry.artifact_id == "architecture-readme")
     assert entry.status == "would-create"
     assert not report.in_sync
+
+
+def test_unfenced_architecture_readme_is_not_presence_only(tmp_path: Path) -> None:
+    _write_repo(tmp_path, _service_contract())
+    (tmp_path / "docs" / "architecture" / "README.md").write_text("# hand-written map\n", encoding="utf-8")
+
+    report = inspect_docs(tmp_path)
+
+    entry = next(entry for entry in report.entries if entry.artifact_id == "architecture-readme")
+    assert entry.status == "unfenced"
+    assert not report.in_sync
+
+
+def test_malformed_architecture_fence_is_reported(tmp_path: Path) -> None:
+    _write_repo(tmp_path, _service_contract())
+    (tmp_path / "docs" / "architecture" / "README.md").write_text(
+        f"{begin_marker('architecture-readme')}\n# map without an end marker\n", encoding="utf-8"
+    )
+
+    report = inspect_docs(tmp_path)
+
+    entry = next(entry for entry in report.entries if entry.artifact_id == "architecture-readme")
+    assert entry.status == "malformed-markers"
+    assert not report.in_sync
+
+
+def test_from_manifest_rejects_unsupported_schema_versions(tmp_path: Path) -> None:
+    manifest = json.loads(_service_contract().manifest_json("planned"))
+
+    manifest["schema_version"] = "4.0"
+    with pytest.raises(ManifestShapeError):
+        ScaffoldContract.from_manifest(manifest)
+
+    del manifest["schema_version"]
+    with pytest.raises(ManifestShapeError):
+        ScaffoldContract.from_manifest(manifest)
+
+    manifest["schema_version"] = "3.1"
+    assert ScaffoldContract.from_manifest(manifest).schema_version == "3.1"
 
 
 def test_worker_repo_matches_either_docs_profile(tmp_path: Path) -> None:
