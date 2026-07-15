@@ -19,6 +19,8 @@ RepoLayout = Literal["single-project", "monorepo"]
 # manifest that has already been written.
 SEMANTICS_REFERENCE = f"https://github.com/woud420/kickstart/blob/v{__version__}/docs/scaffold-contract.md"
 
+MANIFEST_PATH = ".kickstart/scaffold.json"
+
 _PROJECT_KINDS: frozenset[str] = frozenset({"service", "worker", "frontend", "library", "cli", "system"})
 _REPO_LAYOUTS: frozenset[str] = frozenset({"single-project", "monorepo"})
 

@@ -147,6 +147,11 @@ def adopt(
         typer.echo(report.to_json(), nl=False)
     else:
         print(f"[bold]Adoption check for {escape(str(report.root))}[/]")
+        level_color = "green" if report.complete else "red"
+        print(
+            f"  [{level_color}]level[/]   achieved: {escape(report.achieved_level)} / "
+            f"claimed: {escape(report.claimed_level)}"
+        )
         for status in report.artifacts:
             if status.ok:
                 print(f"  [green]ok[/]      {escape(status.path)}")

@@ -69,3 +69,20 @@ def test_plan_without_a_manifest_is_a_usage_error(
     completed = kickstart_run("plan", str(tmp_path), cwd=repo_root, capture_output=True, text=True)
 
     assert completed.returncode == 2
+
+
+def test_generated_scaffold_is_adopted_as_managed(
+    kickstart_run: KickstartRunner, repo_root: Path, tmp_path: Path
+) -> None:
+    """The stack's central premise: real generator output achieves Level 2."""
+    project = _create_service(kickstart_run, repo_root, tmp_path)
+
+    completed = kickstart_run(
+        "adopt", str(project), "--check", "--json", cwd=repo_root, capture_output=True, text=True
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["complete"] is True
+    assert payload["achieved_level"] == "managed"
+    assert payload["claimed_level"] == "managed"
