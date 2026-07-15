@@ -34,7 +34,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from src.generator.adoption import MANIFEST_PATH
 from src.generator.markers import find_fenced_region
 from src.generator.projections import (
     ARCHITECTURE_README_ID,
@@ -45,7 +44,7 @@ from src.generator.projections import (
     ProjectionProfile,
     scaffold_docs_projections,
 )
-from src.generator.scaffold_contract import ScaffoldContract, load_parsed_manifest
+from src.generator.scaffold_contract import MANIFEST_PATH, ScaffoldContract, load_parsed_manifest
 from src.utils.errors import KickstartError, ManifestShapeError, MarkerError
 
 PlanStatus = Literal[

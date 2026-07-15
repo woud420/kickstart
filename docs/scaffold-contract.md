@@ -6,7 +6,7 @@ kickstart generates a stable project map for humans and agents. The goal is not 
 
 The standard interface a generated (or adopted) repository exposes is the vendor-neutral, human-readable artifact set: `AGENTS.md`, the `docs/` skeleton, the Makefile verification targets, and the CI workflow. Humans and agents orient through those artifacts; nothing in the orientation path requires reading `.kickstart/`.
 
-`.kickstart/scaffold.json` is kickstart's machine-readable scaffold state: the record tooling consumes (`kickstart adopt --check` today; drift reporting and reconciliation on the roadmap in `decisions/scaffold-metadata-architecture-review.md`) to verify and re-derive what kickstart generated. A repository that follows the docs standard without the manifest still exposes the standard interface; the manifest is what makes it verifiable and reconcilable by kickstart.
+`.kickstart/scaffold.json` is kickstart's machine-readable scaffold state: the record tooling consumes (`kickstart adopt --check` and `kickstart plan` today; reconciliation on the roadmap in `decisions/scaffold-metadata-architecture-review.md`) to verify and re-derive what kickstart generated. A repository that follows the docs standard without the manifest still exposes the standard interface — `adopt --check` reports it as **Level 1 conformant** (exit 0); the manifest is what makes it **Level 2 managed**, verifiable and reconcilable by kickstart ([adoption tiers](contracts/adoption-tiers.md)).
 
 ## Managed Regions
 
