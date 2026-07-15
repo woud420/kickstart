@@ -89,12 +89,39 @@ def test_find_fails_closed_on_malformed_markers() -> None:
             find_fenced_region(text, "agent-map")
 
 
-def test_find_ignores_partial_line_matches() -> None:
+def test_find_ignores_midline_marker_mentions() -> None:
     mid_line = f"prose mentioning {begin_marker('agent-map')} inline\n"
-    trailing_prose = f"{begin_marker('agent-map')} with trailing prose\n"
 
     assert find_fenced_region(mid_line, "agent-map") is None
-    assert find_fenced_region(trailing_prose, "agent-map") is None
+
+
+def test_find_rejects_marker_like_lines_anywhere() -> None:
+    valid = fence("agent-map", "body\n")
+    stray_after = valid + "user prose\n# kickstart:begin stray\n"
+    trailing_prose = f"{begin_marker('agent-map')} with trailing prose\n"
+    invalid_id = valid + "<!-- kickstart:begin Not_An_Id -->\n"
+    indented = valid + f"    {begin_marker('other')}\n"
+
+    for text in (stray_after, trailing_prose, invalid_id, indented):
+        with pytest.raises(MarkerError):
+            find_fenced_region(text, "agent-map")
+    # The same globally-malformed file must also refuse replacement.
+    with pytest.raises(MarkerError):
+        replace_fenced_region(stray_after, "agent-map", "new body\n")
+
+
+def test_find_supports_multiple_disjoint_regions() -> None:
+    text = fence("agent-map", "first body\n") + "user prose between\n" + fence("catalog", "second body\n")
+
+    first = find_fenced_region(text, "agent-map")
+    second = find_fenced_region(text, "catalog")
+
+    assert first is not None and first.inner == "first body\n"
+    assert second is not None and second.inner == "second body\n"
+
+    replaced = replace_fenced_region(text, "agent-map", "updated body\n")
+    still_second = find_fenced_region(replaced, "catalog")
+    assert still_second is not None and still_second.inner == "second body\n"
 
 
 def test_find_accepts_marker_as_final_unterminated_line() -> None:
