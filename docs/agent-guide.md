@@ -49,6 +49,10 @@ Level 2 managed adds a valid manifest driving fence-managed docs. Tiers
 contract: `docs/contracts/adoption-tiers.md`. Generated projects verify
 themselves with `make check`; the success output names it.
 
+Catalog export: `kickstart export backstage REPO` derives catalog-info.yaml
+from the manifest (derived fields fenced and refreshed; owner/lifecycle/type
+user-owned after first emit). Contract: `docs/contracts/backstage-export.md`.
+
 Docs drift: `kickstart plan REPO --json` re-renders the managed docs
 projections from `.kickstart/scaffold.json` and reports per-artifact status
 (read-only; exit 0 in sync / 1 findings / 2 usage error). Scope contract:
@@ -61,6 +65,7 @@ projections from `.kickstart/scaffold.json` and reports per-artifact status
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
 - Managed docs projections: `src/generator/projections.py`
+- Backstage export: `src/generator/backstage_export.py`
 - Scaffold contract: `src/generator/scaffold_contract.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`

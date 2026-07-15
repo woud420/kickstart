@@ -43,11 +43,22 @@ Other language/runtime/framework combinations fail loudly until their templates 
 
 ## Adopting Existing Repos
 
-`kickstart adopt REPO --check` reports which standard artifacts (scaffold
-manifest, `AGENTS.md`, `README.md`, a Makefile with a `check` target, the
-`docs/` areas, CI workflows) an existing repo is missing. It never writes;
-`--json` emits a machine-readable report. Exit codes: 0 complete, 1 gaps
-found, 2 usage error. Applying the standard automatically is planned.
+`kickstart adopt REPO --check` reports an existing repo against the standard
+at two levels: Level 1 conformant is the vendor-neutral artifact set
+(`AGENTS.md`, `README.md`, a Makefile with a `check` target, `.agents/skills/`,
+the `docs/` areas, CI workflows) with no manifest required; a
+`.kickstart/scaffold.json` claims Level 2 managed, which additionally needs
+the manifest to be valid and the managed docs fence-wrapped. It never writes;
+`--json` emits a machine-readable report. Exit codes: 0 claimed level
+satisfied, 1 gaps found, 2 usage error. Applying the standard automatically
+is planned. See [Adoption Tiers](contracts/adoption-tiers.md).
+
+`kickstart plan REPO` is the matching read-only drift check for managed docs:
+it re-renders them from the manifest and reports per-artifact status, with
+diffs shown only inside kickstart's owned fences — your content outside a
+fence is never compared or touched. `kickstart export backstage REPO` derives
+a `catalog-info.yaml` the same way (derived fields fenced and refreshed;
+owner and lifecycle are yours after the first emit).
 
 ## Library And CLI Options
 
