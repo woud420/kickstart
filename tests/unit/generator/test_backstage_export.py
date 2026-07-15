@@ -255,3 +255,52 @@ def test_manifest_name_round_trips_from_generated_manifest(tmp_path: Path) -> No
     manifest = json.loads((tmp_path / MANIFEST_PATH).read_text(encoding="utf-8"))
 
     assert manifest["project"]["name"] == "named-thing"
+
+
+def test_yaml_reserved_name_is_quoted_as_a_string(tmp_path: Path) -> None:
+    contract = ScaffoldContract(
+        project_kind="service",
+        execution_models=("container",),
+        runtime_platforms=("local",),
+    )
+    _write_manifest(tmp_path, contract, "null")
+
+    export_backstage(tmp_path)
+    content = (tmp_path / CATALOG_PATH).read_text(encoding="utf-8")
+
+    assert '  name: "null"' in content
+    assert "\n  name: null\n" not in content
+
+
+def test_colliding_child_fence_ids_fail_instead_of_dropping(tmp_path: Path) -> None:
+    system_contract = ScaffoldContract(
+        project_kind="system",
+        execution_models=("container",),
+        runtime_platforms=("kubernetes",),
+        repo_layout="monorepo",
+    )
+    _write_manifest(tmp_path, system_contract, "demo-sys")
+    child_contract = ScaffoldContract(
+        project_kind="service",
+        execution_models=("container",),
+        runtime_platforms=("local",),
+    )
+    for child_name in ("foo-bar", "foo_bar"):
+        child_root = tmp_path / "services" / child_name
+        child_root.mkdir(parents=True)
+        _write_manifest(child_root, child_contract, child_name)
+
+    with pytest.raises(BackstageExportError, match="foo-bar.*foo_bar|foo_bar.*foo-bar"):
+        export_backstage(tmp_path)
+
+
+def test_name_beyond_backstage_limit_is_refused(tmp_path: Path) -> None:
+    contract = ScaffoldContract(
+        project_kind="service",
+        execution_models=("container",),
+        runtime_platforms=("local",),
+    )
+    _write_manifest(tmp_path, contract, "a" * 64)
+
+    with pytest.raises(BackstageExportError, match="63-character"):
+        export_backstage(tmp_path)

@@ -61,6 +61,44 @@ _SPEC_TYPES: dict[str, str] = {
 _COMPONENT_REQUIRED_LINES = ("apiVersion:", "kind:", "name:", "type:", "lifecycle:", "owner:")
 _SYSTEM_REQUIRED_LINES = ("apiVersion:", "kind:", "name:", "owner:")
 
+# Conservative plain-scalar shape: values matching this parse back as the
+# same string under YAML. ':' is only allowed when followed by another safe
+# character (YAML treats ':' as special only before whitespace/end), which
+# keeps `group:default/unknown` and `dir:./apps/x` unquoted. Reserved words
+# and leading digits are quoted so `null` or `123` stay strings.
+_PLAIN_YAML_SAFE = re.compile(r"[A-Za-z][A-Za-z0-9._/-]*(?::[A-Za-z0-9._/-]+)*")
+_YAML_RESERVED = frozenset(
+    {"null", "~", "true", "false", "yes", "no", "on", "off", "y", "n"}
+)
+
+# Backstage entity-name contract (metadata.name): the API rejects anything
+# else, so validate before writing instead of emitting a doomed entity.
+_BACKSTAGE_NAME = re.compile(r"[A-Za-z0-9][-A-Za-z0-9_.]*")
+_BACKSTAGE_NAME_MAX_LENGTH = 63
+
+
+def _yaml_string(value: str) -> str:
+    """Render a string as a YAML scalar that always parses back as a string."""
+    if _PLAIN_YAML_SAFE.fullmatch(value) and value.lower() not in _YAML_RESERVED:
+        return value
+    escaped = (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+    )
+    return f'"{escaped}"'
+
+
+def _backstage_name_issue(name: str) -> str:
+    """Return why a name violates the Backstage metadata.name contract, or ''."""
+    if len(name) > _BACKSTAGE_NAME_MAX_LENGTH:
+        return f"'{name}' is longer than the {_BACKSTAGE_NAME_MAX_LENGTH}-character Backstage limit"
+    if _BACKSTAGE_NAME.fullmatch(name) is None:
+        return f"'{name}' is not a valid Backstage entity name"
+    return ""
+
 
 class BackstageExportError(KickstartError):
     """Raised when an export is refused (unfenced or unreadable target)."""
@@ -101,6 +139,9 @@ def export_backstage(root: Path) -> BackstageExportResult:
         name = _project_name(manifest)
     except ManifestShapeError as error:
         raise BackstageExportUsageError(f"cannot export from {MANIFEST_PATH}: {error}") from error
+    name_issue = _backstage_name_issue(name)
+    if name_issue:
+        raise BackstageExportUsageError(f"cannot export {MANIFEST_PATH}: {name_issue}")
     has_docs = (resolved / "docs").is_dir()
     children = _children(resolved, manifest) if contract.project_kind == "system" else ()
 
@@ -180,14 +221,14 @@ def _component_derived_body(contract: ScaffoldContract, name: str, techdocs_ref:
         "apiVersion: backstage.io/v1alpha1",
         "kind: Component",
         "metadata:",
-        f"  name: {name}",
+        f"  name: {_yaml_string(name)}",
     ]
     if techdocs_ref is not None:
-        lines.extend(["  annotations:", f"    backstage.io/techdocs-ref: {techdocs_ref}"])
+        lines.extend(["  annotations:", f"    backstage.io/techdocs-ref: {_yaml_string(techdocs_ref)}"])
     tags = _tags(contract)
     if tags:
         lines.append("  tags:")
-        lines.extend(f"    - {tag}" for tag in tags)
+        lines.extend(f"    - {_yaml_string(tag)}" for tag in tags)
     return "\n".join(lines) + "\n"
 
 
@@ -197,7 +238,7 @@ def _system_derived_body(name: str) -> str:
             "apiVersion: backstage.io/v1alpha1",
             "kind: System",
             "metadata:",
-            f"  name: {name}",
+            f"  name: {_yaml_string(name)}",
         ]
     ) + "\n"
 
@@ -210,7 +251,7 @@ def _spec_block(contract: ScaffoldContract, system: str | None = None) -> str:
         f"  owner: {DEFAULT_OWNER}",
     ]
     if system is not None:
-        lines.append(f"  system: {system}")
+        lines.append(f"  system: {_yaml_string(system)}")
     return "\n".join(lines) + "\n"
 
 
@@ -222,7 +263,9 @@ def _children(resolved: Path, manifest: ParsedManifest) -> tuple[_Child, ...]:
     """Contained projects resolved from the system's composition globs.
 
     Children that cannot be interpreted (unparseable manifest, missing name)
-    are skipped rather than aborting the export.
+    are skipped rather than aborting the export. Children that would export
+    wrongly — an invalid Backstage name, or two names colliding onto one
+    fence id — abort loudly instead of silently dropping an entity.
     """
     composition = manifest.get("composition")
     if not isinstance(composition, dict):
@@ -232,7 +275,7 @@ def _children(resolved: Path, manifest: ParsedManifest) -> tuple[_Child, ...]:
         return ()
 
     children: list[_Child] = []
-    seen_fence_ids: set[str] = set()
+    fence_id_owners: dict[str, str] = {}
     for pattern in globs:
         if not isinstance(pattern, str):
             continue
@@ -243,10 +286,22 @@ def _children(resolved: Path, manifest: ParsedManifest) -> tuple[_Child, ...]:
                 child_name = _project_name(child_manifest)
             except ManifestShapeError:
                 continue
+            name_issue = _backstage_name_issue(child_name)
+            if name_issue:
+                raise BackstageExportError(f"contained project cannot be exported: {name_issue}")
             fence_id = f"catalog-child-{_fence_safe(child_name)}"
-            if fence_id in seen_fence_ids:
+            owner = fence_id_owners.get(fence_id)
+            if owner == child_name:
+                # The same child discovered through overlapping globs.
                 continue
-            seen_fence_ids.add(fence_id)
+            if owner is not None:
+                # Silently dropping an entity would break the promised
+                # one-Component-per-child mapping; fail loudly instead.
+                raise BackstageExportError(
+                    f"contained projects '{owner}' and '{child_name}' both map to fence id "
+                    f"'{fence_id}'; rename one so every child keeps its own catalog entity"
+                )
+            fence_id_owners[fence_id] = child_name
             child_root = child_manifest_path.parent.parent
             techdocs_ref: str | None = None
             if (child_root / "docs").is_dir():
