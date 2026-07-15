@@ -56,7 +56,7 @@ def test_inspect_repo_flags_malformed_manifest(tmp_path: Path) -> None:
 
     manifest_status = next(status for status in report.artifacts if status.path == MANIFEST_PATH)
     assert manifest_status.present
-    assert "unreadable manifest" in manifest_status.issue
+    assert "not valid JSON" in manifest_status.issue
     assert not report.complete
 
 

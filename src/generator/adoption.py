@@ -13,7 +13,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.utils.errors import KickstartError
+from src.generator.scaffold_contract import load_parsed_manifest
+from src.utils.errors import KickstartError, ManifestShapeError
 
 
 class AdoptionTargetError(KickstartError):
@@ -82,12 +83,9 @@ class AdoptionReport:
 def _manifest_issue(manifest_file: Path) -> str:
     """Validate that an existing scaffold manifest is parseable and shaped."""
     try:
-        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        return f"unreadable manifest: {error}"
-
-    if not isinstance(manifest, dict):
-        return "manifest is not a JSON object"
+        manifest = load_parsed_manifest(manifest_file)
+    except ManifestShapeError as error:
+        return str(error)
 
     missing_keys = [key for key in ("schema_version", "project", "lifecycle") if key not in manifest]
     if missing_keys:
