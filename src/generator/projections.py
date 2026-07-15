@@ -104,7 +104,7 @@ def _fenced_projection(artifact_id: str, target: str, body: str) -> DocsProjecti
 def agent_map_content(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> str:
     """Render ``AGENTS.md``, the repo's orientation map."""
     if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER:
-        return _worker_agent_map_content()
+        return _worker_agent_map_content(contract)
     return (
         "# Agent Map\n\n"
         "## Orientation\n"
@@ -251,7 +251,10 @@ def decisions_content() -> str:
     )
 
 
-def _worker_agent_map_content() -> str:
+def _worker_agent_map_content(contract: ScaffoldContract) -> str:
+    # Commands come from the contract lifecycle, not hard-coded make verbs, so
+    # a worker whose manifest declares different commands renders truthfully.
+    deploy_command = contract.resolved_lifecycle().deploy or "make deploy"
     return (
         "# Agent Map\n\n"
         "## Scope\n"
@@ -264,16 +267,14 @@ def _worker_agent_map_content() -> str:
         "- Runtime config: `wrangler.toml`\n"
         "- Tooling config: `package.json`, `tsconfig.json`, `Makefile`\n"
         "- Local env template: `.dev.vars.example` (copy to `.dev.vars` for local secrets)\n\n"
-        "## Commands\n"
-        "- Verify contract: `make check`\n"
-        "- Local development: `make dev`\n"
-        "- Deploy: `make deploy`\n\n"
+        "## Validation\n"
+        f"{_validation_lines(contract)}\n"
         "## Skills\n"
         "- Repo-local agent skills: `.agents/skills/` (Claude Code discovers them "
         "via the `.claude/skills` symlink; `CLAUDE.md` carries Claude wiring only).\n\n"
         "## Deploy assumptions\n"
         "- Wrangler is authenticated (`wrangler login` locally or `CLOUDFLARE_API_TOKEN` in CI).\n"
-        "- Cloudflare bindings and secrets are configured before `make deploy`.\n"
+        f"- Cloudflare bindings and secrets are configured before `{deploy_command}`.\n"
         "- Keep `SERVICE_NAME` bindings aligned between `wrangler.toml`, `.dev.vars`, and tests.\n\n"
         "## Do not hand-edit generated contract files\n"
         "- `.kickstart/scaffold.json`\n"
