@@ -34,10 +34,15 @@ belongs to `kickstart adopt`'s future apply mode.
 
 Exit 0 when the claimed level is fully satisfied; 1 when any gap exists at
 the claimed level (including a repo whose manifest claims managed but whose
-docs are pre-fence); 2 for usage errors. `--json` emits `{"root",
-"complete", "achieved_level", "claimed_level", "artifacts": [{"path",
-"present", "issue", "level"}]}` — Level 2 adds the manifest status and one
-`managed docs fences` readiness entry naming any unmanaged targets.
+docs are pre-fence); 2 for usage errors. Anything occupying the manifest path
+— including a directory or broken symlink — counts as a managed claim.
+`--json` emits `{"root", "complete", "achieved_level", "claimed_level",
+"artifacts": [{"path", "present", "issue", "level"}]}` — Level 2 adds the
+manifest status and, when the manifest itself is healthy, one
+`managed docs fences` readiness entry naming any unmanaged targets (a broken
+manifest is reported as a single gap, not two). For structured per-target
+readiness, consume `kickstart plan --json` — adoption deliberately summarizes
+it.
 
 Pre-fence scaffolds (generated before ownership fences existed) with a
 manifest report `not fence-managed` gaps by design: re-render the managed

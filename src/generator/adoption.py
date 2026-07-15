@@ -24,6 +24,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.generator.scaffold_contract import MANIFEST_PATH, load_parsed_manifest
@@ -37,9 +38,11 @@ class AdoptionTargetError(KickstartError):
         super().__init__(f"adoption target '{target}' is not an existing directory")
 
 
-LEVEL_CONFORMANT = "conformant"
-LEVEL_MANAGED = "managed"
-LEVEL_BELOW_STANDARD = "below-standard"
+AdoptionLevel = Literal["conformant", "managed", "below-standard"]
+
+LEVEL_CONFORMANT: AdoptionLevel = "conformant"
+LEVEL_MANAGED: AdoptionLevel = "managed"
+LEVEL_BELOW_STANDARD: AdoptionLevel = "below-standard"
 
 LEVEL1_ARTIFACTS: tuple[str, ...] = (
     "AGENTS.md",
@@ -58,7 +61,7 @@ LEVEL2_ARTIFACTS: tuple[str, ...] = (MANIFEST_PATH,)
 # The full artifact vocabulary, kept for consumers that enumerate it.
 STANDARD_ARTIFACTS: tuple[str, ...] = (*LEVEL2_ARTIFACTS, *LEVEL1_ARTIFACTS)
 
-_FENCE_MANAGED_PATH = "managed docs fences"
+FENCE_MANAGED_PATH = "managed docs fences"
 
 # Plan statuses that mean "this managed doc is fence-managed" — content drift
 # is a plan concern, not an adoption gap.
@@ -72,7 +75,7 @@ class ArtifactStatus:
     path: str
     present: bool
     issue: str = ""
-    level: str = LEVEL_CONFORMANT
+    level: AdoptionLevel = LEVEL_CONFORMANT
 
     @property
     def ok(self) -> bool:
@@ -85,8 +88,8 @@ class AdoptionReport:
 
     root: Path
     artifacts: tuple[ArtifactStatus, ...]
-    achieved_level: str
-    claimed_level: str
+    achieved_level: AdoptionLevel
+    claimed_level: AdoptionLevel
 
     @property
     def complete(self) -> bool:
@@ -141,7 +144,7 @@ def _makefile_issue(makefile: Path) -> str:
     return ""
 
 
-def _artifact_status(root: Path, artifact: str, level: str = LEVEL_CONFORMANT) -> ArtifactStatus:
+def _artifact_status(root: Path, artifact: str, level: AdoptionLevel = LEVEL_CONFORMANT) -> ArtifactStatus:
     """Inspect one standard artifact path."""
     target = root / artifact
     if artifact.endswith("/"):
@@ -167,7 +170,7 @@ def _fence_readiness_status(resolved: Path) -> ArtifactStatus:
         plan = inspect_docs(resolved)
     except DocsPlanTargetError as error:
         return ArtifactStatus(
-            path=_FENCE_MANAGED_PATH,
+            path=FENCE_MANAGED_PATH,
             present=False,
             issue=f"manifest cannot drive the docs projections: {error}",
             level=LEVEL_MANAGED,
@@ -180,12 +183,12 @@ def _fence_readiness_status(resolved: Path) -> ArtifactStatus:
     ]
     if not_ready:
         return ArtifactStatus(
-            path=_FENCE_MANAGED_PATH,
+            path=FENCE_MANAGED_PATH,
             present=True,
             issue=f"not fence-managed: {', '.join(not_ready)}",
             level=LEVEL_MANAGED,
         )
-    return ArtifactStatus(path=_FENCE_MANAGED_PATH, present=True, issue="", level=LEVEL_MANAGED)
+    return ArtifactStatus(path=FENCE_MANAGED_PATH, present=True, issue="", level=LEVEL_MANAGED)
 
 
 def inspect_repo(root: Path) -> AdoptionReport:
@@ -196,19 +199,25 @@ def inspect_repo(root: Path) -> AdoptionReport:
     resolved = root.resolve()
     level1 = tuple(_artifact_status(resolved, artifact) for artifact in LEVEL1_ARTIFACTS)
 
-    manifest_present = (resolved / MANIFEST_PATH).is_file()
-    claimed_level = LEVEL_MANAGED if manifest_present else LEVEL_CONFORMANT
+    manifest_path = resolved / MANIFEST_PATH
+    # Anything occupying the manifest path is a managed claim — including a
+    # directory or broken symlink, which must fail the claim rather than
+    # silently demote the repo to a passing Level 1.
+    manifest_claimed = manifest_path.exists() or manifest_path.is_symlink()
+    claimed_level: AdoptionLevel = LEVEL_MANAGED if manifest_claimed else LEVEL_CONFORMANT
 
     level2: tuple[ArtifactStatus, ...] = ()
-    if manifest_present:
-        level2 = (
-            _artifact_status(resolved, MANIFEST_PATH, level=LEVEL_MANAGED),
-            _fence_readiness_status(resolved),
-        )
+    if manifest_claimed:
+        manifest_status = _artifact_status(resolved, MANIFEST_PATH, level=LEVEL_MANAGED)
+        level2 = (manifest_status,)
+        if manifest_status.ok:
+            # A broken manifest is one gap, not two: fence readiness re-parses
+            # the same file, so only report it when the manifest itself is fine.
+            level2 = (manifest_status, _fence_readiness_status(resolved))
 
-    achieved_level = LEVEL_BELOW_STANDARD
+    achieved_level: AdoptionLevel = LEVEL_BELOW_STANDARD
     if all(status.ok for status in level1):
-        managed_ok = manifest_present and all(status.ok for status in level2)
+        managed_ok = manifest_claimed and all(status.ok for status in level2)
         achieved_level = LEVEL_MANAGED if managed_ok else LEVEL_CONFORMANT
 
     return AdoptionReport(

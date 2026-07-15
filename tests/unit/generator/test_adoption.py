@@ -132,6 +132,18 @@ def test_inspect_repo_flags_manifest_missing_keys(tmp_path: Path) -> None:
     assert not report.complete
 
 
+def test_manifest_path_occupied_by_a_directory_fails_its_claim(tmp_path: Path) -> None:
+    scaffold_conformant_repo(tmp_path)
+    (tmp_path / MANIFEST_PATH).mkdir(parents=True)
+
+    report = inspect_repo(tmp_path)
+
+    assert not report.complete
+    assert report.claimed_level == "managed"
+    manifest_status = next(status for status in report.artifacts if status.path == MANIFEST_PATH)
+    assert not manifest_status.ok
+
+
 def test_inspect_repo_rejects_missing_target(tmp_path: Path) -> None:
     with pytest.raises(AdoptionTargetError):
         inspect_repo(tmp_path / "does-not-exist")
