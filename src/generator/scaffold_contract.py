@@ -343,6 +343,10 @@ class ScaffoldContract:
         """Return stable, pretty JSON for `.kickstart/scaffold.json`."""
         return json.dumps(self.manifest(project_name), indent=2, sort_keys=True) + "\n"
 
+    def resolved_lifecycle(self) -> ScaffoldLifecycle:
+        """Return the effective lifecycle commands (explicit or kind defaults)."""
+        return self._lifecycle()
+
     def _lifecycle(self) -> ScaffoldLifecycle:
         """Return lifecycle commands for this project kind."""
         if self.lifecycle is not None:

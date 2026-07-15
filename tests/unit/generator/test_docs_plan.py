@@ -194,6 +194,8 @@ def test_report_json_shape(tmp_path: Path) -> None:
     assert payload["in_sync"] is True
     assert {entry["artifact"] for entry in payload["entries"]} == {
         "agent-map",
+        "claude-pointer",
+        "agents-skills-readme",
         "contracts-readme",
         "operations-readme",
         "decisions-readme",

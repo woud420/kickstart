@@ -17,6 +17,9 @@
 - Local development: `make dev`
 - Deploy: `make deploy`
 
+## Skills
+- Repo-local agent skills: `.agents/skills/` (Claude Code discovers them via the `.claude/skills` symlink; `CLAUDE.md` carries Claude wiring only).
+
 ## Deploy assumptions
 - Wrangler is authenticated (`wrangler login` locally or `CLOUDFLARE_API_TOKEN` in CI).
 - Cloudflare bindings and secrets are configured before `make deploy`.

@@ -84,6 +84,7 @@ class TestServiceCreation:
             "docs/operations",
             "docs/decisions",
             ".kickstart",
+            ".agents/skills",
         ]
         for expected_dir in expected_dirs:
             assert (project_path / expected_dir).exists(), f"Missing directory: {expected_dir}"
@@ -117,7 +118,17 @@ class TestServiceCreation:
         assert "before changing generated conventions" not in agents_doc
         assert agents_doc.startswith("<!-- kickstart:begin agent-map -->\n")
         assert agents_doc.endswith("<!-- kickstart:end agent-map -->\n")
+        assert "## Validation" in agents_doc
+        assert "## Skills" in agents_doc
         assert "<!-- kickstart:begin architecture-readme -->" in arch_readme.read_text()
+        claude_doc = (project_path / "CLAUDE.md").read_text()
+        assert claude_doc.startswith("<!-- kickstart:begin claude-pointer -->\n")
+        assert "AGENTS.md" in claude_doc
+        skills_readme = (project_path / ".agents/skills/README.md").read_text()
+        assert "SKILL.md" in skills_readme
+        claude_skills = project_path / ".claude/skills"
+        assert claude_skills.is_symlink()
+        assert claude_skills.readlink() == Path("../.agents/skills")
         assert (project_path / ".kickstart/scaffold.json").exists()
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
         assert manifest["project"] == {
@@ -343,6 +354,9 @@ class TestServiceCreation:
         assert "before changing generated conventions" not in agents_doc
         assert agents_doc.startswith("<!-- kickstart:begin agent-map -->\n")
         assert agents_doc.endswith("<!-- kickstart:end agent-map -->\n")
+        assert "## Skills" in agents_doc
+        assert (project_path / ".agents/skills/README.md").exists()
+        assert (project_path / ".claude/skills").is_symlink()
 
         contracts_doc = (project_path / "docs/contracts/README.md").read_text()
         assert "Scaffold identity" in contracts_doc
@@ -441,6 +455,7 @@ class TestFrontendCreation:
             "docs/operations",
             "docs/decisions",
             ".kickstart",
+            ".agents/skills",
         ]
         for expected_dir in expected_dirs:
             assert (project_path / expected_dir).exists()
@@ -475,6 +490,7 @@ class TestLibraryCreation:
             "docs/operations",
             "docs/decisions",
             ".kickstart",
+            ".agents/skills",
         ]
         for expected_dir in expected_dirs:
             assert (project_path / expected_dir).exists()
@@ -510,6 +526,7 @@ class TestMonorepoCreation:
             "docs/operations",
             "docs/decisions",
             ".kickstart",
+            ".agents/skills",
             "infra",
         ]
         for expected_dir in expected_dirs:

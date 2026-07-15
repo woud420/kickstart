@@ -10,6 +10,7 @@ def scaffold_contract_directories() -> list[str]:
     """Return docs and metadata directories generated for every project."""
     return [
         ".kickstart",
+        ".agents/skills",
         "docs/architecture",
         "docs/contracts",
         "docs/operations",
@@ -157,6 +158,7 @@ DIRECTORY_PURPOSES: dict[str, str] = {
     "docs/operations": "local development, validation, and deploy notes",
     "docs/decisions": "durable design decisions",
     "docs": "project documentation",
+    ".agents/skills": "repo-local agent skills, one directory per skill with a SKILL.md",
     ".kickstart": "machine-readable scaffold metadata",
     ".github/workflows": "CI workflows",
     "apps": "deployable applications",

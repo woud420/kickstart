@@ -16,7 +16,9 @@ Generated managed docs (`AGENTS.md` and the `docs/` READMEs) are wrapped in owne
 
 Every project type gets:
 
-- `AGENTS.md`: short agent map for where to look first.
+- `AGENTS.md`: the Agent Map — orientation, validation commands, skills, and change rules.
+- `CLAUDE.md`: thin Claude Code wiring that defers to `AGENTS.md`.
+- `.agents/skills/`: repo-local agent skills (one directory per skill with a `SKILL.md`), plus a README stating the format and promotion path; `.claude/skills` is a symlink to it for Claude Code discovery (a plain pointer file on platforms without symlinks).
 - `docs/architecture/`: structure, boundaries, and architecture notes.
 - `docs/contracts/`: project-specific public surface. For a service this may be HTTP, env vars, ports, and queues; for a CLI it may be commands, flags, config files, and exit codes; for a library it may be public APIs and package metadata.
 - `docs/operations/`: project-specific development, validation, packaging, deployment, and runbook notes.

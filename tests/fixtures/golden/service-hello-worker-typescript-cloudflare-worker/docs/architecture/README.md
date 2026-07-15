@@ -7,6 +7,7 @@ lives in `.kickstart/scaffold.json`.
 
 ## Layout
 
+- `.agents/skills/` — repo-local agent skills, one directory per skill with a SKILL.md
 - `.kickstart/` — machine-readable scaffold metadata
 - `docs/architecture/` — structure and boundary notes (this file)
 - `docs/contracts/` — public and external surfaces

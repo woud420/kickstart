@@ -29,6 +29,8 @@ Outputs:
 - rendered templates
 - direct content files
 - `AGENTS.md`
+- `CLAUDE.md` (thin pointer to `AGENTS.md`)
+- `.agents/skills/README.md` and the `.claude/skills` symlink
 - `docs/architecture/`
 - `docs/contracts/`
 - `docs/operations/`
