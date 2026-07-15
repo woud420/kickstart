@@ -42,6 +42,11 @@ ProjectionProfile = Literal["default", "typescript-cloudflare-worker"]
 PROFILE_DEFAULT: ProjectionProfile = "default"
 PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER: ProjectionProfile = "typescript-cloudflare-worker"
 
+# Canonical identity of the architecture projection, shared with tooling that
+# must reference it without rendering it (its inputs are generation-time).
+ARCHITECTURE_README_ID = "architecture-readme"
+ARCHITECTURE_README_TARGET = "docs/architecture/README.md"
+
 
 @dataclass(frozen=True)
 class DocsProjection:
@@ -75,8 +80,8 @@ def architecture_readme_projection(
 ) -> DocsProjection:
     """Render the architecture README as a managed projection."""
     return _fenced_projection(
-        "architecture-readme",
-        "docs/architecture/README.md",
+        ARCHITECTURE_README_ID,
+        ARCHITECTURE_README_TARGET,
         render_architecture_readme(title, directories, contract),
     )
 

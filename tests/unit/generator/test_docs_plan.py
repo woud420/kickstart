@@ -222,7 +222,11 @@ def test_from_manifest_rejects_bad_shapes() -> None:
     bad_kind["project"]["kind"] = "spaceship"
     bad_models = json.loads(json.dumps(good))
     bad_models["execution"]["models"] = "container"
+    bad_schema = json.loads(json.dumps(good))
+    bad_schema["schema_version"] = 4
+    bad_knowledge = json.loads(json.dumps(good))
+    bad_knowledge["knowledge_adapter"] = {"kind": "backstage"}
 
-    for manifest in (no_project, bad_kind, bad_models):
+    for manifest in (no_project, bad_kind, bad_models, bad_schema, bad_knowledge):
         with pytest.raises(ManifestShapeError):
             ScaffoldContract.from_manifest(manifest)

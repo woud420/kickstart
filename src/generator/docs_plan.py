@@ -11,7 +11,8 @@ Statuses per managed artifact:
 
 - ``in-sync``: the fenced region matches a candidate render byte-for-byte.
 - ``would-create``: the managed file is missing.
-- ``content-drift``: the fenced region differs (a unified diff is attached).
+- ``content-drift``: the fenced region differs (a unified diff against the
+  closest candidate render is attached).
 - ``unfenced``: the file exists with no fence — a pre-fence scaffold or
   hand-written file; reported as a structural fact, content never compared.
 - ``malformed-markers``: fail-closed marker parsing rejected the file.
@@ -31,20 +32,33 @@ import difflib
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from src.generator.adoption import MANIFEST_PATH
 from src.generator.markers import find_fenced_region
 from src.generator.projections import (
+    ARCHITECTURE_README_ID,
+    ARCHITECTURE_README_TARGET,
     PROFILE_DEFAULT,
     PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER,
     DocsProjection,
     ProjectionProfile,
     scaffold_docs_projections,
 )
-from src.generator.scaffold_contract import ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldContract, load_parsed_manifest
 from src.utils.errors import KickstartError, ManifestShapeError, MarkerError
 
-ARCHITECTURE_README = "docs/architecture/README.md"
+PlanStatus = Literal[
+    "in-sync",
+    "presence-only",
+    "would-create",
+    "content-drift",
+    "unfenced",
+    "malformed-markers",
+    "unreadable",
+]
+
+_MISSING_DETAIL = "managed file missing"
 
 
 class DocsPlanTargetError(KickstartError):
@@ -57,7 +71,7 @@ class DocsPlanEntry:
 
     artifact_id: str
     target: str
-    status: str
+    status: PlanStatus
     detail: str = ""
     diff: str = ""
     profile: str = ""
@@ -106,32 +120,22 @@ def inspect_docs(root: Path) -> DocsPlanReport:
 
     contract = _contract_from_repo(resolved)
     profiles = _candidate_profiles(contract)
-    candidates = {profile: scaffold_docs_projections(contract, profile) for profile in profiles}
+    renders = tuple(scaffold_docs_projections(contract, profile) for profile in profiles)
 
     entries = [
-        _plan_entry(resolved, index, profiles, candidates)
-        for index in range(len(candidates[profiles[0]]))
+        _plan_entry(resolved, profiles, variants)
+        for variants in zip(*renders, strict=True)
     ]
     entries.append(_architecture_entry(resolved))
     return DocsPlanReport(root=resolved, entries=tuple(entries))
 
 
 def _contract_from_repo(resolved: Path) -> ScaffoldContract:
-    manifest_file = resolved / MANIFEST_PATH
     try:
-        parsed = json.loads(manifest_file.read_text(encoding="utf-8"))
-    except OSError as error:
-        raise DocsPlanTargetError(
-            f"no readable scaffold manifest at {MANIFEST_PATH}: {error}"
-        ) from error
-    except json.JSONDecodeError as error:
-        raise DocsPlanTargetError(f"scaffold manifest is not valid JSON: {error}") from error
-    if not isinstance(parsed, dict):
-        raise DocsPlanTargetError("scaffold manifest is not a JSON object")
-    try:
+        parsed = load_parsed_manifest(resolved / MANIFEST_PATH)
         return ScaffoldContract.from_manifest(parsed)
     except ManifestShapeError as error:
-        raise DocsPlanTargetError(f"scaffold manifest cannot be planned against: {error}") from error
+        raise DocsPlanTargetError(f"cannot plan against {MANIFEST_PATH}: {error}") from error
 
 
 def _candidate_profiles(contract: ScaffoldContract) -> tuple[ProjectionProfile, ...]:
@@ -145,14 +149,13 @@ def _candidate_profiles(contract: ScaffoldContract) -> tuple[ProjectionProfile, 
 
 def _plan_entry(
     resolved: Path,
-    index: int,
     profiles: tuple[ProjectionProfile, ...],
-    candidates: dict[ProjectionProfile, tuple[DocsProjection, ...]],
+    variants: tuple[DocsProjection, ...],
 ) -> DocsPlanEntry:
-    projection = candidates[profiles[0]][index]
+    projection = variants[0]
     path = resolved / projection.target
     if not path.is_file():
-        return DocsPlanEntry(projection.id, projection.target, "would-create", detail="managed file missing")
+        return DocsPlanEntry(projection.id, projection.target, "would-create", detail=_MISSING_DETAIL)
 
     try:
         text = path.read_text(encoding="utf-8")
@@ -171,32 +174,45 @@ def _plan_entry(
             detail="no ownership fence (pre-fence scaffold or hand-written file); content not compared",
         )
 
-    for profile in profiles:
-        if region.inner == candidates[profile][index].body:
+    for profile, variant in zip(profiles, variants, strict=True):
+        if region.inner == variant.body:
             return DocsPlanEntry(projection.id, projection.target, "in-sync", profile=profile)
 
-    expected = projection.body
-    diff = "".join(
-        difflib.unified_diff(
-            expected.splitlines(keepends=True),
-            region.inner.splitlines(keepends=True),
-            fromfile=f"expected/{projection.target}",
-            tofile=f"actual/{projection.target}",
-        )
-    )
+    # Diff against the closest candidate so the report shows the real drift
+    # instead of a wholesale replacement against an arbitrary profile.
+    candidate_diffs = [
+        (_unified_diff(variant.body, region.inner, projection.target), profile)
+        for profile, variant in zip(profiles, variants, strict=True)
+    ]
+    diff, profile = min(candidate_diffs, key=lambda pair: len(pair[0]))
     detail = "owned region differs from the current standard's render"
     if len(profiles) > 1:
-        detail += " (no candidate docs profile matched)"
+        detail += f" (closest candidate profile: {profile})"
     return DocsPlanEntry(projection.id, projection.target, "content-drift", detail=detail, diff=diff)
 
 
-def _architecture_entry(resolved: Path) -> DocsPlanEntry:
-    detail = (
-        "content needs generation-time inputs (title, directory list) a schema-3.0 "
-        "manifest does not record; presence checked only"
+def _unified_diff(expected: str, actual: str, target: str) -> str:
+    return "".join(
+        difflib.unified_diff(
+            expected.splitlines(keepends=True),
+            actual.splitlines(keepends=True),
+            fromfile=f"expected/{target}",
+            tofile=f"actual/{target}",
+        )
     )
-    if (resolved / ARCHITECTURE_README).is_file():
-        return DocsPlanEntry("architecture-readme", ARCHITECTURE_README, "presence-only", detail=detail)
+
+
+def _architecture_entry(resolved: Path) -> DocsPlanEntry:
+    if (resolved / ARCHITECTURE_README_TARGET).is_file():
+        return DocsPlanEntry(
+            ARCHITECTURE_README_ID,
+            ARCHITECTURE_README_TARGET,
+            "presence-only",
+            detail=(
+                "content needs generation-time inputs (title, directory list) a schema-3.0 "
+                "manifest does not record; presence checked only"
+            ),
+        )
     return DocsPlanEntry(
-        "architecture-readme", ARCHITECTURE_README, "would-create", detail="managed file missing"
+        ARCHITECTURE_README_ID, ARCHITECTURE_README_TARGET, "would-create", detail=_MISSING_DETAIL
     )

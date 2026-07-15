@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 import json
+from pathlib import Path
 from typing import Literal, NotRequired, TypedDict, cast
 
 from src import __version__
@@ -25,6 +26,24 @@ _REPO_LAYOUTS: frozenset[str] = frozenset({"single-project", "monorepo"})
 # actually produce, unlike a loose catch-all annotation.
 JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
 ParsedManifest = dict[str, JsonValue]
+
+
+def load_parsed_manifest(manifest_file: "Path") -> ParsedManifest:
+    """Read and parse an on-disk scaffold manifest, fail-closed.
+
+    The single loader both `adopt --check` and `plan` sit on, so the two
+    commands can never disagree about what counts as a readable manifest.
+    Raises ``ManifestShapeError`` with a human-readable reason.
+    """
+    try:
+        parsed = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError) as error:
+        raise ManifestShapeError(f"unreadable manifest: {error}") from error
+    except json.JSONDecodeError as error:
+        raise ManifestShapeError(f"manifest is not valid JSON: {error}") from error
+    if not isinstance(parsed, dict):
+        raise ManifestShapeError("manifest is not a JSON object")
+    return parsed
 
 
 def _require_mapping(value: "JsonValue | None", description: str) -> ParsedManifest:
@@ -395,7 +414,11 @@ class ScaffoldContract:
                 workspace_tooling = tooling
 
         knowledge_adapter = manifest.get("knowledge_adapter", "none")
+        if not isinstance(knowledge_adapter, str):
+            raise ManifestShapeError("manifest field 'knowledge_adapter' is not a string")
         schema_version = manifest.get("schema_version", "3.0")
+        if not isinstance(schema_version, str):
+            raise ManifestShapeError("manifest field 'schema_version' is not a string")
 
         return cls(
             project_kind=cast(ProjectKind, kind),
@@ -425,7 +448,7 @@ class ScaffoldContract:
                 auth=_optional_string(extensions, "auth"),
             ),
             provider_targets=_string_items(provider.get("targets", []), "provider.targets"),
-            knowledge_adapter=knowledge_adapter if isinstance(knowledge_adapter, str) else "none",
+            knowledge_adapter=knowledge_adapter,
             repo_layout=cast(RepoLayout, repo_layout),
             workspace_tooling=workspace_tooling,
             architecture=_optional_string(project, "architecture"),
@@ -434,7 +457,7 @@ class ScaffoldContract:
             entrypoint=_optional_string(project, "entrypoint"),
             operation_root=_optional_string(project, "operation_root"),
             src_root_files=_string_items(project.get("src_root_files", []), "project.src_root_files"),
-            schema_version=schema_version if isinstance(schema_version, str) else "3.0",
+            schema_version=schema_version,
         )
 
     @property
