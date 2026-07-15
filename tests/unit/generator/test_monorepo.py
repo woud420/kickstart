@@ -33,6 +33,7 @@ def _expected_monorepo_dirs():
         "data/postgres",
         "knowledge",
         ".kickstart",
+        ".agents/skills",
         "docs/architecture",
         "docs/contracts",
         "docs/operations",

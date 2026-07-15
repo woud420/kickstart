@@ -1,54 +1,51 @@
 ---
 name: backstage-catalog
-description: Derive a Backstage catalog-info.yaml from a kickstart-generated repo's .kickstart/scaffold.json. Use when asked to register a scaffolded or adopted project in a Backstage software catalog.
+description: Register a kickstart-generated or adopted repo in a Backstage software catalog using the deterministic `kickstart export backstage` verb, then fill in the human judgment fields. Use when asked to add a scaffolded or adopted project to Backstage.
 ---
 
-# Backstage Catalog Mapping
+# Backstage Catalog Registration
 
 ## Use When
 
-Use this skill when asked to add a kickstart-generated (or adopted) repo to
-a Backstage catalog. The mapping is derived from `.kickstart/scaffold.json`,
-so the catalog entry stays consistent with the scaffold contract instead of
-being hand-written.
+Use this skill when asked to add a kickstart-generated (or adopted) repo to a
+Backstage catalog. The mechanical mapping is owned by the deterministic verb —
+never hand-derive it; this skill supplies the judgment the verb deliberately
+does not.
 
-Catalog metadata is opt-in: `system` scaffolds created with
-`--knowledge backstage` already emit `catalog-info.yaml` and
-`backstage_template.yaml` — check for them first and update rather than
-duplicate. All other project kinds get their entry from this mapping.
+## Procedure
 
-## Mapping
-
-Read `.kickstart/scaffold.json` and emit `catalog-info.yaml` at the repo
-root:
-
-| catalog-info field | source |
-| --- | --- |
-| `apiVersion` | `backstage.io/v1alpha1` |
-| `kind` | `Component` (`System` additionally for `project.kind: system`) |
-| `metadata.name` | `project.name` (already DNS-label safe) |
-| `metadata.description` | `kickstart-generated <project.kind>` unless the README gives a better one-liner |
-| `metadata.annotations` | `backstage.io/techdocs-ref: dir:.` when `docs/` exists |
-| `metadata.tags` | `capabilities.service_extensions` values (for example `postgres`, `redis`, `jwt`) plus `execution.models` entries |
-| `spec.type` | `service` → `service`, `frontend` → `website`, `lib` → `library`, `cli` → `tool`, `system` → `system` |
-| `spec.lifecycle` | `experimental` unless the user states otherwise |
-| `spec.owner` | ask the user; default `group:default/platform` (matches the system template) |
-
-For `system` repos, also emit one `Component` per contained project listed
-in the scaffold's composition metadata, each with `spec.system` set to the
-system's name.
+1. Run `kickstart export backstage <repo>`. It derives `catalog-info.yaml`
+   from `.kickstart/scaffold.json`: derived fields (apiVersion, kind,
+   metadata name/tags/techdocs annotation, and for systems the System entity
+   plus child Components) sit inside `# kickstart:begin/end` fences and
+   refresh on every run; `spec.type`, `spec.lifecycle: experimental`, and
+   `spec.owner: group:default/unknown` are emitted once as anonymous
+   defaults and then belong to the user.
+2. Review the diff. Never overwrite by hand what the verb owns (inside the
+   fences); never let the verb own what humans decide (outside them). An
+   existing hand-written `catalog-info.yaml` is refused by the verb —
+   migrate it by moving its human fields outside a fresh export's fences.
+3. Fill in the judgment fields outside the fences:
+   - `spec.owner`: ask the user; replace the `group:default/unknown`
+     sentinel with the real owning group.
+   - `spec.lifecycle`: keep `experimental` unless the user states otherwise.
+   - `metadata.description`: add a one-liner if the README gives a better
+     one than none.
+4. Validate: the file parses as YAML and every entity has `apiVersion`,
+   `kind`, `metadata.name`, `spec.type`, `spec.lifecycle`, `spec.owner`
+   (the verb warns on missing required lines — resolve warnings before
+   reporting done).
 
 ## Rules
 
-- Derive from `.kickstart/scaffold.json`; do not guess fields the scaffold
-  does not state — omit them or ask.
-- Never overwrite an existing `catalog-info.yaml` without showing the diff.
+- The verb is the source of truth for derived fields; do not guess fields
+  the scaffold does not state — omit them or ask.
 - Keep names DNS-label safe (lowercase alphanumerics and dashes).
-- Validate the result parses as YAML and has `apiVersion`, `kind`,
-  `metadata.name`, `spec.type`, `spec.lifecycle`, and `spec.owner` before
-  reporting done.
+- Re-running the export must be a no-op when nothing changed; if it is not,
+  something edited inside a fence — restore via re-export and move the edit
+  outside.
 
 ## Report Back
 
-Report the emitted file path, the kind/type/owner chosen, and any scaffold
-fields that had no catalog equivalent.
+Report the file path, created/updated/unchanged, the owner and lifecycle
+chosen, and any scaffold fields that had no catalog equivalent.

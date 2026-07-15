@@ -5,7 +5,7 @@ metadata:
   title: {{ monorepo_name }} Service
   description: Create a service that follows the {{ monorepo_name }} workspace conventions.
 spec:
-  owner: group:default/platform
+  owner: group:default/unknown
   type: service
   parameters:
     - title: Service

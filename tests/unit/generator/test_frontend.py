@@ -57,7 +57,7 @@ def test_create_success_with_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "public", "tests", ".kickstart", "docs/architecture",
+        "src", "public", "tests", ".kickstart", ".agents/skills", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
@@ -100,7 +100,7 @@ def test_create_success_without_gh(
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with([
-        "src", "public", "tests", ".kickstart", "docs/architecture",
+        "src", "public", "tests", ".kickstart", ".agents/skills", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ])
     
@@ -147,7 +147,7 @@ def test_template_directory_is_react():
 def test_project_structure_directories():
     """Test that the correct directory structure is created."""
     expected_directories = [
-        "src", "public", "tests", ".kickstart", "docs/architecture",
+        "src", "public", "tests", ".kickstart", ".agents/skills", "docs/architecture",
         "docs/contracts", "docs/operations", "docs/decisions"
     ]
     
