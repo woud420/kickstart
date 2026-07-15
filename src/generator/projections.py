@@ -19,6 +19,11 @@ is the render-inputs work in the metadata review's roadmap (§6 step 1).
 ``AgentWorkflowArtifact`` (``src/stack/agent_workflows.py``, whose payload
 is a template reference instead of rendered content); it adds only the
 stable ``id`` tooling needs to enumerate managed docs.
+
+Each projection's file content is the rendered body wrapped in its ownership
+fence (``src/generator/markers.py``): kickstart owns the fenced region and
+nothing else, so user content added outside the fence survives every
+re-render. The body render functions stay fence-free for direct reuse.
 """
 
 from __future__ import annotations
@@ -28,6 +33,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from src.generator.layouts import render_architecture_readme
+from src.generator.markers import fence
 from src.generator.scaffold_contract import ScaffoldContract
 
 ProjectionProfile = Literal["default", "typescript-cloudflare-worker"]
@@ -48,18 +54,10 @@ class DocsProjection:
 def scaffold_docs_projections(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> tuple[DocsProjection, ...]:
     """Render the managed docs set emitted with every scaffold contract."""
     return (
-        DocsProjection(id="agent-map", target="AGENTS.md", content=agent_map_content(profile)),
-        DocsProjection(
-            id="contracts-readme",
-            target="docs/contracts/README.md",
-            content=contracts_content(contract, profile),
-        ),
-        DocsProjection(
-            id="operations-readme",
-            target="docs/operations/README.md",
-            content=operations_content(contract, profile),
-        ),
-        DocsProjection(id="decisions-readme", target="docs/decisions/README.md", content=decisions_content()),
+        _fenced_projection("agent-map", "AGENTS.md", agent_map_content(profile)),
+        _fenced_projection("contracts-readme", "docs/contracts/README.md", contracts_content(contract, profile)),
+        _fenced_projection("operations-readme", "docs/operations/README.md", operations_content(contract, profile)),
+        _fenced_projection("decisions-readme", "docs/decisions/README.md", decisions_content()),
     )
 
 
@@ -69,11 +67,20 @@ def architecture_readme_projection(
     contract: ScaffoldContract | None,
 ) -> DocsProjection:
     """Render the architecture README as a managed projection."""
-    return DocsProjection(
-        id="architecture-readme",
-        target="docs/architecture/README.md",
-        content=render_architecture_readme(title, directories, contract),
+    return _fenced_projection(
+        "architecture-readme",
+        "docs/architecture/README.md",
+        render_architecture_readme(title, directories, contract),
     )
+
+
+def _fenced_projection(artifact_id: str, target: str, body: str) -> DocsProjection:
+    """Wrap a rendered body in its ownership fence as the file content.
+
+    Generated files start as exactly one owned region; user content added
+    outside the fence later is never read or rewritten by kickstart.
+    """
+    return DocsProjection(id=artifact_id, target=target, content=fence(artifact_id, body))
 
 
 def agent_map_content(profile: ProjectionProfile = PROFILE_DEFAULT) -> str:

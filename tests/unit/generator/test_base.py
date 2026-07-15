@@ -57,7 +57,8 @@ def test_create_architecture_docs(base_generator, tmp_path):
         arch = tmp_path / "docs/architecture/README.md"
         assert arch.exists()
         content = arch.read_text()
-        assert content.startswith("# My Docs\n")
+        assert content.startswith("<!-- kickstart:begin architecture-readme -->\n# My Docs\n")
+        assert content.endswith("<!-- kickstart:end architecture-readme -->\n")
         assert "`src/routes/` — HTTP surface" in content
         assert "Entrypoint: `src/main.py`" in content
 

@@ -1,6 +1,7 @@
 """The managed docs projection registry: pure, enumerable, deterministic."""
 
 from src.generator.layouts import render_architecture_readme, service_directories
+from src.generator.markers import fence, find_fenced_region
 from src.generator.projections import (
     PROFILE_DEFAULT,
     PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER,
@@ -114,7 +115,23 @@ def test_architecture_projection_matches_layout_render() -> None:
 
     assert projection.id == "architecture-readme"
     assert projection.target == "docs/architecture/README.md"
-    assert projection.content == render_architecture_readme("api Architecture", directories, contract)
+    assert projection.content == fence(
+        "architecture-readme", render_architecture_readme("api Architecture", directories, contract)
+    )
+
+
+def test_projection_contents_are_single_owned_regions() -> None:
+    projections = scaffold_docs_projections(_service_contract())
+
+    for projection in projections:
+        region = find_fenced_region(projection.content, projection.id)
+        assert region is not None, f"{projection.id} content is not fenced"
+        # The generated file is exactly one owned region: fence + body, nothing outside.
+        assert projection.content == fence(projection.id, region.inner)
+    agent_map = projections[0]
+    region = find_fenced_region(agent_map.content, "agent-map")
+    assert region is not None
+    assert region.inner == agent_map_content()
 
 
 def test_decisions_content_asks_for_durable_entries() -> None:

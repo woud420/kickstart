@@ -59,6 +59,11 @@ class UnsupportedProjectTypeError(KickstartError):
     pass
 
 
+class MarkerError(KickstartError):
+    """Raised when ownership fence markers are missing or malformed."""
+    pass
+
+
 class UnsupportedOptionError(KickstartError):
     """Raised when an option does not apply to the selected project type."""
     pass
