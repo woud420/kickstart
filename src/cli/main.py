@@ -23,7 +23,11 @@ from src.api import (
 )
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.generator.adoption import AdoptionTargetError, inspect_repo
-from src.generator.backstage_export import BackstageExportError, export_backstage
+from src.generator.backstage_export import (
+    BackstageExportError,
+    BackstageExportUsageError,
+    export_backstage,
+)
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
@@ -103,10 +107,12 @@ def backstage(
     """
     try:
         result = export_backstage(path)
+    except BackstageExportUsageError as error:
+        print(f"[red]{escape(str(error))}[/]")
+        raise typer.Exit(code=2) from error
     except BackstageExportError as error:
-        message = str(error)
-        print(f"[red]{escape(message)}[/]")
-        raise typer.Exit(code=2 if "manifest" in message or "directory" in message else 1)
+        print(f"[red]{escape(str(error))}[/]")
+        raise typer.Exit(code=1) from error
 
     print(f"[bold]{result.action}[/] {escape(str(result.path))}")
     for issue in result.issues:
