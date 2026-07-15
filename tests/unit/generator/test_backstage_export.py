@@ -221,10 +221,15 @@ def test_nameless_child_is_skipped_not_fatal(tmp_path: Path) -> None:
 
 
 def test_template_owner_default_matches_exporter_constant() -> None:
-    template = Path("src/templates/monorepo/catalog-info.yaml").read_text(encoding="utf-8")
+    templates = (
+        Path("src/templates/monorepo/catalog-info.yaml"),
+        Path("src/templates/monorepo/backstage_template.yaml"),
+    )
+    for template_path in templates:
+        template = template_path.read_text(encoding="utf-8")
 
-    assert DEFAULT_OWNER in template
-    assert "group:default/platform" not in template
+        assert DEFAULT_OWNER in template, template_path
+        assert "group:default/platform" not in template, template_path
 
 
 def test_export_result_reports_missing_required_lines(tmp_path: Path) -> None:
