@@ -84,11 +84,11 @@ def find_fenced_region(text: str, artifact_id: str, style: MarkerStyle = "markdo
 
     The whole file's marker universe is validated first: every marker-like
     line anywhere must be an exact, unindented kickstart marker, and the full
-    set must form ordered, non-overlapping begin/end pairs. Any stray,
-    partial, duplicated, reversed, or nested marker — for this artifact or
-    any other — raises ``MarkerError``; ownership decisions never run against
-    an ambiguous file. Returns ``None`` when the file has no region for this
-    artifact (a pre-marker file or a different artifact's file).
+    set must form ordered, non-overlapping begin/end pairs. Stray, partial,
+    duplicated, reversed, and nested markers — for this artifact or for
+    every other — raise ``MarkerError``; ownership decisions never run
+    against an ambiguous file. Returns ``None`` when the file has no region
+    for this artifact (a pre-marker file or a different artifact's file).
     """
     _validate_artifact_id(artifact_id)
     return _validated_regions(text).get((style, artifact_id))
