@@ -56,6 +56,8 @@ LEVEL1_ARTIFACTS: tuple[str, ...] = (
     ".github/workflows/",
 )
 
+WORKFLOWS_PATH = ".github/workflows/"
+
 LEVEL2_ARTIFACTS: tuple[str, ...] = (MANIFEST_PATH,)
 
 # The full artifact vocabulary, kept for consumers that enumerate it.
@@ -144,14 +146,26 @@ def _makefile_issue(makefile: Path) -> str:
     return ""
 
 
+def _has_workflow_file(workflows_dir: Path) -> bool:
+    """Return True when the directory holds at least one workflow file."""
+    return any(
+        entry.is_file() and entry.suffix in (".yml", ".yaml")
+        for entry in workflows_dir.iterdir()
+    )
+
+
 def _artifact_status(root: Path, artifact: str, level: AdoptionLevel = LEVEL_CONFORMANT) -> ArtifactStatus:
     """Inspect one standard artifact path."""
     target = root / artifact
     if artifact.endswith("/"):
         present = target.is_dir()
-        return ArtifactStatus(
-            path=artifact, present=present, issue="" if present else "missing directory", level=level
-        )
+        issue = "" if present else "missing directory"
+        # The CI requirement is a workflow, not a directory: an empty
+        # .github/workflows/ must not certify a repo as having CI.
+        if present and artifact == WORKFLOWS_PATH and not _has_workflow_file(target):
+            present = False
+            issue = "no workflow file (*.yml or *.yaml) in .github/workflows/"
+        return ArtifactStatus(path=artifact, present=present, issue=issue, level=level)
 
     if not target.is_file():
         return ArtifactStatus(path=artifact, present=False, issue="missing file", level=level)

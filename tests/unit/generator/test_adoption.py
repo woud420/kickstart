@@ -12,6 +12,7 @@ from src.generator.adoption import (
     AdoptionTargetError,
     inspect_repo,
 )
+from src.generator.markers import fence
 from src.generator.projections import scaffold_docs_projections
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 
@@ -40,6 +41,7 @@ def scaffold_conformant_repo(root: Path) -> None:
         ".github/workflows",
     ):
         (root / directory).mkdir(parents=True)
+    (root / ".github/workflows/ci.yml").write_text("name: ci\n", encoding="utf-8")
 
 
 def scaffold_managed_repo(root: Path) -> None:
@@ -52,7 +54,9 @@ def scaffold_managed_repo(root: Path) -> None:
         path = root / projection.target
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(projection.content, encoding="utf-8")
-    (root / "docs/architecture/README.md").write_text("# demo Architecture\n", encoding="utf-8")
+    (root / "docs/architecture/README.md").write_text(
+        fence("architecture-readme", "# demo Architecture\n"), encoding="utf-8"
+    )
 
 
 def test_conformant_repo_without_manifest_is_complete(tmp_path: Path) -> None:
@@ -177,3 +181,15 @@ def test_report_json_is_machine_readable(tmp_path: Path) -> None:
     assert levels["AGENTS.md"] == "conformant"
     assert levels[MANIFEST_PATH] == "managed"
     assert set(STANDARD_ARTIFACTS) == set(LEVEL1_ARTIFACTS) | {MANIFEST_PATH}
+
+
+def test_empty_workflows_directory_is_not_conformant(tmp_path: Path) -> None:
+    scaffold_conformant_repo(tmp_path)
+    (tmp_path / ".github/workflows/ci.yml").unlink()
+
+    report = inspect_repo(tmp_path)
+
+    assert not report.complete
+    status = next(artifact for artifact in report.artifacts if artifact.path == ".github/workflows/")
+    assert not status.ok
+    assert "no workflow file" in status.issue
