@@ -67,6 +67,7 @@ def test_render_template_with_invalid_syntax_raises_kickstart_template_error(tmp
 
 
 def test_write_file_with_broken_path_template_warns_and_uses_legacy_substitution(tmp_path):
+    """ENG-154 regression: path templates must warn before legacy fallback."""
     template_path = tmp_path / "broken.txt"
     template_path.write_text("Hello {{NAME}} {% if broken %}")
     output_path = tmp_path / "output.txt"
@@ -80,6 +81,7 @@ def test_write_file_with_broken_path_template_warns_and_uses_legacy_substitution
 
 
 def test_write_file_with_broken_inline_template_warns_and_uses_legacy_substitution(tmp_path):
+    """ENG-154 regression: inline templates must warn before legacy fallback."""
     output_path = tmp_path / "output.txt"
 
     with patch("src.utils.fs.warn") as mock_warn:
