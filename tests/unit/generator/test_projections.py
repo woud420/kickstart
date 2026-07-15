@@ -127,11 +127,9 @@ def test_projection_contents_are_single_owned_regions() -> None:
         region = find_fenced_region(projection.content, projection.id)
         assert region is not None, f"{projection.id} content is not fenced"
         # The generated file is exactly one owned region: fence + body, nothing outside.
-        assert projection.content == fence(projection.id, region.inner)
-    agent_map = projections[0]
-    region = find_fenced_region(agent_map.content, "agent-map")
-    assert region is not None
-    assert region.inner == agent_map_content()
+        assert projection.content == fence(projection.id, projection.body)
+        assert region.inner == projection.body
+    assert projections[0].body == agent_map_content()
 
 
 def test_decisions_content_asks_for_durable_entries() -> None:

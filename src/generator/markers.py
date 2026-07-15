@@ -33,9 +33,15 @@ MarkerStyle = Literal["markdown", "yaml"]
 # the comment syntax or forge a different marker.
 _ARTIFACT_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
-# Matches every kickstart marker in either style; used to reject nested and
-# foreign markers inside owned regions.
-_ANY_MARKER_PATTERN = re.compile(r"kickstart:(begin|end)\b")
+# Line-leading marker prefixes in either style. Only full-line markers are
+# meaningful to the parser, so prose that merely mentions the syntax mid-line
+# is allowed; a line that opens like a marker is rejected fail-closed.
+_MARKER_LINE_PREFIXES = (
+    "<!-- kickstart:begin",
+    "<!-- kickstart:end",
+    "# kickstart:begin",
+    "# kickstart:end",
+)
 
 
 @dataclass(frozen=True)
@@ -61,15 +67,11 @@ def end_marker(artifact_id: str, style: MarkerStyle = "markdown") -> str:
 def fence(artifact_id: str, content: str, style: MarkerStyle = "markdown") -> str:
     """Wrap rendered content in its ownership fence.
 
-    The content must not itself contain kickstart markers (that would nest
-    fences), and always ends with exactly the newline the fence expects.
+    The content must not itself contain kickstart marker lines (fences do not
+    nest; mid-line mentions of the syntax are fine), and always ends with
+    exactly the newline the fence expects.
     """
-    if _ANY_MARKER_PATTERN.search(content):
-        raise MarkerError(
-            f"content for '{artifact_id}' already contains a kickstart marker; fences do not nest"
-        )
-    if not content.endswith("\n"):
-        content += "\n"
+    content = _prepared_content(artifact_id, content)
     return f"{begin_marker(artifact_id, style)}\n{content}{end_marker(artifact_id, style)}\n"
 
 
@@ -93,15 +95,13 @@ def find_fenced_region(text: str, artifact_id: str, style: MarkerStyle = "markdo
     if not begin_matches or not end_matches:
         raise MarkerError(f"unpaired kickstart marker for '{artifact_id}'")
 
-    begin_start, begin_end = begin_matches[0]
-    end_start, end_end = end_matches[0]
-    if end_start < begin_end:
+    inner_start = begin_matches[0][1]
+    inner_end = end_matches[0][0]
+    if inner_end < inner_start:
         raise MarkerError(f"kickstart end marker precedes begin marker for '{artifact_id}'")
 
-    inner_start = begin_end
-    inner_end = end_start
     inner = text[inner_start:inner_end]
-    if _ANY_MARKER_PATTERN.search(inner):
+    if _contains_marker_line(inner):
         raise MarkerError(f"nested kickstart marker inside the '{artifact_id}' region")
     return FencedRegion(artifact_id=artifact_id, inner_start=inner_start, inner_end=inner_end, inner=inner)
 
@@ -115,12 +115,7 @@ def replace_fenced_region(text: str, artifact_id: str, content: str, style: Mark
     region = find_fenced_region(text, artifact_id, style)
     if region is None:
         raise MarkerError(f"no kickstart fence for '{artifact_id}' to replace")
-    if _ANY_MARKER_PATTERN.search(content):
-        raise MarkerError(
-            f"replacement content for '{artifact_id}' contains a kickstart marker; fences do not nest"
-        )
-    if not content.endswith("\n"):
-        content += "\n"
+    content = _prepared_content(artifact_id, content)
     return text[: region.inner_start] + content + text[region.inner_end :]
 
 
@@ -135,9 +130,25 @@ def _marker_line(kind: str, artifact_id: str, style: MarkerStyle) -> str:
     return f"# {label}"
 
 
+def _prepared_content(artifact_id: str, content: str) -> str:
+    """Normalize owned-region content: newline-terminated, no marker lines."""
+    if _contains_marker_line(content):
+        raise MarkerError(
+            f"content for '{artifact_id}' contains a kickstart marker line; fences do not nest"
+        )
+    if not content.endswith("\n"):
+        content += "\n"
+    return content
+
+
+def _contains_marker_line(content: str) -> bool:
+    """Return True when a line opens like a kickstart marker in either style."""
+    return any(line.strip().startswith(_MARKER_LINE_PREFIXES) for line in content.splitlines())
+
+
 def _marker_line_positions(text: str, marker_line: str) -> list[tuple[int, int]]:
     """Return (start, end-after-newline) spans of lines that are exactly the marker."""
-    pattern = re.compile(rf"^{re.escape(marker_line)}[ \t]*(?:\n|\Z)", re.MULTILINE)
+    pattern = re.compile(rf"^{re.escape(marker_line)}[ \t]*\r?(?:\n|\Z)", re.MULTILINE)
     spans: list[tuple[int, int]] = []
     for match in pattern.finditer(text):
         spans.append((match.start(), match.end()))

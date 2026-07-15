@@ -35,6 +35,7 @@ from typing import Literal
 from src.generator.layouts import render_architecture_readme
 from src.generator.markers import fence
 from src.generator.scaffold_contract import ScaffoldContract
+from src.utils.errors import MarkerError
 
 ProjectionProfile = Literal["default", "typescript-cloudflare-worker"]
 
@@ -44,11 +45,17 @@ PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER: ProjectionProfile = "typescript-cloudflare
 
 @dataclass(frozen=True)
 class DocsProjection:
-    """One managed docs artifact: stable identifier, target path, content."""
+    """One managed docs artifact.
+
+    ``content`` is the full generated file (body wrapped in its ownership
+    fence); ``body`` is the fence-free render, kept so compare/replace
+    consumers never have to re-parse kickstart's own output.
+    """
 
     id: str
     target: str
     content: str
+    body: str
 
 
 def scaffold_docs_projections(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> tuple[DocsProjection, ...]:
@@ -78,9 +85,13 @@ def _fenced_projection(artifact_id: str, target: str, body: str) -> DocsProjecti
     """Wrap a rendered body in its ownership fence as the file content.
 
     Generated files start as exactly one owned region; user content added
-    outside the fence later is never read or rewritten by kickstart.
+    outside the fence later is never read or rewritten by kickstart. Only
+    markdown targets exist here — a non-markdown target must pick its marker
+    style explicitly instead of inheriting HTML comments.
     """
-    return DocsProjection(id=artifact_id, target=target, content=fence(artifact_id, body))
+    if not target.endswith(".md"):
+        raise MarkerError(f"projection target '{target}' is not markdown; choose a marker style explicitly")
+    return DocsProjection(id=artifact_id, target=target, content=fence(artifact_id, body), body=body)
 
 
 def agent_map_content(profile: ProjectionProfile = PROFILE_DEFAULT) -> str:

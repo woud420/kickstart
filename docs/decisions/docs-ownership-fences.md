@@ -16,10 +16,13 @@ outside a fence is user-owned and never read or rewritten.
 The rule generalizes across file types with one principle: **markers are
 comments in the host format** — invisible to readers, meaningful to tooling.
 
-- The installer already uses exactly this mechanism for shell rc files
+- The installer uses the same principle for shell rc files
   (`src/utils/installer.py` marker blocks), including its documented limit:
   whole-block replacement clobbers edits inside the region, which is why the
-  region is declared not-user-editable rather than merged.
+  region is declared not-user-editable rather than merged. The mechanisms are
+  deliberately separate implementations — the installer's block is anonymous,
+  single-region, and permissive-idempotent; these fences are id-scoped,
+  multi-region, and fail-closed.
 - Ecosystem precedent for markdown is heavy: `terraform-docs`
   (`<!-- BEGIN_TF_DOCS -->`), `doctoc`, all-contributors, GitHub README
   injectors.

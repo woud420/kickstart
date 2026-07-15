@@ -39,9 +39,30 @@ def test_fence_round_trips_through_find() -> None:
     assert region.inner == body
 
 
-def test_fence_rejects_nested_markers() -> None:
+def test_fence_rejects_nested_marker_lines() -> None:
     with pytest.raises(MarkerError):
         fence("outer", "text\n<!-- kickstart:begin inner -->\ntext\n")
+    with pytest.raises(MarkerError):
+        fence("outer", "text\n  # kickstart:end inner\n")
+
+
+def test_fence_allows_prose_mentions_of_marker_syntax() -> None:
+    body = "Fenced regions use `<!-- kickstart:begin <id> -->` markers; do not edit inside them.\n"
+
+    fenced = fence("agent-map", body)
+    region = find_fenced_region(fenced, "agent-map")
+
+    assert region is not None
+    assert region.inner == body
+
+
+def test_find_tolerates_crlf_line_endings() -> None:
+    fenced = fence("agent-map", "body line\n").replace("\n", "\r\n")
+
+    region = find_fenced_region(fenced, "agent-map")
+
+    assert region is not None
+    assert region.inner == "body line\r\n"
 
 
 def test_invalid_artifact_id_is_rejected() -> None:
