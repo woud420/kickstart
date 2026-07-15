@@ -140,3 +140,4 @@ def test_log_success(mock_success, base_generator):
 def test_get_common_vars(base_generator):
     vars = base_generator.get_common_vars()
     assert vars == {"service_name": "test-project"} 
+
