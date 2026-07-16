@@ -19,12 +19,16 @@ Every project type gets:
 - `AGENTS.md`: the Agent Map — orientation, validation commands, skills, and change rules.
 - `CLAUDE.md`: thin Claude Code wiring that defers to `AGENTS.md`.
 - `.agents/skills/`: repo-local agent skills (one directory per skill with a `SKILL.md`), plus a README stating the format and promotion path; `.claude/skills` is a symlink to it for Claude Code discovery (a plain pointer file on platforms without symlinks).
+- `README.md`: project intent and first commands.
+- `Makefile` with a canonical `check` target (lint + typecheck + tests) that CI invokes.
 - `docs/architecture/`: structure, boundaries, and architecture notes.
 - `docs/contracts/`: project-specific public surface. For a service this may be HTTP, env vars, ports, and queues; for a CLI it may be commands, flags, config files, and exit codes; for a library it may be public APIs and package metadata.
 - `docs/operations/`: project-specific development, validation, packaging, deployment, and runbook notes.
 - `docs/decisions/`: durable architecture and implementation decisions.
 - `.kickstart/scaffold.json`: kickstart's machine-readable scaffold state (tooling input; not part of the orientation surface).
 - `.github/workflows/ci.yml`: per-language GitHub Actions workflow that runs `make check` (lint + typecheck + tests) on push and pull requests. The workflow is emitted for every service, CLI, library, and frontend; system scaffolds emit `build.yml`, `test.yml`, and `deploy.yml` at the same path instead.
+
+This list is the same baseline that `kickstart adopt --check` validates (`STANDARD_ARTIFACTS` in `src/generator/adoption.py`); a repo satisfying this document passes the check.
 
 There is no separate root architecture document. `docs/architecture/` is the canonical architecture location.
 
@@ -40,7 +44,7 @@ There is no separate root architecture document. `docs/architecture/` is the can
 - `project.entrypoint`: optional process entrypoint.
 - `project.operation_root`: optional use-case implementation root.
 - `project.src_root_files`: optional list of files expected directly under `src/`.
-- `execution.models`: how code runs, for example `container`, `cloudflare-worker`, `static-site`, `cli`, or `library`.
+- `execution.models`: which runtime-artifact shape the scaffold generated, for example `container`, `cloudflare-worker`, `static-site`, `cli`, or `library`. `execution` records which runtime-artifact files the scaffold generated, never how code behaves.
 - `execution.platforms`: where runtime artifacts are meant to run, for example `local`, `kubernetes`, `cloudflare-workers`, `static-host`, or `none`.
 - `artifacts`: emitted files and tool configs, for example `image: dockerfile`, `kubernetes: kustomize`, `kubernetes: helm`, `worker: wrangler`, `iac: terraform`, or `ci: github-actions`.
 - `provider.targets`: infrastructure providers targeted by generated IaC or platform config, for example `aws`, `gcp`, or `cloudflare`.

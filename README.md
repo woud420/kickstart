@@ -16,7 +16,7 @@ Release history lives in [CHANGELOG.md](CHANGELOG.md) and on [kickstart-cli.org]
 
 ## Install
 
-One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux x64/arm64 and macOS arm64; other platforms install from PyPI with `pip install kickstart`):
+One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux x64/arm64 and macOS arm64; other platforms install from source, below):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh | bash
@@ -56,10 +56,11 @@ Refresh in place against the newest release once installed:
 kickstart upgrade
 ```
 
-Or install from PyPI when published:
+On platforms without a binary archive (for example Intel macOS), install from source or from the wheel attached to each GitHub Release. Do **not** `pip install kickstart` — that PyPI name belongs to an unrelated, abandoned 2011 project:
 
 ```bash
-pip install kickstart
+pipx install git+https://github.com/woud420/kickstart          # from source
+pip install ./kickstart-<version>-py3-none-any.whl             # wheel from the Releases page
 ```
 
 ## Get Started
@@ -180,6 +181,6 @@ make package
 make binary
 ```
 
-kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Linux/macOS x64 and arm64 binary archives (`kickstart-<platform>-py<minor>.tar.gz`) for each supported Python minor.
+kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`; other platforms use the source/wheel install path in [Install](#install).
 
 Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/tmp` or another scratch path and are not committed.

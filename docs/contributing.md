@@ -50,7 +50,7 @@ make check
 ```
 
 Use `make package` to build the wheel/source distribution and `make binary` to build the local kickstart binary (a PyInstaller `--onedir` payload under `dist/kickstart/`).
-GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`. Other platforms install from PyPI.
+GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`. Other platforms install from source or from the wheel attached to each GitHub Release (see docs/install-binaries.md).
 
 ## Releases
 

@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 
+import { defaultProjectMeta } from "../src/site/content";
+
 interface ReleaseConfig {
   domain: string;
   output: string;
@@ -10,14 +12,17 @@ interface ReleaseConfig {
   version: string;
 }
 
-const defaultConfig: ReleaseConfig = {
+// No version or releaseUrl fallback literals here: the version comes from
+// --version, pyproject.toml, or GITHUB_REF_NAME, and resolution fails
+// loudly instead of silently deploying a stale hardcoded release. The
+// remaining defaults come from content.ts (the test-enforced source of
+// truth) or are deploy plumbing with no release-time meaning.
+const defaultConfig = {
   domain: "kickstart-cli.org",
   output: "wrangler.release.toml",
-  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.3",
-  repositoryUrl: "https://github.com/woud420/kickstart",
+  repositoryUrl: defaultProjectMeta.repositoryUrl,
   serviceName: "kickstart-site",
-  supportedFrom: "0.4.0",
-  version: "0.4.3",
+  supportedFrom: defaultProjectMeta.supportedFrom,
 };
 
 function argumentValue(args: string[], name: string): string | undefined {
@@ -65,9 +70,14 @@ export function resolveReleaseConfig(
   const repositoryUrl =
     argumentValue(args, "--repository-url") ?? repositoryUrlFromEnv(env) ?? defaultConfig.repositoryUrl;
   const versionFile = argumentValue(args, "--version-file") ?? "../pyproject.toml";
-  const version = trimVersionPrefix(
-    argumentValue(args, "--version") ?? versionFromPyproject(versionFile) ?? env.GITHUB_REF_NAME ?? defaultConfig.version,
-  );
+  const resolvedVersion =
+    argumentValue(args, "--version") ?? versionFromPyproject(versionFile) ?? env.GITHUB_REF_NAME;
+  if (resolvedVersion === undefined) {
+    throw new Error(
+      `cannot resolve the release version: pass --version, make ${versionFile} readable, or set GITHUB_REF_NAME`,
+    );
+  }
+  const version = trimVersionPrefix(resolvedVersion);
   const releaseUrl =
     argumentValue(args, "--release-url") ?? `${repositoryUrl}/releases/tag/v${version}`;
 

@@ -154,24 +154,29 @@ jobs:
 
           test -d /tmp/test-cli-tool
 
-      # Dogfood gate: kickstart must bootstrap a kickstart-like project that
-      # passes taste rules and its own `make check`. CI runs the headline
-      # python case; the full matrix stays a local eval (docs/evals.md).
+      # Dogfood gate, tier `pr` of the eval suite: the four fast bootstrap
+      # cases (taste rules + generated `make check`) plus the scaffold-weight
+      # baseline check against tests/fixtures/scaffold-weight-baselines.json.
+      # One entrypoint so CI and local runs agree (docs/evals.md); the full
+      # matrix runs weekly in Scheduled Evals via `--tier full`.
       - name: Restore bootstrap eval dependency cache
         uses: actions/cache@v4
         with:
-          path: /tmp/bootstrap-eval-cache
+          path: /tmp/kickstart-eval-cache
           key: bootstrap-eval-${{ runner.os }}-${{ hashFiles('src/stack/toolchain_versions.py', 'src/templates/python/**') }}
           restore-keys: |
             bootstrap-eval-${{ runner.os }}-
 
-      - name: Bootstrap eval (python CLI + full-extension service, TS worker, Rust CLI)
-        run: |
-          PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
-            --cases python-cli-kickstart-like python-service typescript-worker rust-cli \
-            --output-root /tmp/bootstrap-eval \
-            --cache-root /tmp/bootstrap-eval-cache \
-            --report /tmp/bootstrap-eval.md
+      - name: Eval suite (tier pr)
+        run: PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier pr
+
+      - name: Upload eval reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports-pr
+          path: /tmp/kickstart-run-evals-*.md
+          retention-days: 7
 
       - name: Smoke test kickstart install subcommand
         run: |
@@ -228,7 +233,8 @@ jobs:
           # macos-x64 is intentionally omitted: the macos-15-intel runner
           # schedules on arm64 hardware in this org, so PyInstaller fails with
           # IncompatibleBinaryArchError. This matches the release matrix, which
-          # dropped macos-x64 in v0.4.1 (PR #66); x64 macOS installs via PyPI.
+          # dropped macos-x64 in v0.4.1 (PR #66); x64 macOS installs from
+          # source or the release wheel (docs/install-binaries.md).
           - runner: macos-15
             platform: macos-arm64
 

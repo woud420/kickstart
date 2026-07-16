@@ -1,4 +1,4 @@
-FROM golang:1.26.2-bookworm AS builder
+FROM golang:{{ go_docker_tag }} AS builder
 
 WORKDIR /app
 COPY . .

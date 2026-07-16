@@ -3,6 +3,7 @@ import logging
 from jinja2 import Environment, FileSystemLoader, DictLoader, Template
 from jinja2.exceptions import TemplateError as Jinja2TemplateError, TemplateNotFound
 from src.utils.errors import TemplateError
+from src.utils.logger import warn
 from src.utils.types import MutableRenderVars, RenderValue, RenderVars
 
 logger = logging.getLogger(__name__)
@@ -147,7 +148,11 @@ def write_file(path: Path, template: Path | str, **vars: RenderValue) -> None:
         OSError: If file cannot be written
 
     Template rendering failures do not raise; they fall back to legacy
-    placeholder replacement.
+    placeholder replacement and emit a user-facing warning. The fallback
+    only substitutes ``{{NAME}}`` placeholders, so a template with real
+    Jinja syntax (blocks, conditionals) that fails to render ships its
+    source markup verbatim — the warning is the signal to inspect the
+    generated file.
     """
     render_vars = _with_legacy_variable_aliases(vars)
 
@@ -167,7 +172,11 @@ def write_file(path: Path, template: Path | str, **vars: RenderValue) -> None:
                 content = engine.render_template(str(relative_path), render_vars)
                 logger.debug(f"Successfully rendered Jinja2 template: {template}")
             except (TemplateError, FileNotFoundError) as e:
-                # Fallback to legacy placeholder replacement
+                # Fallback to legacy placeholder replacement. Surface it to
+                # the user: the generator's own render path raises on the
+                # same error, and a silent log-only fallback ships broken
+                # Jinja markup verbatim into the generated file.
+                warn(f"Template {template} failed to render as Jinja ({e}); wrote it with legacy {{{{NAME}}}} substitution only — inspect {path}")
                 logger.warning(f"Jinja2 templating failed for {template}, falling back to legacy: {e}")
                 content = template.read_text(encoding='utf-8')
                 content = _legacy_replace(content, render_vars)
@@ -179,7 +188,8 @@ def write_file(path: Path, template: Path | str, **vars: RenderValue) -> None:
                 content = engine.render_string(template, render_vars)
                 logger.debug("Successfully rendered Jinja2 string template")
             except TemplateError as e:
-                # Fallback to legacy placeholder replacement
+                # Same fallback for string templates; same user-facing signal.
+                warn(f"Inline template for {path} failed to render as Jinja ({e}); wrote it with legacy {{{{NAME}}}} substitution only")
                 logger.warning(f"Jinja2 string templating failed, falling back to legacy: {e}")
                 content = _legacy_replace(template, render_vars)
 

@@ -7,7 +7,10 @@ Release tags publish a prebuilt kickstart binary as a `.tar.gz` archive for:
 - `macos-arm64`
 
 Each platform is built for Python `3.14`. Platforms outside this matrix
-(for example Intel macOS) install from PyPI with `pip install kickstart`.
+(for example Intel macOS) install from source
+(`pipx install git+https://github.com/woud420/kickstart`) or from the
+wheel attached to each GitHub Release. Do not `pip install kickstart`:
+the PyPI name belongs to an unrelated, abandoned 2011 project.
 
 ## Asset Names
 
