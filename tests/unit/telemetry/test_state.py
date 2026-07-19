@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from src.model.dto.telemetry import TelemetryConsent
+from src.telemetry import state as state_module
 from src.telemetry.state import TelemetryStateStore, default_telemetry_state_path
 from src.utils.errors import TelemetryStateError
 
@@ -111,6 +112,17 @@ def test_state_file_uses_user_only_permissions(tmp_path: Path) -> None:
 
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
     assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
+
+
+def test_state_write_succeeds_when_descriptor_chmod_is_unavailable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delattr(state_module.os, "fchmod", raising=False)
+
+    state = TelemetryStateStore(tmp_path / "telemetry.json").enable()
+
+    assert state.consent is TelemetryConsent.ENABLED
 
 
 @pytest.mark.parametrize(

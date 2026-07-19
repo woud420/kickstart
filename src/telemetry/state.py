@@ -137,7 +137,8 @@ class TelemetryStateStore:
             descriptor, temporary_name = tempfile.mkstemp(prefix=".telemetry-", suffix=".tmp", dir=self.path.parent)
             temporary_path = Path(temporary_name)
             with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-                os.fchmod(handle.fileno(), 0o600)
+                if hasattr(os, "fchmod"):
+                    os.fchmod(handle.fileno(), 0o600)
                 handle.write(json.dumps(document, indent=2, sort_keys=True))
                 handle.write("\n")
                 handle.flush()

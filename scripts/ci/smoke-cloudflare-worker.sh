@@ -51,7 +51,7 @@ log_and_run() {
 log_and_run "generation" \
   "${KICKSTART_CMD} create service ${PROJECT_NAME} --root ${temp_root} --lang typescript --runtime cloudflare-workers" \
   "${generation_log}" \
-  "${KS[@]}" create service "${PROJECT_NAME}" \
+  env KICKSTART_EVAL=1 "${KS[@]}" create service "${PROJECT_NAME}" \
     --root "${temp_root}" \
     --lang typescript \
     --runtime cloudflare-workers
