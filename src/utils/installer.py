@@ -64,17 +64,36 @@ class PathUpdateResult:
     on_path_now: bool
 
 
+def current_entrypoint_path() -> Path:
+    """Return the absolute invocation path without resolving symlinks.
+
+    Preserving the logical path matters for managed installs: the launcher
+    symlink identifies both its public directory and the managed app root. A
+    bare command name is resolved through ``PATH`` so callers still receive an
+    absolute path.
+    """
+    raw_argv0 = sys.argv[0] if sys.argv and sys.argv[0] else None
+    if raw_argv0 is not None:
+        argv0 = Path(raw_argv0).expanduser()
+        candidate = argv0
+        is_bare_command = os.sep not in raw_argv0 and (os.altsep is None or os.altsep not in raw_argv0)
+        if is_bare_command:
+            located = shutil.which(str(argv0))
+            if located is not None:
+                candidate = Path(located)
+        if candidate.exists() or candidate.is_symlink():
+            return Path(os.path.abspath(candidate))
+    return Path(os.path.abspath(sys.executable))
+
+
 def current_binary_path() -> Path:
-    """Return the absolute path of the running kickstart entry point.
+    """Return the resolved absolute path of the running kickstart executable.
 
     Tries `sys.argv[0]` first (correct for PyInstaller `--onefile` and `--onedir`
     builds and for console-script shims) and falls back to `sys.executable` when
     argv[0] does not point to a real file (this is what happens with `python -m`).
     """
-    argv0 = Path(sys.argv[0]) if sys.argv and sys.argv[0] else None
-    if argv0 is not None and argv0.exists():
-        return _safe_resolve(argv0)
-    return Path(sys.executable).resolve()
+    return _safe_resolve(current_entrypoint_path())
 
 
 def detect_shell(env: Optional[dict[str, str]] = None) -> Optional[str]:
@@ -212,21 +231,9 @@ def _install_onedir_bundle(
 
     copied = False
     if not _same_file(bundle_source, bundle_destination):
-        if bundle_destination.exists() or bundle_destination.is_symlink():
-            if not overwrite:
-                raise FileExistsError(f"{bundle_destination} already exists; pass --force to overwrite")
-            _remove_path(bundle_destination)
-
-        temp_destination = resolved_app_root / f".{APP_DIR_NAME}.tmp-{os.getpid()}"
-        if temp_destination.exists() or temp_destination.is_symlink():
-            _remove_path(temp_destination)
-        try:
-            shutil.copytree(bundle_source, temp_destination, symlinks=True)
-            temp_destination.rename(bundle_destination)
-        except Exception:
-            if temp_destination.exists() or temp_destination.is_symlink():
-                _remove_path(temp_destination)
-            raise
+        if (bundle_destination.exists() or bundle_destination.is_symlink()) and not overwrite:
+            raise FileExistsError(f"{bundle_destination} already exists; pass --force to overwrite")
+        _replace_bundle(bundle_source, bundle_destination)
         copied = True
 
     launcher_changed = _install_launcher(executable_destination, destination, overwrite=overwrite)
@@ -331,6 +338,43 @@ def _onedir_bundle_root(source: Path, *, name: str = BINARY_NAME) -> Optional[Pa
         if candidate.is_file() and (root / "_internal").is_dir():
             return root
     return None
+
+
+def _replace_bundle(bundle_source: Path, bundle_destination: Path) -> None:
+    """Stage and activate a bundle with rollback for staging or activation errors."""
+    app_root = bundle_destination.parent
+    suffix = os.getpid()
+    temp_destination = app_root / f".{APP_DIR_NAME}.tmp-{suffix}"
+    backup_destination = app_root / f".{APP_DIR_NAME}.backup-{suffix}"
+
+    for path in (temp_destination, backup_destination):
+        if path.exists() or path.is_symlink():
+            _remove_path(path)
+
+    try:
+        shutil.copytree(bundle_source, temp_destination, symlinks=True)
+    except Exception:
+        if temp_destination.exists() or temp_destination.is_symlink():
+            _remove_path(temp_destination)
+        raise
+
+    previous_moved = False
+    try:
+        if bundle_destination.exists() or bundle_destination.is_symlink():
+            bundle_destination.rename(backup_destination)
+            previous_moved = True
+        try:
+            temp_destination.rename(bundle_destination)
+        except Exception:
+            if previous_moved:
+                backup_destination.rename(bundle_destination)
+            raise
+    finally:
+        if temp_destination.exists() or temp_destination.is_symlink():
+            _remove_path(temp_destination)
+
+    if previous_moved:
+        _remove_path(backup_destination)
 
 
 def _install_launcher(executable: Path, destination: Path, *, overwrite: bool) -> bool:
