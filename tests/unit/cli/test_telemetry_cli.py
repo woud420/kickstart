@@ -11,6 +11,7 @@ from src.utils.errors import TelemetryStateError
 
 def _env(tmp_path: Path) -> dict[str, str]:
     return {
+        "CI": "0",
         "HOME": str(tmp_path),
         "KICKSTART_TELEMETRY_ALLOW_DEVELOPMENT": "1",
         "POSTHOG_PUBLIC_CUSTOMER_API_TOKEN": "",
