@@ -31,6 +31,7 @@ from src.generator.backstage_export import (
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
+from src.cli.telemetry import telemetry_app
 from src.utils.errors import KickstartError
 from src.utils.config import load_config
 from src.utils.installer import (
@@ -56,6 +57,7 @@ from src.utils.updater import check_for_update
 logger = logging.getLogger(__name__)
 
 app: typer.Typer = typer.Typer(help="kickstart: Full-stack project scaffolding CLI")
+app.add_typer(telemetry_app, name="telemetry")
 
 
 def _print_version_and_exit(value: bool) -> None:

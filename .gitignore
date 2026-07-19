@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 *.log
 .venv/
+/.env
 .mypy_cache/
 .claude/settings.local.json
 /kickstart

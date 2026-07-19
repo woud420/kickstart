@@ -5,6 +5,7 @@
 - [Agent Map](../AGENTS.md): repo-local map for agents modifying kickstart itself.
 - [Architecture](architecture/README.md): canonical architecture entrypoint for kickstart itself.
 - [Contracts](contracts/README.md): public and generated-output contracts.
+- [Pseudonymous CLI Telemetry](contracts/telemetry.md): default-off consent, identity, and data-minimization contract.
 - [Scaffold Contract](scaffold-contract.md): generated docs, metadata, and option vocabulary.
 - [Decisions](decisions/README.md): durable project decisions.
 - [CLI Framework Research](decisions/cli-framework-research.md): sourced recommendation for Rust, Python, and TypeScript CLI framework defaults.

@@ -82,3 +82,8 @@ class MissingCreateArgumentsError(KickstartError):
 class ExtensionError(KickstartError):
     """Raised when extension setup fails."""
     pass
+
+
+class TelemetryStateError(KickstartError):
+    """Raised when explicit telemetry state management cannot complete safely."""
+    pass
