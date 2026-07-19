@@ -3,6 +3,7 @@
 from src.model.dto.posthog import PostHogCapturePayload, PostHogCaptureRequest
 from src.model.dto.telemetry import (
     EffectiveTelemetry,
+    ScaffoldCreateContext,
     ScaffoldCreateErrorCategory,
     ScaffoldCreateOutcome,
     ScaffoldCreateProperties,
@@ -20,6 +21,7 @@ __all__ = [
     "EffectiveTelemetry",
     "PostHogCapturePayload",
     "PostHogCaptureRequest",
+    "ScaffoldCreateContext",
     "ScaffoldCreateErrorCategory",
     "ScaffoldCreateOutcome",
     "ScaffoldCreateProperties",

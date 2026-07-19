@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -334,7 +335,9 @@ def audit_capability_tests(root: Path) -> tuple[Violation, ...]:
 def generate_case(case: BootstrapCase, root: Path, repo_root: Path) -> subprocess.CompletedProcess[str]:
     """Generate one scaffold via the CLI module, mirroring agent usage."""
     command = (sys.executable, "-m", "src.cli.main", *case.args, "--root", str(root))
-    return subprocess.run(command, cwd=repo_root, capture_output=True, text=True, check=False)
+    env = os.environ.copy()
+    env["KICKSTART_EVAL"] = "1"
+    return subprocess.run(command, cwd=repo_root, env=env, capture_output=True, text=True, check=False)
 
 
 def run_make_check(project: Path, env: dict[str, str], timeout_seconds: int) -> subprocess.CompletedProcess[str]:

@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -202,9 +203,12 @@ def run_case(case: ScaffoldCase, output_root: Path, repo_root: Path) -> CaseResu
         shutil.rmtree(case_root)
     case_root.mkdir(parents=True)
 
+    env = os.environ.copy()
+    env["KICKSTART_EVAL"] = "1"
     completed = subprocess.run(
         scaffold_command(case, case_root),
         cwd=repo_root,
+        env=env,
         capture_output=True,
         text=True,
         check=False,

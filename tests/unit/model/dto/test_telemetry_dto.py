@@ -5,13 +5,14 @@ from uuid import uuid4
 import pytest
 
 from src.model.dto.telemetry import (
-    TelemetryEnvelope,
+    ScaffoldCreateContext,
     ScaffoldCreateErrorCategory,
     ScaffoldCreateOutcome,
     ScaffoldCreateProperties,
     TelemetryDurationBucket,
     TelemetryEvent,
     TelemetryEventName,
+    TelemetryEnvelope,
 )
 
 
@@ -82,3 +83,8 @@ def test_envelope_uses_provider_neutral_identity_names() -> None:
 
     assert "posthog" not in repr(envelope).lower()
     assert envelope.anonymous_id.version == 4
+
+
+def test_create_context_cannot_carry_project_name_or_root() -> None:
+    assert "name" not in ScaffoldCreateContext.__dataclass_fields__
+    assert "root" not in ScaffoldCreateContext.__dataclass_fields__

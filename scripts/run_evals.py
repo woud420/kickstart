@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -115,7 +116,9 @@ def tier_steps(tier: str) -> tuple[EvalStep, ...]:
 def run_step(step: EvalStep, repo_root: Path) -> StepResult:
     """Run one step, capturing its tail for the summary."""
     started = time.monotonic()
-    completed = subprocess.run(step.args, cwd=repo_root, capture_output=True, text=True, check=False)
+    env = os.environ.copy()
+    env["KICKSTART_EVAL"] = "1"
+    completed = subprocess.run(step.args, cwd=repo_root, env=env, capture_output=True, text=True, check=False)
     elapsed = time.monotonic() - started
     tail = "\n".join((completed.stdout + completed.stderr).strip().splitlines()[-8:])
     return StepResult(step=step, returncode=completed.returncode, seconds=elapsed, tail=tail)

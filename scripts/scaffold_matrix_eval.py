@@ -539,6 +539,7 @@ def _system_component_name(plan: ProjectPlan, component: ComponentPlan) -> str:
 def _run_command(command: tuple[str, ...], repo_root: Path) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root)
+    env["KICKSTART_EVAL"] = "1"
     return subprocess.run(
         command,
         cwd=repo_root,

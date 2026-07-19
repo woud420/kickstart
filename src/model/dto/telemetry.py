@@ -46,6 +46,7 @@ class ScaffoldCreateErrorCategory(StrEnum):
     UNSUPPORTED_OPTION = "unsupported_option"
     PROJECT_CREATION_ERROR = "project_creation_error"
     INVALID_CONFIGURATION = "invalid_configuration"
+    EXPECTED_ERROR = "expected_error"
     UNEXPECTED_ERROR = "unexpected_error"
 
 
@@ -120,6 +121,28 @@ class ScaffoldCreateProperties:
             "runtime": self.runtime,
             "workspace_tooling": self.workspace_tooling,
         }
+
+
+@dataclass(frozen=True)
+class ScaffoldCreateContext:
+    """Safe create inputs retained for terminal event normalization.
+
+    Project names and roots are intentionally absent from this DTO.
+    """
+
+    project_type: str | None
+    language: str
+    runtime: str | None
+    cloud: str
+    framework: str | None
+    database: str | None
+    cache: str | None
+    auth: str | None
+    knowledge: str
+    workspace_tooling: str | None
+    helm: bool
+    github_requested: bool
+    interactive: bool
 
 
 @dataclass(frozen=True)
