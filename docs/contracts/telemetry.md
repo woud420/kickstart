@@ -102,11 +102,11 @@ CLI event producers depend only on provider-neutral DTOs and a `TelemetrySink`. 
 
 The initial destination is the dedicated `kickstart-cli` project on PostHog Cloud US. Direct capture uses the public `phc_` project token only. A `phx_` personal API key or any read-capable credential must never enter the application, repository, build, logs, tests, or issues.
 
-Every PostHog event sets `$process_person_profile` to `false` and `$geoip_disable` to `true`. The adapter never identifies, aliases, groups, or sets person properties. The PostHog project must discard captured IP data. Because phase one connects directly, PostHog still receives the HTTPS connection before applying its project-level discard policy.
+Every PostHog event sets `$process_person_profile` to `false`. The adapter never identifies, aliases, groups, or sets person properties. GeoIP enrichment is not disabled: because phase one connects directly, PostHog receives the HTTPS connection and may process its source IP and add provider-derived geographic properties. These connection and provider-derived fields are outside the CLI-authored property allowlist and are accepted for the initial deployment.
 
 Direct public capture can be spoofed. Provider, destination, or token changes require upgraded direct clients, and there is no first-party server kill switch in phase one. A later first-party relay may replace the sink without changing event producers, consent, or identity.
 
-For local development, credentials may be exported from an ignored `.env` into the process. The CLI never auto-loads a current repository's `.env`, because kickstart runs inside arbitrary repositories and repository content must not influence telemetry routing or consent. The numeric PostHog project ID is not part of capture payloads.
+For local development, `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` may be exported from an ignored `.env` into the process. The CLI reads only the already-exported process environment and never auto-loads a current repository's `.env`, because kickstart runs inside arbitrary repositories and repository content must not influence telemetry routing or consent. A missing or malformed token silently selects a no-op sink; token presence never enables telemetry. The numeric `POSTHOG_PROJECT_ID` is not read and is not part of capture payloads.
 
 ## Delivery and retention
 

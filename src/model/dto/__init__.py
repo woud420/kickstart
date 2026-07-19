@@ -1,5 +1,6 @@
 """Data-transfer objects shared across kickstart boundaries."""
 
+from src.model.dto.posthog import PostHogCapturePayload, PostHogCaptureRequest
 from src.model.dto.telemetry import (
     EffectiveTelemetry,
     ScaffoldCreateErrorCategory,
@@ -17,6 +18,8 @@ from src.model.dto.telemetry import (
 
 __all__ = [
     "EffectiveTelemetry",
+    "PostHogCapturePayload",
+    "PostHogCaptureRequest",
     "ScaffoldCreateErrorCategory",
     "ScaffoldCreateOutcome",
     "ScaffoldCreateProperties",
