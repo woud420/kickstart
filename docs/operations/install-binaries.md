@@ -13,9 +13,35 @@ wheel attached to each GitHub Release. Do not `pip install kickstart`:
 the PyPI name belongs to an unrelated, abandoned 2011 project.
 
 Release wheels and binary archives contain the public PostHog capture
-configuration. Direct Git source installs do not; opted-in telemetry from a
-source installation requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the
-process environment.
+configuration. Telemetry is enabled by default for eligible commands, but an
+explicit `kickstart telemetry disable`, `DO_NOT_TRACK=1`, or
+`KICKSTART_TELEMETRY_DISABLED=1` always wins. Direct Git source installs do not
+contain the capture configuration; delivery from one requires
+`POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment as well as an
+otherwise eligible event.
+
+The `cli_install_completed` event refers only to an invocation of the
+`kickstart install` command, including the PATH-configuration invocation made
+by the shell installer when applicable. The shell download/copy itself, `pip`,
+`pipx`, package managers, and manual file copies are not independently counted.
+Likewise, `cli_upgrade_completed` refers only to `kickstart upgrade`, so these
+events are not universal installation or upgrade totals.
+
+To prevent even the first `kickstart install` event, set either process-level
+opt-out on that invocation:
+
+```bash
+KICKSTART_TELEMETRY_DISABLED=1 ./kickstart-macos-arm64-py3.14/kickstart install --update-path
+# Or, when DO_NOT_TRACK is your standard environment-wide preference:
+DO_NOT_TRACK=1 ./kickstart-macos-arm64-py3.14/kickstart install --update-path
+
+# Suppress an installer-invoked event from the quick-install process:
+curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh \
+  | KICKSTART_TELEMETRY_DISABLED=1 bash
+```
+
+Those environment settings apply to the current process. Run
+`kickstart telemetry disable` to persist the preference for later commands.
 
 ## Asset Names
 

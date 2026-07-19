@@ -12,12 +12,17 @@ from src.utils.errors import TelemetryStateError
 def _env(tmp_path: Path) -> dict[str, str]:
     return {
         "HOME": str(tmp_path),
+        "KICKSTART_TELEMETRY_ALLOW_DEVELOPMENT": "1",
         "POSTHOG_PUBLIC_CUSTOMER_API_TOKEN": "",
         "XDG_CONFIG_HOME": str(tmp_path),
     }
 
 
-def test_status_is_read_only_before_opt_in(tmp_path: Path) -> None:
+def test_status_is_read_only_for_default_enabled_missing_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     runner = CliRunner()
 
     result = runner.invoke(app, ["telemetry", "status", "--json"], env=_env(tmp_path))
@@ -26,7 +31,8 @@ def test_status_is_read_only_before_opt_in(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["consent"] == "unset"
     assert payload["delivery_configured"] is False
-    assert payload["effective"] is False
+    assert payload["effective"] is True
+    assert payload["reason"] == "default_enabled"
     assert payload["anonymous_id"] is None
     assert not (tmp_path / "kickstart" / "telemetry.json").exists()
 
@@ -41,16 +47,21 @@ def test_status_reports_runtime_delivery_configuration_without_exposing_token(tm
     payload = json.loads(result.stdout)
     assert payload["delivery_configured"] is True
     assert "phc_status_test_token" not in result.stdout
+    assert not (tmp_path / "kickstart" / "telemetry.json").exists()
 
 
-def test_status_supports_human_readable_output(tmp_path: Path) -> None:
+def test_status_supports_human_readable_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     result = CliRunner().invoke(app, ["telemetry", "status"], env=_env(tmp_path))
 
     assert result.exit_code == 0
     assert "consent: unset" in result.stdout
     assert "delivery-configured: no" in result.stdout
-    assert "effective: disabled" in result.stdout
-    assert "reason:" in result.stdout
+    assert "effective: enabled" in result.stdout
+    assert "reason: default_enabled" in result.stdout
     assert "anonymous-id: not-created" in result.stdout
     assert f"state-file: {tmp_path / 'kickstart' / 'telemetry.json'}" in result.stdout
 

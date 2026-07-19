@@ -5,7 +5,7 @@
 - [Agent Map](../AGENTS.md): repo-local map for agents modifying kickstart itself.
 - [Architecture](architecture/README.md): canonical architecture entrypoint for kickstart itself.
 - [Contracts](contracts/README.md): public and generated-output contracts.
-- [Pseudonymous CLI Telemetry](contracts/telemetry.md): default-off consent, identity, and data-minimization contract.
+- [Pseudonymous CLI Telemetry](contracts/telemetry.md): default-on policy, persistent opt-out, identity, lifecycle events, and data-minimization contract.
 - [Scaffold Contract](scaffold-contract.md): generated docs, metadata, and option vocabulary.
 - [Decisions](decisions/README.md): durable project decisions.
 - [CLI Framework Research](decisions/cli-framework-research.md): sourced recommendation for Rust, Python, and TypeScript CLI framework defaults.
@@ -14,6 +14,6 @@
 - [Contributing](contributing.md): human contribution workflow.
 - [Agent Contributing](agent-contributing.md): agent-safe development workflow.
 - [Release Policy](release-policy.md): version tags, release assets, and same-version updates.
-- [Install Binaries](install-binaries.md): release asset names and install commands.
+- [Install Binaries](operations/install-binaries.md): release asset names, install commands, and first-run telemetry controls.
 
 Supported Python range: `>=3.12,<3.15`.

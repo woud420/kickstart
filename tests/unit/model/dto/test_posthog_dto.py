@@ -5,6 +5,10 @@ import pytest
 
 from src.model.dto.posthog import PostHogCaptureRequest
 from src.model.dto.telemetry import (
+    CliArtifactKind,
+    CliInstallErrorCategory,
+    CliInstallOutcome,
+    CliInstallProperties,
     ScaffoldCreateErrorCategory,
     ScaffoldCreateOutcome,
     ScaffoldCreateProperties,
@@ -83,6 +87,44 @@ def test_request_maps_only_allowlisted_and_required_posthog_fields() -> None:
             "runtime": "container",
             "workspace_tooling": "none",
         },
+    }
+
+
+def test_request_maps_lifecycle_events_through_the_same_provider_boundary() -> None:
+    envelope = TelemetryEnvelope(
+        event_id=EVENT_ID,
+        anonymous_id=ANONYMOUS_ID,
+        occurred_at=OCCURRED_AT,
+        event=TelemetryEvent(
+            name=TelemetryEventName.CLI_INSTALL_COMPLETED,
+            properties=CliInstallProperties(
+                cli_version="1.2.3",
+                outcome=CliInstallOutcome.SUCCESS,
+                error_category=CliInstallErrorCategory.NONE,
+                artifact_kind=CliArtifactKind.ONEDIR,
+                path_update_requested=True,
+                already_on_path=False,
+                duration_bucket=TelemetryDurationBucket.ONE_TO_FIVE_SECONDS,
+                platform="macos",
+                architecture="arm64",
+            ),
+        ),
+    )
+
+    payload = PostHogCaptureRequest("phc_public_test_token", envelope).as_payload()
+
+    assert payload["event"] == "cli_install_completed"
+    assert payload["properties"] == {
+        "$process_person_profile": False,
+        "already_on_path": False,
+        "architecture": "arm64",
+        "artifact_kind": "onedir",
+        "cli_version": "1.2.3",
+        "duration_bucket": "1_to_5s",
+        "error_category": "none",
+        "outcome": "success",
+        "path_update_requested": True,
+        "platform": "macos",
     }
 
 

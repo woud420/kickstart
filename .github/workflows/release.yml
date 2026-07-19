@@ -238,7 +238,9 @@ jobs:
             pip install ./kickstart-*-py3-none-any.whl
             ```
 
-            Release wheels and binary archives contain the public PostHog capture configuration. A direct Git source install does not; opted-in telemetry from that installation requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment.
+            Release wheels and binary archives enable pseudonymous telemetry by default for eligible CLI commands. The first eligible event creates a random UUIDv4 that remains stable across upgrades. Events use closed, data-minimized property sets. Run `kickstart telemetry disable` to persist an opt-out; `kickstart telemetry status` is read-only and does not create an ID or send an event.
+
+            To prevent an installer-invoked event before a persisted preference exists, set `KICKSTART_TELEMETRY_DISABLED=1` or `DO_NOT_TRACK=1` for that process. A direct Git source install has no embedded capture configuration; delivery from one requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment, and a token never overrides an opt-out.
 
             ### Manual binary install
 

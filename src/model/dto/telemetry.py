@@ -20,9 +20,78 @@ class TelemetryConsent(StrEnum):
 
 
 class TelemetryEventName(StrEnum):
-    """Closed event-name allowlist for the initial telemetry contract."""
+    """Closed event-name allowlist for the telemetry contract."""
 
     SCAFFOLD_CREATE_COMPLETED = "scaffold_create_completed"
+    CLI_INSTALL_COMPLETED = "cli_install_completed"
+    CLI_UPGRADE_COMPLETED = "cli_upgrade_completed"
+
+
+class CliInstallOutcome(StrEnum):
+    """Closed terminal outcomes for a binary install invocation."""
+
+    SUCCESS = "success"
+    NO_CHANGE = "no_change"
+    PARTIAL_SUCCESS = "partial_success"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class CliInstallErrorCategory(StrEnum):
+    """Coarse install failures that never contain path or exception data."""
+
+    NONE = "none"
+    INTERRUPTED = "interrupted"
+    SOURCE_MISSING = "source_missing"
+    DESTINATION_CONFLICT = "destination_conflict"
+    PERMISSION_DENIED = "permission_denied"
+    PATH_UPDATE = "path_update"
+    FILESYSTEM_ERROR = "filesystem_error"
+    EXPECTED_ERROR = "expected_error"
+    UNEXPECTED_ERROR = "unexpected_error"
+
+
+class CliArtifactKind(StrEnum):
+    """Closed executable packaging shapes relevant to installation."""
+
+    SINGLE_FILE = "single_file"
+    ONEDIR = "onedir"
+    UNKNOWN = "unknown"
+
+
+class CliUpgradeOutcome(StrEnum):
+    """Closed terminal outcomes for a self-upgrade invocation."""
+
+    UPDATED = "updated"
+    ALREADY_CURRENT = "already_current"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class CliUpgradeErrorCategory(StrEnum):
+    """Coarse upgrade failures that never contain transport details."""
+
+    NONE = "none"
+    INTERRUPTED = "interrupted"
+    RELEASE_LOOKUP = "release_lookup"
+    INVALID_RELEASE_METADATA = "invalid_release_metadata"
+    UNSUPPORTED_PLATFORM = "unsupported_platform"
+    ARCHIVE_MISSING = "archive_missing"
+    DOWNLOAD = "download"
+    CHECKSUM_FETCH = "checksum_fetch"
+    CHECKSUM_MISMATCH = "checksum_mismatch"
+    ARCHIVE_EXTRACTION = "archive_extraction"
+    INSTALLATION = "installation"
+    UNEXPECTED_ERROR = "unexpected_error"
+
+
+class CliUpgradeChecksumStatus(StrEnum):
+    """Closed checksum states for a self-upgrade attempt."""
+
+    VERIFIED = "verified"
+    NOT_PUBLISHED = "not_published"
+    FAILED = "failed"
+    NOT_REACHED = "not_reached"
 
 
 class ScaffoldCreateOutcome(StrEnum):
@@ -63,7 +132,7 @@ class TelemetrySuppressionReason(StrEnum):
     """Why telemetry is not effective for the current process."""
 
     ENABLED = "enabled"
-    NOT_OPTED_IN = "not_opted_in"
+    DEFAULT_ENABLED = "default_enabled"
     USER_DISABLED = "user_disabled"
     DO_NOT_TRACK = "do_not_track"
     ENVIRONMENT_DISABLED = "environment_disabled"
@@ -76,7 +145,7 @@ class TelemetrySuppressionReason(StrEnum):
 
 @dataclass(frozen=True)
 class ScaffoldCreateProperties:
-    """Closed property DTO for the initial scaffold completion event."""
+    """Closed property DTO for the scaffold completion event."""
 
     cli_version: str
     project_type: str
@@ -124,6 +193,62 @@ class ScaffoldCreateProperties:
 
 
 @dataclass(frozen=True)
+class CliInstallProperties:
+    """Exact property allowlist for a terminal binary install event."""
+
+    cli_version: str
+    outcome: CliInstallOutcome
+    error_category: CliInstallErrorCategory
+    artifact_kind: CliArtifactKind
+    path_update_requested: bool
+    already_on_path: bool
+    duration_bucket: TelemetryDurationBucket
+    platform: str
+    architecture: str
+
+    def as_mapping(self) -> dict[str, TelemetryPropertyValue]:
+        """Return the exact provider-neutral property allowlist."""
+        return {
+            "already_on_path": self.already_on_path,
+            "architecture": self.architecture,
+            "artifact_kind": self.artifact_kind.value,
+            "cli_version": self.cli_version,
+            "duration_bucket": self.duration_bucket.value,
+            "error_category": self.error_category.value,
+            "outcome": self.outcome.value,
+            "path_update_requested": self.path_update_requested,
+            "platform": self.platform,
+        }
+
+
+@dataclass(frozen=True)
+class CliUpgradeProperties:
+    """Exact property allowlist for a terminal self-upgrade event."""
+
+    cli_version: str
+    target_version: str
+    outcome: CliUpgradeOutcome
+    error_category: CliUpgradeErrorCategory
+    checksum_status: CliUpgradeChecksumStatus
+    duration_bucket: TelemetryDurationBucket
+    platform: str
+    architecture: str
+
+    def as_mapping(self) -> dict[str, TelemetryPropertyValue]:
+        """Return the exact provider-neutral property allowlist."""
+        return {
+            "architecture": self.architecture,
+            "checksum_status": self.checksum_status.value,
+            "cli_version": self.cli_version,
+            "duration_bucket": self.duration_bucket.value,
+            "error_category": self.error_category.value,
+            "outcome": self.outcome.value,
+            "platform": self.platform,
+            "target_version": self.target_version,
+        }
+
+
+@dataclass(frozen=True)
 class ScaffoldCreateContext:
     """Safe create inputs retained for terminal event normalization.
 
@@ -150,7 +275,7 @@ class TelemetryEvent:
     """A typed product event before identity and delivery metadata are added."""
 
     name: TelemetryEventName
-    properties: ScaffoldCreateProperties
+    properties: ScaffoldCreateProperties | CliInstallProperties | CliUpgradeProperties
 
 
 @dataclass(frozen=True)

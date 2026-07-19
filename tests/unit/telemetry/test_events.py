@@ -5,14 +5,26 @@ from unittest.mock import Mock
 import pytest
 
 from src.model.dto.telemetry import (
+    CliArtifactKind,
+    CliInstallErrorCategory,
+    CliInstallOutcome,
+    CliUpgradeChecksumStatus,
+    CliUpgradeErrorCategory,
+    CliUpgradeOutcome,
     ScaffoldCreateContext,
     ScaffoldCreateErrorCategory,
     ScaffoldCreateOutcome,
     TelemetryDurationBucket,
 )
+from src.model.dto.upgrade import UpgradeResult
 from src.telemetry.events import (
+    build_cli_install_event,
+    build_cli_upgrade_event,
     build_scaffold_create_event,
+    capture_cli_install_terminal,
+    capture_cli_upgrade_terminal,
     capture_scaffold_create_terminal,
+    classify_cli_install_exception,
     classify_scaffold_create_exception,
 )
 from src.telemetry.reporter import TelemetryReporter
@@ -43,6 +55,149 @@ def _service_context() -> ScaffoldCreateContext:
         github_requested=True,
         interactive=False,
     )
+
+
+def test_install_event_contains_only_normalized_closed_properties() -> None:
+    event = build_cli_install_event(
+        CliInstallOutcome.SUCCESS,
+        CliInstallErrorCategory.NONE,
+        CliArtifactKind.SINGLE_FILE,
+        path_update_requested=False,
+        already_on_path=True,
+        duration_seconds=0.5,
+        cli_version="1.2.3",
+        platform_name="Darwin",
+        architecture="aarch64",
+    )
+
+    assert event.name.value == "cli_install_completed"
+    assert event.properties.as_mapping() == {
+        "already_on_path": True,
+        "architecture": "arm64",
+        "artifact_kind": "single_file",
+        "cli_version": "1.2.3",
+        "duration_bucket": "under_1s",
+        "error_category": "none",
+        "outcome": "success",
+        "path_update_requested": False,
+        "platform": "macos",
+    }
+
+
+def test_upgrade_event_replaces_non_stable_target_version_with_unknown() -> None:
+    result = UpgradeResult(
+        target_version="v1.2.3-private-value",
+        outcome=CliUpgradeOutcome.FAILED,
+        error_category=CliUpgradeErrorCategory.ARCHIVE_MISSING,
+        checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+    )
+
+    event = build_cli_upgrade_event(
+        result,
+        6,
+        cli_version="1.2.2",
+        platform_name="Linux",
+        architecture="amd64",
+    )
+
+    assert event.name.value == "cli_upgrade_completed"
+    assert event.properties.as_mapping() == {
+        "architecture": "x86_64",
+        "checksum_status": "not_reached",
+        "cli_version": "1.2.2",
+        "duration_bucket": "5_to_30s",
+        "error_category": "archive_missing",
+        "outcome": "failed",
+        "platform": "linux",
+        "target_version": "unknown",
+    }
+
+
+@pytest.mark.parametrize(
+    ("error", "during_path_update", "expected"),
+    [
+        (RuntimeError("private detail"), True, CliInstallErrorCategory.PATH_UPDATE),
+        (FileNotFoundError("private detail"), False, CliInstallErrorCategory.SOURCE_MISSING),
+        (FileExistsError("private detail"), False, CliInstallErrorCategory.DESTINATION_CONFLICT),
+        (PermissionError("private detail"), False, CliInstallErrorCategory.PERMISSION_DENIED),
+        (OSError("private detail"), False, CliInstallErrorCategory.FILESYSTEM_ERROR),
+        (KickstartError("private detail"), False, CliInstallErrorCategory.EXPECTED_ERROR),
+        (RuntimeError("private detail"), False, CliInstallErrorCategory.UNEXPECTED_ERROR),
+    ],
+)
+def test_install_exception_classification_never_uses_exception_text(
+    error: Exception,
+    during_path_update: bool,
+    expected: CliInstallErrorCategory,
+) -> None:
+    assert classify_cli_install_exception(error, during_path_update=during_path_update) is expected
+
+
+def test_lifecycle_capture_helpers_record_through_the_shared_reporter(tmp_path: Path) -> None:
+    store = TelemetryStateStore(tmp_path / "telemetry.json")
+    sink = InMemoryTelemetrySink()
+    reporter = TelemetryReporter(store, sink, {}, development=False)
+    upgrade = UpgradeResult(
+        target_version="1.2.3",
+        outcome=CliUpgradeOutcome.UPDATED,
+        error_category=CliUpgradeErrorCategory.NONE,
+        checksum_status=CliUpgradeChecksumStatus.VERIFIED,
+    )
+
+    capture_cli_install_terminal(
+        CliInstallOutcome.SUCCESS,
+        CliInstallErrorCategory.NONE,
+        CliArtifactKind.ONEDIR,
+        path_update_requested=True,
+        already_on_path=False,
+        duration_seconds=1,
+        cli_version="1.2.2",
+        reporter=reporter,
+    )
+    capture_cli_upgrade_terminal(
+        upgrade,
+        2,
+        cli_version="1.2.2",
+        reporter=reporter,
+    )
+
+    assert [envelope.event.name.value for envelope in sink.envelopes] == [
+        "cli_install_completed",
+        "cli_upgrade_completed",
+    ]
+    assert sink.envelopes[0].anonymous_id == sink.envelopes[1].anonymous_id
+
+
+@pytest.mark.parametrize("capture", ["install", "upgrade"])
+def test_lifecycle_capture_helpers_contain_reporter_failures(capture: str) -> None:
+    reporter = Mock(spec=TelemetryReporter)
+    reporter.record.side_effect = RuntimeError("synthetic reporter failure")
+
+    if capture == "install":
+        capture_cli_install_terminal(
+            CliInstallOutcome.FAILED,
+            CliInstallErrorCategory.UNEXPECTED_ERROR,
+            CliArtifactKind.UNKNOWN,
+            path_update_requested=False,
+            already_on_path=False,
+            duration_seconds=0,
+            cli_version="1.2.3",
+            reporter=reporter,
+        )
+    else:
+        capture_cli_upgrade_terminal(
+            UpgradeResult(
+                target_version="unknown",
+                outcome=CliUpgradeOutcome.FAILED,
+                error_category=CliUpgradeErrorCategory.UNEXPECTED_ERROR,
+                checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+            ),
+            0,
+            cli_version="1.2.3",
+            reporter=reporter,
+        )
+
+    reporter.record.assert_called_once()
 
 
 def test_service_event_canonicalizes_aliases_and_ignores_inapplicable_values() -> None:

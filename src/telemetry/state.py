@@ -2,6 +2,7 @@
 
 import json
 import os
+import stat
 import tempfile
 import time
 from collections.abc import Callable, Iterator, Mapping
@@ -55,9 +56,15 @@ class TelemetryStateStore:
         return cls(default_telemetry_state_path(environ))
 
     def read(self) -> TelemetryState:
-        """Read state without creating a file; missing state means not opted in."""
-        if not self.path.exists():
+        """Read state without creating a file; missing state uses the default policy."""
+        try:
+            file_status = self.path.lstat()
+        except FileNotFoundError:
             return TelemetryState()
+        except OSError as exc:
+            raise TelemetryStateError("Telemetry state is unreadable or malformed; telemetry is disabled.") from exc
+        if stat.S_ISLNK(file_status.st_mode):
+            raise TelemetryStateError("Telemetry state is unreadable or malformed; telemetry is disabled.")
         try:
             payload = cast(JsonValue, json.loads(self.path.read_text(encoding="utf-8")))
             return _parse_state(payload)
@@ -65,13 +72,29 @@ class TelemetryStateStore:
             raise TelemetryStateError("Telemetry state is unreadable or malformed; telemetry is disabled.") from exc
 
     def enable(self) -> TelemetryState:
-        """Persist opt-in and lazily create a stable UUIDv4 identity."""
+        """Persist explicit enablement and create a stable UUIDv4 identity if needed."""
         with self._locked():
             current = self.read()
             anonymous_id = current.anonymous_id or self._uuid_factory()
             state = TelemetryState(consent=TelemetryConsent.ENABLED, anonymous_id=anonymous_id)
             self._write(state)
             return state
+
+    def identity_for_event(self) -> UUID | None:
+        """Return the stable identity for an eligible event, creating it atomically.
+
+        The state is re-read while holding the update lock so an explicit opt-out
+        observed before identity acquisition always wins over default enablement.
+        """
+        with self._locked():
+            current = self.read()
+            if current.consent is TelemetryConsent.DISABLED:
+                return None
+            if current.anonymous_id is not None:
+                return current.anonymous_id
+            anonymous_id = self._uuid_factory()
+            self._write(TelemetryState(consent=TelemetryConsent.ENABLED, anonymous_id=anonymous_id))
+            return anonymous_id
 
     def disable(self) -> TelemetryState:
         """Persist opt-out while retaining any existing identity."""

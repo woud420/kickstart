@@ -32,15 +32,26 @@ def test_hard_opt_outs_precede_persisted_consent(
     assert resolved.anonymous_id is None
 
 
-def test_missing_state_is_disabled_without_creating_an_identity(tmp_path: Path) -> None:
+def test_missing_state_is_default_enabled_without_creating_an_identity(tmp_path: Path) -> None:
     store = TelemetryStateStore(tmp_path / "telemetry.json")
 
     resolved = resolve_telemetry(store, {}, development=False)
 
-    assert resolved.enabled is False
-    assert resolved.reason is TelemetrySuppressionReason.NOT_OPTED_IN
+    assert resolved.enabled is True
+    assert resolved.reason is TelemetrySuppressionReason.DEFAULT_ENABLED
     assert resolved.anonymous_id is None
     assert not store.path.exists()
+
+
+def test_explicit_disable_is_a_hard_opt_out(tmp_path: Path) -> None:
+    store = TelemetryStateStore(tmp_path / "telemetry.json")
+    store.disable()
+
+    resolved = resolve_telemetry(store, {}, development=False)
+
+    assert resolved.enabled is False
+    assert resolved.reason is TelemetrySuppressionReason.USER_DISABLED
+    assert resolved.anonymous_id is None
 
 
 def test_enabled_state_is_effective_outside_suppressed_contexts(tmp_path: Path) -> None:

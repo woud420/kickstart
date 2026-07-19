@@ -3,6 +3,11 @@
 import platform as runtime_platform
 
 from src.model.dto.telemetry import (
+    CliArtifactKind,
+    CliInstallErrorCategory,
+    CliInstallOutcome,
+    CliInstallProperties,
+    CliUpgradeProperties,
     ScaffoldCreateContext,
     ScaffoldCreateErrorCategory,
     ScaffoldCreateOutcome,
@@ -11,6 +16,7 @@ from src.model.dto.telemetry import (
     TelemetryEvent,
     TelemetryEventName,
 )
+from src.model.dto.upgrade import UpgradeResult, normalize_target_version
 from src.stack.profile import stack_registry
 from src.telemetry.reporter import TelemetryReporter, default_telemetry_reporter
 from src.utils.errors import (
@@ -113,6 +119,124 @@ def capture_scaffold_create_terminal(
             duration_seconds,
             cli_version=cli_version,
         )
+        target_reporter = default_telemetry_reporter() if reporter is None else reporter
+        target_reporter.record(event)
+    except Exception:
+        return
+
+
+def build_cli_install_event(
+    outcome: CliInstallOutcome,
+    error_category: CliInstallErrorCategory,
+    artifact_kind: CliArtifactKind,
+    *,
+    path_update_requested: bool,
+    already_on_path: bool,
+    duration_seconds: float,
+    cli_version: str,
+    platform_name: str | None = None,
+    architecture: str | None = None,
+) -> TelemetryEvent:
+    """Build the closed terminal event for a binary install invocation."""
+    return TelemetryEvent(
+        name=TelemetryEventName.CLI_INSTALL_COMPLETED,
+        properties=CliInstallProperties(
+            cli_version=cli_version,
+            outcome=outcome,
+            error_category=error_category,
+            artifact_kind=artifact_kind,
+            path_update_requested=path_update_requested,
+            already_on_path=already_on_path,
+            duration_bucket=_duration_bucket(duration_seconds),
+            platform=_platform(platform_name or runtime_platform.system()),
+            architecture=_architecture(architecture or runtime_platform.machine()),
+        ),
+    )
+
+
+def capture_cli_install_terminal(
+    outcome: CliInstallOutcome,
+    error_category: CliInstallErrorCategory,
+    artifact_kind: CliArtifactKind,
+    *,
+    path_update_requested: bool,
+    already_on_path: bool,
+    duration_seconds: float,
+    cli_version: str,
+    reporter: TelemetryReporter | None = None,
+) -> None:
+    """Attempt one install capture while containing all telemetry failures."""
+    try:
+        event = build_cli_install_event(
+            outcome,
+            error_category,
+            artifact_kind,
+            path_update_requested=path_update_requested,
+            already_on_path=already_on_path,
+            duration_seconds=duration_seconds,
+            cli_version=cli_version,
+        )
+        target_reporter = default_telemetry_reporter() if reporter is None else reporter
+        target_reporter.record(event)
+    except Exception:
+        return
+
+
+def classify_cli_install_exception(
+    error: Exception,
+    *,
+    during_path_update: bool,
+) -> CliInstallErrorCategory:
+    """Reduce an install exception to a fixed, non-identifying category."""
+    if during_path_update:
+        return CliInstallErrorCategory.PATH_UPDATE
+    if isinstance(error, FileNotFoundError):
+        return CliInstallErrorCategory.SOURCE_MISSING
+    if isinstance(error, FileExistsError):
+        return CliInstallErrorCategory.DESTINATION_CONFLICT
+    if isinstance(error, PermissionError):
+        return CliInstallErrorCategory.PERMISSION_DENIED
+    if isinstance(error, OSError):
+        return CliInstallErrorCategory.FILESYSTEM_ERROR
+    if isinstance(error, KickstartError):
+        return CliInstallErrorCategory.EXPECTED_ERROR
+    return CliInstallErrorCategory.UNEXPECTED_ERROR
+
+
+def build_cli_upgrade_event(
+    result: UpgradeResult,
+    duration_seconds: float,
+    *,
+    cli_version: str,
+    platform_name: str | None = None,
+    architecture: str | None = None,
+) -> TelemetryEvent:
+    """Build the closed terminal event for a self-upgrade invocation."""
+    return TelemetryEvent(
+        name=TelemetryEventName.CLI_UPGRADE_COMPLETED,
+        properties=CliUpgradeProperties(
+            cli_version=cli_version,
+            target_version=normalize_target_version(result.target_version),
+            outcome=result.outcome,
+            error_category=result.error_category,
+            checksum_status=result.checksum_status,
+            duration_bucket=_duration_bucket(duration_seconds),
+            platform=_platform(platform_name or runtime_platform.system()),
+            architecture=_architecture(architecture or runtime_platform.machine()),
+        ),
+    )
+
+
+def capture_cli_upgrade_terminal(
+    result: UpgradeResult,
+    duration_seconds: float,
+    *,
+    cli_version: str,
+    reporter: TelemetryReporter | None = None,
+) -> None:
+    """Attempt one upgrade capture while containing all telemetry failures."""
+    try:
+        event = build_cli_upgrade_event(result, duration_seconds, cli_version=cli_version)
         target_reporter = default_telemetry_reporter() if reporter is None else reporter
         target_reporter.record(event)
     except Exception:

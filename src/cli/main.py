@@ -34,11 +34,24 @@ from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateA
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
 from src.cli.telemetry import telemetry_app
 from src.model.dto.telemetry import (
+    CliArtifactKind,
+    CliInstallErrorCategory,
+    CliInstallOutcome,
+    CliUpgradeChecksumStatus,
+    CliUpgradeErrorCategory,
+    CliUpgradeOutcome,
     ScaffoldCreateContext,
     ScaffoldCreateErrorCategory,
     ScaffoldCreateOutcome,
 )
-from src.telemetry.events import capture_scaffold_create_terminal, classify_scaffold_create_exception
+from src.model.dto.upgrade import UNKNOWN_TARGET_VERSION, UpgradeResult
+from src.telemetry.events import (
+    capture_cli_install_terminal,
+    capture_cli_upgrade_terminal,
+    capture_scaffold_create_terminal,
+    classify_cli_install_exception,
+    classify_scaffold_create_exception,
+)
 from src.utils.config import load_config
 from src.utils.errors import KickstartError
 from src.utils.installer import (
@@ -95,7 +108,33 @@ def version() -> None:
 @app.command()
 def upgrade() -> None:
     """Upgrade to the latest version."""
-    check_for_update()
+    started_at = monotonic()
+    result: UpgradeResult | None = None
+    try:
+        result = check_for_update()
+    except KeyboardInterrupt:
+        result = UpgradeResult(
+            target_version=UNKNOWN_TARGET_VERSION,
+            outcome=CliUpgradeOutcome.CANCELLED,
+            error_category=CliUpgradeErrorCategory.INTERRUPTED,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
+        raise
+    except Exception:
+        result = UpgradeResult(
+            target_version=UNKNOWN_TARGET_VERSION,
+            outcome=CliUpgradeOutcome.FAILED,
+            error_category=CliUpgradeErrorCategory.UNEXPECTED_ERROR,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
+        raise
+    finally:
+        if result is not None:
+            capture_cli_upgrade_terminal(
+                result,
+                monotonic() - started_at,
+                cli_version=__version__,
+            )
 
 
 export_app: typer.Typer = typer.Typer(help="Deterministic exporters derived from scaffold state.")
@@ -288,30 +327,76 @@ def install(
     check: bool = typer.Option(False, "--check", help="Only report install/PATH status; do not modify anything."),
 ) -> None:
     """Install the kickstart binary to a user-writable directory and help configure PATH."""
-    with _report_install_failure("Install"):
-        ctx = _resolve_install_context(target, app_dir=app_dir, shell=shell, rc_file=rc_file)
-        source = current_binary_path()
+    started_at = monotonic()
+    outcome = CliInstallOutcome.FAILED
+    error_category = CliInstallErrorCategory.UNEXPECTED_ERROR
+    artifact_kind = CliArtifactKind.UNKNOWN
+    already_on_path = False
+    binary_changed = False
+    during_path_update = False
 
-        if check:
-            _print_install_status(ctx, source)
-            return
+    try:
+        with _report_install_failure("Install"):
+            try:
+                ctx = _resolve_install_context(target, app_dir=app_dir, shell=shell, rc_file=rc_file)
+                already_on_path = ctx.already_on_path
+                source = current_binary_path()
 
-        result: InstallResult = install_binary(source, ctx.install_dir, overwrite=force, app_root=ctx.app_root)
-        if result.already_installed:
-            print(f"[green]✔ kickstart is already installed at {result.destination}[/]")
-        elif result.copied:
-            print(f"[green]✔ Installed kickstart to {result.destination}[/]")
+                if check:
+                    _print_install_status(ctx, source)
+                    return
 
-        if ctx.already_on_path:
-            print(f"[green]✔ {ctx.install_dir} is already on your PATH.[/]")
-            print("[cyan]Run [bold]kickstart --help[/bold] to get started.[/cyan]")
-            return
+                result: InstallResult = install_binary(
+                    source,
+                    ctx.install_dir,
+                    overwrite=force,
+                    app_root=ctx.app_root,
+                )
+                artifact_kind = (
+                    CliArtifactKind.ONEDIR if result.app_path is not None else CliArtifactKind.SINGLE_FILE
+                )
+                binary_changed = result.copied
+                outcome = CliInstallOutcome.NO_CHANGE if result.already_installed else CliInstallOutcome.SUCCESS
+                error_category = CliInstallErrorCategory.NONE
+                if result.already_installed:
+                    print(f"[green]✔ kickstart is already installed at {result.destination}[/]")
+                elif result.copied:
+                    print(f"[green]✔ Installed kickstart to {result.destination}[/]")
 
-        if update_path:
-            _apply_path_update(ctx)
-            return
+                if ctx.already_on_path:
+                    print(f"[green]✔ {ctx.install_dir} is already on your PATH.[/]")
+                    print("[cyan]Run [bold]kickstart --help[/bold] to get started.[/cyan]")
+                    return
 
-        _print_manual_path_instructions(ctx)
+                if update_path:
+                    during_path_update = True
+                    _apply_path_update(ctx)
+                    during_path_update = False
+                    return
+
+                _print_manual_path_instructions(ctx)
+            except KeyboardInterrupt:
+                outcome = CliInstallOutcome.PARTIAL_SUCCESS if binary_changed else CliInstallOutcome.CANCELLED
+                error_category = CliInstallErrorCategory.INTERRUPTED
+                raise
+            except Exception as exc:
+                outcome = CliInstallOutcome.PARTIAL_SUCCESS if binary_changed else CliInstallOutcome.FAILED
+                error_category = classify_cli_install_exception(
+                    exc,
+                    during_path_update=during_path_update,
+                )
+                raise
+    finally:
+        if not check:
+            capture_cli_install_terminal(
+                outcome,
+                error_category,
+                artifact_kind,
+                path_update_requested=update_path,
+                already_on_path=already_on_path,
+                duration_seconds=monotonic() - started_at,
+                cli_version=__version__,
+            )
 
 
 @app.command()

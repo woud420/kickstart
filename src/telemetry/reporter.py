@@ -32,16 +32,21 @@ class TelemetryReporter:
     def record(self, event: TelemetryEvent) -> None:
         """Attempt one event only when effective policy permits it."""
         try:
+            if isinstance(self.sink, NoOpTelemetrySink):
+                return
             effective = resolve_telemetry(
                 self.state_store,
                 self.environ,
                 development=self.development,
             )
-            if not effective.enabled or effective.anonymous_id is None:
+            if not effective.enabled:
+                return
+            anonymous_id = self.state_store.identity_for_event()
+            if anonymous_id is None:
                 return
             envelope = TelemetryEnvelope(
                 event_id=self.uuid_factory(),
-                anonymous_id=effective.anonymous_id,
+                anonymous_id=anonymous_id,
                 occurred_at=self.clock(),
                 event=event,
             )

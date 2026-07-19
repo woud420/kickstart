@@ -35,6 +35,30 @@ def test_reading_missing_state_is_lazy(tmp_path: Path) -> None:
     assert not store.path.exists()
 
 
+def test_dangling_state_symlink_is_rejected_instead_of_treated_as_missing(tmp_path: Path) -> None:
+    path = tmp_path / "telemetry.json"
+    missing_target = tmp_path / "missing-state.json"
+    path.symlink_to(missing_target)
+
+    with pytest.raises(TelemetryStateError, match="unreadable or malformed"):
+        TelemetryStateStore(path).read()
+
+    assert path.is_symlink()
+    assert not missing_target.exists()
+
+
+def test_state_metadata_error_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = tmp_path / "telemetry.json"
+
+    def fail_lstat(_path: Path) -> os.stat_result:
+        raise OSError("synthetic metadata failure")
+
+    monkeypatch.setattr(Path, "lstat", fail_lstat)
+
+    with pytest.raises(TelemetryStateError, match="unreadable or malformed"):
+        TelemetryStateStore(path).read()
+
+
 def test_enable_creates_uuid4_and_reuses_it_across_store_instances(tmp_path: Path) -> None:
     path = tmp_path / "telemetry.json"
 
@@ -47,6 +71,18 @@ def test_enable_creates_uuid4_and_reuses_it_across_store_instances(tmp_path: Pat
     assert second.consent is TelemetryConsent.ENABLED
 
 
+def test_event_identity_is_created_once_and_reused_across_store_instances(tmp_path: Path) -> None:
+    path = tmp_path / "telemetry.json"
+
+    first = TelemetryStateStore(path).identity_for_event()
+    second = TelemetryStateStore(path).identity_for_event()
+
+    assert first is not None
+    assert first.version == 4
+    assert second == first
+    assert TelemetryStateStore(path).read().anonymous_id == first
+
+
 def test_disable_before_enable_does_not_create_identity(tmp_path: Path) -> None:
     store = TelemetryStateStore(tmp_path / "telemetry.json")
 
@@ -55,6 +91,17 @@ def test_disable_before_enable_does_not_create_identity(tmp_path: Path) -> None:
     assert state.consent is TelemetryConsent.DISABLED
     assert state.anonymous_id is None
     assert "anonymous_id" not in json.loads(store.path.read_text(encoding="utf-8"))
+
+
+def test_disabled_state_prevents_event_identity_creation(tmp_path: Path) -> None:
+    store = TelemetryStateStore(tmp_path / "telemetry.json")
+    store.disable()
+
+    assert store.identity_for_event() is None
+
+    persisted = store.read()
+    assert persisted.consent is TelemetryConsent.DISABLED
+    assert persisted.anonymous_id is None
 
 
 def test_disable_and_reenable_preserve_identity(tmp_path: Path) -> None:
@@ -92,16 +139,17 @@ def test_reset_without_identity_is_read_only(tmp_path: Path) -> None:
     assert not store.path.exists()
 
 
-def test_concurrent_enablement_converges_on_one_identity(tmp_path: Path) -> None:
+def test_concurrent_event_identity_creation_converges_on_one_identity(tmp_path: Path) -> None:
     path = tmp_path / "telemetry.json"
     candidates = iter([uuid4(), uuid4()])
 
-    def enable() -> UUID | None:
-        return TelemetryStateStore(path, uuid_factory=lambda: next(candidates)).enable().anonymous_id
+    def identity_for_event() -> UUID | None:
+        return TelemetryStateStore(path, uuid_factory=lambda: next(candidates)).identity_for_event()
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        identities = list(executor.map(lambda _: enable(), range(2)))
+        identities = list(executor.map(lambda _: identity_for_event(), range(2)))
 
+    assert identities[0] is not None
     assert identities[0] == identities[1]
 
 
@@ -109,7 +157,7 @@ def test_concurrent_enablement_converges_on_one_identity(tmp_path: Path) -> None
 def test_state_file_uses_user_only_permissions(tmp_path: Path) -> None:
     path = tmp_path / "kickstart" / "telemetry.json"
 
-    TelemetryStateStore(path).enable()
+    TelemetryStateStore(path).identity_for_event()
 
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
     assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
@@ -121,9 +169,11 @@ def test_state_write_succeeds_when_descriptor_chmod_is_unavailable(
 ) -> None:
     monkeypatch.delattr(state_module.os, "fchmod", raising=False)
 
-    state = TelemetryStateStore(tmp_path / "telemetry.json").enable()
+    store = TelemetryStateStore(tmp_path / "telemetry.json")
+    identity = store.identity_for_event()
 
-    assert state.consent is TelemetryConsent.ENABLED
+    assert identity is not None
+    assert store.read().consent is TelemetryConsent.ENABLED
 
 
 def test_stale_lock_is_removed_before_updating_state(tmp_path: Path) -> None:
@@ -145,7 +195,7 @@ def test_busy_lock_fails_without_changing_state(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(state_module, "_LOCK_TIMEOUT_SECONDS", 0.0)
 
     with pytest.raises(TelemetryStateError, match="Telemetry state is busy"):
-        TelemetryStateStore(path).enable()
+        TelemetryStateStore(path).identity_for_event()
 
     assert not path.exists()
 
@@ -159,7 +209,7 @@ def test_write_failure_removes_temporary_state_file(tmp_path: Path, monkeypatch:
     monkeypatch.setattr(state_module.os, "replace", fail_replace)
 
     with pytest.raises(TelemetryStateError, match="cannot be written"):
-        TelemetryStateStore(path).enable()
+        TelemetryStateStore(path).identity_for_event()
 
     assert list(tmp_path.glob(".telemetry-*.tmp")) == []
 

@@ -21,6 +21,12 @@ from typing import Optional, TypedDict, cast
 import requests
 
 from src import __version__
+from src.model.dto.telemetry import (
+    CliUpgradeChecksumStatus,
+    CliUpgradeErrorCategory,
+    CliUpgradeOutcome,
+)
+from src.model.dto.upgrade import UNKNOWN_TARGET_VERSION, UpgradeResult, normalize_target_version
 from src.utils.installer import (
     APP_DIR_NAME,
     BINARY_NAME,
@@ -145,36 +151,82 @@ def _extract_archive_launcher(archive_path: Path, dest_root: Path) -> Path:
     return launcher
 
 
-def check_for_update() -> None:
-    """Check for updates and install the newest release in-place."""
+def check_for_update() -> UpgradeResult:
+    """Check for updates, install the newest release, and return a safe terminal result."""
     print(f"[cyan]Checking for updates (current version: {__version__})...")
 
     try:
         info = fetch_release_info()
     except Exception as exc:
         print(f"[red]✖ Update failed: could not query the latest release: {exc}")
-        return
+        return UpgradeResult(
+            target_version=UNKNOWN_TARGET_VERSION,
+            outcome=CliUpgradeOutcome.FAILED,
+            error_category=CliUpgradeErrorCategory.RELEASE_LOOKUP,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
 
-    latest = info["tag_name"].lstrip("v")
+    try:
+        tag_name = info["tag_name"]
+        assets = info["assets"]
+        metadata_is_valid = (
+            isinstance(tag_name, str)
+            and bool(tag_name)
+            and isinstance(assets, list)
+            and all(
+                isinstance(asset, dict)
+                and isinstance(asset.get("name"), str)
+                and isinstance(asset.get("browser_download_url"), str)
+                for asset in assets
+            )
+        )
+    except (KeyError, TypeError):
+        metadata_is_valid = False
+    if not metadata_is_valid:
+        print("[red]✖ Update failed: latest release metadata is invalid.")
+        return UpgradeResult(
+            target_version=UNKNOWN_TARGET_VERSION,
+            outcome=CliUpgradeOutcome.FAILED,
+            error_category=CliUpgradeErrorCategory.INVALID_RELEASE_METADATA,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
+
+    latest = tag_name.lstrip("v")
+    target_version = normalize_target_version(tag_name)
     if latest == __version__:
         print("[green]✅ You're already up to date.")
-        return
+        return UpgradeResult(
+            target_version=target_version,
+            outcome=CliUpgradeOutcome.ALREADY_CURRENT,
+            error_category=CliUpgradeErrorCategory.NONE,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
 
     try:
         archive_name = expected_archive_name()
     except RuntimeError as exc:
         print(f"[red]✖ Update failed: {exc}")
-        return
+        return UpgradeResult(
+            target_version=target_version,
+            outcome=CliUpgradeOutcome.FAILED,
+            error_category=CliUpgradeErrorCategory.UNSUPPORTED_PLATFORM,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
 
-    archive_asset = find_asset(info["assets"], archive_name)
+    archive_asset = find_asset(assets, archive_name)
     if archive_asset is None:
         print(
-            f"[red]✖ Update failed: no asset named {archive_name} on release {info['tag_name']}. "
+            f"[red]✖ Update failed: no asset named {archive_name} on release {tag_name}. "
             "Wait for the release to publish the matching binary archive."
         )
-        return
+        return UpgradeResult(
+            target_version=target_version,
+            outcome=CliUpgradeOutcome.FAILED,
+            error_category=CliUpgradeErrorCategory.ARCHIVE_MISSING,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
 
-    hash_asset = find_asset(info["assets"], f"{archive_name}.sha256")
+    hash_asset = find_asset(assets, f"{archive_name}.sha256")
     launcher_dir, app_root = resolve_current_install_layout()
 
     print(f"[yellow]⬆ New version available: {latest} — downloading {archive_name}...")
@@ -189,20 +241,41 @@ def check_for_update() -> None:
             download_to(archive_asset["browser_download_url"], archive_path)
         except Exception as exc:
             print(f"[red]✖ Update failed: could not download {archive_name}: {exc}")
-            return
+            return UpgradeResult(
+                target_version=target_version,
+                outcome=CliUpgradeOutcome.FAILED,
+                error_category=CliUpgradeErrorCategory.DOWNLOAD,
+                checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+            )
 
         if hash_asset is not None:
             try:
                 hash_response = requests.get(hash_asset["browser_download_url"], timeout=10)
                 hash_response.raise_for_status()
                 expected_hash = hash_response.text.strip().split()[0]
-                verify_sha256(archive_path, expected_hash)
-                print(f"[green]🔒 Checksum verified ({expected_hash}).")
             except Exception as exc:
                 print(f"[red]✖ Update failed: could not verify checksum: {exc}")
-                return
+                return UpgradeResult(
+                    target_version=target_version,
+                    outcome=CliUpgradeOutcome.FAILED,
+                    error_category=CliUpgradeErrorCategory.CHECKSUM_FETCH,
+                    checksum_status=CliUpgradeChecksumStatus.FAILED,
+                )
+            try:
+                verify_sha256(archive_path, expected_hash)
+            except Exception as exc:
+                print(f"[red]✖ Update failed: could not verify checksum: {exc}")
+                return UpgradeResult(
+                    target_version=target_version,
+                    outcome=CliUpgradeOutcome.FAILED,
+                    error_category=CliUpgradeErrorCategory.CHECKSUM_MISMATCH,
+                    checksum_status=CliUpgradeChecksumStatus.FAILED,
+                )
+            print(f"[green]🔒 Checksum verified ({expected_hash}).")
+            checksum_status = CliUpgradeChecksumStatus.VERIFIED
         else:
             print("[yellow]⚠ No matching .sha256 asset; skipping checksum verification.")
+            checksum_status = CliUpgradeChecksumStatus.NOT_PUBLISHED
 
         extract_root = tmp / "extracted"
         extract_root.mkdir()
@@ -210,7 +283,12 @@ def check_for_update() -> None:
             launcher = _extract_archive_launcher(archive_path, extract_root)
         except Exception as exc:
             print(f"[red]✖ Update failed: could not extract archive: {exc}")
-            return
+            return UpgradeResult(
+                target_version=target_version,
+                outcome=CliUpgradeOutcome.FAILED,
+                error_category=CliUpgradeErrorCategory.ARCHIVE_EXTRACTION,
+                checksum_status=checksum_status,
+            )
 
         try:
             result: InstallResult = install_binary(
@@ -221,9 +299,20 @@ def check_for_update() -> None:
             )
         except Exception as exc:
             print(f"[red]✖ Update failed: could not install the new app bundle: {exc}")
-            return
+            return UpgradeResult(
+                target_version=target_version,
+                outcome=CliUpgradeOutcome.FAILED,
+                error_category=CliUpgradeErrorCategory.INSTALLATION,
+                checksum_status=checksum_status,
+            )
 
     print(f"[green]✔ Updated to {latest}.")
     print(f"  launcher: {result.destination}")
     if result.app_path is not None:
         print(f"  app:      {result.app_path}")
+    return UpgradeResult(
+        target_version=target_version,
+        outcome=CliUpgradeOutcome.UPDATED,
+        error_category=CliUpgradeErrorCategory.NONE,
+        checksum_status=checksum_status,
+    )

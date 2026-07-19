@@ -1,8 +1,11 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import patch
 from uuid import UUID
 
-from src.model.dto.telemetry import TelemetryEvent
+import pytest
+
+from src.model.dto.telemetry import TelemetryConsent, TelemetryEvent
 from src.telemetry.posthog import PostHogSink
 from src.telemetry.reporter import TelemetryReporter, default_telemetry_reporter
 from src.telemetry.sink import InMemoryTelemetrySink, NoOpTelemetrySink
@@ -46,10 +49,11 @@ def test_reporter_adds_stable_identity_and_delivery_metadata(tmp_path: Path) -> 
     assert sink.envelopes[0].event is event
 
 
-def test_reporter_does_nothing_before_opt_in(tmp_path: Path) -> None:
+def test_reporter_creates_and_persists_identity_for_first_default_on_event(tmp_path: Path) -> None:
+    store = TelemetryStateStore(tmp_path / "telemetry.json")
     sink = InMemoryTelemetrySink()
     reporter = TelemetryReporter(
-        state_store=TelemetryStateStore(tmp_path / "telemetry.json"),
+        state_store=store,
         sink=sink,
         environ={},
         development=False,
@@ -57,27 +61,84 @@ def test_reporter_does_nothing_before_opt_in(tmp_path: Path) -> None:
 
     reporter.record(_event())
 
+    persisted = store.read()
+    assert persisted.consent is TelemetryConsent.ENABLED
+    assert persisted.anonymous_id is not None
+    assert len(sink.envelopes) == 1
+    assert sink.envelopes[0].anonymous_id == persisted.anonymous_id
+
+
+@pytest.mark.parametrize(
+    "environ",
+    [
+        {"DO_NOT_TRACK": "1"},
+        {"KICKSTART_TELEMETRY_DISABLED": "1"},
+        {"CI": "1"},
+        {"PYTEST_CURRENT_TEST": "test"},
+        {"KICKSTART_EVAL": "1"},
+    ],
+)
+def test_hard_suppression_does_not_create_state_or_send(
+    tmp_path: Path,
+    environ: dict[str, str],
+) -> None:
+    store = TelemetryStateStore(tmp_path / "telemetry.json")
+    sink = InMemoryTelemetrySink()
+    reporter = TelemetryReporter(store, sink, environ, development=False)
+
+    reporter.record(_event())
+
     assert sink.envelopes == []
+    assert not store.path.exists()
+
+
+def test_explicit_disable_does_not_create_identity_or_send(tmp_path: Path) -> None:
+    store = TelemetryStateStore(tmp_path / "telemetry.json")
+    store.disable()
+    sink = InMemoryTelemetrySink()
+
+    TelemetryReporter(store, sink, {}, development=False).record(_event())
+
+    assert sink.envelopes == []
+    persisted = store.read()
+    assert persisted.consent is TelemetryConsent.DISABLED
+    assert persisted.anonymous_id is None
+
+
+def test_disable_between_policy_and_identity_acquisition_wins(tmp_path: Path) -> None:
+    class DisableBeforeIdentityStore(TelemetryStateStore):
+        def identity_for_event(self) -> UUID | None:
+            self.disable()
+            return super().identity_for_event()
+
+    store = DisableBeforeIdentityStore(tmp_path / "telemetry.json")
+    sink = InMemoryTelemetrySink()
+
+    TelemetryReporter(store, sink, {}, development=False).record(_event())
+
+    assert sink.envelopes == []
+    assert store.read().consent is TelemetryConsent.DISABLED
 
 
 def test_reporter_contains_sink_failures(tmp_path: Path) -> None:
     store = TelemetryStateStore(tmp_path / "telemetry.json")
-    store.enable()
     reporter = TelemetryReporter(store, FailingSink(), {}, development=False)
 
     reporter.record(_event())
 
+    assert store.read().anonymous_id is not None
+
 
 def test_default_reporter_without_token_uses_noop_sink(tmp_path: Path) -> None:
     reporter = default_telemetry_reporter({"XDG_CONFIG_HOME": str(tmp_path)}, development=False)
-    reporter.state_store.enable()
 
     reporter.record(_event())
 
     assert isinstance(reporter.sink, NoOpTelemetrySink)
+    assert not reporter.state_store.path.exists()
 
 
-def test_environment_token_does_not_enable_telemetry(tmp_path: Path) -> None:
+def test_environment_token_routes_default_on_event_without_real_network(tmp_path: Path) -> None:
     state_path = tmp_path / "kickstart" / "telemetry.json"
     reporter = default_telemetry_reporter(
         {
@@ -87,7 +148,33 @@ def test_environment_token_does_not_enable_telemetry(tmp_path: Path) -> None:
         development=False,
     )
 
-    reporter.record(_event())
+    with patch.object(PostHogSink, "record") as record:
+        reporter.record(_event())
 
     assert isinstance(reporter.sink, PostHogSink)
-    assert not state_path.exists()
+    record.assert_called_once()
+    assert TelemetryStateStore(state_path).read().anonymous_id is not None
+
+
+def test_invalid_state_fails_closed_without_sending(tmp_path: Path) -> None:
+    state_path = tmp_path / "telemetry.json"
+    state_path.write_text("{bad json", encoding="utf-8")
+    sink = InMemoryTelemetrySink()
+
+    TelemetryReporter(TelemetryStateStore(state_path), sink, {}, development=False).record(_event())
+
+    assert sink.envelopes == []
+    assert state_path.read_text(encoding="utf-8") == "{bad json"
+
+
+def test_dangling_state_symlink_fails_closed_without_replacement(tmp_path: Path) -> None:
+    state_path = tmp_path / "telemetry.json"
+    missing_target = tmp_path / "missing-state.json"
+    state_path.symlink_to(missing_target)
+    sink = InMemoryTelemetrySink()
+
+    TelemetryReporter(TelemetryStateStore(state_path), sink, {}, development=False).record(_event())
+
+    assert sink.envelopes == []
+    assert state_path.is_symlink()
+    assert not missing_target.exists()

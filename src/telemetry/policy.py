@@ -1,4 +1,4 @@
-"""Fail-closed telemetry enablement policy."""
+"""Resolve default-on telemetry with fail-closed suppression and state handling."""
 
 import os
 from collections.abc import Mapping
@@ -40,18 +40,18 @@ def resolve_telemetry(
         current_state = store.read() if state is None else state
     except TelemetryStateError:
         return _disabled(TelemetrySuppressionReason.INVALID_STATE)
-    if current_state.consent is TelemetryConsent.ENABLED and current_state.anonymous_id is not None:
+    if current_state.consent is TelemetryConsent.DISABLED:
         return EffectiveTelemetry(
-            enabled=True,
-            reason=TelemetrySuppressionReason.ENABLED,
+            enabled=False,
+            reason=TelemetrySuppressionReason.USER_DISABLED,
             anonymous_id=current_state.anonymous_id,
         )
     reason = (
-        TelemetrySuppressionReason.USER_DISABLED
-        if current_state.consent is TelemetryConsent.DISABLED
-        else TelemetrySuppressionReason.NOT_OPTED_IN
+        TelemetrySuppressionReason.DEFAULT_ENABLED
+        if current_state.consent is TelemetryConsent.UNSET
+        else TelemetrySuppressionReason.ENABLED
     )
-    return EffectiveTelemetry(enabled=False, reason=reason, anonymous_id=current_state.anonymous_id)
+    return EffectiveTelemetry(enabled=True, reason=reason, anonymous_id=current_state.anonymous_id)
 
 
 def _disabled(reason: TelemetrySuppressionReason) -> EffectiveTelemetry:

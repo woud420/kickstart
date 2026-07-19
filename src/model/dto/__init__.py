@@ -2,6 +2,14 @@
 
 from src.model.dto.posthog import PostHogCapturePayload, PostHogCaptureRequest
 from src.model.dto.telemetry import (
+    CliArtifactKind,
+    CliInstallErrorCategory,
+    CliInstallOutcome,
+    CliInstallProperties,
+    CliUpgradeChecksumStatus,
+    CliUpgradeErrorCategory,
+    CliUpgradeOutcome,
+    CliUpgradeProperties,
     EffectiveTelemetry,
     ScaffoldCreateContext,
     ScaffoldCreateErrorCategory,
@@ -16,8 +24,17 @@ from src.model.dto.telemetry import (
     TelemetryState,
     TelemetrySuppressionReason,
 )
+from src.model.dto.upgrade import UNKNOWN_TARGET_VERSION, UpgradeResult, normalize_target_version
 
 __all__ = [
+    "CliArtifactKind",
+    "CliInstallErrorCategory",
+    "CliInstallOutcome",
+    "CliInstallProperties",
+    "CliUpgradeChecksumStatus",
+    "CliUpgradeErrorCategory",
+    "CliUpgradeOutcome",
+    "CliUpgradeProperties",
     "EffectiveTelemetry",
     "PostHogCapturePayload",
     "PostHogCaptureRequest",
@@ -33,4 +50,7 @@ __all__ = [
     "TelemetryIdentityReset",
     "TelemetryState",
     "TelemetrySuppressionReason",
+    "UNKNOWN_TARGET_VERSION",
+    "UpgradeResult",
+    "normalize_target_version",
 ]

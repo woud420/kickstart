@@ -11,7 +11,7 @@ from src.telemetry.state import TelemetryStateStore
 from src.utils.errors import TelemetryStateError
 
 
-telemetry_app = typer.Typer(help="Inspect and control default-off pseudonymous telemetry.")
+telemetry_app = typer.Typer(help="Inspect and control default-on pseudonymous telemetry.")
 
 
 def _state_store() -> TelemetryStateStore:
@@ -57,7 +57,7 @@ def telemetry_status(
 
 @telemetry_app.command("enable")
 def telemetry_enable() -> None:
-    """Explicitly opt in and create an identity only when needed."""
+    """Persist enablement and create an identity only when needed."""
     try:
         state = _state_store().enable()
     except TelemetryStateError as exc:
