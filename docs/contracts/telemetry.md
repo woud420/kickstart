@@ -124,6 +124,8 @@ The exact closed property set for `cli_install_completed` is those six common pr
 
 Its `outcome` is one of `success`, `no_change`, `partial_success`, `failed`, or `cancelled`. Its `error_category` is one of `none`, `interrupted`, `source_missing`, `destination_conflict`, `permission_denied`, `path_update`, `filesystem_error`, `expected_error`, or `unexpected_error`.
 
+A successful PATH-only change is `success` even when the binary was already installed. If PATH integration was requested but no shell rc file could be resolved, the command remains non-fatal but reports `partial_success` with `path_update`; a request that changes neither the binary nor the managed PATH block is `no_change`.
+
 The exact closed property set for `cli_upgrade_completed` is those six common properties plus:
 
 - `target_version`: a stable semantic version or `unknown`

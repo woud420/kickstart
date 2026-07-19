@@ -332,7 +332,7 @@ def install(
     error_category = CliInstallErrorCategory.UNEXPECTED_ERROR
     artifact_kind = CliArtifactKind.UNKNOWN
     already_on_path = False
-    binary_changed = False
+    binary_ready = False
     during_path_update = False
 
     try:
@@ -355,7 +355,7 @@ def install(
                 artifact_kind = (
                     CliArtifactKind.ONEDIR if result.app_path is not None else CliArtifactKind.SINGLE_FILE
                 )
-                binary_changed = result.copied
+                binary_ready = True
                 outcome = CliInstallOutcome.NO_CHANGE if result.already_installed else CliInstallOutcome.SUCCESS
                 error_category = CliInstallErrorCategory.NONE
                 if result.already_installed:
@@ -370,17 +370,22 @@ def install(
 
                 if update_path:
                     during_path_update = True
-                    _apply_path_update(ctx)
+                    path_update = _apply_path_update(ctx)
                     during_path_update = False
+                    if path_update is None:
+                        outcome = CliInstallOutcome.PARTIAL_SUCCESS
+                        error_category = CliInstallErrorCategory.PATH_UPDATE
+                    elif path_update.changed:
+                        outcome = CliInstallOutcome.SUCCESS
                     return
 
                 _print_manual_path_instructions(ctx)
             except KeyboardInterrupt:
-                outcome = CliInstallOutcome.PARTIAL_SUCCESS if binary_changed else CliInstallOutcome.CANCELLED
+                outcome = CliInstallOutcome.PARTIAL_SUCCESS if binary_ready else CliInstallOutcome.CANCELLED
                 error_category = CliInstallErrorCategory.INTERRUPTED
                 raise
             except Exception as exc:
-                outcome = CliInstallOutcome.PARTIAL_SUCCESS if binary_changed else CliInstallOutcome.FAILED
+                outcome = CliInstallOutcome.PARTIAL_SUCCESS if binary_ready else CliInstallOutcome.FAILED
                 error_category = classify_cli_install_exception(
                     exc,
                     during_path_update=during_path_update,
@@ -458,7 +463,7 @@ def _print_install_status(ctx: _InstallContext, source: Path) -> None:
         print(f"  rc file:     {ctx.rc_file}")
 
 
-def _apply_path_update(ctx: _InstallContext) -> None:
+def _apply_path_update(ctx: _InstallContext) -> PathUpdateResult | None:
     """Write (or refresh) the managed PATH block in the resolved rc file, or fall back to instructions."""
     if ctx.rc_file is None:
         print(
@@ -466,7 +471,7 @@ def _apply_path_update(ctx: _InstallContext) -> None:
             "or [bold]--shell bash|zsh|fish[/bold].[/yellow]"
         )
         _print_manual_path_instructions(ctx, suppress_rc_hint=True)
-        return
+        return None
     changed = update_path_in_rc(ctx.rc_file, ctx.snippet)
     update = PathUpdateResult(rc_file=ctx.rc_file, snippet=ctx.snippet, changed=changed, on_path_now=False)
     if update.changed:
@@ -474,6 +479,7 @@ def _apply_path_update(ctx: _InstallContext) -> None:
     else:
         print(f"[green]✔ {update.rc_file} already contains the managed PATH entry.[/]")
     print(f"[cyan]Restart your shell or run [bold]source {update.rc_file}[/bold] to pick up the new PATH.[/cyan]")
+    return update
 
 
 def _clean_managed_path_block(ctx: _InstallContext) -> None:
