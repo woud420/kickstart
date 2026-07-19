@@ -34,8 +34,16 @@ mv "${DIST_DIR}/kickstart" "${payload}"
 # Verify the telemetry controls are bundled and status remains read-only.
 mkdir -p "${SMOKE_ROOT}"
 telemetry_config="$(mktemp -d "${SMOKE_ROOT}/telemetry-smoke.XXXXXX")"
-XDG_CONFIG_HOME="${telemetry_config}" KICKSTART_TELEMETRY_DISABLED=1 \
-  "${payload}/kickstart" telemetry status --json
+telemetry_status="$(
+  env -u POSTHOG_PUBLIC_CUSTOMER_API_TOKEN \
+    XDG_CONFIG_HOME="${telemetry_config}" KICKSTART_TELEMETRY_DISABLED=1 \
+    "${payload}/kickstart" telemetry status --json
+)"
+printf '%s\n' "${telemetry_status}"
+if [[ "${EXPECT_EMBEDDED_TELEMETRY:-0}" == "1" ]]; then
+  printf '%s\n' "${telemetry_status}" | python3 -c \
+    'import json, sys; raise SystemExit(0 if json.load(sys.stdin)["delivery_configured"] is True else 1)'
+fi
 test ! -e "${telemetry_config}/kickstart/telemetry.json"
 rm -rf "${telemetry_config}"
 

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from src.model.dto.telemetry import TelemetryEnvelope, TelemetryEvent
-from src.telemetry.config import posthog_settings_from_environment
+from src.telemetry.config import posthog_settings_from_configuration
 from src.telemetry.policy import resolve_telemetry
 from src.telemetry.posthog import PostHogSink
 from src.telemetry.sink import NoOpTelemetrySink, TelemetrySink
@@ -58,7 +58,7 @@ def default_telemetry_reporter(
 ) -> TelemetryReporter:
     """Build the default reporter without reading cwd configuration or dotenv files."""
     process_environment = os.environ if environ is None else environ
-    settings = posthog_settings_from_environment(process_environment)
+    settings = posthog_settings_from_configuration(process_environment)
     sink: TelemetrySink = NoOpTelemetrySink() if settings is None else PostHogSink(settings)
     return TelemetryReporter(
         state_store=TelemetryStateStore.from_environment(process_environment),

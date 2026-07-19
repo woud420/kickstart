@@ -7,7 +7,11 @@ from src.cli.main import app
 
 
 def _env(tmp_path: Path) -> dict[str, str]:
-    return {"XDG_CONFIG_HOME": str(tmp_path), "HOME": str(tmp_path)}
+    return {
+        "HOME": str(tmp_path),
+        "POSTHOG_PUBLIC_CUSTOMER_API_TOKEN": "",
+        "XDG_CONFIG_HOME": str(tmp_path),
+    }
 
 
 def test_status_is_read_only_before_opt_in(tmp_path: Path) -> None:
@@ -18,9 +22,22 @@ def test_status_is_read_only_before_opt_in(tmp_path: Path) -> None:
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["consent"] == "unset"
+    assert payload["delivery_configured"] is False
     assert payload["effective"] is False
     assert payload["anonymous_id"] is None
     assert not (tmp_path / "kickstart" / "telemetry.json").exists()
+
+
+def test_status_reports_runtime_delivery_configuration_without_exposing_token(tmp_path: Path) -> None:
+    environment = _env(tmp_path)
+    environment["POSTHOG_PUBLIC_CUSTOMER_API_TOKEN"] = "phc_status_test_token"
+
+    result = CliRunner().invoke(app, ["telemetry", "status", "--json"], env=environment)
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["delivery_configured"] is True
+    assert "phc_status_test_token" not in result.stdout
 
 
 def test_enable_disable_and_status_preserve_identity(tmp_path: Path) -> None:

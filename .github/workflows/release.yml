@@ -38,6 +38,11 @@ jobs:
       - name: Verify release version
         run: make release-check TAG="$GITHUB_REF_NAME"
 
+      - name: Verify public telemetry build token
+        env:
+          POSTHOG_PUBLIC_CUSTOMER_API_TOKEN: ${{ secrets.POSTHOG_PUBLIC_CUSTOMER_API_TOKEN }}
+        run: python3 scripts/embed_posthog_token.py --check
+
       - name: Set up Python + Poetry
         uses: ./.github/actions/setup-python-poetry
         with:
@@ -82,8 +87,25 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           poetry-version: ${{ env.POETRY_VERSION }}
 
+      - name: Stage public telemetry build configuration
+        env:
+          POSTHOG_PUBLIC_CUSTOMER_API_TOKEN: ${{ secrets.POSTHOG_PUBLIC_CUSTOMER_API_TOKEN }}
+        run: python3 scripts/embed_posthog_token.py --write
+
       - name: Build package
         run: make package
+
+      - name: Verify package telemetry configuration
+        env:
+          POSTHOG_PUBLIC_CUSTOMER_API_TOKEN: ${{ secrets.POSTHOG_PUBLIC_CUSTOMER_API_TOKEN }}
+        run: >-
+          poetry run python scripts/verify_embedded_telemetry_artifact.py
+          --expected-token-env POSTHOG_PUBLIC_CUSTOMER_API_TOKEN
+          dist/*.whl dist/*.tar.gz
+
+      - name: Clear staged public telemetry build configuration
+        if: ${{ always() }}
+        run: python3 scripts/embed_posthog_token.py --clear
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
@@ -122,14 +144,24 @@ jobs:
           python-version: ${{ matrix.python-version }}
           poetry-version: ${{ env.POETRY_VERSION }}
 
+      - name: Stage public telemetry build configuration
+        env:
+          POSTHOG_PUBLIC_CUSTOMER_API_TOKEN: ${{ secrets.POSTHOG_PUBLIC_CUSTOMER_API_TOKEN }}
+        run: python3 scripts/embed_posthog_token.py --write
+
       - name: Build kickstart binary
         run: make binary
 
       - name: Name, smoke-test, and archive binary
         env:
+          EXPECT_EMBEDDED_TELEMETRY: "1"
           PLATFORM: ${{ matrix.platform }}
           PYTHON_MINOR: ${{ matrix.python-version }}
         run: scripts/ci/name-and-smoke-binary.sh "${PLATFORM}" "${PYTHON_MINOR}"
+
+      - name: Clear staged public telemetry build configuration
+        if: ${{ always() }}
+        run: python3 scripts/embed_posthog_token.py --clear
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
@@ -205,6 +237,8 @@ jobs:
             pipx install git+https://github.com/${{ github.repository }}
             pip install ./kickstart-*-py3-none-any.whl
             ```
+
+            Release wheels and binary archives contain the public PostHog capture configuration. A direct Git source install does not; opted-in telemetry from that installation requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment.
 
             ### Manual binary install
 

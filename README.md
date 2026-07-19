@@ -63,6 +63,8 @@ pipx install git+https://github.com/woud420/kickstart          # from source
 pip install ./kickstart-<version>-py3-none-any.whl             # wheel from the Releases page
 ```
 
+Release wheels and binary archives contain the public PostHog capture configuration. A direct Git source install does not; opted-in telemetry from that installation requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment.
+
 ## Get Started
 
 ```bash

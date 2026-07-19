@@ -12,6 +12,11 @@ Each platform is built for Python `3.14`. Platforms outside this matrix
 wheel attached to each GitHub Release. Do not `pip install kickstart`:
 the PyPI name belongs to an unrelated, abandoned 2011 project.
 
+Release wheels and binary archives contain the public PostHog capture
+configuration. Direct Git source installs do not; opted-in telemetry from a
+source installation requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the
+process environment.
+
 ## Asset Names
 
 ```text

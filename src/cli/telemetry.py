@@ -5,6 +5,7 @@ import json
 import typer
 
 from src.model.dto.telemetry import EffectiveTelemetry, TelemetryState, TelemetrySuppressionReason
+from src.telemetry.config import posthog_settings_from_configuration
 from src.telemetry.policy import resolve_telemetry
 from src.telemetry.state import TelemetryStateStore
 from src.utils.errors import TelemetryStateError
@@ -21,7 +22,7 @@ def _state_store() -> TelemetryStateStore:
 def telemetry_status(
     json_output: bool = typer.Option(False, "--json", help="Emit machine-readable telemetry status."),
 ) -> None:
-    """Show persisted consent, effective status, identity, and state location."""
+    """Show persisted consent, delivery configuration, identity, and state location."""
     store = _state_store()
     try:
         state = store.read()
@@ -38,6 +39,7 @@ def telemetry_status(
     payload = {
         "anonymous_id": str(state.anonymous_id) if state.anonymous_id is not None else None,
         "consent": consent,
+        "delivery_configured": posthog_settings_from_configuration() is not None,
         "effective": effective.enabled,
         "reason": effective.reason.value,
         "state_file": str(store.path),
@@ -46,6 +48,7 @@ def telemetry_status(
         typer.echo(json.dumps(payload, sort_keys=True))
         return
     typer.echo(f"consent: {payload['consent']}")
+    typer.echo(f"delivery-configured: {'yes' if payload['delivery_configured'] else 'no'}")
     typer.echo(f"effective: {'enabled' if effective.enabled else 'disabled'}")
     typer.echo(f"reason: {payload['reason']}")
     typer.echo(f"anonymous-id: {payload['anonymous_id'] or 'not-created'}")

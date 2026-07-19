@@ -106,7 +106,9 @@ Every PostHog event sets `$process_person_profile` to `false`. The adapter never
 
 Direct public capture can be spoofed. Provider, destination, or token changes require upgraded direct clients, and there is no first-party server kill switch in phase one. A later first-party relay may replace the sink without changing event producers, consent, or identity.
 
-For local development, `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` may be exported from an ignored `.env` into the process. The CLI reads only the already-exported process environment and never auto-loads a current repository's `.env`, because kickstart runs inside arbitrary repositories and repository content must not influence telemetry routing or consent. A missing or malformed token silently selects a no-op sink; token presence never enables telemetry. The numeric `POSTHOG_PROJECT_ID` is not read and is not part of capture payloads.
+Official wheel, source-distribution, and standalone-binary artifacts embed the public capture token from the `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` GitHub Actions secret during trusted build jobs. The secret prevents accidental disclosure in source and build logs; it does not make the token confidential after publication. Anyone can recover a public token from a distributed client, and token rotation requires newly built clients.
+
+For local development and source installations, `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` may be exported from an ignored `.env` into the process. An explicit process value overrides artifact configuration, including failing closed when that override is malformed. The CLI reads only the already-exported process environment and never auto-loads a current repository's `.env`, because kickstart runs inside arbitrary repositories and repository content must not influence telemetry routing or consent. A missing artifact token and missing or malformed runtime token silently select a no-op sink; token presence never enables telemetry. The numeric `POSTHOG_PROJECT_ID` is not read, embedded, or included in capture payloads.
 
 ## Delivery and retention
 

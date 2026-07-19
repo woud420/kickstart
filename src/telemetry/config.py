@@ -4,6 +4,8 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from src.telemetry._build_config import EMBEDDED_POSTHOG_PROJECT_TOKEN
+
 
 POSTHOG_PROJECT_TOKEN_ENV = "POSTHOG_PUBLIC_CUSTOMER_API_TOKEN"
 POSTHOG_US_CAPTURE_ENDPOINT = "https://us.i.posthog.com/i/v0/e/"
@@ -25,10 +27,15 @@ class PostHogSettings:
             raise ValueError("PostHog timeout must be positive")
 
 
-def posthog_settings_from_environment(environ: Mapping[str, str] | None = None) -> PostHogSettings | None:
-    """Read a public capture token from the process environment, never a project file."""
+def posthog_settings_from_configuration(
+    environ: Mapping[str, str] | None = None,
+    *,
+    embedded_project_token: str = EMBEDDED_POSTHOG_PROJECT_TOKEN,
+) -> PostHogSettings | None:
+    """Resolve an explicit runtime override or the token embedded in release artifacts."""
     process_environment = os.environ if environ is None else environ
-    project_token = process_environment.get(POSTHOG_PROJECT_TOKEN_ENV, "").strip()
+    runtime_project_token = process_environment.get(POSTHOG_PROJECT_TOKEN_ENV)
+    project_token = embedded_project_token.strip() if runtime_project_token is None else runtime_project_token.strip()
     if not project_token.startswith("phc_") or len(project_token) == len("phc_"):
         return None
     return PostHogSettings(project_token=project_token)

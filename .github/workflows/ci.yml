@@ -219,7 +219,10 @@ jobs:
 
   build-test:
     name: Manual Package & Binary for ${{ matrix.platform }}
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    # This owner-triggered job intentionally uses the canonical public capture
+    # token so a pre-release artifact can be tested end-to-end. Fork and PR
+    # packaging behavior is covered by the tokenless and synthetic unit tests.
+    if: ${{ github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner }}
     runs-on: ${{ matrix.runner }}
     needs: [lint, test]
     strategy:
@@ -248,17 +251,35 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           poetry-version: ${{ env.POETRY_VERSION }}
 
+      - name: Stage public telemetry build configuration
+        env:
+          POSTHOG_PUBLIC_CUSTOMER_API_TOKEN: ${{ secrets.POSTHOG_PUBLIC_CUSTOMER_API_TOKEN }}
+        run: python3 scripts/embed_posthog_token.py --write
+
       - name: Build package
         run: make package
+
+      - name: Verify package telemetry configuration
+        env:
+          POSTHOG_PUBLIC_CUSTOMER_API_TOKEN: ${{ secrets.POSTHOG_PUBLIC_CUSTOMER_API_TOKEN }}
+        run: >-
+          poetry run python scripts/verify_embedded_telemetry_artifact.py
+          --expected-token-env POSTHOG_PUBLIC_CUSTOMER_API_TOKEN
+          dist/*.whl dist/*.tar.gz
 
       - name: Build kickstart binary
         run: make binary
 
       - name: Name, smoke-test, and archive binary
         env:
+          EXPECT_EMBEDDED_TELEMETRY: "1"
           PLATFORM: ${{ matrix.platform }}
           PYTHON_MINOR: ${{ env.PYTHON_VERSION }}
         run: scripts/ci/name-and-smoke-binary.sh "${PLATFORM}" "${PYTHON_MINOR}"
+
+      - name: Clear staged public telemetry build configuration
+        if: ${{ always() }}
+        run: python3 scripts/embed_posthog_token.py --clear
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
