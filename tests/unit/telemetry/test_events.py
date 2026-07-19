@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -76,6 +77,27 @@ def test_service_event_canonicalizes_aliases_and_ignores_inapplicable_values() -
         "runtime": "container",
         "workspace_tooling": "none",
     }
+
+
+@pytest.mark.parametrize(
+    ("framework", "expected"),
+    [(" FASTAPI ", "fastapi"), ("private-framework", "unknown")],
+)
+def test_service_framework_is_normalized_without_exposing_raw_values(framework: str, expected: str) -> None:
+    context = replace(_service_context(), language="python", framework=framework)
+
+    mapping = build_scaffold_create_event(
+        context,
+        ScaffoldCreateOutcome.SUCCESS,
+        ScaffoldCreateErrorCategory.NONE,
+        0.25,
+        cli_version="0.4.3",
+        platform_name="Linux",
+        architecture="x86_64",
+    ).properties.as_mapping()
+
+    assert mapping["framework"] == expected
+    assert framework not in mapping.values()
 
 
 def test_legacy_monorepo_event_uses_system_defaults() -> None:
