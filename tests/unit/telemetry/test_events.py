@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -283,3 +284,19 @@ def test_capture_helper_records_exactly_one_event_for_enabled_reporter(tmp_path:
 
     assert len(sink.envelopes) == 1
     assert sink.envelopes[0].event.properties.outcome is ScaffoldCreateOutcome.SUCCESS
+
+
+def test_capture_helper_contains_unexpected_reporter_failures() -> None:
+    reporter = Mock(spec=TelemetryReporter)
+    reporter.record.side_effect = RuntimeError("synthetic reporter failure")
+
+    capture_scaffold_create_terminal(
+        _service_context(),
+        ScaffoldCreateOutcome.SUCCESS,
+        ScaffoldCreateErrorCategory.NONE,
+        0.25,
+        cli_version="0.4.3",
+        reporter=reporter,
+    )
+
+    reporter.record.assert_called_once()

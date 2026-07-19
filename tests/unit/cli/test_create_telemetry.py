@@ -61,6 +61,23 @@ def test_expected_creation_failure_preserves_exit_and_attempts_one_terminal_even
     assert private_error not in repr(context)
 
 
+def test_unexpected_creation_failure_attempts_one_terminal_event() -> None:
+    runner = CliRunner()
+    with (
+        patch("src.cli.main.load_config", return_value={}),
+        patch("src.cli.main.create_service", side_effect=RuntimeError("synthetic unexpected failure")),
+        patch("src.cli.main.capture_scaffold_create_terminal") as capture,
+    ):
+        result = runner.invoke(app, ["create", "service", "private-project-name", "--root", "/tmp"])
+
+    assert result.exit_code == 1
+    capture.assert_called_once()
+    assert capture.call_args.args[1:3] == (
+        ScaffoldCreateOutcome.UNEXPECTED_ERROR,
+        ScaffoldCreateErrorCategory.UNEXPECTED_ERROR,
+    )
+
+
 def test_keyboard_interrupt_preserves_exit_130_and_attempts_one_terminal_event() -> None:
     runner = CliRunner()
     with (

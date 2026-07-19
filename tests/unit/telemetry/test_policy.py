@@ -69,6 +69,15 @@ def test_source_checkout_is_disabled_without_explicit_development_override(tmp_p
     assert enabled.enabled is True
 
 
+def test_source_checkout_is_detected_by_default(tmp_path: Path) -> None:
+    store = TelemetryStateStore(tmp_path / "telemetry.json")
+    store.enable()
+
+    resolved = resolve_telemetry(store, {})
+
+    assert resolved.reason is TelemetrySuppressionReason.DEVELOPMENT
+
+
 def test_malformed_state_fails_closed(tmp_path: Path) -> None:
     path = tmp_path / "telemetry.json"
     path.write_text("{bad json", encoding="utf-8")

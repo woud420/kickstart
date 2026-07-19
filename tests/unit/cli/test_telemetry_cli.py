@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from src.cli.main import app
+from src.telemetry.state import TelemetryStateStore
+from src.utils.errors import TelemetryStateError
 
 
 def _env(tmp_path: Path) -> dict[str, str]:
@@ -38,6 +41,18 @@ def test_status_reports_runtime_delivery_configuration_without_exposing_token(tm
     payload = json.loads(result.stdout)
     assert payload["delivery_configured"] is True
     assert "phc_status_test_token" not in result.stdout
+
+
+def test_status_supports_human_readable_output(tmp_path: Path) -> None:
+    result = CliRunner().invoke(app, ["telemetry", "status"], env=_env(tmp_path))
+
+    assert result.exit_code == 0
+    assert "consent: unset" in result.stdout
+    assert "delivery-configured: no" in result.stdout
+    assert "effective: disabled" in result.stdout
+    assert "reason:" in result.stdout
+    assert "anonymous-id: not-created" in result.stdout
+    assert f"state-file: {tmp_path / 'kickstart' / 'telemetry.json'}" in result.stdout
 
 
 def test_enable_disable_and_status_preserve_identity(tmp_path: Path) -> None:
@@ -75,6 +90,35 @@ def test_disable_before_enable_does_not_create_an_identity(tmp_path: Path) -> No
 
     assert result.exit_code == 0
     assert "anonymous-id: not-created" in result.stdout
+
+
+def test_reset_before_enable_is_a_read_only_noop(tmp_path: Path) -> None:
+    result = CliRunner().invoke(app, ["telemetry", "reset-id"], env=_env(tmp_path))
+
+    assert result.exit_code == 0
+    assert "No telemetry ID exists; nothing was changed." in result.stdout
+    assert not (tmp_path / "kickstart" / "telemetry.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("command", "method_name"),
+    [("enable", "enable"), ("disable", "disable"), ("reset-id", "reset_id")],
+)
+def test_mutating_commands_report_state_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+    method_name: str,
+) -> None:
+    def fail(_store: TelemetryStateStore) -> None:
+        raise TelemetryStateError("synthetic state failure")
+
+    monkeypatch.setattr(TelemetryStateStore, method_name, fail)
+
+    result = CliRunner().invoke(app, ["telemetry", command], env=_env(tmp_path))
+
+    assert result.exit_code == 1
+    assert "Telemetry state error: synthetic state failure" in result.stderr
 
 
 def test_malformed_state_reports_fail_closed_json_status(tmp_path: Path) -> None:

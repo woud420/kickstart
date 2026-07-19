@@ -1,4 +1,5 @@
 import json
+import os
 import stat
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -125,17 +126,60 @@ def test_state_write_succeeds_when_descriptor_chmod_is_unavailable(
     assert state.consent is TelemetryConsent.ENABLED
 
 
+def test_stale_lock_is_removed_before_updating_state(tmp_path: Path) -> None:
+    path = tmp_path / "telemetry.json"
+    lock_path = tmp_path / ".telemetry.json.lock"
+    lock_path.mkdir()
+    os.utime(lock_path, (0, 0))
+
+    state = TelemetryStateStore(path).disable()
+
+    assert state.consent is TelemetryConsent.DISABLED
+    assert not lock_path.exists()
+
+
+def test_busy_lock_fails_without_changing_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = tmp_path / "telemetry.json"
+    lock_path = tmp_path / ".telemetry.json.lock"
+    lock_path.mkdir()
+    monkeypatch.setattr(state_module, "_LOCK_TIMEOUT_SECONDS", 0.0)
+
+    with pytest.raises(TelemetryStateError, match="Telemetry state is busy"):
+        TelemetryStateStore(path).enable()
+
+    assert not path.exists()
+
+
+def test_write_failure_removes_temporary_state_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = tmp_path / "telemetry.json"
+
+    def fail_replace(_source: Path, _destination: Path) -> None:
+        raise OSError("synthetic replace failure")
+
+    monkeypatch.setattr(state_module.os, "replace", fail_replace)
+
+    with pytest.raises(TelemetryStateError, match="cannot be written"):
+        TelemetryStateStore(path).enable()
+
+    assert list(tmp_path.glob(".telemetry-*.tmp")) == []
+
+
 @pytest.mark.parametrize(
     "document",
     [
+        [],
         {},
         {"schema_version": 2, "consent": "enabled", "anonymous_id": str(uuid4())},
         {"schema_version": 1, "consent": "enabled"},
+        {"schema_version": 1, "consent": 1},
+        {"schema_version": 1, "consent": "unset"},
         {"schema_version": 1, "consent": "enabled", "anonymous_id": "not-a-uuid"},
+        {"schema_version": 1, "consent": "disabled", "anonymous_id": 1},
+        {"schema_version": 1, "consent": "disabled", "anonymous_id": str(UUID(int=0, version=1))},
         {"schema_version": 1, "consent": "enabled", "anonymous_id": str(uuid4()), "extra": True},
     ],
 )
-def test_malformed_or_unknown_state_is_rejected(tmp_path: Path, document: dict[str, str | int | bool]) -> None:
+def test_malformed_or_unknown_state_is_rejected(tmp_path: Path, document: object) -> None:
     path = tmp_path / "telemetry.json"
     path.write_text(json.dumps(document), encoding="utf-8")
 

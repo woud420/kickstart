@@ -40,6 +40,17 @@ def test_settings_repr_never_contains_project_token() -> None:
     assert "phc_do_not_print" not in repr(settings)
 
 
+@pytest.mark.parametrize("project_token", ["phx_personal_key", "phc_"])
+def test_settings_reject_invalid_project_tokens(project_token: str) -> None:
+    with pytest.raises(ValueError, match="public phc_ project token"):
+        PostHogSettings(project_token)
+
+
+def test_settings_reject_nonpositive_timeout() -> None:
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        PostHogSettings("phc_public_test_token", timeout_seconds=0)
+
+
 def test_configuration_never_auto_loads_cwd_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / ".env").write_text("POSTHOG_PUBLIC_CUSTOMER_API_TOKEN=phc_untrusted_project_value\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
