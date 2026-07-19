@@ -144,10 +144,13 @@ on `PATH` should resolve to, so a stale entrypoint can always be diagnosed and
 repaired.
 
 The canonical install is the one this document describes: a launcher at
-`~/.local/bin/kickstart` (symlink or `#!/bin/sh` wrapper) pointing into
-`~/.local/share/kickstart/current/kickstart`, owned by `kickstart install` and
-refreshed by `kickstart upgrade`. Nothing else should shadow it. In particular,
-ad-hoc shims in personal `bin` directories (for example
+`~/.local/bin/kickstart` (symlink or `#!/bin/sh` wrapper), owned by
+`kickstart install`, which leads to the active managed payload under
+`~/.local/share/kickstart`. `kickstart upgrade` refreshes that managed
+installation. Treat the payload's internal path as an implementation detail
+and use `kickstart install --check` to inspect it. Nothing else should shadow
+the launcher. In particular, ad-hoc shims in personal `bin` directories (for
+example
 `~/workspace/bin/kickstart`) are not supported: they bypass `kickstart
 upgrade`, go stale silently, and hide which binary owns the command. Delete
 them, or reduce them to a one-line `exec "$HOME/.local/bin/kickstart" "$@"`
@@ -181,5 +184,6 @@ kickstart upgrade
 
 `kickstart upgrade` discovers the asset matching the running host's platform
 and Python minor, verifies its SHA-256 against the published `.sha256` file,
-and re-uses the same installer code path described above to replace the
-launcher and refresh the binary payload directory.
+and re-uses the same installer code path described above to refresh the active
+managed installation. Do not script against the payload's internal directory;
+use `kickstart install --check` to inspect it.
