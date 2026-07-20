@@ -8,7 +8,8 @@ Current contract references:
 - [Plan Command Drift Scope](plan-drift-scope.md): what `kickstart plan` covers, defers, and emits.
 - [Adoption Tiers](adoption-tiers.md): Level 1 conformant vs Level 2 managed, exit codes, and JSON shape.
 - [Backstage Export](backstage-export.md): derived/declared/passthrough field classes and re-export semantics.
-- [Install Binaries](../install-binaries.md): release asset names and install commands.
+- [Pseudonymous CLI Telemetry](telemetry.md): default-on policy, persistent opt-out, identity, closed event allowlists, privacy, and provider boundaries.
+- [Install Binaries](../operations/install-binaries.md): release asset names, install commands, and first-run telemetry controls.
 - [Human Guide](../human-guide.md): supported project kinds, languages, runtimes, and CLI options.
 
 Add command, file format, and generated-output compatibility contracts here when they need standalone treatment.

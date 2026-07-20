@@ -12,6 +12,37 @@ Each platform is built for Python `3.14`. Platforms outside this matrix
 wheel attached to each GitHub Release. Do not `pip install kickstart`:
 the PyPI name belongs to an unrelated, abandoned 2011 project.
 
+Release wheels and binary archives contain the public PostHog capture
+configuration. Telemetry is enabled by default for eligible commands, but an
+explicit `kickstart telemetry disable`, `DO_NOT_TRACK=1`, or
+`KICKSTART_TELEMETRY_DISABLED=1` always wins. Direct Git source installs do not
+contain the capture configuration; delivery from one requires
+`POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment as well as an
+otherwise eligible event.
+
+The `cli_install_completed` event refers only to an invocation of the
+`kickstart install` command, including the PATH-configuration invocation made
+by the shell installer when applicable. The shell download/copy itself, `pip`,
+`pipx`, package managers, and manual file copies are not independently counted.
+Likewise, `cli_upgrade_completed` refers only to `kickstart upgrade`, so these
+events are not universal installation or upgrade totals.
+
+To prevent even the first `kickstart install` event, set either process-level
+opt-out on that invocation:
+
+```bash
+KICKSTART_TELEMETRY_DISABLED=1 ./kickstart-macos-arm64-py3.14/kickstart install --update-path
+# Or, when DO_NOT_TRACK is your standard environment-wide preference:
+DO_NOT_TRACK=1 ./kickstart-macos-arm64-py3.14/kickstart install --update-path
+
+# Suppress an installer-invoked event from the quick-install process:
+curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh \
+  | KICKSTART_TELEMETRY_DISABLED=1 bash
+```
+
+Those environment settings apply to the current process. Run
+`kickstart telemetry disable` to persist the preference for later commands.
+
 ## Asset Names
 
 ```text
@@ -113,10 +144,13 @@ on `PATH` should resolve to, so a stale entrypoint can always be diagnosed and
 repaired.
 
 The canonical install is the one this document describes: a launcher at
-`~/.local/bin/kickstart` (symlink or `#!/bin/sh` wrapper) pointing into
-`~/.local/share/kickstart/current/kickstart`, owned by `kickstart install` and
-refreshed by `kickstart upgrade`. Nothing else should shadow it. In particular,
-ad-hoc shims in personal `bin` directories (for example
+`~/.local/bin/kickstart` (symlink or `#!/bin/sh` wrapper), owned by
+`kickstart install`, which leads to the active managed payload under
+`~/.local/share/kickstart`. `kickstart upgrade` refreshes that managed
+installation. Treat the payload's internal path as an implementation detail
+and use `kickstart install --check` to inspect it. Nothing else should shadow
+the launcher. In particular, ad-hoc shims in personal `bin` directories (for
+example
 `~/workspace/bin/kickstart`) are not supported: they bypass `kickstart
 upgrade`, go stale silently, and hide which binary owns the command. Delete
 them, or reduce them to a one-line `exec "$HOME/.local/bin/kickstart" "$@"`
@@ -150,5 +184,6 @@ kickstart upgrade
 
 `kickstart upgrade` discovers the asset matching the running host's platform
 and Python minor, verifies its SHA-256 against the published `.sha256` file,
-and re-uses the same installer code path described above to replace the
-launcher and refresh the binary payload directory.
+and re-uses the same installer code path described above to refresh the active
+managed installation. Do not script against the payload's internal directory;
+use `kickstart install --check` to inspect it.

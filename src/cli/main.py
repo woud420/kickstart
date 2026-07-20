@@ -5,6 +5,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from time import monotonic
 from typing import Optional, cast
 
 import typer
@@ -31,8 +32,28 @@ from src.generator.backstage_export import (
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.cli.options import CreateCommandOptions, CreateOptions, ResolvedCreateArgs
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
-from src.utils.errors import KickstartError
+from src.cli.telemetry import telemetry_app
+from src.model.dto.telemetry import (
+    CliArtifactKind,
+    CliInstallErrorCategory,
+    CliInstallOutcome,
+    CliUpgradeChecksumStatus,
+    CliUpgradeErrorCategory,
+    CliUpgradeOutcome,
+    ScaffoldCreateContext,
+    ScaffoldCreateErrorCategory,
+    ScaffoldCreateOutcome,
+)
+from src.model.dto.upgrade import UNKNOWN_TARGET_VERSION, UpgradeResult
+from src.telemetry.events import (
+    capture_cli_install_terminal,
+    capture_cli_upgrade_terminal,
+    capture_scaffold_create_terminal,
+    classify_cli_install_exception,
+    classify_scaffold_create_exception,
+)
 from src.utils.config import load_config
+from src.utils.errors import KickstartError
 from src.utils.installer import (
     BINARY_NAME,
     DEFAULT_APP_ROOT,
@@ -56,6 +77,7 @@ from src.utils.updater import check_for_update
 logger = logging.getLogger(__name__)
 
 app: typer.Typer = typer.Typer(help="kickstart: Full-stack project scaffolding CLI")
+app.add_typer(telemetry_app, name="telemetry")
 
 
 def _print_version_and_exit(value: bool) -> None:
@@ -86,7 +108,33 @@ def version() -> None:
 @app.command()
 def upgrade() -> None:
     """Upgrade to the latest version."""
-    check_for_update()
+    started_at = monotonic()
+    result: UpgradeResult | None = None
+    try:
+        result = check_for_update()
+    except KeyboardInterrupt:
+        result = UpgradeResult(
+            target_version=UNKNOWN_TARGET_VERSION,
+            outcome=CliUpgradeOutcome.CANCELLED,
+            error_category=CliUpgradeErrorCategory.INTERRUPTED,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
+        raise
+    except Exception:
+        result = UpgradeResult(
+            target_version=UNKNOWN_TARGET_VERSION,
+            outcome=CliUpgradeOutcome.FAILED,
+            error_category=CliUpgradeErrorCategory.UNEXPECTED_ERROR,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
+        raise
+    finally:
+        if result is not None:
+            capture_cli_upgrade_terminal(
+                result,
+                monotonic() - started_at,
+                cli_version=__version__,
+            )
 
 
 export_app: typer.Typer = typer.Typer(help="Deterministic exporters derived from scaffold state.")
@@ -279,30 +327,81 @@ def install(
     check: bool = typer.Option(False, "--check", help="Only report install/PATH status; do not modify anything."),
 ) -> None:
     """Install the kickstart binary to a user-writable directory and help configure PATH."""
-    with _report_install_failure("Install"):
-        ctx = _resolve_install_context(target, app_dir=app_dir, shell=shell, rc_file=rc_file)
-        source = current_binary_path()
+    started_at = monotonic()
+    outcome = CliInstallOutcome.FAILED
+    error_category = CliInstallErrorCategory.UNEXPECTED_ERROR
+    artifact_kind = CliArtifactKind.UNKNOWN
+    already_on_path = False
+    binary_ready = False
+    during_path_update = False
 
-        if check:
-            _print_install_status(ctx, source)
-            return
+    try:
+        with _report_install_failure("Install"):
+            try:
+                ctx = _resolve_install_context(target, app_dir=app_dir, shell=shell, rc_file=rc_file)
+                already_on_path = ctx.already_on_path
+                source = current_binary_path()
 
-        result: InstallResult = install_binary(source, ctx.install_dir, overwrite=force, app_root=ctx.app_root)
-        if result.already_installed:
-            print(f"[green]✔ kickstart is already installed at {result.destination}[/]")
-        elif result.copied:
-            print(f"[green]✔ Installed kickstart to {result.destination}[/]")
+                if check:
+                    _print_install_status(ctx, source)
+                    return
 
-        if ctx.already_on_path:
-            print(f"[green]✔ {ctx.install_dir} is already on your PATH.[/]")
-            print("[cyan]Run [bold]kickstart --help[/bold] to get started.[/cyan]")
-            return
+                result: InstallResult = install_binary(
+                    source,
+                    ctx.install_dir,
+                    overwrite=force,
+                    app_root=ctx.app_root,
+                )
+                artifact_kind = (
+                    CliArtifactKind.ONEDIR if result.app_path is not None else CliArtifactKind.SINGLE_FILE
+                )
+                binary_ready = True
+                outcome = CliInstallOutcome.NO_CHANGE if result.already_installed else CliInstallOutcome.SUCCESS
+                error_category = CliInstallErrorCategory.NONE
+                if result.already_installed:
+                    print(f"[green]✔ kickstart is already installed at {result.destination}[/]")
+                elif result.copied:
+                    print(f"[green]✔ Installed kickstart to {result.destination}[/]")
 
-        if update_path:
-            _apply_path_update(ctx)
-            return
+                if ctx.already_on_path:
+                    print(f"[green]✔ {ctx.install_dir} is already on your PATH.[/]")
+                    print("[cyan]Run [bold]kickstart --help[/bold] to get started.[/cyan]")
+                    return
 
-        _print_manual_path_instructions(ctx)
+                if update_path:
+                    during_path_update = True
+                    path_update = _apply_path_update(ctx)
+                    during_path_update = False
+                    if path_update is None:
+                        outcome = CliInstallOutcome.PARTIAL_SUCCESS
+                        error_category = CliInstallErrorCategory.PATH_UPDATE
+                    elif path_update.changed:
+                        outcome = CliInstallOutcome.SUCCESS
+                    return
+
+                _print_manual_path_instructions(ctx)
+            except KeyboardInterrupt:
+                outcome = CliInstallOutcome.PARTIAL_SUCCESS if binary_ready else CliInstallOutcome.CANCELLED
+                error_category = CliInstallErrorCategory.INTERRUPTED
+                raise
+            except Exception as exc:
+                outcome = CliInstallOutcome.PARTIAL_SUCCESS if binary_ready else CliInstallOutcome.FAILED
+                error_category = classify_cli_install_exception(
+                    exc,
+                    during_path_update=during_path_update,
+                )
+                raise
+    finally:
+        if not check:
+            capture_cli_install_terminal(
+                outcome,
+                error_category,
+                artifact_kind,
+                path_update_requested=update_path,
+                already_on_path=already_on_path,
+                duration_seconds=monotonic() - started_at,
+                cli_version=__version__,
+            )
 
 
 @app.command()
@@ -364,7 +463,7 @@ def _print_install_status(ctx: _InstallContext, source: Path) -> None:
         print(f"  rc file:     {ctx.rc_file}")
 
 
-def _apply_path_update(ctx: _InstallContext) -> None:
+def _apply_path_update(ctx: _InstallContext) -> PathUpdateResult | None:
     """Write (or refresh) the managed PATH block in the resolved rc file, or fall back to instructions."""
     if ctx.rc_file is None:
         print(
@@ -372,17 +471,15 @@ def _apply_path_update(ctx: _InstallContext) -> None:
             "or [bold]--shell bash|zsh|fish[/bold].[/yellow]"
         )
         _print_manual_path_instructions(ctx, suppress_rc_hint=True)
-        return
+        return None
     changed = update_path_in_rc(ctx.rc_file, ctx.snippet)
     update = PathUpdateResult(rc_file=ctx.rc_file, snippet=ctx.snippet, changed=changed, on_path_now=False)
     if update.changed:
         print(f"[green]✔ Updated {update.rc_file} with a managed PATH entry.[/]")
     else:
         print(f"[green]✔ {update.rc_file} already contains the managed PATH entry.[/]")
-    print(
-        "[cyan]Restart your shell or run "
-        f"[bold]source {update.rc_file}[/bold] to pick up the new PATH.[/cyan]"
-    )
+    print(f"[cyan]Restart your shell or run [bold]source {update.rc_file}[/bold] to pick up the new PATH.[/cyan]")
+    return update
 
 
 def _clean_managed_path_block(ctx: _InstallContext) -> None:
@@ -517,6 +614,29 @@ def _dispatch_project_creation(
     )
 
 
+def _scaffold_create_context(
+    options: CreateCommandOptions | CreateOptions,
+    *,
+    interactive: bool,
+) -> ScaffoldCreateContext:
+    """Copy only telemetry-approved create options; exclude name and root."""
+    return ScaffoldCreateContext(
+        project_type=options.project_type,
+        language=options.lang,
+        runtime=options.runtime,
+        cloud=options.cloud,
+        framework=options.framework,
+        database=options.database,
+        cache=options.cache,
+        auth=options.auth,
+        knowledge=options.knowledge,
+        workspace_tooling=options.workspace_tooling,
+        helm=options.helm,
+        github_requested=options.gh,
+        interactive=interactive,
+    )
+
+
 @app.command(
     epilog=(
         "Examples:\n\n"
@@ -562,7 +682,9 @@ def create(
         help="HTTP framework (minimal for standard library, default is FastAPI)",
     ),
     cloud: str = typer.Option("multi", "--cloud", help="System provider target (aws, gcp, cloudflare, multi, none)"),
-    knowledge: str = typer.Option("none", "--knowledge", help="External knowledge adapter metadata (none, obsidian, backstage, both)"),
+    knowledge: str = typer.Option(
+        "none", "--knowledge", help="External knowledge adapter metadata (none, obsidian, backstage, both)"
+    ),
     runtime: Optional[str] = typer.Option(
         None,
         "--runtime",
@@ -575,29 +697,36 @@ def create(
     ),
 ) -> None:
     """Create a new service, lib, CLI, frontend, or system."""
+    command_options = CreateCommandOptions(
+        project_type=project_type,
+        name=name,
+        root=root,
+        lang=lang,
+        gh=gh,
+        helm=helm,
+        database=database,
+        cache=cache,
+        auth=auth,
+        framework=framework,
+        cloud=cloud,
+        knowledge=knowledge,
+        runtime=runtime,
+        workspace_tooling=workspace_tooling,
+    )
+    interactive = not project_type or not name
+    telemetry_context = _scaffold_create_context(command_options, interactive=interactive)
+    started_at = monotonic()
+    outcome = ScaffoldCreateOutcome.UNEXPECTED_ERROR
+    error_category = ScaffoldCreateErrorCategory.UNEXPECTED_ERROR
     try:
         config: GeneratorConfig = load_config()
         options = prompt_for_missing_args(
-            CreateCommandOptions(
-                project_type=project_type,
-                name=name,
-                root=root,
-                lang=lang,
-                gh=gh,
-                helm=helm,
-                database=database,
-                cache=cache,
-                auth=auth,
-                framework=framework,
-                cloud=cloud,
-                knowledge=knowledge,
-                runtime=runtime,
-                workspace_tooling=workspace_tooling,
-            ),
+            command_options,
             config,
             prompt=cast(PromptReader, Prompt),
             confirm=cast(ConfirmReader, Confirm),
         )
+        telemetry_context = _scaffold_create_context(options, interactive=interactive)
         dispatch_project_creation(options, config, _project_creators())
         project_path = Path(options.root) / options.name if options.root else Path(options.name)
         print(
@@ -605,29 +734,46 @@ def create(
             f"  cd {escape(str(project_path))} && make check   [dim]# install deps, lint, typecheck, test[/]\n"
             f"  cat AGENTS.md                  [dim]# orientation map; scaffold metadata in .kickstart/scaffold.json[/]"
         )
+        outcome = ScaffoldCreateOutcome.SUCCESS
+        error_category = ScaffoldCreateErrorCategory.NONE
 
     except KeyboardInterrupt:
+        outcome = ScaffoldCreateOutcome.CANCELLED
+        error_category = ScaffoldCreateErrorCategory.INTERRUPTED
         print("\n[yellow]Operation cancelled by user.[/]")
         # Conventional SIGINT exit status; cancel must not read as success.
         raise typer.Exit(code=130) from None
     except EOFError as exc:
+        outcome = ScaffoldCreateOutcome.INPUT_ENDED
+        error_category = ScaffoldCreateErrorCategory.INPUT_ENDED
         print(
             "[bold red]Interactive input ended before required arguments were provided. "
             "Pass them explicitly, for example: kickstart create service my-api --lang python[/]"
         )
         raise typer.Exit(code=2) from exc
     except KickstartError as exc:
+        outcome, error_category = classify_scaffold_create_exception(exc)
         print(f"[bold red]Failed to create project: {exc}[/]")
         raise typer.Exit(code=1) from exc
     except ValueError as exc:
+        outcome, error_category = classify_scaffold_create_exception(exc)
         # Stack-registry validation errors (unknown runtime/cloud/...) are
         # user-input problems: report them cleanly without a traceback.
         print(f"[bold red]Failed to create project: {exc}[/]")
         raise typer.Exit(code=1) from exc
     except Exception as exc:
+        outcome, error_category = classify_scaffold_create_exception(exc)
         print(f"[bold red]Failed to create project: {exc}[/]")
         logger.exception("Project creation failed")
         raise typer.Exit(code=1) from exc
+    finally:
+        capture_scaffold_create_terminal(
+            telemetry_context,
+            outcome,
+            error_category,
+            monotonic() - started_at,
+            cli_version=__version__,
+        )
 
 
 def main() -> None:

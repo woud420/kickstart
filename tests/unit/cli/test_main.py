@@ -10,7 +10,17 @@ from src.cli.main import (
     _report_install_failure,
     _resolve_install_context,
     app,
+    upgrade,
 )
+from src.model.dto.telemetry import (
+    CliArtifactKind,
+    CliInstallErrorCategory,
+    CliInstallOutcome,
+    CliUpgradeChecksumStatus,
+    CliUpgradeErrorCategory,
+    CliUpgradeOutcome,
+)
+from src.model.dto.upgrade import UpgradeResult
 from src.utils.errors import ExtensionError, KickstartError
 
 
@@ -33,13 +43,43 @@ def test_version_command(runner):
     assert "kickstart v1.0.0" in result.stdout
 
 
-@patch('src.cli.main.check_for_update')
-def test_upgrade_command(mock_check_for_update, runner):
+@patch("src.cli.main.capture_cli_upgrade_terminal")
+@patch("src.cli.main.check_for_update")
+def test_upgrade_command(mock_check_for_update, mock_capture, runner):
     """Test the upgrade command calls check_for_update."""
+    update_result = UpgradeResult(
+        target_version="1.1.0",
+        outcome=CliUpgradeOutcome.UPDATED,
+        error_category=CliUpgradeErrorCategory.NONE,
+        checksum_status=CliUpgradeChecksumStatus.VERIFIED,
+    )
+    mock_check_for_update.return_value = update_result
     result = runner.invoke(app, ["upgrade"])
-    
+
     assert result.exit_code == 0
     mock_check_for_update.assert_called_once()
+    mock_capture.assert_called_once()
+    assert mock_capture.call_args.args[0] == update_result
+
+
+@pytest.mark.parametrize(
+    ("error", "outcome", "category"),
+    [
+        (KeyboardInterrupt(), CliUpgradeOutcome.CANCELLED, CliUpgradeErrorCategory.INTERRUPTED),
+        (RuntimeError("private detail"), CliUpgradeOutcome.FAILED, CliUpgradeErrorCategory.UNEXPECTED_ERROR),
+    ],
+)
+def test_upgrade_captures_unhandled_terminal_outcomes(error, outcome, category):
+    with (
+        patch("src.cli.main.check_for_update", side_effect=error),
+        patch("src.cli.main.capture_cli_upgrade_terminal") as capture,
+        pytest.raises(type(error)),
+    ):
+        upgrade()
+
+    captured = capture.call_args.args[0]
+    assert captured.outcome is outcome
+    assert captured.error_category is category
 
 
 def test_completion_command_bash(runner):
@@ -610,7 +650,10 @@ def test_install_command_check_mode(runner, tmp_path):
     source = _make_single_file_binary(tmp_path)
     target_dir = tmp_path / "user-bin"
 
-    with patch("src.cli.main.current_binary_path", return_value=source):
+    with (
+        patch("src.cli.main.current_binary_path", return_value=source),
+        patch("src.cli.main.capture_cli_install_terminal") as capture,
+    ):
         result = runner.invoke(
             app,
             ["install", "--target", str(target_dir), "--check", "--shell", "zsh"],
@@ -621,6 +664,7 @@ def test_install_command_check_mode(runner, tmp_path):
     assert "Install status" in result.stdout
     assert "missing" in result.stdout
     assert not (target_dir / "kickstart").exists()
+    capture.assert_not_called()
 
 
 def test_install_command_copies_binary_and_prints_path_hint(runner, tmp_path):
@@ -628,7 +672,10 @@ def test_install_command_copies_binary_and_prints_path_hint(runner, tmp_path):
     source = _make_single_file_binary(tmp_path)
     target_dir = tmp_path / "user-bin"
 
-    with patch("src.cli.main.current_binary_path", return_value=source):
+    with (
+        patch("src.cli.main.current_binary_path", return_value=source),
+        patch("src.cli.main.capture_cli_install_terminal") as capture,
+    ):
         result = runner.invoke(
             app,
             ["install", "--target", str(target_dir), "--shell", "zsh"],
@@ -645,6 +692,10 @@ def test_install_command_copies_binary_and_prints_path_hint(runner, tmp_path):
     assert (target_dir / "kickstart").exists()
     assert f'export PATH="{target_dir}:$PATH"' in result.stdout
     assert "not on your PATH" in result.stdout
+    capture.assert_called_once()
+    assert capture.call_args.args[0].value == "success"
+    assert capture.call_args.args[1].value == "none"
+    assert capture.call_args.args[2].value == "single_file"
 
 
 def test_install_command_updates_rc_file(runner, tmp_path):
@@ -710,7 +761,10 @@ def test_install_command_refuses_overwrite_without_force(runner, tmp_path):
     target_dir.mkdir()
     (target_dir / "kickstart").write_text("placeholder")
 
-    with patch("src.cli.main.current_binary_path", return_value=source):
+    with (
+        patch("src.cli.main.current_binary_path", return_value=source),
+        patch("src.cli.main.capture_cli_install_terminal") as capture,
+    ):
         result = runner.invoke(
             app,
             ["install", "--target", str(target_dir), "--shell", "zsh"],
@@ -718,6 +772,128 @@ def test_install_command_refuses_overwrite_without_force(runner, tmp_path):
         )
 
     assert result.exit_code != 0
+    capture.assert_called_once()
+    assert capture.call_args.args[0].value == "failed"
+    assert capture.call_args.args[1].value == "destination_conflict"
+
+
+def test_install_command_reports_partial_success_when_path_update_fails(runner, tmp_path):
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "user-bin"
+
+    with (
+        patch("src.cli.main.current_binary_path", return_value=source),
+        patch("src.cli.main._apply_path_update", side_effect=OSError("private detail")),
+        patch("src.cli.main.capture_cli_install_terminal") as capture,
+    ):
+        result = runner.invoke(
+            app,
+            ["install", "--target", str(target_dir), "--shell", "zsh", "--update-path"],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+        )
+
+    assert result.exit_code == 1
+    assert (target_dir / "kickstart").exists()
+    capture.assert_called_once()
+    assert capture.call_args.args[0] is CliInstallOutcome.PARTIAL_SUCCESS
+    assert capture.call_args.args[1] is CliInstallErrorCategory.PATH_UPDATE
+    assert capture.call_args.args[2] is CliArtifactKind.SINGLE_FILE
+
+
+def test_install_command_reports_partial_success_when_path_update_fails_after_binary_noop(runner, tmp_path):
+    target_dir = tmp_path / "user-bin"
+    target_dir.mkdir()
+    source = target_dir / "kickstart"
+    source.write_text("#!/bin/sh\n")
+    source.chmod(0o755)
+
+    with (
+        patch("src.cli.main.current_binary_path", return_value=source),
+        patch("src.cli.main._apply_path_update", side_effect=OSError("private detail")),
+        patch("src.cli.main.capture_cli_install_terminal") as capture,
+    ):
+        result = runner.invoke(
+            app,
+            ["install", "--target", str(target_dir), "--shell", "zsh", "--update-path"],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+        )
+
+    assert result.exit_code == 1
+    capture.assert_called_once()
+    assert capture.call_args.args[0] is CliInstallOutcome.PARTIAL_SUCCESS
+    assert capture.call_args.args[1] is CliInstallErrorCategory.PATH_UPDATE
+
+
+def test_install_command_reports_success_for_path_only_change(runner, tmp_path):
+    target_dir = tmp_path / "user-bin"
+    target_dir.mkdir()
+    source = target_dir / "kickstart"
+    source.write_text("#!/bin/sh\n")
+    source.chmod(0o755)
+    rc_file = tmp_path / ".zshrc"
+
+    with (
+        patch("src.cli.main.current_binary_path", return_value=source),
+        patch("src.cli.main.capture_cli_install_terminal") as capture,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "install",
+                "--target",
+                str(target_dir),
+                "--rc-file",
+                str(rc_file),
+                "--shell",
+                "zsh",
+                "--update-path",
+            ],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+        )
+
+    assert result.exit_code == 0, result.stdout
+    assert rc_file.exists()
+    capture.assert_called_once()
+    assert capture.call_args.args[0] is CliInstallOutcome.SUCCESS
+    assert capture.call_args.args[1] is CliInstallErrorCategory.NONE
+
+
+def test_install_command_reports_partial_success_when_path_update_cannot_be_resolved(runner, tmp_path):
+    source = _make_single_file_binary(tmp_path)
+    target_dir = tmp_path / "user-bin"
+
+    with (
+        patch("src.cli.main.current_binary_path", return_value=source),
+        patch("src.cli.main.capture_cli_install_terminal") as capture,
+    ):
+        result = runner.invoke(
+            app,
+            ["install", "--target", str(target_dir), "--update-path"],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/unknown"},
+        )
+
+    assert result.exit_code == 0, result.stdout
+    assert "Could not infer a shell rc file" in result.stdout
+    capture.assert_called_once()
+    assert capture.call_args.args[0] is CliInstallOutcome.PARTIAL_SUCCESS
+    assert capture.call_args.args[1] is CliInstallErrorCategory.PATH_UPDATE
+
+
+def test_install_command_captures_interrupt_before_binary_change(runner, tmp_path):
+    with (
+        patch("src.cli.main.current_binary_path", side_effect=KeyboardInterrupt),
+        patch("src.cli.main.capture_cli_install_terminal") as capture,
+    ):
+        result = runner.invoke(
+            app,
+            ["install", "--target", str(tmp_path / "user-bin"), "--shell", "zsh"],
+            env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "SHELL": "/bin/zsh"},
+        )
+
+    assert result.exit_code != 0
+    capture.assert_called_once()
+    assert capture.call_args.args[0] is CliInstallOutcome.CANCELLED
+    assert capture.call_args.args[1] is CliInstallErrorCategory.INTERRUPTED
 
 
 def test_uninstall_command_removes_binary(runner, tmp_path):

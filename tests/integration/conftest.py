@@ -37,6 +37,7 @@ def kickstart_env(repo_root: Path) -> dict[str, str]:
     """`os.environ`-shaped dict that lets `python -m src.cli.main` resolve `src.*`."""
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo_root)
+    env["KICKSTART_TELEMETRY_DISABLED"] = "1"
     return env
 
 

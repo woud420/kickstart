@@ -50,7 +50,21 @@ make check
 ```
 
 Use `make package` to build the wheel/source distribution and `make binary` to build the local kickstart binary (a PyInstaller `--onedir` payload under `dist/kickstart/`).
-GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`. Other platforms install from source or from the wheel attached to each GitHub Release (see docs/install-binaries.md).
+GitHub Actions tests Python 3.12, 3.13, and 3.14 on Linux and macOS, then release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`. Other platforms install from source or from the wheel attached to each GitHub Release (see [Install Binaries](operations/install-binaries.md)).
+
+## Telemetry Changes
+
+The public policy and closed event schemas live in
+[`docs/contracts/telemetry.md`](contracts/telemetry.md). Telemetry is default-on
+for eligible configured release commands, with persistent and process-level
+opt-outs. Source-checkout development, CI, pytest, and evaluation runs remain
+suppressed; do not weaken those guards to make a test pass.
+
+When changing instrumentation, update the provider-neutral DTO, the exact
+property allowlist, privacy tests, public contract, and release smoke coverage
+together. Event fields must remain fixed and typed: never pass through names,
+paths, raw arguments, environment values, exception text, or generated
+content.
 
 ## Releases
 

@@ -63,6 +63,14 @@ pipx install git+https://github.com/woud420/kickstart          # from source
 pip install ./kickstart-<version>-py3-none-any.whl             # wheel from the Releases page
 ```
 
+### Telemetry
+
+Release wheels and binary archives enable pseudonymous telemetry by default for eligible CLI commands. The first eligible event creates a random UUIDv4 in the user configuration directory; it remains stable across CLI upgrades. Events use closed, data-minimized property sets and never include project names, paths, command arguments, generated content, or arbitrary error text.
+
+Run `kickstart telemetry disable` to persist an opt-out. `kickstart telemetry status` is read-only and does not create an ID or send an event. To prevent an installer-invoked event before that preference exists, set `KICKSTART_TELEMETRY_DISABLED=1` or `DO_NOT_TRACK=1` for the install process; the binary installation runbook includes exact examples.
+
+A direct Git source install has no embedded capture configuration; delivery from one requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment. A token never overrides an opt-out. See the [telemetry contract](docs/contracts/telemetry.md) and [binary installation runbook](docs/operations/install-binaries.md) for the exact event allowlist and controls.
+
 ## Get Started
 
 ```bash
