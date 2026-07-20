@@ -11,6 +11,42 @@ if a merged version ever sits untagged.
 
 Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 
+## v0.4.4 - 2026-07-19
+
+Managed-docs, catalog-export, and upgrade-reliability release. Kickstart can
+inspect its managed documentation and derive catalog metadata without touching
+human-owned content, while installed upgrades converge safely on one payload.
+
+### Added
+
+- `kickstart plan REPO [--json]` re-renders managed documentation from the
+  scaffold manifest and reports drift inside explicit ownership fences without
+  modifying the repository.
+- `kickstart export backstage REPO` creates or refreshes a deterministic,
+  fenced `catalog-info.yaml` while preserving human-owned fields.
+- Generated documentation uses typed projections and ownership fences, and
+  `kickstart adopt --check` distinguishes conformant repositories from managed
+  repositories with a usable scaffold manifest.
+- Eligible release commands use default-on pseudonymous usage feedback through
+  a closed, data-minimized event contract. `kickstart telemetry status`,
+  `disable`, `enable`, and `reset-id` provide explicit controls; persistent and
+  environment-level opt-outs always win, and source checkouts, CI, tests, and
+  evals remain suppressed.
+
+### Changed
+
+- Release and evaluation automation now fails loudly when a version is
+  untagged, a release is missing, or the deployed website does not match the
+  release tag.
+- Error models and import boundaries are explicit, template-rendering failures
+  retain actionable context, and repository checks guard those contracts.
+
+### Fixed
+
+- `kickstart upgrade` repairs older nested managed payloads, preserves one
+  stable launcher and app root across repeated upgrades, and stages bundle
+  replacement with rollback for ordinary activation failures.
+
 ## v0.4.3 - 2026-06-26
 
 Repo-quality release: no change to generated project behavior or installed CLI,
