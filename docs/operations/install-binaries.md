@@ -147,10 +147,12 @@ The canonical install is the one this document describes: a launcher at
 `~/.local/bin/kickstart` (symlink or `#!/bin/sh` wrapper), owned by
 `kickstart install`, which leads to the active managed payload under
 `~/.local/share/kickstart`. `kickstart upgrade` refreshes that managed
-installation. Treat the payload's internal path as an implementation detail
-and use `kickstart install --check` to inspect it. Nothing else should shadow
-the launcher. In particular, ad-hoc shims in personal `bin` directories (for
-example
+installation while reusing the same launcher and managed app root on every
+run. A successful upgrade also collapses an accidentally nested payload left
+by older upgrade logic back into that stable root. Treat the payload's
+internal path as an implementation detail and use `kickstart install --check`
+to inspect it. Nothing else should shadow the launcher. In particular, ad-hoc
+shims in personal `bin` directories (for example
 `~/workspace/bin/kickstart`) are not supported: they bypass `kickstart
 upgrade`, go stale silently, and hide which binary owns the command. Delete
 them, or reduce them to a one-line `exec "$HOME/.local/bin/kickstart" "$@"`

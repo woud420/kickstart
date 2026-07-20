@@ -31,7 +31,7 @@ from src.utils.installer import (
     APP_DIR_NAME,
     BINARY_NAME,
     InstallResult,
-    current_binary_path,
+    current_entrypoint_path,
     default_app_root,
     install_binary,
 )
@@ -96,21 +96,34 @@ def find_asset(assets: list[ReleaseAsset], name: str) -> Optional[ReleaseAsset]:
 def resolve_current_install_layout() -> tuple[Path, Optional[Path]]:
     """Return ``(launcher_dir, app_root_or_None)`` for the currently running install.
 
-    When the launcher is a symlink (the onedir install shape), we can recover
-    the app root from the symlink target. For legacy single-file installs the
-    launcher is a regular file and we return ``None`` so callers fall back to
-    `default_app_root` (or skip app-root handling entirely).
+    A managed launcher symlink reveals the public launcher directory and app
+    root through its first target. A wrapper-launched managed payload reveals
+    the stable app root directly. For legacy single-file installs we return
+    ``None`` so callers fall back to `default_app_root` (or skip app-root
+    handling entirely).
     """
-    launcher = current_binary_path()
+    launcher = current_entrypoint_path()
     launcher_dir = launcher.parent
+
+    # A generated wrapper executes the stable managed payload directly. In
+    # that case argv[0] is already <app_root>/current/kickstart, and refreshing
+    # that directory in place keeps the external wrapper valid.
+    if (
+        launcher.name == BINARY_NAME
+        and launcher.parent.name == APP_DIR_NAME
+        and (launcher.parent / "_internal").is_dir()
+    ):
+        return launcher_dir, launcher.parent.parent
 
     if launcher.is_symlink():
         try:
-            executable = launcher.resolve()
+            target = launcher.readlink()
         except OSError:
             return launcher_dir, None
+        executable = target if target.is_absolute() else launcher.parent / target
+        executable = Path(os.path.abspath(executable))
         # Expected layout: <app_root>/<APP_DIR_NAME>/<BINARY_NAME>
-        if executable.parent.name == APP_DIR_NAME:
+        if executable.name == BINARY_NAME and executable.parent.name == APP_DIR_NAME:
             return launcher_dir, executable.parent.parent
 
     return launcher_dir, None

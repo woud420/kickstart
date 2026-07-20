@@ -76,10 +76,7 @@ def test_expected_archive_name_default(monkeypatch):
 
 
 def test_expected_archive_name_overrides():
-    assert (
-        updater.expected_archive_name("macos-arm64", "3.13")
-        == "kickstart-macos-arm64-py3.13.tar.gz"
-    )
+    assert updater.expected_archive_name("macos-arm64", "3.13") == "kickstart-macos-arm64-py3.13.tar.gz"
 
 
 def test_find_asset_match():
@@ -101,7 +98,7 @@ def test_find_asset_missing():
 
 
 def test_resolve_current_install_layout_onedir(tmp_path, monkeypatch):
-    """A symlinked launcher reveals the app root via the symlink target."""
+    """ENG-204 regression: preserve the managed launcher symlink for layout discovery."""
     app_root = tmp_path / ".local" / "share" / "kickstart"
     bundle = app_root / updater.APP_DIR_NAME
     bundle.mkdir(parents=True)
@@ -114,8 +111,53 @@ def test_resolve_current_install_layout_onedir(tmp_path, monkeypatch):
     launcher = launcher_dir / updater.BINARY_NAME
     launcher.symlink_to(executable)
 
-    monkeypatch.setattr(updater, "current_binary_path", lambda: launcher)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
     resolved_dir, resolved_root = updater.resolve_current_install_layout()
+    assert resolved_dir == launcher_dir
+    assert resolved_root == app_root
+
+
+def test_resolve_current_install_layout_recovers_root_from_nested_payload(tmp_path, monkeypatch):
+    """An old nested payload still reveals the original managed app root."""
+    app_root = tmp_path / ".local" / "share" / "kickstart"
+    bundle = app_root / updater.APP_DIR_NAME
+    nested_bundle = bundle / ".kickstart" / updater.APP_DIR_NAME
+    nested_bundle.mkdir(parents=True)
+    nested_executable = nested_bundle / updater.BINARY_NAME
+    nested_executable.write_text("#!/bin/sh\n")
+    nested_executable.chmod(0o755)
+
+    managed_executable = bundle / updater.BINARY_NAME
+    managed_executable.symlink_to(nested_executable)
+    launcher_dir = tmp_path / ".local" / "bin"
+    launcher_dir.mkdir(parents=True)
+    launcher = launcher_dir / updater.BINARY_NAME
+    launcher.symlink_to(managed_executable)
+
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+    resolved_dir, resolved_root = updater.resolve_current_install_layout()
+
+    assert resolved_dir == launcher_dir
+    assert resolved_root == app_root
+
+
+def test_resolve_current_install_layout_normalizes_relative_launcher_target(tmp_path, monkeypatch):
+    """A relative managed launcher target identifies the same canonical roots."""
+    app_root = tmp_path / "share" / "kickstart"
+    bundle = app_root / updater.APP_DIR_NAME
+    (bundle / "_internal").mkdir(parents=True)
+    executable = bundle / updater.BINARY_NAME
+    executable.write_text("#!/bin/sh\n")
+    executable.chmod(0o755)
+
+    launcher_dir = tmp_path / "bin"
+    launcher_dir.mkdir()
+    launcher = launcher_dir / updater.BINARY_NAME
+    launcher.symlink_to(Path("..") / "share" / "kickstart" / updater.APP_DIR_NAME / updater.BINARY_NAME)
+
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+    resolved_dir, resolved_root = updater.resolve_current_install_layout()
+
     assert resolved_dir == launcher_dir
     assert resolved_root == app_root
 
@@ -126,10 +168,26 @@ def test_resolve_current_install_layout_legacy_single_file(tmp_path, monkeypatch
     launcher.parent.mkdir(parents=True)
     launcher.write_text("#!/bin/sh\n")
     launcher.chmod(0o755)
-    monkeypatch.setattr(updater, "current_binary_path", lambda: launcher)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
     resolved_dir, resolved_root = updater.resolve_current_install_layout()
     assert resolved_dir == launcher.parent
     assert resolved_root is None
+
+
+def test_resolve_current_install_layout_generated_wrapper_payload(tmp_path, monkeypatch):
+    """A wrapper-executed managed payload refreshes its stable bundle in place."""
+    app_root = tmp_path / "share" / "kickstart"
+    bundle = app_root / updater.APP_DIR_NAME
+    (bundle / "_internal").mkdir(parents=True)
+    executable = bundle / updater.BINARY_NAME
+    executable.write_text("#!/bin/sh\n")
+    executable.chmod(0o755)
+
+    monkeypatch.setattr(updater.sys, "argv", [str(executable)])
+    resolved_dir, resolved_root = updater.resolve_current_install_layout()
+
+    assert resolved_dir == bundle
+    assert resolved_root == app_root
 
 
 def test_resolve_current_install_layout_symlink_with_unexpected_layout(tmp_path, monkeypatch):
@@ -142,7 +200,7 @@ def test_resolve_current_install_layout_symlink_with_unexpected_layout(tmp_path,
     launcher = tmp_path / "bin" / updater.BINARY_NAME
     launcher.parent.mkdir(parents=True)
     launcher.symlink_to(elsewhere)
-    monkeypatch.setattr(updater, "current_binary_path", lambda: launcher)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
     resolved_dir, resolved_root = updater.resolve_current_install_layout()
     assert resolved_dir == launcher.parent
     assert resolved_root is None
@@ -260,9 +318,7 @@ def _release_payload(tag: str, archive_name: str, *, with_sha: bool = True) -> d
         {"name": archive_name, "browser_download_url": f"https://x/{archive_name}"},
     ]
     if with_sha:
-        assets.append(
-            {"name": f"{archive_name}.sha256", "browser_download_url": f"https://x/{archive_name}.sha256"}
-        )
+        assets.append({"name": f"{archive_name}.sha256", "browser_download_url": f"https://x/{archive_name}.sha256"})
     return {"tag_name": tag, "assets": assets}
 
 
@@ -438,8 +494,8 @@ def test_check_for_update_install_failure_is_categorized(mock_print, tmp_path):
 
 @patch("src.utils.updater.__version__", "1.0.0")
 @patch("builtins.print")
-def test_check_for_update_end_to_end_installs_bundle(mock_print, tmp_path, monkeypatch):
-    """Happy path: latest release publishes a tarball we can download, verify, and install."""
+def test_check_for_update_end_to_end_repairs_and_keeps_stable_bundle_layout(mock_print, tmp_path, monkeypatch):
+    """ENG-204 regression: two upgrades repair nesting and keep one stable managed root."""
     monkeypatch.setattr(updater.sys, "platform", "linux")
     monkeypatch.setattr(updater.platform, "machine", lambda: "x86_64")
     monkeypatch.setattr(updater, "host_python_minor", lambda: "3.14")
@@ -452,6 +508,7 @@ def test_check_for_update_end_to_end_installs_bundle(mock_print, tmp_path, monke
     archive_bytes = archive_path.read_bytes()
     # Compute the matching sha256.
     import hashlib
+
     archive_sha = hashlib.sha256(archive_bytes).hexdigest()
 
     payload = _release_payload("v1.1.0", archive_name, with_sha=True)
@@ -469,36 +526,48 @@ def test_check_for_update_end_to_end_installs_bundle(mock_print, tmp_path, monke
             response.__exit__.return_value = False
         return response
 
-    # Pretend we are running from a fresh onedir install so resolve_current_install_layout
-    # gives us a launcher_dir + app_root pair.
+    # Reproduce the broken layout created by an older upgrade: the public launcher
+    # still points at the canonical managed executable, but that executable became
+    # another symlink to a nested payload.
     app_root = tmp_path / "share" / "kickstart"
     bundle_dest = app_root / updater.APP_DIR_NAME
-    bundle_dest.mkdir(parents=True)
-    (bundle_dest / updater.BINARY_NAME).write_text("#!/bin/sh\nold\n")
-    (bundle_dest / updater.BINARY_NAME).chmod(0o755)
+    nested_bundle = bundle_dest / ".kickstart" / updater.APP_DIR_NAME
+    nested_bundle.mkdir(parents=True)
+    nested_executable = nested_bundle / updater.BINARY_NAME
+    nested_executable.write_text("#!/bin/sh\nold\n")
+    nested_executable.chmod(0o755)
+    managed_executable = bundle_dest / updater.BINARY_NAME
+    managed_executable.symlink_to(nested_executable)
     launcher_dir = tmp_path / "bin"
     launcher_dir.mkdir()
     launcher = launcher_dir / updater.BINARY_NAME
-    launcher.symlink_to(bundle_dest / updater.BINARY_NAME)
-    monkeypatch.setattr(updater, "current_binary_path", lambda: launcher)
+    launcher.symlink_to(managed_executable)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
 
     with patch("src.utils.updater.requests.get", side_effect=fake_get):
-        result = updater.check_for_update()
+        first_result = updater.check_for_update()
+        assert launcher.resolve().parent == bundle_dest
+        assert not (bundle_dest / ".kickstart").exists()
 
-    assert result.target_version == "1.1.0"
-    assert result.outcome.value == "updated"
-    assert result.error_category.value == "none"
-    assert result.checksum_status.value == "verified"
+        second_result = updater.check_for_update()
 
-    # Verify the launcher now points at the freshly-extracted bundle.
+    for result in (first_result, second_result):
+        assert result.target_version == "1.1.0"
+        assert result.outcome.value == "updated"
+        assert result.error_category.value == "none"
+        assert result.checksum_status.value == "verified"
+
+    # Both upgrades converge on the same public launcher and canonical payload.
     assert launcher.is_symlink()
+    assert launcher.readlink() == bundle_dest / updater.BINARY_NAME
     target = launcher.resolve()
-    assert target.parent.name == updater.APP_DIR_NAME
+    assert target.parent == bundle_dest
     assert target.read_text().startswith("#!/bin/sh\necho ok")
+    assert not (bundle_dest / ".kickstart").exists()
 
     messages = [c.args[0] for c in mock_print.call_args_list]
-    assert any("Updated to 1.1.0" in m for m in messages)
-    assert any("Checksum verified" in m for m in messages)
+    assert sum("Updated to 1.1.0" in m for m in messages) == 2
+    assert sum("Checksum verified" in m for m in messages) == 2
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
@@ -529,7 +598,7 @@ def test_check_for_update_checksum_mismatch_aborts(mock_print, tmp_path, monkeyp
             response.__exit__.return_value = False
         return response
 
-    monkeypatch.setattr(updater, "current_binary_path", lambda: tmp_path / "bin" / "kickstart")
+    monkeypatch.setattr(updater, "current_entrypoint_path", lambda: tmp_path / "bin" / "kickstart")
     with patch("src.utils.updater.requests.get", side_effect=fake_get):
         result = updater.check_for_update()
 

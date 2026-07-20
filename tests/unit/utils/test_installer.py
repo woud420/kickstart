@@ -70,6 +70,44 @@ def test_install_binary_missing_source_raises(tmp_path: Path) -> None:
         installer.install_binary(missing, tmp_path / "bin")
 
 
+def test_current_entrypoint_path_preserves_symlink_for_layout_discovery(tmp_path: Path, monkeypatch) -> None:
+    target = tmp_path / "app" / installer.BINARY_NAME
+    target.parent.mkdir()
+    target.write_text("#!/bin/sh\n")
+    launcher = tmp_path / "bin" / installer.BINARY_NAME
+    launcher.parent.mkdir()
+    launcher.symlink_to(target)
+    monkeypatch.setattr(installer.sys, "argv", [str(launcher)])
+
+    assert installer.current_entrypoint_path() == launcher
+    assert installer.current_binary_path() == target
+
+
+def test_current_entrypoint_path_finds_bare_command_on_path(tmp_path: Path, monkeypatch) -> None:
+    launcher = tmp_path / installer.BINARY_NAME
+    launcher.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(installer.sys, "argv", [installer.BINARY_NAME])
+    monkeypatch.setattr(installer.shutil, "which", lambda command: str(launcher))
+
+    assert installer.current_entrypoint_path() == launcher
+
+
+def test_current_entrypoint_path_preserves_explicit_relative_path(tmp_path: Path, monkeypatch) -> None:
+    working_dir = tmp_path / "working"
+    working_dir.mkdir()
+    explicit_launcher = working_dir / installer.BINARY_NAME
+    explicit_launcher.write_text("#!/bin/sh\n")
+    path_launcher = tmp_path / "path-bin" / installer.BINARY_NAME
+    path_launcher.parent.mkdir()
+    path_launcher.write_text("#!/bin/sh\n")
+
+    monkeypatch.chdir(working_dir)
+    monkeypatch.setattr(installer.sys, "argv", [f".{os.sep}{installer.BINARY_NAME}"])
+    monkeypatch.setattr(installer.shutil, "which", lambda command: str(path_launcher))
+
+    assert installer.current_entrypoint_path() == explicit_launcher
+
+
 def test_uninstall_binary_removes_file(tmp_path: Path, single_file_binary: Path) -> None:
     target_dir = tmp_path / "user-bin"
     installer.install_binary(single_file_binary, target_dir)
@@ -469,6 +507,63 @@ def test_install_binary_onedir_overwrite_replaces_bundle(tmp_path: Path) -> None
     assert result.copied is True
 
 
+def test_install_binary_onedir_staging_failure_preserves_active_nested_bundle(tmp_path: Path, monkeypatch) -> None:
+    """A failed repair must leave the existing nested payload executable."""
+    target_dir = tmp_path / "bin"
+    target_dir.mkdir()
+    app_root = tmp_path / "share" / "kickstart"
+    bundle_dest = app_root / installer.APP_DIR_NAME
+    nested_bundle = bundle_dest / ".kickstart" / installer.APP_DIR_NAME
+    (nested_bundle / "_internal").mkdir(parents=True)
+    nested_executable = nested_bundle / installer.BINARY_NAME
+    nested_executable.write_text("#!/bin/sh\necho old\n")
+    nested_executable.chmod(0o755)
+
+    managed_executable = bundle_dest / installer.BINARY_NAME
+    managed_executable.symlink_to(nested_executable)
+    launcher = target_dir / installer.BINARY_NAME
+    launcher.symlink_to(managed_executable)
+    fresh_launcher = _make_fake_onedir_bundle(tmp_path / "fresh")
+
+    def fail_copytree(*args, **kwargs):
+        raise OSError("staging failed")
+
+    monkeypatch.setattr(installer.shutil, "copytree", fail_copytree)
+
+    with pytest.raises(OSError, match="staging failed"):
+        installer.install_binary(fresh_launcher, target_dir, app_root=app_root, overwrite=True)
+
+    assert launcher.resolve() == nested_executable
+    assert nested_executable.read_text() == "#!/bin/sh\necho old\n"
+
+
+def test_install_binary_onedir_activation_failure_restores_active_bundle(tmp_path: Path, monkeypatch) -> None:
+    """A failed activation rolls the old payload back into its stable path."""
+    old_launcher = _make_fake_onedir_bundle(tmp_path / "old")
+    target_dir = tmp_path / "bin"
+    app_root = tmp_path / "share" / "kickstart"
+    installer.install_binary(old_launcher, target_dir, app_root=app_root)
+    active_launcher = target_dir / installer.BINARY_NAME
+    old_target = active_launcher.resolve()
+    fresh_launcher = _make_fake_onedir_bundle(tmp_path / "fresh")
+    (fresh_launcher.parent / "_internal" / "marker").write_text("fresh\n")
+
+    original_rename = Path.rename
+
+    def fail_activation(self: Path, target: Path) -> Path:
+        if self.name.startswith(f".{installer.APP_DIR_NAME}.tmp-"):
+            raise OSError("activation failed")
+        return original_rename(self, target)
+
+    monkeypatch.setattr(Path, "rename", fail_activation)
+
+    with pytest.raises(OSError, match="activation failed"):
+        installer.install_binary(fresh_launcher, target_dir, app_root=app_root, overwrite=True)
+
+    assert active_launcher.resolve() == old_target
+    assert (app_root / installer.APP_DIR_NAME / "_internal" / "marker").read_text() == "present\n"
+
+
 def test_install_binary_onedir_idempotent_same_bundle(tmp_path: Path) -> None:
     """Re-installing the same bundle is a no-op for both the payload and launcher."""
     launcher = _make_fake_onedir_bundle(tmp_path / "src")
@@ -478,7 +573,7 @@ def test_install_binary_onedir_idempotent_same_bundle(tmp_path: Path) -> None:
 
     # Now re-install pointing at the freshly-installed bundle (the source IS the
     # destination after the first install).
-    new_source = (app_root / installer.APP_DIR_NAME / installer.BINARY_NAME)
+    new_source = app_root / installer.APP_DIR_NAME / installer.BINARY_NAME
     second_result = installer.install_binary(new_source, target_dir, app_root=app_root, overwrite=True)
     assert second_result.copied is False
     assert second_result.already_installed is True
