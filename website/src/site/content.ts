@@ -33,10 +33,10 @@ export interface ReleaseNote {
 }
 
 export const defaultProjectMeta: ProjectMeta = {
-  latestVersion: "0.4.3",
+  latestVersion: "0.4.4",
   supportedFrom: "0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
-  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.3",
+  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.4",
 };
 
 export const commandExamples: CommandExample[] = [
@@ -254,6 +254,18 @@ export const isNotPoints: PositioningPoint[] = [
 ];
 
 export const releaseNotes: ReleaseNote[] = [
+  {
+    version: "0.4.4",
+    title: "Managed docs, catalog export, and reliable self-upgrades",
+    body: "Adds read-only repository inspection and deterministic catalog export, introduces data-minimized usage feedback with clear opt-outs, and makes installed upgrades converge safely on one managed layout.",
+    highlights: [
+      "Generated documentation now uses typed projections and ownership fences; kickstart plan reports managed-doc drift without modifying user-owned content, and adopt --check distinguishes conformant from managed repos.",
+      "kickstart export backstage creates and refreshes deterministic, fenced catalog-info.yaml while preserving human-owned fields.",
+      "Eligible release commands use default-on pseudonymous usage feedback through a closed, data-minimized contract; persistent and environment-level opt-outs always win.",
+      "kickstart upgrade repairs older nested payloads, preserves one stable launcher and app root across repeated upgrades, and stages bundle replacement with rollback.",
+      "Release and evaluation automation now detects stranded versions and verifies deployed website parity before reporting success.",
+    ],
+  },
   {
     version: "0.4.3",
     title: "Sandbox bootstrap, tiered eval runner, coverage and badges",
