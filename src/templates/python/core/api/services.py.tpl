@@ -1,6 +1,7 @@
 """Application service layer."""
 
-from ..model import CreateUserRequest, InMemoryUserRepository, UserResponse
+from ..model import CreateUserRequest, UserResponse
+from ..model.repository import InMemoryUserRepository
 
 
 class UserService:
