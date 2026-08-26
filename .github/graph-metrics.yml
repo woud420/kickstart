@@ -156,6 +156,7 @@
     "artifact_max_compressed_bytes": 52428800,
     "artifact_max_uncompressed_bytes": 104857600,
     "markdown_max_bytes": 60000,
+    "pull_request_comments": false,
     "sticky_comment_marker": "<!-- kickstart-architecture-evidence-v1 -->",
     "tracking_issue_comment": false
   },

@@ -40,7 +40,7 @@
     "The direct oracle is a bounded corpus and is not universal program equivalence.",
     "Frozen repository tests support baseline viability but do not determine the differential result.",
     "Target code executes with a strict environment allowlist but without kernel-enforced network or host-filesystem isolation.",
-    "The initial publisher cannot execute from this PR until workflow_run exists on the default branch."
+    "PR comments are disabled after the chronological holdout; CI retains artifacts and trusted default-branch summaries only."
   ],
   "harness": {
     "execution": "external-to-skill",

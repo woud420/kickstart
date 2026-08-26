@@ -1,8 +1,9 @@
 name: Publish Architecture Evidence
 
-# This workflow must exist on the default branch before it can receive a
-# workflow_run event. The bootstrap PR therefore uploads evidence but cannot
-# exercise sticky-comment publication; forward-test that path on the next PR.
+# The chronological holdout did not support PR commentary: topology-enriched
+# cases underperformed controls and graph reveal showed anchoring risk. Pull
+# requests retain their source-run artifacts, while this trusted workflow
+# validates and summarizes default-branch evidence only.
 on:
   workflow_run:
     workflows: [Architecture Evidence]
@@ -29,8 +30,6 @@ jobs:
       publish-kind: ${{ steps.preflight.outputs.publish-kind }}
       pr-number: ${{ steps.preflight.outputs.pr-number }}
       head-sha: ${{ steps.preflight.outputs.head-sha }}
-      sanitized-artifact-id: ${{ steps.upload-sanitized.outputs.artifact-id }}
-      comment-sha256: ${{ steps.validate-artifact.outputs.comment-sha256 }}
 
     steps:
       - name: Validate workflow-run, repository, commit, PR, and artifact identity
@@ -70,6 +69,14 @@ jobs:
                 (workflowPath !== '.github/workflows/graph-metrics.yml' &&
                  !workflowPath.startsWith('.github/workflows/graph-metrics.yml@'))) {
               core.setFailed('Triggering workflow identity mismatch');
+              return;
+            }
+            if (run.event === 'pull_request') {
+              core.notice('PR comments are disabled by the pilot holdout; use the source-run artifact.');
+              core.setOutput('should-publish', 'false');
+              core.setOutput('publish-kind', 'pr');
+              core.setOutput('pr-number', '');
+              core.setOutput('head-sha', run.head_sha);
               return;
             }
             const expectedArtifactName = `architecture-evidence-v1-run-${run.id}-attempt-${run.run_attempt}`;
@@ -296,123 +303,3 @@ jobs:
         run: |
           set -euo pipefail
           sed -n '1,1200p' "$RUNNER_TEMP/architecture-evidence-sanitized/comment.md" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload sanitized PR publication
-        id: upload-sanitized
-        if: steps.preflight.outputs.should-publish == 'true' && steps.preflight.outputs.publish-kind == 'pr'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: architecture-evidence-sanitized-v1-source-${{ github.event.workflow_run.id }}-attempt-${{ github.event.workflow_run.run_attempt }}
-          path: ${{ runner.temp }}/architecture-evidence-sanitized/
-          if-no-files-found: error
-          include-hidden-files: false
-          retention-days: 1
-          compression-level: 9
-
-  publish-pr:
-    name: Upsert one sticky PR comment
-    needs: validate
-    if: needs.validate.outputs.should-publish == 'true' && needs.validate.outputs.publish-kind == 'pr'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      actions: read
-      pull-requests: write
-
-    steps:
-      - name: Download only the sanitized same-run artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          artifact-ids: ${{ needs.validate.outputs.sanitized-artifact-id }}
-          path: ${{ runner.temp }}/architecture-evidence-comment
-          digest-mismatch: error
-
-      - name: Revalidate current head and upsert the bot-authored comment
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          COMMENT_PATH: ${{ runner.temp }}/architecture-evidence-comment/comment.md
-          METADATA_PATH: ${{ runner.temp }}/architecture-evidence-comment/publication-metadata.json
-          EXPECTED_COMMENT_SHA256: ${{ needs.validate.outputs.comment-sha256 }}
-          EXPECTED_PR_NUMBER: ${{ needs.validate.outputs.pr-number }}
-          EXPECTED_HEAD_SHA: ${{ needs.validate.outputs.head-sha }}
-          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
-          SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const crypto = require('crypto');
-            const fs = require('fs');
-            const path = require('path');
-            const marker = '<!-- kickstart-architecture-evidence-v1 -->';
-            const commentPath = process.env.COMMENT_PATH;
-            const metadataPath = process.env.METADATA_PATH;
-            const directory = path.dirname(commentPath);
-            const entries = fs.readdirSync(directory).sort();
-            if (entries.length !== 2 || entries[0] !== 'comment.md' || entries[1] !== 'publication-metadata.json') {
-              core.setFailed('Sanitized publication artifact contains unexpected files');
-              return;
-            }
-            for (const file of [commentPath, metadataPath]) {
-              const info = fs.lstatSync(file);
-              if (!info.isFile() || info.isSymbolicLink()) {
-                core.setFailed('Sanitized publication entry is not a regular file');
-                return;
-              }
-            }
-            const bodyBytes = fs.readFileSync(commentPath);
-            const body = bodyBytes.toString('utf8');
-            const digest = crypto.createHash('sha256').update(bodyBytes).digest('hex');
-            if (digest !== process.env.EXPECTED_COMMENT_SHA256 || body.length > 60000 || !body.startsWith(marker)) {
-              core.setFailed('Sanitized comment identity, size, or marker is invalid');
-              return;
-            }
-            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-            const prNumber = Number(process.env.EXPECTED_PR_NUMBER);
-            const digestPattern = /^[0-9a-f]{64}$/;
-            if (!Number.isInteger(prNumber) || metadata.schema_version !== 'architecture-evidence-publication/1.0.0' ||
-                metadata.event_name !== 'pull_request' || metadata.repository_id !== context.payload.repository.id ||
-                metadata.pr_number !== prNumber || metadata.head_sha !== process.env.EXPECTED_HEAD_SHA ||
-                metadata.source_run_id !== Number(process.env.SOURCE_RUN_ID) || metadata.source_run_attempt !== Number(process.env.SOURCE_RUN_ATTEMPT) ||
-                metadata.comment_sha256 !== digest || metadata.repository !== `${context.repo.owner}/${context.repo.repo}` ||
-                metadata.publisher?.name !== 'publisher_guard.py' || metadata.publisher?.version !== '1.0.0' ||
-                !digestPattern.test(metadata.publisher?.digest || '')) {
-              core.setFailed('Sanitized publication metadata mismatch');
-              return;
-            }
-            const pull = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-            });
-            if (pull.data.head.sha !== process.env.EXPECTED_HEAD_SHA || pull.data.base.ref !== 'master' || pull.data.base.repo.id !== context.payload.repository.id) {
-              core.notice('Skipping stale or mismatched architecture-evidence comment.');
-              return;
-            }
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              per_page: 100,
-            });
-            const matches = comments.filter((comment) =>
-              comment.user && comment.user.login === 'github-actions[bot]' && String(comment.body || '').includes(marker)
-            );
-            if (matches.length > 1) {
-              core.setFailed('Multiple bot-authored architecture-evidence comments require manual cleanup');
-              return;
-            }
-            if (matches.length === 1) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: matches[0].id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body,
-              });
-            }
