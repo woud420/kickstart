@@ -1,0 +1,201 @@
+name: Architecture Evidence
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [master]
+  workflow_dispatch:
+  schedule:
+    # Deliberately offset from the repository's Monday scheduled evals.
+    - cron: "23 8 * * 3"
+
+# The analyzer parses attacker-controlled pull-request bytes, so it receives no
+# secrets or write capabilities. Artifact publication is separated into the
+# trusted workflow_run workflow.
+permissions: {}
+
+concurrency:
+  group: architecture-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12.14"
+  PYTHONHASHSEED: "0"
+  TZ: UTC
+  CRG_SERIAL_PARSE: "1"
+  CRG_LEIDEN_SEED: "42"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_INPUT: "1"
+
+jobs:
+  analyze:
+    name: Collect report-only evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out analysis corpus
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+
+      - name: Set up pinned Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Verify runtime and dependency-lock identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -c 'import sys; assert sys.version_info[:3] == (3, 12, 14), sys.version'
+          test "$(sha256sum .github/graph-metrics-requirements.lock | cut -d ' ' -f 1)" = \
+            "d21852f298badee13c0f716b8352727680d4a76062af57e9238b45caea7ec20c"
+
+      - name: Install the hash-locked analyzer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -m pip install \
+            --require-hashes \
+            --only-binary=:all: \
+            --no-deps \
+            --force-reinstall \
+            --no-cache-dir \
+            -r .github/graph-metrics-requirements.lock
+          python -I -m pip check
+
+      - name: Resolve immutable base and head commits
+        id: revisions
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          EVENT_HEAD_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_REPOSITORY_ID: ${{ github.event.pull_request.head.repo.id }}
+          CURRENT_REPOSITORY_ID: ${{ github.repository_id }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            pull_request)
+              base_sha="$PR_BASE_SHA"
+              head_sha="$PR_HEAD_SHA"
+              pr_number="$PR_NUMBER"
+              head_repository_id="$PR_HEAD_REPOSITORY_ID"
+              ;;
+            push)
+              head_sha="$EVENT_HEAD_SHA"
+              base_sha="$PUSH_BEFORE_SHA"
+              if [[ "$base_sha" =~ ^0+$ ]]; then
+                base_sha="$(git rev-parse "${head_sha}^")"
+              fi
+              pr_number=""
+              head_repository_id="$CURRENT_REPOSITORY_ID"
+              ;;
+            schedule|workflow_dispatch)
+              head_sha="$(git rev-parse HEAD)"
+              base_sha="$(git rev-parse HEAD^)"
+              pr_number=""
+              head_repository_id="$CURRENT_REPOSITORY_ID"
+              ;;
+            *)
+              echo "::error::Unsupported event: $EVENT_NAME"
+              exit 1
+              ;;
+          esac
+          for value in "$base_sha" "$head_sha"; do
+            if [[ ! "$value" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::Expected a full lowercase commit SHA"
+              exit 1
+            fi
+            git cat-file -e "${value}^{commit}"
+          done
+          if [[ ! "$head_repository_id" =~ ^[0-9]+$ ]]; then
+            echo "::error::Invalid head repository identity"
+            exit 1
+          fi
+          {
+            echo "base_sha=$base_sha"
+            echo "head_sha=$head_sha"
+            echo "pr_number=$pr_number"
+            echo "head_repository_id=$head_repository_id"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Collect evidence twice
+        shell: bash
+        env:
+          BASE_SHA: ${{ steps.revisions.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.revisions.outputs.head_sha }}
+          PR_NUMBER: ${{ steps.revisions.outputs.pr_number }}
+          HEAD_REPOSITORY_ID: ${{ steps.revisions.outputs.head_repository_id }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_ID: ${{ github.repository_id }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          for pass in one two; do
+            output="${RUNNER_TEMP}/architecture-evidence/run-${pass}"
+            arguments=(
+              collect
+              --repo "$GITHUB_WORKSPACE"
+              --output "$output"
+              --policy "$GITHUB_WORKSPACE/.github/graph-metrics.yml"
+              --behavior-policy "$GITHUB_WORKSPACE/.github/behavior-evidence.yml"
+              --dependency-lock "$GITHUB_WORKSPACE/.github/graph-metrics-requirements.lock"
+              --crg-bin "$(command -v code-review-graph)"
+              --base "$BASE_SHA"
+              --head "$HEAD_SHA"
+              --repository "$REPOSITORY"
+              --repository-id "$REPOSITORY_ID"
+              --run-id "$RUN_ID"
+              --run-attempt "$RUN_ATTEMPT"
+              --event-name "$EVENT_NAME"
+              --ref "$EVENT_REF"
+              --head-repository-id "$HEAD_REPOSITORY_ID"
+            )
+            if [[ -n "$PR_NUMBER" ]]; then
+              arguments+=(--pr-number "$PR_NUMBER")
+            fi
+            python -I .github/scripts/graph_evidence.py "${arguments[@]}"
+            python -I .github/scripts/graph_evidence.py verify --directory "$output"
+          done
+
+      - name: Prove repeated-run determinism
+        shell: bash
+        run: |
+          set -euo pipefail
+          diff --recursive --brief \
+            "$RUNNER_TEMP/architecture-evidence/run-one" \
+            "$RUNNER_TEMP/architecture-evidence/run-two"
+          sha256sum "$RUNNER_TEMP/architecture-evidence/run-one/"* | sort
+
+      - name: Write trusted-branch and weekly summary
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$RUNNER_TEMP/architecture-evidence/run-one/report.md"
+          sed -n '1,1200p' "$RUNNER_TEMP/architecture-evidence/run-one/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload structured evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: architecture-evidence-v1-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/architecture-evidence/run-one/
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 30
+          compression-level: 6

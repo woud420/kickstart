@@ -1,0 +1,61 @@
+{
+  "schema_version": "behavior-policy/1.0.0",
+  "change_intent": "preserve",
+  "claim": "The report-only evidence infrastructure does not change kickstart production behavior.",
+  "observable_surfaces": [
+    "src.api __all__ symbol additions/removals and inspect.signature output",
+    "CLI --help, --version, and invalid-command normalized stdout, stderr, and exit codes",
+    "three repeated scaffold scenarios compared by relative path, file kind, permission mode, size, and content SHA-256",
+    "one Cloudflare Worker scaffold tree recorded by relative path, file kind, permission mode, size, and content SHA-256",
+    "one Python service scaffold manifest JSON plus adopt --check --json output and project-tree delta",
+    "plan output and project-tree effects for a fresh scaffold, an outside-fence edit, and a managed-fence edit",
+    "Backstage export output, catalog bytes, idempotent rerun, user-owner preservation, and project-tree effects",
+    "telemetry state documents and permissions, closed event-name allowlist, deterministic fake-transport payload order, suppression, and fake call count",
+    "selected frozen pytest cases as supporting baseline-viability evidence, not as the differential value"
+  ],
+  "old_domain_case_ids": [
+    "public-api",
+    "cli-sanity",
+    "scaffold-determinism",
+    "worker-golden-tree",
+    "scaffold-contract-roundtrip",
+    "plan-command",
+    "export-command",
+    "telemetry-contract"
+  ],
+  "new_domain_case_ids": [],
+  "expected_deltas": [],
+  "blocking_evidence_gaps": [],
+  "removed_or_weakened_assertions": [],
+  "unmeasured_surfaces": [
+    "live package registries and network failures",
+    "generated project combinations outside the explicitly recorded oracle scenarios",
+    "interactive prompts beyond the recorded non-interactive CLI commands",
+    "real telemetry delivery; the oracle uses an in-process fake transport",
+    "performance and concurrency guarantees",
+    "platforms outside the pinned observation environment",
+    "direct socket and runner-host filesystem isolation; the subprocess environment is credential-free but not kernel-sandboxed"
+  ],
+  "residual_risk": [
+    "The direct oracle is a bounded corpus and is not universal program equivalence.",
+    "Frozen repository tests support baseline viability but do not determine the differential result.",
+    "Target code executes with a strict environment allowlist but without kernel-enforced network or host-filesystem isolation.",
+    "The initial publisher cannot execute from this PR until workflow_run exists on the default branch."
+  ],
+  "harness": {
+    "execution": "external-to-skill",
+    "seed": 6149,
+    "normalizer": "kickstart-direct-boundary/1.1.0",
+    "frozen_oracle_paths": ["pyproject.toml", "tests"],
+    "cases": [
+      {"case_id": "public-api", "oracle": "public-api", "paths": ["tests/unit/test_api.py"]},
+      {"case_id": "cli-sanity", "oracle": "cli-sanity", "paths": ["tests/integration/test_cli_sanity.py"]},
+      {"case_id": "scaffold-determinism", "oracle": "scaffold-determinism", "paths": ["tests/integration/test_scaffold_determinism.py"]},
+      {"case_id": "worker-golden-tree", "oracle": "worker-golden-tree", "paths": ["tests/integration/test_scaffold_golden.py"]},
+      {"case_id": "scaffold-contract-roundtrip", "oracle": "scaffold-contract-roundtrip", "paths": ["tests/integration/test_scaffold_contract_roundtrip.py"]},
+      {"case_id": "plan-command", "oracle": "plan-command", "paths": ["tests/integration/test_plan_command.py", "tests/unit/cli/test_inspection_commands.py"]},
+      {"case_id": "export-command", "oracle": "export-command", "paths": ["tests/integration/test_export_command.py"]},
+      {"case_id": "telemetry-contract", "oracle": "telemetry-contract", "paths": ["tests/unit/telemetry", "tests/unit/cli/test_create_telemetry.py"]}
+    ]
+  }
+}

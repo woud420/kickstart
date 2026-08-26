@@ -1,0 +1,168 @@
+{
+  "schema_version": "graph-evidence/1.0.0",
+  "pilot_mode": "report-only",
+  "default_branch": "master",
+  "analyzer": {
+    "name": "code-review-graph",
+    "version": "2.3.8",
+    "release_commit": "2c6dae32643572ee528eb9b77dbcc17f58f3a8c9",
+    "distribution": "code_review_graph-2.3.8-py3-none-any.whl",
+    "distribution_sha256": "013ae3c119cc7de337f9e88fe36daef82e2d4def942a014edcf97f126e208547",
+    "installed_code_sha256": "b14eb2ed706b208dd5c9ea5474161ba10a65081b4fdffa042cdbc1f87fe4ca15",
+    "schema_version": 9,
+    "official_action_adopted": false,
+    "official_action_source_sha256": "a851ad7200554000abb0b34d36944224037e0f15c743ba9cebe5c0715d787414"
+  },
+  "runtime": {
+    "os": "ubuntu-24.04",
+    "python": "3.12.14",
+    "python_implementation": "CPython",
+    "architecture": "x86_64",
+    "dependency_lock": ".github/graph-metrics-requirements.lock",
+    "dependency_lock_sha256": "d21852f298badee13c0f716b8352727680d4a76062af57e9238b45caea7ec20c",
+    "dependency_count": 76,
+    "environment": {
+      "CRG_SERIAL_PARSE": "1",
+      "CRG_LEIDEN_SEED": "42",
+      "PYTHONHASHSEED": "0",
+      "TZ": "UTC"
+    }
+  },
+  "trust_review": {
+    "official_composite_action": "rejected",
+    "reasons": [
+      "nested Actions are referenced by mutable major tags",
+      "the analyzer is installed from PyPI without a version or hashes",
+      "the cache key omits evaluator and policy identity and permits prefix restores"
+    ],
+    "pypi_provenance_available": false,
+    "package_identity": "pinned wheel SHA-256",
+    "installed_code_identity": "every code_review_graph package file is verified against wheel RECORD and folded into installed_code_sha256",
+    "parser_boundary": "attacker-controlled repository bytes are parsed only in a secretless read-only job",
+    "subprocess_boundary": "CRG receives a strict environment allowlist, a fresh external bytecode cache, Python socket denial, file-only Git protocols, and fail-closed HTTP proxies",
+    "publication_boundary": "trusted publisher validates hostile artifacts and renders Markdown from allowlisted structured fields"
+  },
+  "corpus": {
+    "include": ["**"],
+    "exclude": [
+      ".git/**",
+      ".venv/**",
+      "node_modules/**",
+      "build/**",
+      "dist/**",
+      "site/**",
+      ".code-review-graph/**"
+    ],
+    "source_suffixes": [
+      ".bash",
+      ".c",
+      ".cc",
+      ".cpp",
+      ".cs",
+      ".go",
+      ".h",
+      ".hcl",
+      ".hpp",
+      ".java",
+      ".js",
+      ".jsx",
+      ".kt",
+      ".kts",
+      ".lua",
+      ".php",
+      ".py",
+      ".rb",
+      ".rs",
+      ".scala",
+      ".sh",
+      ".sql",
+      ".swift",
+      ".tf",
+      ".ts",
+      ".tsx",
+      ".vue"
+    ],
+    "template_suffixes": [".tpl"],
+    "coverage_contract": "Raw CRG coverage includes tracked source-like files and explicitly counts unsupported templates; template normalization is disabled for the pilot."
+  },
+  "boundaries": [
+    {"name": "api", "prefixes": ["src/api.py"]},
+    {"name": "cli", "prefixes": ["src/cli/"]},
+    {"name": "generator", "prefixes": ["src/generator/", "src/generators/"]},
+    {"name": "stack", "prefixes": ["src/stack/"]},
+    {"name": "model", "prefixes": ["src/model/"]},
+    {"name": "telemetry", "prefixes": ["src/telemetry/"]},
+    {"name": "utils", "prefixes": ["src/utils/"]},
+    {"name": "templates", "prefixes": ["src/templates/"]},
+    {"name": "tests", "prefixes": ["tests/"]},
+    {"name": "evals-tooling", "prefixes": ["scripts/", "ci/"]},
+    {"name": "website", "prefixes": ["website/"]},
+    {"name": "agent-tooling", "prefixes": [".agents/", ".claude/"]},
+    {"name": "github-automation", "prefixes": [".github/"]}
+  ],
+  "projections": {
+    "all": ["CALLS", "DEPENDS_ON", "IMPORTS_FROM", "INHERITS", "REFERENCES", "TESTED_BY"],
+    "imports": ["DEPENDS_ON", "IMPORTS_FROM"],
+    "synchronous": ["CALLS", "DEPENDS_ON", "IMPORTS_FROM", "INHERITS", "REFERENCES"],
+    "tests": ["TESTED_BY"]
+  },
+  "history": {
+    "seed": 6149,
+    "primary_cases": 100,
+    "discovery_signal_count": 35,
+    "holdout_signal_count": 15,
+    "holdout_frame_size": 60,
+    "discovery_cluster_cap": 7,
+    "holdout_cluster_cap": 4,
+    "response_commits": 20,
+    "response_days": 60,
+    "selection_projection": "synchronous",
+    "selection_order": [
+      "new-cross-boundary-cycle-forming-edge",
+      "new-cross-boundary-scc",
+      "new-cycle-forming-edges",
+      "cross-boundary-cyclic-edge-growth",
+      "cycle-mass-growth",
+      "excess-cyclic-edge-growth",
+      "largest-scc-growth",
+      "cyclic-node-proportion-growth",
+      "fan-out-growth",
+      "fan-in-growth",
+      "commit-sha-tiebreak"
+    ],
+    "control_matching": [
+      "integration-time-band",
+      "component",
+      "language",
+      "repository-size-bucket",
+      "parser-coverage-band",
+      "change-type-from-paths",
+      "files-changed-bucket",
+      "diff-churn-bucket",
+      "seeded-sha256-tiebreak"
+    ]
+  },
+  "configuration_paths": [
+    ".github/graph-metrics.yml",
+    ".github/behavior-evidence.yml",
+    ".github/graph-metrics-requirements.lock",
+    ".github/scripts/graph_evidence.py",
+    ".github/scripts/publisher_guard.py",
+    ".github/workflows/graph-metrics.yml",
+    ".github/workflows/graph-metrics-publish.yml"
+  ],
+  "publication": {
+    "artifact_schema": "architecture-evidence-artifact/1.0.0",
+    "artifact_max_compressed_bytes": 52428800,
+    "artifact_max_uncompressed_bytes": 104857600,
+    "markdown_max_bytes": 60000,
+    "sticky_comment_marker": "<!-- kickstart-architecture-evidence-v1 -->",
+    "tracking_issue_comment": false
+  },
+  "interpretation": {
+    "composite_quality_score": false,
+    "merge_gate": false,
+    "automatic_refactor": false,
+    "crg_risk_is_heuristic": true
+  }
+}
