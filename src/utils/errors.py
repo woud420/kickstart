@@ -87,3 +87,13 @@ class ExtensionError(KickstartError):
 class TelemetryStateError(KickstartError):
     """Raised when explicit telemetry state management cannot complete safely."""
     pass
+
+
+class SelfContainedInstallError(KickstartError):
+    """Raised when an install would replace the payload the running process executes from."""
+    pass
+
+
+class HandoffError(KickstartError):
+    """Raised when a staged upgrade or layout repair cannot continue safely."""
+    pass

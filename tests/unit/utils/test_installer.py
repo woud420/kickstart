@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from src.utils import installer
+from src.utils.errors import SelfContainedInstallError
 
 
 @pytest.fixture()
@@ -616,3 +617,31 @@ def test_install_launcher_falls_back_to_wrapper_script(tmp_path: Path, monkeypat
     body = wrapper.read_text()
     assert body.startswith("#!/bin/sh")
     assert str(app_root / installer.APP_DIR_NAME / installer.BINARY_NAME) in body
+
+
+def test_install_binary_refuses_source_nested_inside_destination_payload(tmp_path: Path) -> None:
+    """ENG-205: installing from <app_root>/current/.kickstart/current would delete the source mid-swap."""
+    target_dir = tmp_path / "bin"
+    target_dir.mkdir()
+    app_root = tmp_path / "share" / "kickstart"
+    bundle_dest = app_root / installer.APP_DIR_NAME
+    (bundle_dest / "_internal").mkdir(parents=True)
+    nested_launcher = _make_fake_onedir_bundle(bundle_dest / ".kickstart", bundle_name=installer.APP_DIR_NAME)
+    managed_executable = bundle_dest / installer.BINARY_NAME
+    managed_executable.symlink_to(nested_launcher)
+    launcher = target_dir / installer.BINARY_NAME
+    launcher.symlink_to(managed_executable)
+
+    with pytest.raises(SelfContainedInstallError, match="kickstart upgrade"):
+        installer.install_binary(nested_launcher, target_dir, app_root=app_root, overwrite=True)
+
+    assert launcher.resolve() == nested_launcher
+    assert (nested_launcher.parent / "_internal" / "marker").read_text() == "present\n"
+
+
+def test_is_strictly_within_excludes_the_directory_itself(tmp_path: Path) -> None:
+    inner = tmp_path / "a" / "b"
+    inner.mkdir(parents=True)
+    assert installer._is_strictly_within(inner, tmp_path / "a") is True
+    assert installer._is_strictly_within(tmp_path / "a", tmp_path / "a") is False
+    assert installer._is_strictly_within(tmp_path / "other", tmp_path / "a") is False

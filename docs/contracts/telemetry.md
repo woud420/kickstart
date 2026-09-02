@@ -131,7 +131,7 @@ The exact closed property set for `cli_upgrade_completed` is those six common pr
 - `target_version`: a stable semantic version or `unknown`
 - `checksum_status`: `verified`, `not_published`, `failed`, or `not_reached`
 
-Its `outcome` is one of `updated`, `already_current`, `failed`, or `cancelled`. Its `error_category` is one of `none`, `interrupted`, `release_lookup`, `invalid_release_metadata`, `unsupported_platform`, `archive_missing`, `download`, `checksum_fetch`, `checksum_mismatch`, `archive_extraction`, `installation`, or `unexpected_error`.
+Its `outcome` is one of `updated`, `repaired`, `already_current`, `failed`, or `cancelled`. `repaired` means the running binary was already the latest release but its managed payload was nested under the app root by an older updater, and `kickstart upgrade` re-activated it in the canonical location; `target_version` then equals `cli_version`. An upgrade that also repairs the layout reports `updated`. The activation runs as a chain of process handoffs, and only the final process attempts the single terminal event. Its `error_category` is one of `none`, `interrupted`, `release_lookup`, `invalid_release_metadata`, `unsupported_platform`, `archive_missing`, `download`, `checksum_fetch`, `checksum_mismatch`, `archive_extraction`, `installation`, or `unexpected_error`.
 
 No other event or property is permitted. In particular, uninstall does not emit an event. Values that are not in these fixed sets are omitted or normalized to an allowed fallback; raw values are never serialized.
 

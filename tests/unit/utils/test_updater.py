@@ -6,13 +6,19 @@ import io
 import json
 import os
 import tarfile
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 
-from src.utils import updater
+from src.model.dto.telemetry import (
+    CliUpgradeChecksumStatus,
+    CliUpgradeErrorCategory,
+    CliUpgradeOutcome,
+)
+from src.utils import handoff, updater
 
 
 # --- Pure helpers ---------------------------------------------------------
@@ -323,7 +329,7 @@ def _release_payload(tag: str, archive_name: str, *, with_sha: bool = True) -> d
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_already_up_to_date(mock_print):
     payload = _release_payload("v1.0.0", "kickstart-linux-x64-py3.14.tar.gz")
     response = MagicMock()
@@ -340,7 +346,7 @@ def test_check_for_update_already_up_to_date(mock_print):
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_missing_archive_for_host(mock_print, monkeypatch):
     # Latest release publishes the linux archive but we report ourselves as macos arm64.
     monkeypatch.setattr(updater.sys, "platform", "darwin")
@@ -360,7 +366,7 @@ def test_check_for_update_missing_archive_for_host(mock_print, monkeypatch):
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_release_lookup_failure(mock_print):
     with patch("src.utils.updater.requests.get", side_effect=requests.ConnectionError("offline")):
         result = updater.check_for_update()
@@ -372,7 +378,7 @@ def test_check_for_update_release_lookup_failure(mock_print):
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_invalid_json(mock_print):
     response = MagicMock()
     response.raise_for_status.return_value = None
@@ -384,7 +390,7 @@ def test_check_for_update_invalid_json(mock_print):
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_invalid_release_metadata_is_categorized(mock_print):
     response = MagicMock()
     response.raise_for_status.return_value = None
@@ -402,7 +408,7 @@ def test_check_for_update_invalid_release_metadata_is_categorized(mock_print):
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_unsupported_platform_is_categorized(mock_print):
     payload = _release_payload("v1.1.0", "kickstart-linux-x64-py3.14.tar.gz")
 
@@ -417,7 +423,7 @@ def test_check_for_update_unsupported_platform_is_categorized(mock_print):
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_download_failure_is_categorized(mock_print, tmp_path):
     archive_name = "kickstart-linux-x64-py3.14.tar.gz"
     payload = _release_payload("v1.1.0", archive_name, with_sha=False)
@@ -435,7 +441,7 @@ def test_check_for_update_download_failure_is_categorized(mock_print, tmp_path):
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_checksum_fetch_failure_is_categorized(mock_print, tmp_path):
     archive_name = "kickstart-linux-x64-py3.14.tar.gz"
     payload = _release_payload("v1.1.0", archive_name)
@@ -454,7 +460,7 @@ def test_check_for_update_checksum_fetch_failure_is_categorized(mock_print, tmp_
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_extraction_failure_preserves_missing_checksum_status(mock_print, tmp_path):
     archive_name = "kickstart-linux-x64-py3.14.tar.gz"
     payload = _release_payload("v1.1.0", archive_name, with_sha=False)
@@ -473,7 +479,7 @@ def test_check_for_update_extraction_failure_preserves_missing_checksum_status(m
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_install_failure_is_categorized(mock_print, tmp_path):
     archive_name = "kickstart-linux-x64-py3.14.tar.gz"
     payload = _release_payload("v1.1.0", archive_name, with_sha=False)
@@ -493,9 +499,17 @@ def test_check_for_update_install_failure_is_categorized(mock_print, tmp_path):
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
-def test_check_for_update_end_to_end_repairs_and_keeps_stable_bundle_layout(mock_print, tmp_path, monkeypatch):
-    """ENG-204 regression: two upgrades repair nesting and keep one stable managed root."""
+@patch("src.utils.handoff.print")
+@patch("src.utils.updater.print")
+def test_check_for_update_end_to_end_repairs_and_keeps_stable_bundle_layout(
+    mock_print, mock_handoff_print, tmp_path, monkeypatch, handoff_chain
+):
+    """ENG-204 regression: two upgrades repair nesting and keep one stable managed root.
+
+    ENG-205: both upgrades activate the new payload through the staged process
+    handoff instead of replacing ``<app_root>/current`` from inside it.
+    """
+    _use_private_tempdir(tmp_path, monkeypatch)
     monkeypatch.setattr(updater.sys, "platform", "linux")
     monkeypatch.setattr(updater.platform, "machine", lambda: "x86_64")
     monkeypatch.setattr(updater, "host_python_minor", lambda: "3.14")
@@ -529,29 +543,20 @@ def test_check_for_update_end_to_end_repairs_and_keeps_stable_bundle_layout(mock
     # Reproduce the broken layout created by an older upgrade: the public launcher
     # still points at the canonical managed executable, but that executable became
     # another symlink to a nested payload.
-    app_root = tmp_path / "share" / "kickstart"
+    launcher, app_root = _make_nested_managed_install(tmp_path)
     bundle_dest = app_root / updater.APP_DIR_NAME
-    nested_bundle = bundle_dest / ".kickstart" / updater.APP_DIR_NAME
-    nested_bundle.mkdir(parents=True)
-    nested_executable = nested_bundle / updater.BINARY_NAME
-    nested_executable.write_text("#!/bin/sh\nold\n")
-    nested_executable.chmod(0o755)
-    managed_executable = bundle_dest / updater.BINARY_NAME
-    managed_executable.symlink_to(nested_executable)
-    launcher_dir = tmp_path / "bin"
-    launcher_dir.mkdir()
-    launcher = launcher_dir / updater.BINARY_NAME
-    launcher.symlink_to(managed_executable)
     monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
 
     with patch("src.utils.updater.requests.get", side_effect=fake_get):
-        first_result = updater.check_for_update()
+        with pytest.raises(handoff_chain.replaced) as first:
+            updater.check_for_update()
         assert launcher.resolve().parent == bundle_dest
         assert not (bundle_dest / ".kickstart").exists()
 
-        second_result = updater.check_for_update()
+        with pytest.raises(handoff_chain.replaced) as second:
+            updater.check_for_update()
 
-    for result in (first_result, second_result):
+    for result in (first.value.result, second.value.result):
         assert result.target_version == "1.1.0"
         assert result.outcome.value == "updated"
         assert result.error_category.value == "none"
@@ -565,13 +570,26 @@ def test_check_for_update_end_to_end_repairs_and_keeps_stable_bundle_layout(mock
     assert target.read_text().startswith("#!/bin/sh\necho ok")
     assert not (bundle_dest / ".kickstart").exists()
 
+    # Each upgrade activated from a staged copy outside the app root, then handed
+    # off to the canonical launcher, which removed its staging directory.
+    assert [call.phase.value for call in handoff_chain.calls] == ["activate", "finalize", "activate", "finalize"]
+    for activate_call in handoff_chain.calls[::2]:
+        assert activate_call.launcher.name == updater.BINARY_NAME
+        assert not activate_call.launcher.resolve().is_relative_to(app_root.resolve())
+        assert activate_call.launcher.parent.parent.parent.name.startswith(handoff.STAGE_PREFIX_UPGRADE)
+        assert not activate_call.stage_dir.exists()
+    for finalize_call in handoff_chain.calls[1::2]:
+        assert finalize_call.launcher == bundle_dest / updater.BINARY_NAME
+
     messages = [c.args[0] for c in mock_print.call_args_list]
-    assert sum("Updated to 1.1.0" in m for m in messages) == 2
     assert sum("Checksum verified" in m for m in messages) == 2
+    assert sum("also repairs the layout" in m for m in messages) == 1
+    handoff_messages = [c.args[0] for c in mock_handoff_print.call_args_list]
+    assert sum("Updated to 1.1.0" in m for m in handoff_messages) == 2
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
-@patch("builtins.print")
+@patch("src.utils.updater.print")
 def test_check_for_update_checksum_mismatch_aborts(mock_print, tmp_path, monkeypatch):
     """Bad .sha256 content -> we bail without installing."""
     monkeypatch.setattr(updater.sys, "platform", "linux")
@@ -610,3 +628,356 @@ def test_check_for_update_checksum_mismatch_aborts(mock_print, tmp_path, monkeyp
     messages = [c.args[0] for c in mock_print.call_args_list]
     assert any("could not verify checksum" in m for m in messages)
     assert not any("Updated to" in m for m in messages)
+
+
+# --- ENG-205: managed-layout drift detection and staged repair ------------
+
+
+def _use_private_tempdir(tmp_path: Path, monkeypatch) -> Path:
+    """Point tempfile at a per-test directory so staged payloads never touch the real /tmp."""
+    private = tmp_path / "tmp"
+    private.mkdir(exist_ok=True)
+    monkeypatch.setattr(tempfile, "tempdir", str(private))
+    return private
+
+
+def _make_managed_install(tmp_path: Path, *, launcher_body: str = "#!/bin/sh\necho healthy\n") -> tuple[Path, Path]:
+    """Build a healthy managed install and return ``(public_launcher, app_root)``."""
+    app_root = tmp_path / "share" / "kickstart"
+    bundle_dest = app_root / updater.APP_DIR_NAME
+    (bundle_dest / "_internal").mkdir(parents=True)
+    (bundle_dest / "_internal" / "marker").write_text("healthy\n")
+    executable = bundle_dest / updater.BINARY_NAME
+    executable.write_text(launcher_body)
+    executable.chmod(0o755)
+    launcher_dir = tmp_path / "bin"
+    launcher_dir.mkdir(exist_ok=True)
+    launcher = launcher_dir / updater.BINARY_NAME
+    launcher.symlink_to(executable)
+    return launcher, app_root
+
+
+def _make_nested_managed_install(tmp_path: Path, *, depth: int = 1) -> tuple[Path, Path]:
+    """Model the layout an older updater left behind and return ``(public_launcher, app_root)``.
+
+    ``<app_root>/current`` keeps the stale original payload, but its launcher
+    became a symlink into ``.kickstart/current`` (``depth`` levels deep), which
+    holds the payload that actually runs.
+    """
+    app_root = tmp_path / "share" / "kickstart"
+    bundle_dest = app_root / updater.APP_DIR_NAME
+    (bundle_dest / "_internal").mkdir(parents=True)
+    (bundle_dest / "_internal" / "marker").write_text("stale\n")
+
+    nested_bundle = bundle_dest
+    for _ in range(depth):
+        nested_bundle = nested_bundle / ".kickstart" / updater.APP_DIR_NAME
+    (nested_bundle / "_internal").mkdir(parents=True)
+    (nested_bundle / "_internal" / "marker").write_text("running\n")
+    nested_executable = nested_bundle / updater.BINARY_NAME
+    nested_executable.write_text("#!/bin/sh\necho running\n")
+    nested_executable.chmod(0o755)
+
+    managed_executable = bundle_dest / updater.BINARY_NAME
+    managed_executable.symlink_to(nested_executable)
+    launcher_dir = tmp_path / "bin"
+    launcher_dir.mkdir(exist_ok=True)
+    launcher = launcher_dir / updater.BINARY_NAME
+    launcher.symlink_to(managed_executable)
+    return launcher, app_root
+
+
+def _same_version_release(monkeypatch, version: str = "1.0.0") -> None:
+    payload = _release_payload(f"v{version}", "kickstart-linux-x64-py3.14.tar.gz")
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = payload
+    monkeypatch.setattr(updater.requests, "get", lambda *args, **kwargs: response)
+
+
+def test_inspect_managed_layout_healthy_symlink_needs_no_repair(tmp_path, monkeypatch):
+    launcher, app_root = _make_managed_install(tmp_path)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+
+    layout = updater.inspect_managed_layout()
+
+    assert layout.app_root == app_root
+    assert layout.launcher_dir == launcher.parent
+    assert layout.canonical_executable == (app_root / updater.APP_DIR_NAME / updater.BINARY_NAME).resolve()
+    assert layout.actual_executable == layout.canonical_executable
+    assert layout.needs_repair is False
+
+
+@pytest.mark.parametrize("depth", [1, 2])
+def test_inspect_managed_layout_detects_nested_payload(tmp_path, monkeypatch, depth):
+    launcher, app_root = _make_nested_managed_install(tmp_path, depth=depth)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+
+    layout = updater.inspect_managed_layout()
+
+    assert layout.app_root == app_root
+    assert layout.needs_repair is True
+    assert layout.actual_executable.parent.name == updater.APP_DIR_NAME
+    assert ".kickstart" in layout.actual_executable.parts
+
+
+def test_inspect_managed_layout_wrapper_launched_nested_payload(tmp_path, monkeypatch):
+    """A wrapper execs <app_root>/current/kickstart directly; drift is still visible there."""
+    launcher, app_root = _make_nested_managed_install(tmp_path)
+    managed_executable = app_root / updater.APP_DIR_NAME / updater.BINARY_NAME
+    monkeypatch.setattr(updater.sys, "argv", [str(managed_executable)])
+
+    layout = updater.inspect_managed_layout()
+
+    assert layout.app_root == app_root
+    assert layout.launcher_dir == managed_executable.parent
+    assert layout.needs_repair is True
+
+
+def test_inspect_managed_layout_wrapper_launched_healthy_payload(tmp_path, monkeypatch):
+    launcher, app_root = _make_managed_install(tmp_path)
+    managed_executable = app_root / updater.APP_DIR_NAME / updater.BINARY_NAME
+    monkeypatch.setattr(updater.sys, "argv", [str(managed_executable)])
+
+    assert updater.inspect_managed_layout().needs_repair is False
+
+
+def test_inspect_managed_layout_single_file_install_is_never_repaired(tmp_path, monkeypatch):
+    launcher = tmp_path / "bin" / updater.BINARY_NAME
+    launcher.parent.mkdir()
+    launcher.write_text("#!/bin/sh\n")
+    launcher.chmod(0o755)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+
+    layout = updater.inspect_managed_layout()
+
+    assert layout.app_root is None
+    assert layout.canonical_executable is None
+    assert layout.needs_repair is False
+
+
+@patch("src.utils.updater.__version__", "1.0.0")
+@patch("src.utils.updater.print")
+def test_check_for_update_same_version_healthy_layout_is_already_current(mock_print, tmp_path, monkeypatch):
+    launcher, _ = _make_managed_install(tmp_path)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+    _same_version_release(monkeypatch)
+
+    result = updater.check_for_update()
+
+    assert result.outcome is CliUpgradeOutcome.ALREADY_CURRENT
+    assert launcher.resolve().read_text() == "#!/bin/sh\necho healthy\n"
+
+
+@patch("src.utils.updater.__version__", "1.0.0")
+@patch("src.utils.handoff.print")
+@patch("src.utils.updater.print")
+def test_check_for_update_same_version_repairs_nested_layout(
+    mock_print, mock_handoff_print, tmp_path, monkeypatch, handoff_chain
+):
+    """ENG-205: an already-current binary must not return before repairing a nested payload."""
+    private_tmp = _use_private_tempdir(tmp_path, monkeypatch)
+    launcher, app_root = _make_nested_managed_install(tmp_path)
+    bundle_dest = app_root / updater.APP_DIR_NAME
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+    _same_version_release(monkeypatch)
+
+    with pytest.raises(handoff_chain.replaced) as replaced:
+        updater.check_for_update()
+
+    result = replaced.value.result
+    assert result.outcome is CliUpgradeOutcome.REPAIRED
+    assert result.target_version == "1.0.0"
+    assert result.error_category is CliUpgradeErrorCategory.NONE
+    assert result.checksum_status is CliUpgradeChecksumStatus.NOT_REACHED
+
+    # The public launcher path is preserved and resolves straight to the canonical payload.
+    assert launcher.is_symlink()
+    assert launcher.readlink() == bundle_dest / updater.BINARY_NAME
+    canonical = bundle_dest / updater.BINARY_NAME
+    assert launcher.resolve() == canonical.resolve()
+    assert not canonical.is_symlink()
+    # The payload that was running (not the stale original) is what got promoted.
+    assert canonical.read_text() == "#!/bin/sh\necho running\n"
+    assert (bundle_dest / "_internal" / "marker").read_text() == "running\n"
+    assert not (bundle_dest / ".kickstart").exists()
+    assert sorted(entry.name for entry in app_root.iterdir()) == [updater.APP_DIR_NAME]
+
+    # Repair ran from a staged copy under the OS temp dir, then the canonical launcher cleaned it up.
+    assert [call.phase.value for call in handoff_chain.calls] == ["activate", "finalize"]
+    activate_call, finalize_call = handoff_chain.calls
+    assert activate_call.launcher.parent.parent.parent == private_tmp
+    assert activate_call.launcher.parent.parent.name.startswith(handoff.STAGE_PREFIX_REPAIR)
+    assert finalize_call.launcher == canonical
+    assert not activate_call.stage_dir.exists()
+    assert list(private_tmp.iterdir()) == []
+
+    messages = [c.args[0] for c in mock_print.call_args_list]
+    assert not any("already up to date" in m for m in messages)
+    assert any("repairing the install layout" in m for m in messages)
+    handoff_messages = [c.args[0] for c in mock_handoff_print.call_args_list]
+    assert any("Repaired the managed install layout" in m for m in handoff_messages)
+
+
+@patch("src.utils.updater.__version__", "1.0.0")
+@patch("src.utils.handoff.print")
+@patch("src.utils.updater.print")
+def test_check_for_update_repairs_wrapper_launched_nested_payload(
+    mock_print, mock_handoff_print, tmp_path, monkeypatch, handoff_chain
+):
+    """A wrapper install repairs in place; the wrapper keeps pointing at <app_root>/current/kickstart."""
+    _use_private_tempdir(tmp_path, monkeypatch)
+    _, app_root = _make_nested_managed_install(tmp_path)
+    bundle_dest = app_root / updater.APP_DIR_NAME
+    canonical = bundle_dest / updater.BINARY_NAME
+    wrapper = tmp_path / "wrapper-bin" / updater.BINARY_NAME
+    wrapper.parent.mkdir()
+    wrapper.write_text(f'#!/bin/sh\nexec "{canonical}" "$@"\n')
+    monkeypatch.setattr(updater.sys, "argv", [str(canonical)])
+    _same_version_release(monkeypatch)
+
+    with pytest.raises(handoff_chain.replaced) as replaced:
+        updater.check_for_update()
+
+    assert replaced.value.result.outcome is CliUpgradeOutcome.REPAIRED
+    assert not canonical.is_symlink()
+    assert canonical.read_text() == "#!/bin/sh\necho running\n"
+    assert not (bundle_dest / ".kickstart").exists()
+    assert wrapper.read_text() == f'#!/bin/sh\nexec "{canonical}" "$@"\n'
+    assert [call.phase.value for call in handoff_chain.calls] == ["activate", "finalize"]
+
+
+@patch("src.utils.updater.__version__", "1.0.0")
+@patch("src.utils.updater.print")
+def test_check_for_update_repair_staging_failure_leaves_install_untouched(mock_print, tmp_path, monkeypatch):
+    private_tmp = _use_private_tempdir(tmp_path, monkeypatch)
+    launcher, app_root = _make_nested_managed_install(tmp_path)
+    running = launcher.resolve()
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+    _same_version_release(monkeypatch)
+
+    def fail_copytree(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr("src.utils.handoff.shutil.copytree", fail_copytree)
+
+    result = updater.check_for_update()
+
+    assert result.outcome is CliUpgradeOutcome.FAILED
+    assert result.error_category is CliUpgradeErrorCategory.INSTALLATION
+    assert result.checksum_status is CliUpgradeChecksumStatus.NOT_REACHED
+    assert launcher.resolve() == running
+    assert (app_root / updater.APP_DIR_NAME / ".kickstart").is_dir()
+    assert list(private_tmp.iterdir()) == []
+    messages = [c.args[0] for c in mock_print.call_args_list]
+    assert any("could not stage the running payload" in m for m in messages)
+
+
+@patch("src.utils.updater.__version__", "1.0.0")
+@patch("src.utils.updater.print")
+def test_check_for_update_repair_exec_failure_is_a_clean_installation_failure(mock_print, tmp_path, monkeypatch):
+    """When the staged launcher cannot start (e.g. noexec temp), nothing is modified."""
+    private_tmp = _use_private_tempdir(tmp_path, monkeypatch)
+    launcher, app_root = _make_nested_managed_install(tmp_path)
+    running = launcher.resolve()
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+    _same_version_release(monkeypatch)
+
+    def refuse_exec(launcher_path, args, env):
+        raise PermissionError(13, "Permission denied", str(launcher_path))
+
+    monkeypatch.setattr("src.utils.handoff.exec_launcher", refuse_exec)
+
+    result = updater.check_for_update()
+
+    assert result.outcome is CliUpgradeOutcome.FAILED
+    assert result.error_category is CliUpgradeErrorCategory.INSTALLATION
+    assert launcher.resolve() == running
+    assert (app_root / updater.APP_DIR_NAME / ".kickstart").is_dir()
+    assert list(private_tmp.iterdir()) == []
+    messages = [c.args[0] for c in mock_print.call_args_list]
+    assert any("could not start the staged payload" in m for m in messages)
+    assert any("TMPDIR" in m for m in messages)
+
+
+@patch("src.utils.updater.__version__", "1.0.0")
+@patch("src.utils.handoff.print")
+@patch("src.utils.updater.print")
+def test_check_for_update_healthy_managed_upgrade_activates_through_handoff(
+    mock_print, mock_handoff_print, tmp_path, monkeypatch, handoff_chain
+):
+    """A healthy managed install never replaces <app_root>/current from inside it."""
+    _use_private_tempdir(tmp_path, monkeypatch)
+    monkeypatch.setattr(updater.sys, "platform", "linux")
+    monkeypatch.setattr(updater.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(updater, "host_python_minor", lambda: "3.14")
+    bundle_name = "kickstart-linux-x64-py3.14"
+    archive_bytes = _make_release_archive(tmp_path, bundle_name=bundle_name).read_bytes()
+    payload = _release_payload("v1.1.0", f"{bundle_name}.tar.gz", with_sha=False)
+
+    def fake_get(url, **kwargs):
+        response = MagicMock()
+        response.raise_for_status.return_value = None
+        if url.endswith("/releases/latest"):
+            response.json.return_value = payload
+        else:
+            response.content = archive_bytes
+            response.__enter__.return_value = response
+            response.__exit__.return_value = False
+        return response
+
+    launcher, app_root = _make_managed_install(tmp_path)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+
+    with patch("src.utils.updater.requests.get", side_effect=fake_get):
+        with pytest.raises(handoff_chain.replaced) as replaced:
+            updater.check_for_update()
+
+    result = replaced.value.result
+    assert result.outcome is CliUpgradeOutcome.UPDATED
+    assert result.target_version == "1.1.0"
+    assert result.checksum_status is CliUpgradeChecksumStatus.NOT_PUBLISHED
+    canonical = app_root / updater.APP_DIR_NAME / updater.BINARY_NAME
+    assert launcher.resolve() == canonical.resolve()
+    assert canonical.read_text().startswith("#!/bin/sh\necho ok")
+    assert [call.phase.value for call in handoff_chain.calls] == ["activate", "finalize"]
+    messages = [c.args[0] for c in mock_print.call_args_list]
+    assert not any("also repairs the layout" in m for m in messages)
+
+
+@patch("src.utils.updater.__version__", "1.0.0")
+@patch("src.utils.updater.print")
+def test_check_for_update_single_file_install_upgrades_in_process(mock_print, tmp_path, monkeypatch, handoff_chain):
+    """Legacy single-file launchers have no app root to protect and keep the in-process install."""
+    _use_private_tempdir(tmp_path, monkeypatch)
+    monkeypatch.setattr(updater.sys, "platform", "linux")
+    monkeypatch.setattr(updater.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(updater, "host_python_minor", lambda: "3.14")
+    bundle_name = "kickstart-linux-x64-py3.14"
+    archive_bytes = _make_release_archive(tmp_path, bundle_name=bundle_name).read_bytes()
+    payload = _release_payload("v1.1.0", f"{bundle_name}.tar.gz", with_sha=False)
+
+    def fake_get(url, **kwargs):
+        response = MagicMock()
+        response.raise_for_status.return_value = None
+        if url.endswith("/releases/latest"):
+            response.json.return_value = payload
+        else:
+            response.content = archive_bytes
+            response.__enter__.return_value = response
+            response.__exit__.return_value = False
+        return response
+
+    launcher = tmp_path / "bin" / updater.BINARY_NAME
+    launcher.parent.mkdir()
+    launcher.write_text("#!/bin/sh\necho single-file\n")
+    launcher.chmod(0o755)
+    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
+
+    with patch("src.utils.updater.requests.get", side_effect=fake_get):
+        result = updater.check_for_update()
+
+    assert result.outcome is CliUpgradeOutcome.UPDATED
+    assert handoff_chain.calls == []
+    assert launcher.is_symlink()
+    assert launcher.resolve().read_text().startswith("#!/bin/sh\necho ok")

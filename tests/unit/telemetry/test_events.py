@@ -477,3 +477,22 @@ def test_capture_helper_contains_unexpected_reporter_failures() -> None:
     )
 
     reporter.record.assert_called_once()
+
+
+def test_upgrade_event_reports_same_version_layout_repair() -> None:
+    """ENG-205: a same-version managed-layout repair is `repaired`, never a fake `updated`."""
+    result = UpgradeResult(
+        target_version="0.4.4",
+        outcome=CliUpgradeOutcome.REPAIRED,
+        error_category=CliUpgradeErrorCategory.NONE,
+        checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+    )
+
+    event = build_cli_upgrade_event(result, 2, cli_version="0.4.4", platform_name="Darwin", architecture="arm64")
+
+    properties = event.properties.as_mapping()
+    assert properties["outcome"] == "repaired"
+    assert properties["target_version"] == "0.4.4"
+    assert properties["cli_version"] == "0.4.4"
+    assert properties["error_category"] == "none"
+    assert properties["checksum_status"] == "not_reached"

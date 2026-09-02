@@ -63,6 +63,7 @@ class CliUpgradeOutcome(StrEnum):
     """Closed terminal outcomes for a self-upgrade invocation."""
 
     UPDATED = "updated"
+    REPAIRED = "repaired"
     ALREADY_CURRENT = "already_current"
     FAILED = "failed"
     CANCELLED = "cancelled"

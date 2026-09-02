@@ -148,8 +148,8 @@ The canonical install is the one this document describes: a launcher at
 `kickstart install`, which leads to the active managed payload under
 `~/.local/share/kickstart`. `kickstart upgrade` refreshes that managed
 installation while reusing the same launcher and managed app root on every
-run. A successful upgrade also collapses an accidentally nested payload left
-by older upgrade logic back into that stable root. Treat the payload's
+run, and repairs a payload that older upgrade logic nested under that root
+(see [Managed layout repair](#managed-layout-repair)). Treat the payload's
 internal path as an implementation detail and use `kickstart install --check`
 to inspect it. Nothing else should shadow the launcher. In particular, ad-hoc
 shims in personal `bin` directories (for example
@@ -189,3 +189,72 @@ and Python minor, verifies its SHA-256 against the published `.sha256` file,
 and re-uses the same installer code path described above to refresh the active
 managed installation. Do not script against the payload's internal directory;
 use `kickstart install --check` to inspect it.
+
+A managed install is never replaced from inside its own payload. Replacing
+`~/.local/share/kickstart/current` while the running executable lives in it
+removes that executable's files underneath it: the swap completes, but the
+process cannot continue and exits non-zero. `kickstart upgrade` therefore
+activates every new payload through a chain of process handoffs:
+
+1. The running `kickstart upgrade` verifies and extracts the release archive
+   into a staging directory under the OS temporary directory
+   (`$TMPDIR/kickstart-upgrade-*`), records what to activate, and replaces
+   itself with the staged launcher.
+2. The staged process, now outside the app root, replaces
+   `<app_root>/current` with the same staging-and-rollback guarantees as
+   `kickstart install`, checks that the launcher resolves exactly to
+   `<app_root>/current/kickstart`, and replaces itself with that launcher.
+3. The activated launcher removes the staging directory and prints the result.
+   Its own successful start is the proof that the activated payload runs.
+
+The exit status is that of the final step: zero after a successful activation,
+non-zero without touching the previous installation when staging or activation
+fails. If the temporary directory is mounted `noexec`, the staged launcher
+cannot start and the upgrade fails cleanly; retry with `TMPDIR` pointing at an
+executable location. A staging directory left behind by an interrupted run is
+safe to delete.
+
+Legacy single-file installs (no managed app root) keep the in-place overwrite.
+
+### Managed layout repair
+
+Releases before `v0.4.4` resolved the launcher symlink before discovering the
+app root, so upgrading from one of them installs the new release at
+`<app_root>/current/.kickstart/current/kickstart` and turns
+`<app_root>/current/kickstart` into a symlink pointing at it. The old
+executable controls that handoff, so the first upgrade from `v0.4.3` or older
+always produces the nested layout; only the next `kickstart upgrade`, run by the
+fixed binary, can repair it.
+
+`kickstart upgrade` inspects the managed layout before deciding it is already
+up to date. When the launcher resolves anywhere other than
+`<app_root>/current/kickstart`, it stages a copy of the running payload under
+`$TMPDIR/kickstart-repair-*` and runs the same handoff chain, which reactivates
+that payload in the canonical location, removes the nested `.kickstart`
+directory, and preserves the public launcher path:
+
+```text
+$ kickstart upgrade
+Checking for updates (current version: X.Y.Z)...
+⚠ The managed payload is nested under the app root; repairing the install layout...
+...
+✔ Repaired the managed install layout (version X.Y.Z).
+$ realpath "$(command -v kickstart)"
+/Users/you/.local/share/kickstart/current/kickstart
+```
+
+A same-version repair reports the `repaired` telemetry outcome (see
+[the telemetry contract](../contracts/telemetry.md)); an upgrade that also
+repairs the layout reports `updated`. Healthy managed installs, legacy
+single-file installs, and wrapper-script installs are left untouched and stay
+idempotent across repeated `kickstart upgrade` runs.
+
+`kickstart install --force` run from a payload that lives inside its own
+destination app root refuses instead of deleting itself, and points at
+`kickstart upgrade`. The manual fallback is the same as a fresh install: extract
+the release archive somewhere outside the app root and run
+`./kickstart-<platform>-py3.14/kickstart install --force` from there.
+
+`scripts/ci/legacy-layout-smoke.sh` reproduces the nesting with a real old
+release, then proves that a candidate build repairs it, refuses the
+self-destructive fallback, stays idempotent, and upgrades through the handoff.
