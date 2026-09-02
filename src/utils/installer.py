@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from src.utils.errors import SelfContainedInstallError
+
 
 DEFAULT_INSTALL_DIR: Path = Path.home() / ".local" / "bin"
 DEFAULT_APP_ROOT: Path = Path.home() / ".local" / "share" / "kickstart"
@@ -226,6 +228,14 @@ def _install_onedir_bundle(
     executable_destination = bundle_destination / name
     destination = target_dir / name
 
+    if _is_strictly_within(bundle_source, bundle_destination):
+        raise SelfContainedInstallError(
+            f"the source payload {bundle_source} lives inside the destination payload directory "
+            f"{bundle_destination}; replacing that directory would remove the payload being installed. "
+            "Run `kickstart upgrade` to repair a nested managed install, or run `kickstart install --force` "
+            "from a freshly extracted release archive."
+        )
+
     target_dir.mkdir(parents=True, exist_ok=True)
     resolved_app_root.mkdir(parents=True, exist_ok=True)
 
@@ -326,6 +336,13 @@ def _same_file(a: Path, b: Path) -> bool:
         return _safe_resolve(a) == _safe_resolve(b)
     except OSError:
         return False
+
+
+def _is_strictly_within(path: Path, directory: Path) -> bool:
+    """Return True when `path` resolves to a descendant of `directory` (never the directory itself)."""
+    resolved_path = _safe_resolve(path)
+    resolved_directory = _safe_resolve(directory)
+    return resolved_path != resolved_directory and resolved_path.is_relative_to(resolved_directory)
 
 
 def _onedir_bundle_root(source: Path, *, name: str = BINARY_NAME) -> Optional[Path]:

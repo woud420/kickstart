@@ -2,9 +2,12 @@
 
 `kickstart upgrade` queries the GitHub Releases API for the latest tag, picks
 the binary archive matching this host's platform and Python minor, verifies its
-SHA-256, extracts it to a temp directory, and re-uses `installer.install_binary`
-to overwrite the running launcher and (when this is an onedir install) refresh
-the binary payload directory.
+SHA-256, and extracts it to a temp directory. Legacy single-file installs are
+overwritten in place through `installer.install_binary`. Managed onedir
+installs are never replaced from inside their own payload: the extracted
+bundle is activated through the process handoff in `src.utils.handoff`, which
+also repairs a managed layout whose payload an older updater nested under
+``<app_root>/current`` even when no newer release exists.
 """
 
 from __future__ import annotations
@@ -12,13 +15,17 @@ from __future__ import annotations
 import hashlib
 import os
 import platform
+import shutil
 import sys
 import tarfile
 import tempfile
+import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, TypedDict, cast
 
 import requests
+from rich import print
 
 from src import __version__
 from src.model.dto.telemetry import (
@@ -27,10 +34,20 @@ from src.model.dto.telemetry import (
     CliUpgradeOutcome,
 )
 from src.model.dto.upgrade import UNKNOWN_TARGET_VERSION, UpgradeResult, normalize_target_version
+from src.utils.handoff import (
+    STAGE_PREFIX_UPGRADE,
+    Handoff,
+    HandoffMode,
+    create_stage_dir,
+    handoff_to_staged,
+    stage_running_bundle,
+)
 from src.utils.installer import (
     APP_DIR_NAME,
     BINARY_NAME,
     InstallResult,
+    _onedir_bundle_root,
+    _safe_resolve,
     current_entrypoint_path,
     default_app_root,
     install_binary,
@@ -38,7 +55,9 @@ from src.utils.installer import (
 
 
 REPO: str = os.environ.get("KICKSTART_REPO") or "woud420/kickstart"
-RELEASE_URL: str = f"https://api.github.com/repos/{REPO}/releases/latest"
+# KICKSTART_RELEASE_URL lets release-binary smoke tests serve a local fake
+# release; production always derives the URL from the repository.
+RELEASE_URL: str = os.environ.get("KICKSTART_RELEASE_URL") or f"https://api.github.com/repos/{REPO}/releases/latest"
 
 
 class ReleaseAsset(TypedDict):
@@ -129,6 +148,42 @@ def resolve_current_install_layout() -> tuple[Path, Optional[Path]]:
     return launcher_dir, None
 
 
+@dataclass(frozen=True)
+class ManagedLayout:
+    """Where the running install lives and whether its managed payload needs repair."""
+
+    launcher_dir: Path
+    app_root: Optional[Path]
+    actual_executable: Path
+    canonical_executable: Optional[Path]
+
+    @property
+    def needs_repair(self) -> bool:
+        """True when a managed launcher executes anything but ``<app_root>/current/kickstart``."""
+        return self.canonical_executable is not None and self.actual_executable != self.canonical_executable
+
+
+def inspect_managed_layout() -> ManagedLayout:
+    """Describe the running install.
+
+    Older updaters resolved the launcher before discovering the app root and
+    installed the new payload under ``<app_root>/current/.kickstart/current``,
+    leaving ``<app_root>/current/kickstart`` as a symlink into it. The public
+    launcher still reveals the app root through its first symlink target, so
+    drift is simply the real executable differing from the canonical path.
+    Legacy single-file installs have no app root and are never repaired.
+    """
+    launcher_dir, app_root = resolve_current_install_layout()
+    actual = _safe_resolve(current_entrypoint_path())
+    canonical = None if app_root is None else _safe_resolve(app_root / APP_DIR_NAME) / BINARY_NAME
+    return ManagedLayout(
+        launcher_dir=launcher_dir,
+        app_root=app_root,
+        actual_executable=actual,
+        canonical_executable=canonical,
+    )
+
+
 def fetch_release_info(url: str = RELEASE_URL) -> ReleaseInfo:
     """Return the GitHub Releases payload for the latest release."""
     response = requests.get(url, timeout=10)
@@ -165,7 +220,13 @@ def _extract_archive_launcher(archive_path: Path, dest_root: Path) -> Path:
 
 
 def check_for_update() -> UpgradeResult:
-    """Check for updates, install the newest release, and return a safe terminal result."""
+    """Check for updates, install the newest release, and return a safe terminal result.
+
+    Managed onedir installs do not return from a successful upgrade or repair:
+    the process replaces itself with the staged payload (see `src.utils.handoff`)
+    and a later hop reports the terminal result instead.
+    """
+    started_at = time.time()
     print(f"[cyan]Checking for updates (current version: {__version__})...")
 
     try:
@@ -206,14 +267,17 @@ def check_for_update() -> UpgradeResult:
 
     latest = tag_name.lstrip("v")
     target_version = normalize_target_version(tag_name)
+    layout = inspect_managed_layout()
     if latest == __version__:
-        print("[green]✅ You're already up to date.")
-        return UpgradeResult(
-            target_version=target_version,
-            outcome=CliUpgradeOutcome.ALREADY_CURRENT,
-            error_category=CliUpgradeErrorCategory.NONE,
-            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
-        )
+        if not layout.needs_repair:
+            print("[green]✅ You're already up to date.")
+            return UpgradeResult(
+                target_version=target_version,
+                outcome=CliUpgradeOutcome.ALREADY_CURRENT,
+                error_category=CliUpgradeErrorCategory.NONE,
+                checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+            )
+        return _repair_managed_layout(layout, target_version, started_at)
 
     try:
         archive_name = expected_archive_name()
@@ -240,13 +304,19 @@ def check_for_update() -> UpgradeResult:
         )
 
     hash_asset = find_asset(assets, f"{archive_name}.sha256")
-    launcher_dir, app_root = resolve_current_install_layout()
+    launcher_dir, app_root = layout.launcher_dir, layout.app_root
 
     print(f"[yellow]⬆ New version available: {latest} — downloading {archive_name}...")
     print(f"  launcher dir: {launcher_dir}")
     print(f"  app root:     {app_root or default_app_root(launcher_dir)}")
+    if layout.needs_repair:
+        print("[yellow]⚠ The managed payload is nested under the app root; this upgrade also repairs the layout.")
 
-    with tempfile.TemporaryDirectory(prefix="kickstart-upgrade-") as raw_dir:
+    # The staging directory doubles as the handoff directory for managed
+    # installs. A successful handoff never returns, so the context manager
+    # only cleans up on the in-process and failure paths; the final hop of the
+    # handoff removes the directory otherwise.
+    with tempfile.TemporaryDirectory(prefix=STAGE_PREFIX_UPGRADE) as raw_dir:
         tmp = Path(raw_dir)
         archive_path = tmp / archive_name
 
@@ -303,6 +373,18 @@ def check_for_update() -> UpgradeResult:
                 checksum_status=checksum_status,
             )
 
+        if app_root is not None and _onedir_bundle_root(launcher) is not None:
+            handoff = Handoff(
+                mode=HandoffMode.UPGRADE,
+                launcher_dir=launcher_dir,
+                app_root=app_root,
+                bundle_launcher=launcher,
+                target_version=target_version,
+                checksum_status=checksum_status,
+                started_at=started_at,
+            )
+            return _hand_off(handoff, tmp)
+
         try:
             result: InstallResult = install_binary(
                 launcher,
@@ -329,3 +411,52 @@ def check_for_update() -> UpgradeResult:
         error_category=CliUpgradeErrorCategory.NONE,
         checksum_status=checksum_status,
     )
+
+
+def _repair_managed_layout(layout: ManagedLayout, target_version: str, started_at: float) -> UpgradeResult:
+    """Stage the running payload and hand off so the nested layout is repaired from outside it."""
+    assert layout.app_root is not None
+    print("[yellow]⚠ The managed payload is nested under the app root; repairing the install layout...")
+    print(f"  launcher dir: {layout.launcher_dir}")
+    print(f"  app root:     {layout.app_root}")
+    print(f"  payload:      {layout.actual_executable.parent}")
+    stage_dir = create_stage_dir(HandoffMode.REPAIR)
+    try:
+        staged_launcher = stage_running_bundle(stage_dir)
+    except Exception as exc:
+        shutil.rmtree(stage_dir, ignore_errors=True)
+        print(f"[red]✖ Repair failed: could not stage the running payload: {exc}")
+        return UpgradeResult(
+            target_version=target_version,
+            outcome=CliUpgradeOutcome.FAILED,
+            error_category=CliUpgradeErrorCategory.INSTALLATION,
+            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        )
+    handoff = Handoff(
+        mode=HandoffMode.REPAIR,
+        launcher_dir=layout.launcher_dir,
+        app_root=layout.app_root,
+        bundle_launcher=staged_launcher,
+        target_version=target_version,
+        checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
+        started_at=started_at,
+    )
+    result = _hand_off(handoff, stage_dir)
+    shutil.rmtree(stage_dir, ignore_errors=True)
+    return result
+
+
+def _hand_off(handoff: Handoff, stage_dir: Path) -> UpgradeResult:
+    """Replace this process with the staged launcher; return a failure only when that is impossible."""
+    print(f"  staging:      {stage_dir}")
+    try:
+        handoff_to_staged(handoff, stage_dir)
+    except OSError as exc:
+        print(f"[red]✖ Update failed: could not start the staged payload: {exc}")
+        print("  If the temporary directory is mounted noexec, retry with TMPDIR pointing at an executable location.")
+        return UpgradeResult(
+            target_version=handoff.target_version,
+            outcome=CliUpgradeOutcome.FAILED,
+            error_category=CliUpgradeErrorCategory.INSTALLATION,
+            checksum_status=handoff.checksum_status,
+        )

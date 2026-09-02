@@ -4,6 +4,7 @@ import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+import time
 from pathlib import Path
 from time import monotonic
 from typing import Optional, cast
@@ -54,6 +55,15 @@ from src.telemetry.events import (
 )
 from src.utils.config import load_config
 from src.utils.errors import KickstartError
+from src.utils.handoff import (
+    HANDOFF_COMMAND,
+    Handoff,
+    HandoffPhase,
+    activate,
+    finalize,
+    load_handoff,
+    unknown_failure,
+)
 from src.utils.installer import (
     BINARY_NAME,
     DEFAULT_APP_ROOT,
@@ -135,6 +145,51 @@ def upgrade() -> None:
                 monotonic() - started_at,
                 cli_version=__version__,
             )
+
+
+@app.command(HANDOFF_COMMAND, hidden=True)
+def managed_layout_handoff(
+    stage_dir: Path = typer.Option(..., "--stage-dir", help="Staging directory holding the handoff manifest."),
+    phase: HandoffPhase = typer.Option(..., "--phase", help="Handoff hop to run."),
+) -> None:
+    """Continue a staged upgrade or managed-layout repair started by `kickstart upgrade`.
+
+    Internal. `activate` runs in the staged payload outside the app root and
+    replaces `<app_root>/current`; `finalize` runs in the activated payload,
+    removes the staging directory, and reports the single terminal result.
+    """
+    fallback_started_at = time.time()
+    handoff: Handoff | None = None
+    result: UpgradeResult | None = None
+    exit_code = 0
+    try:
+        handoff = load_handoff(stage_dir)
+        if phase is HandoffPhase.ACTIVATE:
+            result = activate(handoff, stage_dir)
+        else:
+            result = finalize(handoff, stage_dir)
+    except KeyboardInterrupt:
+        result = (
+            handoff.failure(CliUpgradeErrorCategory.INTERRUPTED)
+            if handoff is not None
+            else unknown_failure(CliUpgradeErrorCategory.INTERRUPTED)
+        )
+        raise
+    except Exception as exc:
+        print(f"[red]✖ Update failed: {exc}")
+        if phase is HandoffPhase.ACTIVATE and handoff is not None:
+            print("  The previous installation was left in place.")
+        category = (
+            CliUpgradeErrorCategory.INSTALLATION if handoff is not None else CliUpgradeErrorCategory.UNEXPECTED_ERROR
+        )
+        result = handoff.failure(category) if handoff is not None else unknown_failure(category)
+        exit_code = 1
+    finally:
+        if result is not None:
+            started_at = handoff.started_at if handoff is not None else fallback_started_at
+            capture_cli_upgrade_terminal(result, time.time() - started_at, cli_version=__version__)
+    if exit_code:
+        raise typer.Exit(code=exit_code)
 
 
 export_app: typer.Typer = typer.Typer(help="Deterministic exporters derived from scaffold state.")
