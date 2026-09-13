@@ -44,12 +44,10 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 
 ## Validation
 
-Use:
+Run the aggregate gate once for the source state being verified; it includes lint,
+typecheck, and tests. Use individual targets during iteration.
 
 ```bash
-make lint
-make typecheck
-make tests
 make check
 ```
 
