@@ -47,9 +47,9 @@ them:
 
 3. Preview locally with `cd website && bun run dev` when copy changes are
    substantial.
-4. Merge; the release workflow deploys on the next stable tag (or retag the
-   current release line for same-version copy fixes per
-   `docs/release-policy.md`).
+4. Deliver the verified source change or requested PR. When publication is
+   authorized, merge; the release workflow deploys on the next stable tag (or
+   an authorized same-version retag per `docs/release-policy.md`).
 
 ## Rules
 
