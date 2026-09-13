@@ -7,7 +7,7 @@ description: Run kickstart's scaffold-shape and generated-make-test evals after 
 
 ## Hot Path
 
-One entrypoint, tiered:
+Run one tiered entrypoint for the scope being verified:
 
 ```bash
 PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier pr    # or smoke / full
@@ -25,6 +25,11 @@ Use this skill after changing generators, layouts, template plans, language
 setup plans, stack defaults, or templates — anything that alters generated
 output. `make check` proves the code is healthy; these evals prove the
 generated projects are. Full context: `docs/evals.md`.
+
+The individual commands below are alternatives for focused iteration, not an
+additional checklist after a tier already covered them. Reuse a passing result
+for unchanged generator, template, fixture, toolchain, and dependency inputs.
+After a relevant fix, rerun the affected checks and the required completion tier.
 
 ## Scaffold Shape
 
@@ -80,8 +85,9 @@ PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
 
 Non-zero exit means a case failed generation, taste, capability-test
 coverage (every manifest capability needs a generated test), or check —
-fix the template, rerun, and stop iterating only after consecutive clean
-runs. CI gates four cases per PR; the Scheduled Evals workflow runs the
+fix the template and rerun the affected checks. Repeat an unchanged clean run
+only when investigating nondeterminism or when a specific eval requires it.
+CI gates four cases per PR; the Scheduled Evals workflow runs the
 full matrix weekly against live toolchains.
 
 ## Token Savings
