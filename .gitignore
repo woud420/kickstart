@@ -7,6 +7,11 @@ __pycache__/
 !/.env.example
 .mypy_cache/
 .claude/settings.local.json
+
+# Local experiment outputs and worktrees
+/autoresearch/
+.claude/worktrees/
+
 /kickstart
 build/
 dist/
