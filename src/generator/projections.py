@@ -108,7 +108,7 @@ def agent_map_content(contract: ScaffoldContract, profile: ProjectionProfile = P
     return (
         "# Agent Map\n\n"
         "## Orientation\n"
-        "- Start with `README.md` for project intent and first commands.\n"
+        "- Read `README.md` when project intent or commands are unclear; otherwise use the references relevant to the task.\n"
         "- Use `docs/architecture/` for structure and boundaries.\n"
         "- Use `docs/contracts/` for public and external surfaces.\n"
         "- Use `docs/operations/` for local dev, validation, and deployment notes.\n"
