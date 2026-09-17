@@ -10,7 +10,14 @@ PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier pr      # what C
 PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier full    # full matrix + tokens + determinism + website
 ```
 
-Individual evals below remain directly runnable for iteration.
+Individual evals below remain directly runnable for iteration; do not rerun them
+after a passing tier already covered the same inputs. Reuse successful results
+while generator, template, fixture, toolchain, and dependency inputs are unchanged.
+Rerun affected checks after a relevant fix; repeat unchanged clean runs only to
+investigate nondeterminism or satisfy a specific eval's repetition contract.
+State the completed tier and coverage when reporting results. The full supported
+matrix is still required for a claim of full validation, and releases retain their
+full-tier gate.
 
 kickstart has two useful local eval layers:
 
