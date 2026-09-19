@@ -11,6 +11,13 @@ Use this skill when asked to release a new kickstart version, retag the
 current release line, or prepare a release PR. The full policy is
 `docs/release-policy.md`; this is the executable path through it.
 
+## Authorized phase
+
+For a version bump or release-PR preparation request, finish the source edits and
+local verification, then deliver the requested source change, draft, or PR. Merge
+release commits, push release tags, and publish only when the task authorizes releasing. An existing release request
+authorizes its described publication steps; do not ask again for that same scope.
+
 ## Versioned Release
 
 1. Bump `pyproject.toml:[project].version` and `src/__init__.py:__version__`
@@ -33,7 +40,8 @@ current release line, or prepare a release PR. The full policy is
    PYTHONPATH=$(pwd) poetry run python scripts/run_evals.py --tier full
    ```
 
-5. Merge to `master`. The `Auto Tag Release` workflow tags the merge commit
+5. When publishing is authorized, merge to `master`. The `Auto Tag Release`
+   workflow tags the merge commit
    automatically when the `RELEASE_TAG_TOKEN` secret is configured (it
    re-runs `make release-check` first and never moves an existing tag).
    Without the secret the workflow fails — tag and push manually, pointing
@@ -58,8 +66,9 @@ current release line, or prepare a release PR. The full policy is
 ## Same-Version Updates
 
 For docs, website copy, tests, or non-behavior fixes: do not bump the
-version. Merge, then retag the current release line onto the new `master`
-HEAD. Release assets are overwritten.
+version. Prepare and verify the change first. When publication is authorized,
+merge, then retag the current release line onto the new `master` HEAD. Release
+assets are overwritten.
 
 Precondition: the current version must actually be tagged. A
 merged-but-untagged version bump makes every same-version retag fail
@@ -80,6 +89,7 @@ the pending version first.
 
 ## Report Back
 
-Report the tag, the release workflow run URL and per-job conclusions, and
-the deployed website version (https://kickstart-cli.org must show the new
+For preparation, report the source changes, local verification, and draft or PR.
+For a published release, report the tag, workflow run URL and per-job conclusions,
+and the deployed website version (https://kickstart-cli.org must show the new
 version after the workflow finishes).

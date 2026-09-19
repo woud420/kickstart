@@ -16,6 +16,13 @@ Validate the release tag locally with:
 make release-check TAG=v0.4.1
 ```
 
+## Preparation and publication
+
+A version bump or release-PR request authorizes source preparation and verification.
+Merge release commits, push release tags, and publish only when the task includes releasing.
+Complete the requested preparation before handing off; a fully authorized release
+remains incomplete until the live release verification below passes.
+
 ## Versioned Releases
 
 Use a new version when generated behavior, installable output, public CLI behavior, or release assets change.
