@@ -8,6 +8,7 @@
 - [Pseudonymous CLI Telemetry](contracts/telemetry.md): default-on policy, persistent opt-out, identity, lifecycle events, and data-minimization contract.
 - [Scaffold Contract](scaffold-contract.md): generated docs, metadata, and option vocabulary.
 - [Decisions](decisions/README.md): durable project decisions.
+- [Architecture Evidence Pilot](decisions/architecture-evidence-pilot.md): holdout results and the decision to keep graph analysis portable and report-only.
 - [CLI Framework Research](decisions/cli-framework-research.md): sourced recommendation for Rust, Python, and TypeScript CLI framework defaults.
 - [Operations](operations/README.md): development, validation, release, and maintenance runbooks.
 - [Local Evals](evals.md): generated scaffold matrix and generated-project validation commands.
