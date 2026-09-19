@@ -43,9 +43,6 @@ Keep fixture updates in the same commit as the generator change that required th
 ## Test Commands
 
 ```bash
-make lint
-make typecheck
-make tests
 make check
 ```
 
