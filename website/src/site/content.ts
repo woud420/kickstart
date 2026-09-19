@@ -33,10 +33,10 @@ export interface ReleaseNote {
 }
 
 export const defaultProjectMeta: ProjectMeta = {
-  latestVersion: "0.4.4",
+  latestVersion: "0.4.5",
   supportedFrom: "0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
-  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.4",
+  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.5",
 };
 
 export const commandExamples: CommandExample[] = [
@@ -254,6 +254,18 @@ export const isNotPoints: PositioningPoint[] = [
 ];
 
 export const releaseNotes: ReleaseNote[] = [
+  {
+    version: "0.4.5",
+    title: "Staged self-upgrades and legacy layout repair",
+    body: "Managed installs are never replaced from inside their own running payload: kickstart upgrade activates every payload through a staged process handoff, repairs the nested layout older updaters left behind, and refuses self-destructive reinstalls. Import cycles are gone from kickstart and from generated Python services.",
+    highlights: [
+      "kickstart upgrade stages the payload outside the app root, hands off to it to replace <app_root>/current with rollback, then hands off to the activated launcher, which cleans up and reports the single result.",
+      "A payload nested under <app_root>/current/.kickstart by a pre-v0.4.4 updater is repaired even when no newer release exists; the public launcher path is preserved and the same-version repair reports the repaired telemetry outcome.",
+      "kickstart install --force refuses to run from a payload nested inside its own destination instead of deleting itself, and points at kickstart upgrade.",
+      "Upgrading from v0.4.4 still runs the old in-process updater: the swap completes, the old process may exit non-zero, and a second kickstart upgrade verifies or repairs the layout.",
+      "Generated Python services import the in-memory repository from model.repository, and src.model.dto and src.stack no longer re-export submodule names.",
+    ],
+  },
   {
     version: "0.4.4",
     title: "Managed docs, catalog export, and reliable self-upgrades",

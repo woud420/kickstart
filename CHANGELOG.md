@@ -11,6 +11,55 @@ if a merged version ever sits untagged.
 
 Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 
+## v0.4.5 - 2026-09-02
+
+Self-upgrade reliability release. Managed installs are no longer replaced from
+inside their own running payload, the nested layout left behind by pre-`v0.4.4`
+updaters is repaired automatically, and package initialization cycles are gone
+from both kickstart and the generated Python service scaffold.
+
+### Fixed
+
+- `kickstart upgrade` activates every managed payload through a staged process
+  handoff: the running binary stages the payload under the OS temporary
+  directory, hands off to it, and the staged process replaces
+  `<app_root>/current` from outside it before handing off to the activated
+  launcher, which removes the staging directory and reports the result.
+  Replacing the payload in-process removed the running PyInstaller executable
+  underneath itself (the swap completed, the process exited non-zero).
+- `kickstart upgrade` inspects the managed layout before concluding it is
+  already up to date. A payload nested under `<app_root>/current/.kickstart`
+  by a pre-`v0.4.4` updater is reactivated in the canonical location even when
+  no newer release exists; the public launcher path is preserved and the
+  `repaired` telemetry outcome records the same-version repair.
+- `kickstart install --force` refuses to run from a payload nested inside its
+  own destination app root instead of deleting itself, and points at
+  `kickstart upgrade`.
+- `kickstart upgrade` output renders its markup instead of printing literal
+  `[cyan]`/`[green]` tags.
+- Generated Python services import the in-memory repository from
+  `model.repository` instead of re-exporting it from the `model` package,
+  removing the model/repository import cycle in generated code.
+
+### Changed
+
+- `src.model.dto` and `src.stack` no longer re-export their submodules'
+  names; import telemetry DTOs and `stack_registry` from their defining
+  modules.
+- `KICKSTART_RELEASE_URL` overrides the release lookup so release-binary smoke
+  tests can serve a local fake release. `scripts/ci/legacy-layout-smoke.sh`
+  reproduces the pre-`v0.4.4` nesting with a real old release and proves the
+  repair, idempotency, the refused self-install, and an upgrade through the
+  handoff.
+
+### Upgrading from v0.4.4
+
+The upgrade into `v0.4.5` is still performed by the `v0.4.4` updater, which
+replaces the payload in-process. Expect the swap to complete and the old
+process to exit non-zero with a PyInstaller "moved or deleted" message. Run
+`kickstart upgrade` again: the `v0.4.5` binary reports `already up to date`
+on a healthy layout or repairs a nested one. Later upgrades use the handoff.
+
 ## v0.4.4 - 2026-07-19
 
 Managed-docs, catalog-export, and upgrade-reliability release. Kickstart can
