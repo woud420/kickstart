@@ -29,7 +29,7 @@ Use `create frontend NAME --root ...` for frontends and `create lib NAME --lang 
 - Use `--gh` only when the user explicitly asks to create a GitHub repository.
 - Keep generated output separate from unrelated worktrees unless given a destination.
 - Do not commit generated projects unless the user explicitly asks.
-- If an option is rejected, report the error and choose an alternative only with user consent.
+- If an option is rejected, check the supported syntax and use an equivalent option within the requested scope. Ask only when the alternative changes the requested stack, behavior, destination, or permission boundary.
 - Cloudflare Workers are a Worker runtime, not Docker containers.
 - Add CLI commands through the generated framework: clap for Rust, Typer for Python, oclif for TypeScript.
 - Put CLI product behavior under `src/operations`; clients under `src/clients`; DTOs under `src/model`; output formatting under `src/output`; exit/error behavior under `src/error`.
