@@ -18,7 +18,7 @@
       "cloudflare-workers"
     ]
   },
-  "generated_by": "kickstart",
+  "generated_by": "kickstart@0.4.5",
   "knowledge_adapter": "none",
   "lifecycle": {
     "check": "make check",
@@ -29,6 +29,7 @@
   },
   "project": {
     "kind": "worker",
+    "language": "typescript",
     "name": "hello-worker",
     "repo_layout": "single-project"
   },
@@ -37,6 +38,6 @@
       "cloudflare"
     ]
   },
-  "schema_version": "3.0",
+  "schema_version": "3.2",
   "semantics": "https://github.com/woud420/kickstart/blob/v0.4.5/docs/scaffold-contract.md"
 }

@@ -22,9 +22,9 @@ Statuses per managed artifact:
   recorded; its ownership fence is still parsed and verified, only the byte
   comparison is skipped.
 
-A worker-kind manifest cannot say which language generated it (the schema-3.0
-expressiveness gap), so worker repos are compared against both the TypeScript
-worker docs profile and the default profile and match either.
+A worker-kind manifest with recorded language selects exactly one docs profile.
+Legacy manifests without language match either the TypeScript Worker profile or
+the default Rust Worker profile.
 """
 
 from __future__ import annotations
@@ -139,11 +139,15 @@ def _contract_from_repo(resolved: Path) -> ScaffoldContract:
 
 
 def _candidate_profiles(contract: ScaffoldContract) -> tuple[ProjectionProfile, ...]:
-    # Schema 3.0 never recorded worker language, so a worker manifest is
-    # ambiguous between the TS worker docs profile and the default docs a
-    # Rust worker gets; accept a byte-exact match against either.
     if contract.project_kind == "worker":
-        return (PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER, PROFILE_DEFAULT)
+        # Legacy manifests lack the datum needed to select one profile.
+        if contract.language is None:
+            return (PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER, PROFILE_DEFAULT)
+        if contract.language == "typescript":
+            return (PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER,)
+        if contract.language == "rust":
+            return (PROFILE_DEFAULT,)
+        raise DocsPlanTargetError(f"unsupported Worker project.language: {contract.language!r}")
     return (PROFILE_DEFAULT,)
 
 

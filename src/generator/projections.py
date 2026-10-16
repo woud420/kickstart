@@ -8,11 +8,10 @@ profile, and (for the architecture README) the generation-time title and
 directory list — with no timestamps or environment reads, so the same
 inputs always produce the same bytes.
 
-Two of those inputs are generation-time knowledge the persisted manifest
-does not record yet: the projection profile and the architecture
-title/directories. Re-deriving expected docs from ``.kickstart/scaffold.json``
-alone therefore covers the default-profile docs set today; closing that gap
-is the render-inputs work in the metadata review's roadmap (§6 step 1).
+Worker projection profiles are recoverable from recorded project language;
+legacy manifests without language remain ambiguous. Architecture titles and
+directory lists still require generation-time inputs that the manifest does
+not record, so the architecture README remains presence-checked by planning.
 
 ``DocsProjection`` deliberately parallels ``ContentFile``
 (``src/generator/file_plan.py``, the payload writes are converted into) and

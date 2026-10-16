@@ -136,6 +136,7 @@ class LibraryGenerator(BaseGenerator):
             architecture_title=f"{self.name} Library Docs",
             scaffold_contract=ScaffoldContract(
                 project_kind="library",
+                language=self.lang,
                 execution_models=("library",),
                 runtime_platforms=("none",),
                 artifacts=ScaffoldArtifacts(package=self.lang),
@@ -213,6 +214,8 @@ class CLIGenerator(LibraryGenerator):
             architecture_title=f"{self.name} CLI Docs",
             scaffold_contract=ScaffoldContract(
                 project_kind="cli",
+                language=self.lang,
+                framework=self._cli_framework(),
                 execution_models=("cli",),
                 runtime_platforms=("local",),
                 artifacts=ScaffoldArtifacts(package=self.lang),

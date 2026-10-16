@@ -81,6 +81,8 @@ class ScaffoldProjectManifest(TypedDict):
     name: str
     kind: ProjectKind
     repo_layout: RepoLayout
+    language: NotRequired[str]
+    framework: NotRequired[str]
     architecture: NotRequired[str]
     cli_framework: NotRequired[str]
     command_root: NotRequired[str]
@@ -266,9 +268,12 @@ class ScaffoldContract:
     entrypoint: str | None = None
     operation_root: str | None = None
     src_root_files: tuple[str, ...] = ()
-    # 3.0: option_semantics (a static glossary object) was removed in favor
-    # of the `semantics` reference URL — a field removal, hence a major bump.
-    schema_version: str = "3.0"
+    # 3.2 records optional project language and framework choices.
+    schema_version: str = "3.2"
+    generated_by: str = f"kickstart@{__version__}"
+    semantics_reference: str = SEMANTICS_REFERENCE
+    language: str | None = None
+    framework: str | None = None
 
     def manifest(self, project_name: str) -> ScaffoldManifest:
         """Return the JSON-serializable scaffold manifest."""
@@ -277,6 +282,10 @@ class ScaffoldContract:
             "kind": self.project_kind,
             "repo_layout": self.repo_layout,
         }
+        if self.language is not None:
+            project_manifest["language"] = self.language
+        if self.framework is not None:
+            project_manifest["framework"] = self.framework
         if self.architecture is not None:
             project_manifest["architecture"] = self.architecture
         if self.cli_framework is not None:
@@ -292,7 +301,7 @@ class ScaffoldContract:
 
         manifest: ScaffoldManifest = {
             "schema_version": self.schema_version,
-            "generated_by": "kickstart",
+            "generated_by": self.generated_by,
             "project": project_manifest,
             "execution": {
                 "models": list(self.execution_models),
@@ -310,7 +319,7 @@ class ScaffoldContract:
                 "operations": "docs/operations/",
                 "decisions": "docs/decisions/",
             },
-            "semantics": SEMANTICS_REFERENCE,
+            "semantics": self.semantics_reference,
         }
         if self.project_kind == "system":
             system_manifest = SystemScaffoldManifest(
@@ -426,6 +435,15 @@ class ScaffoldContract:
                 f"unsupported manifest schema_version '{schema_version}': this inverse understands 3.x only"
             )
 
+        framework = _optional_string(project, "framework")
+        cli_framework = _optional_string(project, "cli_framework")
+        if kind == "cli" and framework is not None and cli_framework is not None and framework != cli_framework:
+            raise ManifestShapeError("manifest project.framework and project.cli_framework disagree")
+
+        generated_by = manifest.get("generated_by", "kickstart")
+        if not isinstance(generated_by, str):
+            raise ManifestShapeError("manifest field 'generated_by' is not a string")
+
         return cls(
             project_kind=cast(ProjectKind, kind),
             execution_models=_string_items(execution.get("models", []), "execution.models"),
@@ -458,12 +476,16 @@ class ScaffoldContract:
             repo_layout=cast(RepoLayout, repo_layout),
             workspace_tooling=workspace_tooling,
             architecture=_optional_string(project, "architecture"),
-            cli_framework=_optional_string(project, "cli_framework"),
+            cli_framework=cli_framework,
             command_root=_optional_string(project, "command_root"),
             entrypoint=_optional_string(project, "entrypoint"),
             operation_root=_optional_string(project, "operation_root"),
             src_root_files=_string_items(project.get("src_root_files", []), "project.src_root_files"),
             schema_version=schema_version,
+            generated_by=generated_by,
+            semantics_reference=_optional_string(manifest, "semantics") or SEMANTICS_REFERENCE,
+            language=_optional_string(project, "language"),
+            framework=framework,
         )
 
     @property

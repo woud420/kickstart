@@ -171,6 +171,8 @@ class ServiceGenerator(BaseGenerator):
             architecture_title=architecture_title,
             scaffold_contract=ScaffoldContract(
                 project_kind="service",
+                language=self.lang,
+                framework=("minimal" if self.framework == "minimal" else "fastapi") if self.lang == "python" else None,
                 execution_models=("container",),
                 runtime_platforms=("kubernetes",) if self.helm else ("local",),
                 artifacts=ScaffoldArtifacts(
@@ -235,6 +237,7 @@ class ServiceGenerator(BaseGenerator):
             architecture_title=architecture_title,
             scaffold_contract=ScaffoldContract(
                 project_kind="worker",
+                language=self.lang,
                 execution_models=("cloudflare-worker",),
                 runtime_platforms=("cloudflare-workers",),
                 artifacts=ScaffoldArtifacts(worker="wrangler"),

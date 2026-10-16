@@ -91,6 +91,7 @@ def test_create_scaffold_contract_docs(base_generator, tmp_path):
         assert (tmp_path / "docs/operations/README.md").exists()
         assert (tmp_path / "docs/decisions/README.md").exists()
         manifest = json.loads((tmp_path / ".kickstart/scaffold.json").read_text())
+        assert manifest["schema_version"] == "3.2"
         assert manifest["project"] == {
             "name": "test-project",
             "kind": "service",

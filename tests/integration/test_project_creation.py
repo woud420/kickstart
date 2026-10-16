@@ -134,6 +134,8 @@ class TestServiceCreation:
         assert manifest["project"] == {
             "name": service_name,
             "kind": "service",
+            "language": "python",
+            "framework": "fastapi",
             "repo_layout": "single-project",
         }
         assert manifest["execution"] == {"models": ["container"], "platforms": ["local"]}
@@ -322,6 +324,7 @@ class TestServiceCreation:
         assert manifest["project"] == {
             "name": service_name,
             "kind": "worker",
+            "language": "typescript",
             "repo_layout": "single-project",
         }
         assert manifest["execution"] == {

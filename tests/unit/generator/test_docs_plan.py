@@ -1,6 +1,7 @@
 """Read-only docs plan: per-scenario statuses and manifest round-trips."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -271,3 +272,23 @@ def test_from_manifest_rejects_bad_shapes() -> None:
     for manifest in (no_project, bad_kind, bad_models, bad_schema, bad_knowledge):
         with pytest.raises(ManifestShapeError):
             ScaffoldContract.from_manifest(manifest)
+
+
+@pytest.mark.parametrize(
+    ("language", "correct", "wrong"),
+    [
+        ("typescript", PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER, PROFILE_DEFAULT),
+        ("rust", PROFILE_DEFAULT, PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER),
+    ],
+)
+def test_known_worker_language_rejects_wrong_docs_profile(
+    tmp_path: Path, language: str, correct: ProjectionProfile, wrong: ProjectionProfile
+) -> None:
+    contract = replace(_worker_contract(), language=language)
+    _write_repo(tmp_path, contract, correct)
+    assert inspect_docs(tmp_path).in_sync
+    wrong_agents = scaffold_docs_projections(contract, wrong)[0]
+    (tmp_path / "AGENTS.md").write_text(wrong_agents.content, encoding="utf-8")
+    report = inspect_docs(tmp_path)
+    assert not report.in_sync
+    assert next(entry for entry in report.entries if entry.artifact_id == "agent-map").status == "content-drift"
