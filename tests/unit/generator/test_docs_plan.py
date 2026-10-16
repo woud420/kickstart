@@ -292,3 +292,14 @@ def test_known_worker_language_rejects_wrong_docs_profile(
     report = inspect_docs(tmp_path)
     assert not report.in_sync
     assert next(entry for entry in report.entries if entry.artifact_id == "agent-map").status == "content-drift"
+
+
+def test_unknown_worker_language_is_a_target_error(tmp_path: Path) -> None:
+    contract = replace(_worker_contract(), language="python")
+    _write_repo(tmp_path, contract)
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+
+    with pytest.raises(DocsPlanTargetError, match="unsupported Worker project.language: 'python'"):
+        inspect_docs(tmp_path)
+
+    assert {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()} == before
