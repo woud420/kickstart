@@ -9,10 +9,10 @@ follow the [official specification reference](https://json-schema.org/understand
 
 ## Compatibility and cutover
 
-Readers accept exactly 3.0, 3.1, 3.2 and 4.0. Fresh generation still emits 3.2
-until the explicit, tested manifest migration path is available. This change does
-not migrate repositories, change application output, release a CLI, or implement
-broader reconciliation.
+Readers accept exactly 3.0, 3.1, 3.2 and 4.0. Fresh generation emits 4.0 after
+the explicit, tested [manifest migration path](manifest-migration.md) is available.
+Existing repositories migrate only through an explicit command; this does not
+release a CLI or implement broader reconciliation.
 
 Schema 4.0 removes `semantics`, `docs` and `capabilities`. `generated_by` preserves
 the recorded producer; an explicitly unversioned `kickstart` marker remains
@@ -39,11 +39,10 @@ recorded composition fields and child-manifest globs. Optional legacy reads keep
 the established compatibility behavior; the shared inverse is not a lossless
 editor for arbitrary schema-3 extensions.
 
-The subsequent migration must refuse unknown fields and nonstandard legacy docs
-mappings that cannot be represented after removing `docs`. It must expose missing
-language/framework as unresolved inputs and preserve the source byte-for-byte on
-failure. This reader change grants no permission to infer inputs from current
-application files or rewrite managed docs.
+The migration refuses unknown fields and nonstandard legacy docs mappings that
+cannot be represented after removing `docs`. It exposes missing language/framework
+as unresolved inputs and preserves the source on failure. It does not infer inputs
+from current application files or rewrite managed docs.
 
 ## Consumers
 

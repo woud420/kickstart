@@ -9,7 +9,7 @@ from src.utils.errors import ManifestShapeError
 
 
 def _manifest() -> dict:
-    return json.loads(ScaffoldContract("service", ("container",), ("local",)).manifest_json("api"))
+    return json.loads(ScaffoldContract("service", ("container",), ("local",), schema_version="3.2").manifest_json("api"))
 
 
 def test_inverse_preserves_explicit_project_identity() -> None:

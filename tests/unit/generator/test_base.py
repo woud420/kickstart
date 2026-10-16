@@ -49,6 +49,7 @@ def test_create_architecture_docs(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path):
         contract = ScaffoldContract(
             project_kind="service",
+            language="python", framework="minimal",
             execution_models=("container",),
             runtime_platforms=("local",),
             entrypoint="src/main.py",
@@ -79,6 +80,7 @@ def test_create_scaffold_contract_docs(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path):
         contract = ScaffoldContract(
             project_kind="service",
+            language="python", framework="minimal",
             execution_models=("container",),
             runtime_platforms=("local",),
             artifacts=ScaffoldArtifacts(image="dockerfile"),
@@ -91,16 +93,18 @@ def test_create_scaffold_contract_docs(base_generator, tmp_path):
         assert (tmp_path / "docs/operations/README.md").exists()
         assert (tmp_path / "docs/decisions/README.md").exists()
         manifest = json.loads((tmp_path / ".kickstart/scaffold.json").read_text())
-        assert manifest["schema_version"] == "3.2"
+        assert manifest["schema_version"] == "4.0"
         assert manifest["project"] == {
             "name": "test-project",
             "kind": "service",
+            "language": "python",
+            "framework": "minimal",
             "repo_layout": "single-project",
         }
         assert manifest["execution"] == {"models": ["container"], "platforms": ["local"]}
         assert manifest["artifacts"] == {"image": "dockerfile"}
         assert manifest["provider"] == {"targets": []}
-        assert manifest["capabilities"] == {}
+        assert manifest["extensions"] == {}
 
 @patch('src.generator.base.write_file')
 def test_write_template(mock_write_file, base_generator, tmp_path):

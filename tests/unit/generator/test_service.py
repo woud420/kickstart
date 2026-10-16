@@ -693,7 +693,7 @@ def test_create_cloudflare_worker_uses_worker_flow(mock_execute_create_flow, tmp
         "docs/decisions",
     ]
     assert kwargs["architecture_title"] == "edge-api Cloudflare Worker Architecture Notes"
-    assert kwargs["scaffold_contract"].project_kind == "worker"
+    assert kwargs["scaffold_contract"].project_kind == "service"
     assert kwargs["scaffold_contract"].execution_models == ("cloudflare-worker",)
     assert kwargs["scaffold_contract"].runtime_platforms == ("cloudflare-workers",)
     assert kwargs["scaffold_contract"].artifacts == ScaffoldArtifacts(worker="wrangler")

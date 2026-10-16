@@ -97,3 +97,7 @@ class SelfContainedInstallError(KickstartError):
 class HandoffError(KickstartError):
     """Raised when a staged upgrade or layout repair cannot continue safely."""
     pass
+
+
+class ManifestMigrationError(KickstartError):
+    """Raised when manifest migration cannot inspect or apply safely."""

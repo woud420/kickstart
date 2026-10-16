@@ -236,7 +236,7 @@ class ServiceGenerator(BaseGenerator):
             template_plan=template_plan,
             architecture_title=architecture_title,
             scaffold_contract=ScaffoldContract(
-                project_kind="worker",
+                project_kind="service",
                 language=self.lang,
                 execution_models=("cloudflare-worker",),
                 runtime_platforms=("cloudflare-workers",),
