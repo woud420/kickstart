@@ -20,6 +20,7 @@ from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 def _cli_contract() -> ScaffoldContract:
     return ScaffoldContract(
         project_kind="cli",
+        language="python", framework="typer",
         execution_models=("cli",),
         runtime_platforms=("local",),
         artifacts=ScaffoldArtifacts(package="pyproject"),

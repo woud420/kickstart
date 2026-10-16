@@ -4,7 +4,7 @@ import json
 from typing import Literal, NotRequired, Required, cast, get_args, get_origin, get_type_hints, is_typeddict
 
 from jsonschema import Draft202012Validator
-from src.generator.manifest_types import JsonValue, ParsedManifest, ScaffoldManifestV4
+from src.generator.manifest_types import JsonValue, ParsedManifest, ScaffoldManifestV4, SystemScaffoldManifest
 from src.utils.errors import ManifestShapeError
 
 
@@ -77,6 +77,20 @@ def manifest_v4_schema() -> ParsedManifest:
         rules.append(
             _when(_at("project.kind", {"const": kind}), _at("project.language", {"enum": [value for value in allowed]}))
         )
+    for kind, model in {"cli": "cli", "library": "library", "frontend": "static-site"}.items():
+        rules.append(_when(_at("project.kind", {"const": kind}), _at("execution.models", {"const": [model]})))
+    rules.append(
+        _when(
+            _at("project.kind", {"const": "service"}),
+            _at("execution.models", {"enum": [["container"], ["cloudflare-worker"]]}),
+        )
+    )
+    rules.append(
+        _when(
+            _at("project.kind", {"const": "system"}),
+            _at("execution.models", {"items": {"enum": ["container", "cloudflare-worker"]}, "uniqueItems": True}),
+        )
+    )
     worker: ParsedManifest = {
         "allOf": [
             _at("project.kind", {"const": "service"}),
@@ -152,3 +166,25 @@ def validate_v4_manifest(manifest: ParsedManifest) -> None:
 
 def manifest_v4_schema_json() -> str:
     return json.dumps(manifest_v4_schema(), indent=2, sort_keys=True) + "\n"
+
+
+def validate_legacy_migration_source(manifest: ParsedManifest) -> None:
+    """Reject metadata a format conversion would otherwise silently discard."""
+    schema = _shape(SystemScaffoldManifest)
+    schema["required"] = [
+        "schema_version",
+        "project",
+        "execution",
+        "artifacts",
+        "provider",
+        "capabilities",
+        "lifecycle",
+        "knowledge_adapter",
+    ]
+    errors = sorted(
+        Draft202012Validator(schema).iter_errors(manifest), key=lambda e: (list(map(str, e.absolute_path)), e.message)
+    )
+    if errors:
+        error = errors[0]
+        path = ".".join(map(str, error.absolute_path)) or "root"
+        raise ManifestShapeError(f"manifest {path}: {error.message}")

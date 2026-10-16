@@ -140,7 +140,7 @@ class TestServiceCreation:
         }
         assert manifest["execution"] == {"models": ["container"], "platforms": ["local"]}
         assert manifest["artifacts"] == {"image": "dockerfile"}
-        assert manifest["capabilities"] == {}
+        assert manifest["extensions"] == {}
 
     def test_python_service_extension_manifest(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test Python service extensions are recorded in the scaffold manifest."""
@@ -161,13 +161,7 @@ class TestServiceCreation:
         project_path = temp_project_dir / service_name
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
 
-        assert manifest["capabilities"] == {
-            "service_extensions": {
-                "auth": "jwt",
-                "cache": "redis",
-                "database": "postgres",
-            }
-        }
+        assert manifest["extensions"] == {"auth": "jwt", "cache": "redis", "database": "postgres"}
         assert (project_path / "src/clients/database.py").exists()
         assert (project_path / "src/clients/cache.py").exists()
         assert (project_path / "src/handler/auth.py").exists()
@@ -239,7 +233,7 @@ class TestServiceCreation:
         project_path = temp_project_dir / service_name
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
 
-        assert manifest["capabilities"] == {"service_extensions": {"cache": "redis"}}
+        assert manifest["extensions"] == {"cache": "redis"}
         assert (project_path / "src/clients/mod.rs").read_text() == "pub mod cache;\n"
         assert (project_path / "src/clients/cache.rs").exists()
         assert "mod clients;" in (project_path / "src/main.rs").read_text()
@@ -263,7 +257,7 @@ class TestServiceCreation:
         project_path = temp_project_dir / service_name
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
 
-        assert manifest["capabilities"] == {"service_extensions": {"auth": "jwt"}}
+        assert manifest["extensions"] == {"auth": "jwt"}
         assert (project_path / "src/handler/mod.rs").read_text() == "pub mod auth;\n"
         assert (project_path / "src/handler/auth.rs").exists()
         assert "mod handler;" in (project_path / "src/main.rs").read_text()
@@ -287,7 +281,7 @@ class TestServiceCreation:
         project_path = temp_project_dir / service_name
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
 
-        assert manifest["capabilities"] == {"service_extensions": {"database": "postgres"}}
+        assert manifest["extensions"] == {"database": "postgres"}
         assert (project_path / "src/clients/database.ts").exists()
         assert (project_path / "migrations/001_initial.sql").exists()
         assert '"pg": "^8.13.1"' in (project_path / "package.json").read_text()
@@ -323,7 +317,7 @@ class TestServiceCreation:
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
         assert manifest["project"] == {
             "name": service_name,
-            "kind": "worker",
+            "kind": "service",
             "language": "typescript",
             "repo_layout": "single-project",
         }
