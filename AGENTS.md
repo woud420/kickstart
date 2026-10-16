@@ -31,6 +31,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - Primary project types: `service`, `frontend`, `lib`, `cli`, and `system`.
 - `system` is the primary aggregate repo. `mono` and `monorepo` are legacy aliases.
 - Service runtimes are `container` and `cloudflare-workers`.
+- Manifest readers accept 3.0, 3.1, 3.2 and 4.0; fresh generation remains 3.2 until the tested migration cutover. Schema 4.0 represents Workers as service execution profiles.
 - Cloudflare Workers are not Docker containers. Cloudflare Containers are reserved for future support.
 - Generated docs and `.kickstart/scaffold.json` are baseline output. `--knowledge` only controls external Obsidian/Backstage metadata.
 

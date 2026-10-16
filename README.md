@@ -192,3 +192,9 @@ make binary
 kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`; other platforms use the source/wheel install path in [Install](#install).
 
 Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/tmp` or another scratch path and are not committed.
+
+
+Scaffold metadata readers support schemas 3.0, 3.1, 3.2 and 4.0. Fresh generation
+remains on 3.2 pending the tested migration path; the
+[schema-4 format contract](docs/contracts/scaffold-schema-4.md) documents the
+flattened extensions and Cloudflare Worker service profile.

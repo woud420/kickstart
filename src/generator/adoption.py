@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Literal
 
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
-from src.generator.scaffold_contract import MANIFEST_PATH, load_parsed_manifest
+from src.generator.scaffold_contract import MANIFEST_PATH, ScaffoldContract, load_parsed_manifest
 from src.utils.errors import KickstartError, ManifestShapeError
 
 
@@ -132,6 +132,10 @@ def _manifest_issue(manifest_file: Path) -> str:
     if missing_keys:
         return f"manifest missing keys: {', '.join(missing_keys)}"
 
+    try:
+        ScaffoldContract.from_manifest(manifest)
+    except ManifestShapeError as error:
+        return str(error)
     return ""
 
 

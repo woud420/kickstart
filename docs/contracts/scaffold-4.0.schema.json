@@ -1,0 +1,973 @@
+{
+  "$id": "https://github.com/woud420/kickstart/blob/master/docs/contracts/scaffold-4.0.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "system"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "project": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "language"
+                  ]
+                },
+                {
+                  "required": [
+                    "framework"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "composition"
+        ]
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "project": {
+              "properties": {
+                "kind": {
+                  "const": "system"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            }
+          },
+          "required": [
+            "project"
+          ]
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "composition"
+          ]
+        },
+        "properties": {
+          "project": {
+            "required": [
+              "language"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "service"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "project": {
+            "properties": {
+              "language": {
+                "enum": [
+                  "python",
+                  "rust",
+                  "typescript",
+                  "go",
+                  "cpp"
+                ]
+              }
+            },
+            "required": [
+              "language"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "library"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "project": {
+            "properties": {
+              "language": {
+                "enum": [
+                  "python",
+                  "rust"
+                ]
+              }
+            },
+            "required": [
+              "language"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "cli"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "project": {
+            "properties": {
+              "language": {
+                "enum": [
+                  "python",
+                  "rust",
+                  "typescript"
+                ]
+              }
+            },
+            "required": [
+              "language"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "frontend"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "project": {
+            "properties": {
+              "language": {
+                "enum": [
+                  "typescript"
+                ]
+              }
+            },
+            "required": [
+              "language"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "kind": {
+                    "const": "service"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "execution": {
+                "properties": {
+                  "models": {
+                    "contains": {
+                      "const": "cloudflare-worker"
+                    }
+                  }
+                },
+                "required": [
+                  "models"
+                ]
+              }
+            },
+            "required": [
+              "execution"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "kind": {
+                    "const": "service"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "language": {
+                    "enum": [
+                      "typescript",
+                      "rust"
+                    ]
+                  }
+                },
+                "required": [
+                  "language"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "execution": {
+                "properties": {
+                  "models": {
+                    "const": [
+                      "cloudflare-worker"
+                    ]
+                  }
+                },
+                "required": [
+                  "models"
+                ]
+              }
+            },
+            "required": [
+              "execution"
+            ]
+          },
+          {
+            "properties": {
+              "execution": {
+                "properties": {
+                  "platforms": {
+                    "const": [
+                      "cloudflare-workers"
+                    ]
+                  }
+                },
+                "required": [
+                  "platforms"
+                ]
+              }
+            },
+            "required": [
+              "execution"
+            ]
+          },
+          {
+            "properties": {
+              "provider": {
+                "properties": {
+                  "targets": {
+                    "contains": {
+                      "const": "cloudflare"
+                    }
+                  }
+                },
+                "required": [
+                  "targets"
+                ]
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          },
+          {
+            "properties": {
+              "artifacts": {
+                "properties": {
+                  "worker": {
+                    "const": "wrangler"
+                  }
+                },
+                "required": [
+                  "worker"
+                ]
+              }
+            },
+            "required": [
+              "artifacts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "kind": {
+                    "const": "cli"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "language": {
+                    "const": "python"
+                  }
+                },
+                "required": [
+                  "language"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "framework": {
+                    "const": "typer"
+                  }
+                },
+                "required": [
+                  "framework"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "cli_framework": {
+                    "const": "typer"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "kind": {
+                    "const": "cli"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "language": {
+                    "const": "rust"
+                  }
+                },
+                "required": [
+                  "language"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "framework": {
+                    "const": "clap"
+                  }
+                },
+                "required": [
+                  "framework"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "cli_framework": {
+                    "const": "clap"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "kind": {
+                    "const": "cli"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "language": {
+                    "const": "typescript"
+                  }
+                },
+                "required": [
+                  "language"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "framework": {
+                    "const": "oclif"
+                  }
+                },
+                "required": [
+                  "framework"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "cli_framework": {
+                    "const": "oclif"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "frontend"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "project": {
+            "properties": {
+              "framework": {
+                "const": "react"
+              }
+            },
+            "required": [
+              "framework"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "kind": {
+                    "const": "service"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "properties": {
+              "project": {
+                "properties": {
+                  "language": {
+                    "const": "python"
+                  }
+                },
+                "required": [
+                  "language"
+                ]
+              }
+            },
+            "required": [
+              "project"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "project": {
+            "properties": {
+              "framework": {
+                "enum": [
+                  "fastapi",
+                  "minimal"
+                ]
+              }
+            },
+            "required": [
+              "framework"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "artifacts": {
+      "additionalProperties": false,
+      "properties": {
+        "ci": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "iac": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "image": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kubernetes": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "local": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "package": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "static_site": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "worker": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "composition": {
+      "additionalProperties": false,
+      "properties": {
+        "child_manifest_globs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "component_slots": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "validation": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "workspace_tooling": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "child_manifest_globs",
+        "component_slots",
+        "status",
+        "validation",
+        "workspace_tooling"
+      ],
+      "type": "object"
+    },
+    "execution": {
+      "additionalProperties": false,
+      "properties": {
+        "models": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "platforms": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "models",
+        "platforms"
+      ],
+      "type": "object"
+    },
+    "extensions": {
+      "additionalProperties": false,
+      "properties": {
+        "auth": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "cache": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "database": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "generated_by": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "knowledge_adapter": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "lifecycle": {
+      "additionalProperties": false,
+      "properties": {
+        "build": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "check": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "deploy": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "dev": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "install": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "test": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "project": {
+      "additionalProperties": false,
+      "properties": {
+        "architecture": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "cli_framework": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "command_root": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "entrypoint": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "framework": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "service",
+            "frontend",
+            "library",
+            "cli",
+            "system"
+          ]
+        },
+        "language": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "operation_root": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "repo_layout": {
+          "enum": [
+            "single-project",
+            "monorepo"
+          ]
+        },
+        "src_root_files": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "repo_layout"
+      ],
+      "type": "object"
+    },
+    "provider": {
+      "additionalProperties": false,
+      "properties": {
+        "targets": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "targets"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "enum": [
+        "4.0"
+      ]
+    }
+  },
+  "required": [
+    "artifacts",
+    "execution",
+    "extensions",
+    "generated_by",
+    "knowledge_adapter",
+    "lifecycle",
+    "project",
+    "provider",
+    "schema_version"
+  ],
+  "title": "Kickstart scaffold manifest 4.0",
+  "type": "object"
+}

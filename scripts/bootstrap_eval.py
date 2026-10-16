@@ -310,7 +310,10 @@ def audit_capability_tests(root: Path) -> tuple[Violation, ...]:
         )
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    extensions = manifest.get("capabilities", {}).get("service_extensions", {})
+    extensions = (
+        manifest.get("extensions", {}) if manifest.get("schema_version") == "4.0"
+        else manifest.get("capabilities", {}).get("service_extensions", {})
+    )
     if not extensions:
         return ()
 

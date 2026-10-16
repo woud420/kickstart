@@ -139,7 +139,7 @@ def _contract_from_repo(resolved: Path) -> ScaffoldContract:
 
 
 def _candidate_profiles(contract: ScaffoldContract) -> tuple[ProjectionProfile, ...]:
-    if contract.project_kind == "worker":
+    if contract.is_worker:
         # Legacy manifests lack the datum needed to select one profile.
         if contract.language is None:
             return (PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER, PROFILE_DEFAULT)

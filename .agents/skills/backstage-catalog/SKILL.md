@@ -36,6 +36,14 @@ does not.
    (the verb warns on missing required lines — resolve warnings before
    reporting done).
 
+## Manifest compatibility
+
+The exporter reads schema 3.0, 3.1, 3.2 and 4.0 through the shared scaffold
+contract. In 4.0, service extensions live at `extensions.{database,cache,auth}`;
+legacy manifests retain `capabilities.service_extensions`. A Cloudflare Worker
+is a service with the `cloudflare-worker` execution model. Derive catalog tags
+and type through the exporter; do not branch on or rewrite manifest fields by hand.
+
 ## Rules
 
 - The verb is the source of truth for derived fields; do not guess fields
