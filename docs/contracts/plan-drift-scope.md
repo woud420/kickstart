@@ -21,9 +21,10 @@ Statuses: `in-sync`, `presence-only` (both clean); `would-create`,
 hand-written file — a structural fact, content never compared),
 `malformed-markers`, `unreadable` (all findings).
 
-A worker-kind manifest cannot say which language generated it (the schema-3.0
-gap ENG-159 closes with `project.language`), so worker repos match either the
-TypeScript worker docs profile or the default profile.
+Schema 3.2 Worker manifests record `project.language`: TypeScript selects only
+the TypeScript Worker docs profile, and Rust selects only the default profile.
+Legacy manifests without language still match either profile. An unsupported
+explicit Worker language is a target error, rather than an ambiguous fallback.
 
 ## Deferred — and to whom
 
@@ -33,8 +34,9 @@ TypeScript worker docs profile or the default profile.
   sibling (`src/generator/docs_plan.py`, alongside `adoption.py`), not a fork.
 - Inserting fences or the manifest into pre-fence repos: the adopt write path
   (ENG-11). `plan` never writes.
-- Recovering the projection profile and architecture render inputs from the
-  manifest: the render-inputs work in the metadata review roadmap (§6 step 1).
+- Recovering architecture render inputs from the manifest: the manifest still
+  lacks the title and directory list. Worker profile selection is recovered
+  from explicit language; legacy manifests without it remain ambiguous.
 
 ## Exit codes and JSON
 

@@ -33,6 +33,8 @@ class FrontendGenerator(BaseGenerator):
             architecture_title=architecture_title,
             scaffold_contract=ScaffoldContract(
                 project_kind="frontend",
+                language="typescript",
+                framework="react",
                 execution_models=("static-site",),
                 runtime_platforms=("static-host",),
                 artifacts=ScaffoldArtifacts(static_site="vite", image="dockerfile"),
