@@ -196,8 +196,9 @@ class TemplateRegistry:
             Template information if found, None otherwise
         """
         # Try language-specific lookup first
-        if language and name in self._language_templates.get(language, {}):
-            return self._language_templates[language][name]
+        if language and language in self._language_templates:
+            if name in self._language_templates[language]:
+                return self._language_templates[language][name]
         
         # Fall back to global lookup
         return self._templates.get(name)
@@ -211,8 +212,11 @@ class TemplateRegistry:
         Returns:
             Dictionary of template name to template info
         """
+        templates: dict[str, TemplateInfo] = {}
+
         # Add language-specific templates
-        templates: dict[str, TemplateInfo] = dict(self._language_templates.get(language, {}))
+        if language in self._language_templates:
+            templates.update(self._language_templates[language])
         
         # Add common templates that support this language
         for name, template in self._templates.items():
