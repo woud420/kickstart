@@ -53,6 +53,22 @@ manifest is reported as a single gap, not two). For structured per-target
 readiness, consume `kickstart plan --json` — adoption deliberately summarizes
 it.
 
-Pre-fence scaffolds (generated before ownership fences existed) with a
-manifest report `not fence-managed` gaps by design: re-render the managed
+Pre-fence scaffolds without recorded ownership report `not fence-managed`
+gaps by design: re-render the managed
 docs with a current kickstart or wait for the adopt write path.
+
+## Recorded ownership scope
+
+For schema-4 manifests with an explicit ownership map, fence readiness checks
+only recorded managed regions. Seed and unlisted files remain user-owned and
+do not require fences. An explicitly empty map claims no managed regions.
+Manifests without ownership records retain the full registered projection fence
+check, including architecture presence. All Level 1 requirements still apply.
+
+Ownership records describe the actual adoption boundary; fresh generators
+continue to record their managed docs. A successful check covers that declared
+scope, without certifying the contents of user-owned prose.
+
+Kickstart's own manually adopted manifest records authored documentation as
+seeds and its manifest/Makefile as structural checks. See
+[the self-adoption decision](../decisions/kickstart-self-adoption.md).

@@ -1,0 +1,50 @@
+{
+  "artifacts": {
+    "package": "python"
+  },
+  "execution": {
+    "models": [
+      "cli"
+    ],
+    "platforms": [
+      "local"
+    ]
+  },
+  "extensions": {},
+  "generated_by": "unknown",
+  "knowledge_adapter": "none",
+  "lifecycle": {
+    "build": "make build",
+    "check": "make check",
+    "dev": "make run",
+    "install": "make install",
+    "test": "make tests"
+  },
+  "ownership": {
+    ".github/workflows/ci.yml": "seed",
+    ".kickstart/scaffold.json": "manifest-shape",
+    "AGENTS.md": "seed",
+    "CLAUDE.md": "seed",
+    "Makefile": "make-check",
+    "README.md": "seed",
+    "docs/architecture/README.md": "seed",
+    "docs/contracts/README.md": "seed",
+    "docs/decisions/README.md": "seed",
+    "docs/operations/README.md": "seed"
+  },
+  "project": {
+    "architecture": "modular-cli",
+    "cli_framework": "typer",
+    "command_root": "src/cli",
+    "entrypoint": "src/cli/main.py",
+    "framework": "typer",
+    "kind": "cli",
+    "language": "python",
+    "name": "kickstart",
+    "repo_layout": "single-project"
+  },
+  "provider": {
+    "targets": []
+  },
+  "schema_version": "4.0"
+}

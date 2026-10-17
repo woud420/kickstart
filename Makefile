@@ -20,7 +20,7 @@ LOG_RESET :=
 endif
 log = printf "$(LOG_COLOR)==>$(LOG_RESET) %s\n" "$(1)"
 
-.PHONY: help setup install run tests test-unit test-integration coverage typecheck lint format format-check type-hygiene import-hygiene template-audit check package binary build release-check clean
+.PHONY: help setup install run tests test-unit test-integration coverage typecheck lint format format-check type-hygiene import-hygiene template-audit adopt-check check package binary build release-check clean
 
 help:
 	@echo "Usage:"
@@ -37,7 +37,8 @@ help:
 	@echo "  make type-hygiene     Check for loose Any/object-style type annotations"
 	@echo "  make import-hygiene   Check error classes are imported from src.utils.errors"
 	@echo "  make template-audit   Check template wiring inventory"
-	@echo "  make check            Run lint, typecheck, and tests"
+	@echo "  make adopt-check      Verify this repository against its scaffold contract"
+	@echo "  make check            Run lint, typecheck, adoption check, and tests"
 	@echo "  make package          Build wheel and source distribution"
 	@echo "  make binary           Build the kickstart binary with PyInstaller"
 	@echo "  make build            Build package and binary"
@@ -96,7 +97,12 @@ template-audit:
 	@$(call log,Auditing template wiring)
 	@$(PY) scripts/template_wiring_audit.py --strict
 
-check: lint typecheck type-hygiene import-hygiene template-audit tests
+adopt-check:
+	@$(call log,Checking the repository scaffold contract)
+	@test -f .kickstart/scaffold.json || (echo "Missing .kickstart/scaffold.json dogfood manifest" >&2; exit 1)
+	@$(PY) -m src.cli.main adopt . --check --json
+
+check: lint typecheck type-hygiene import-hygiene template-audit adopt-check tests
 
 package:
 	@$(call log,Building Python package)
