@@ -85,7 +85,7 @@ class ServiceGenerator(BaseGenerator):
             config: Configuration dictionary with user preferences
             helm: Whether to include Helm chart scaffolding
             root: Root directory for project creation (optional)
-            database: Database extension (implemented: postgres for Python/FastAPI and TypeScript container services)
+            database: Database extension (postgres: Python/FastAPI and TypeScript containers; sqlite: Python/FastAPI containers)
             cache: Cache extension (implemented: redis for Python/FastAPI and Rust container services)
             auth: Authentication extension (implemented: jwt for Python/FastAPI, Rust, and TypeScript container services)
             framework: HTTP framework (None for FastAPI default, minimal for standard library)
@@ -349,6 +349,7 @@ class ServiceGenerator(BaseGenerator):
                 env_content=self._read_template_text("python/core/env.example.tpl"),
                 migration_content=self._read_template_text("python/core/migrations/001_initial.sql.tpl"),
                 framework=self.framework,
+                include_sqlite_database=self.database == "sqlite",
             )
         )
         
@@ -390,7 +391,7 @@ class ServiceGenerator(BaseGenerator):
         test_packages = []
         if self.auth == "jwt":
             test_packages.append("tests/unit/handler")
-        if self.cache == "redis" or self.database == "postgres":
+        if self.cache == "redis" or self.database is not None:
             test_packages.append("tests/unit/clients")
         if test_packages:
             self.write_content_files(python_init_content_files(test_packages))

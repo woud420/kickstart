@@ -173,7 +173,6 @@ def test_create_rejects_unsupported_rust_service_extension_categories(option, kw
     ("option", "value", "kwargs"),
     [
         ("database", "mysql", {"database": "mysql"}),
-        ("database", "sqlite", {"database": "sqlite"}),
         ("cache", "memcached", {"cache": "memcached"}),
         ("auth", "oauth", {"auth": "oauth"}),
     ],

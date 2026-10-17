@@ -5,7 +5,7 @@ description: Run kickstart's scaffold-shape and generated-make-test evals after 
 
 # Scaffold Evals
 
-## Hot Path
+## Workflow
 
 Run one tiered entrypoint for the scope being verified:
 
@@ -19,7 +19,7 @@ After deliberate template weight changes, re-baseline:
 PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py --update-baselines
 ```
 
-## Use When
+## Overview
 
 Use this skill after changing generators, layouts, template plans, language
 setup plans, stack defaults, or templates — anything that alters generated
@@ -87,7 +87,7 @@ Non-zero exit means a case failed generation, taste, capability-test
 coverage (every manifest capability needs a generated test), or check —
 fix the template and rerun the affected checks. Repeat an unchanged clean run
 only when investigating nondeterminism or when a specific eval requires it.
-CI gates four cases per PR; the Scheduled Evals workflow runs the
+CI gates a fast subset per PR; the Scheduled Evals workflow runs the
 full matrix weekly against live toolchains.
 
 ## Token Savings
@@ -104,18 +104,18 @@ PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py \
 Report the per-scaffold and aggregate savings ratios and state the
 bytes-per-token heuristic; pass `--json` for machine-readable output.
 
-## Rules
+## Anti-Patterns
 
-- Write reports to scratch paths such as `/tmp`. Never commit
-  reports, generated matrices, or caches.
-- Classify failures (template wiring vs dependency vs toolchain) instead of
-  compressing them into one pass/fail number. Dependency and toolchain
+- Do not commit reports, generated matrices or caches; write them to scratch
+  paths such as `/tmp`.
+- Do not compress template-wiring, dependency and toolchain failures into one
+  pass/fail number; classify them. Dependency and toolchain
   flakes (for example Bun concurrent-install `EEXIST`) are environment
   issues, not template regressions — say which is which.
-- A smaller `--count` is fine for a quick signal during iteration, but run
-  the full supported matrix before claiming the change is validated.
+- Do not claim validation from a reduced shape sample. A smaller `--count`
+  is fine during iteration; run the full supported matrix before completion.
 
-## Report Back
+## Validation
 
 Report projects generated, components generated, failed commands, generated
 `make test` pass/fail counts, and the failure classes with one example each.

@@ -78,6 +78,8 @@ evidence with versioned `generated_by` and removes the constant docs map.
 
 Implemented service extensions are intentionally narrow. Python/FastAPI container services support Postgres, Redis, and JWT. Rust container services support Redis and JWT. TypeScript container services support Postgres and JWT. Unsupported combinations fail instead of generating a partial or silent scaffold.
 
+Python/FastAPI container services also support SQLite with file-path settings, an asynchronous client, explicit SQL seed and real database tests. See the [SQLite extension contract](contracts/sqlite-extension.md). This first slice leaves Rust, TypeScript, minimal services and Workers unsupported for SQLite; the sample API repository remains in memory until application code integrates the client.
+
 CLI scaffolds use `project.architecture: modular-cli` and align Rust, Python, and TypeScript around the same agent-facing boundaries: command adapters, config, clients, DTO/model, operations, output, and errors. Language idioms still apply: Rust uses `project.cli_framework: clap` with `project.command_root: src/cli`, Python uses `typer` with `src/cli/commands`, and TypeScript uses `oclif` with `src/commands` and `bin/run.js`.
 
 Systems contain other project kinds and are generated through the `system` command with `project.repo_layout: monorepo`. A system is language-neutral by default. Use `--workspace-tooling bun-turbo` when the root should also be a Bun/Turbo TypeScript workspace. The older `mono` and `monorepo` project types remain backwards-compatible aliases that preserve the historical Bun/Turbo default, but new usage should prefer `system`.

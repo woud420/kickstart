@@ -30,12 +30,13 @@ Execution model:
 Implemented service extensions:
 
 - `--database postgres`
+- `--database sqlite` (Python/FastAPI containers; see the [SQLite contract](contracts/sqlite-extension.md))
 - `--cache redis`
 - `--auth jwt`
 
 Support is intentionally narrow:
 
-- Python/FastAPI container services support Postgres, Redis, and JWT.
+- Python/FastAPI container services support Postgres, SQLite, Redis, and JWT.
 - Rust container services support Redis and JWT.
 - TypeScript container services support Postgres and JWT.
 

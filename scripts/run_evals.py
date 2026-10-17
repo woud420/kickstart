@@ -8,7 +8,7 @@ one answer per tier.
 Tiers:
 
 - ``smoke``: the headline bootstrap case. Seconds with a warm cache.
-- ``pr``: what CI gates per pull request — the four fast bootstrap cases
+- ``pr``: what CI gates per pull request — the five fast bootstrap cases
   plus the scaffold-weight baseline check.
 - ``full``: the whole bootstrap matrix, token savings with baselines, and
   the determinism + website-examples test suites. What the weekly run and
@@ -74,7 +74,7 @@ _BOOTSTRAP_COMMON = (
     str(_SCRATCH / "kickstart-run-evals-bootstrap.md"),
 )
 
-_PR_BOOTSTRAP_CASES = ("python-cli-kickstart-like", "python-service", "typescript-worker", "rust-cli")
+_PR_BOOTSTRAP_CASES = ("python-cli-kickstart-like", "python-service", "python-service-sqlite", "typescript-worker", "rust-cli")
 
 _TOKEN_BASELINES = (
     _PYTHON,

@@ -140,7 +140,6 @@ def test_python_minimal_services_reject_extensions() -> None:
     ("category", "value", "kwargs"),
     [
         ("database", "mysql", {"database": "mysql", "cache": None, "auth": None}),
-        ("database", "sqlite", {"database": "sqlite", "cache": None, "auth": None}),
         ("cache", "memcached", {"database": None, "cache": "memcached", "auth": None}),
         ("auth", "oauth", {"database": None, "cache": None, "auth": "oauth"}),
     ],

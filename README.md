@@ -144,6 +144,7 @@ poetry run kickstart export backstage path/to/repo
 - Rust is the preferred CLI delivery target for single-binary distribution and performance; Python and TypeScript still use their own professional CLI conventions instead of copying Rust's file layout.
 - Service execution models: containers by default, Cloudflare Workers when requested.
 - Implemented service extensions are intentionally narrow: Python/FastAPI container services support Postgres, Redis, and JWT; Rust container services support Redis and JWT; TypeScript container services support Postgres and JWT.
+- Python/FastAPI container services additionally support `--database sqlite`. The [SQLite contract](docs/contracts/sqlite-extension.md) describes file storage, explicit migrations and the generated operations guide; Rust and TypeScript support follows separately.
 - System provider targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
 - System platform profiles: `kubernetes`, `cloudflare-workers`, or `hybrid`.
 - System workspace tooling defaults to `none`; use `--workspace-tooling bun-turbo` for root `package.json`, Turbo, Bun, and shared TypeScript config.
@@ -160,6 +161,7 @@ poetry run kickstart export backstage path/to/repo
 poetry run kickstart create service my-api --lang python --database postgres --cache redis --auth jwt
 poetry run kickstart create service api-rs --lang rust --cache redis --auth jwt
 poetry run kickstart create service api-ts --lang typescript --database postgres --auth jwt
+poetry run kickstart create service local-api --lang python --database sqlite
 poetry run kickstart create service edge-rs --lang rust --runtime cloudflare-workers
 poetry run kickstart create frontend web
 poetry run kickstart create lib core-lib --lang python

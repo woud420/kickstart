@@ -14,6 +14,11 @@ def test_tier_steps_rejects_unknown_tier() -> None:
         tier_steps("nope")
 
 
+def test_pr_tier_runs_real_sqlite_bootstrap_case() -> None:
+    step = tier_steps("pr")[0]
+    assert "python-service-sqlite" in step.args
+
+
 def test_pr_tier_gates_weight_baselines() -> None:
     names = [step.name for step in tier_steps("pr")]
 
