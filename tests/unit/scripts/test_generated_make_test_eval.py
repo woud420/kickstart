@@ -129,12 +129,12 @@ def test_opt_in_cleanup_runs_only_after_a_leaf_target_and_preserves_source(tmp_p
 
 
 def test_cleanup_preserves_aggregate_roots_unknown_kinds_symlinks_and_files(tmp_path: Path) -> None:
-    from scripts.generated_make_test_eval import _cleanup_component_dependencies
+    from scripts.generated_make_test_eval import CleanupResult, _cleanup_component_dependencies
 
     aggregate = _component(tmp_path, "aggregate", kind="system")
     (aggregate / "node_modules").mkdir()
     for kind in ("system", "unknown", "manifest-error"):
-        assert _cleanup_component_dependencies(aggregate, kind) == ()
+        assert _cleanup_component_dependencies(aggregate, kind) == CleanupResult()
         assert (aggregate / "node_modules").is_dir()
 
     leaf = _component(tmp_path, "leaf", kind="service")
@@ -143,14 +143,14 @@ def test_cleanup_preserves_aggregate_roots_unknown_kinds_symlinks_and_files(tmp_
     (outside / "keep.txt").write_text("external")
     (leaf / "node_modules").symlink_to(outside, target_is_directory=True)
     (leaf / ".venv").write_text("authored file")
-    assert _cleanup_component_dependencies(leaf, "service") == ()
+    assert _cleanup_component_dependencies(leaf, "service") == CleanupResult()
     assert (outside / "keep.txt").read_text() == "external"
     assert (leaf / ".venv").read_text() == "authored file"
 
 
 def test_cleanup_preserves_recorded_source_inside_a_cache_named_directory(tmp_path: Path) -> None:
     import json
-    from scripts.generated_make_test_eval import _cleanup_component_dependencies
+    from scripts.generated_make_test_eval import CleanupResult, _cleanup_component_dependencies
 
     component = _component(tmp_path, "leaf", kind="service")
     cache = component / ".cache"
@@ -160,5 +160,31 @@ def test_cleanup_preserves_recorded_source_inside_a_cache_named_directory(tmp_pa
     data = json.loads(manifest.read_text())
     data["ownership"] = {".cache/authored.txt": "seed"}
     manifest.write_text(json.dumps(data))
-    assert _cleanup_component_dependencies(component, "service") == ()
+    assert _cleanup_component_dependencies(component, "service") == CleanupResult()
     assert (cache / "authored.txt").read_text() == "recorded source"
+
+
+def test_optional_cleanup_failure_preserves_target_result_and_records_warning(tmp_path: Path, monkeypatch) -> None:
+    import errno
+    import shutil
+    from scripts.generated_make_test_eval import run_make_tests
+
+    component = _component(tmp_path, "leaf", kind="service")
+    (component / "node_modules").mkdir()
+    (component / ".cache").mkdir()
+    remove = shutil.rmtree
+
+    def busy_dependency(path, *args, **kwargs):
+        if path.name == "node_modules":
+            raise OSError(errno.ENOTEMPTY, "Directory not empty")
+        return remove(path, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "rmtree", busy_dependency)
+    result = run_make_tests(
+        tmp_path, timeout_seconds=5, workers=1, target="test", env=os.environ.copy(), clean_completed=True
+    )[0]
+    assert result.returncode == 0 and result.reason == "pass"
+    assert result.cleaned_artifacts == (".cache",)
+    assert result.cleanup_errors == (f"node_modules: OSError errno={errno.ENOTEMPTY}",)
+    assert (component / "node_modules").is_dir()
+    assert not (component / ".cache").exists()

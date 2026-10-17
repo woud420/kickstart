@@ -25,6 +25,7 @@ class MakeTestResult:
     reason: str
     output_tail: str
     cleaned_artifacts: tuple[str, ...] = ()
+    cleanup_errors: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,7 @@ class EvaluationSummary:
     by_reason: dict[str, int]
     clean_completed: bool
     cleaned_components: int
+    cleanup_failed_components: int
     provenance: RunProvenance
     report: str
     json_report: str
@@ -107,6 +109,7 @@ class GeneratedEvalReport:
             by_reason=dict(sorted(results.items())),
             clean_completed=self.clean_completed,
             cleaned_components=sum(bool(result.cleaned_artifacts) for result in self.results),
+            cleanup_failed_components=sum(bool(result.cleanup_errors) for result in self.results),
             provenance=self.provenance,
             report=str(self.report_path),
             json_report=str(self.report_path) + ".json",
@@ -146,6 +149,7 @@ def _markdown(report: GeneratedEvalReport, summary: EvaluationSummary) -> str:
         f"- Cache root: `{summary.cache_root}`",
         f"- Clean completed dependency/cache directories: {summary.clean_completed}",
         f"- Components cleaned: {summary.cleaned_components}",
+        f"- Components with cleanup warnings: {summary.cleanup_failed_components}",
         f"- Makefiles tested: {summary.makefiles}",
         f"- Passed: {summary.passed}",
         f"- Failed: {summary.failed}",
@@ -191,6 +195,8 @@ def _markdown(report: GeneratedEvalReport, summary: EvaluationSummary) -> str:
                     "",
                 ]
             )
+    lines.extend(["", "## Cleanup Warnings", ""])
+    lines.extend(f"- `{result.path}`: {error}" for result in report.results for error in result.cleanup_errors)
     return "\n".join(lines) + "\n"
 
 

@@ -172,3 +172,19 @@ def test_report_records_opt_in_cleanup_and_affected_component_count(tmp_path: Pa
     assert payload["summary"]["cleaned_components"] == 1
     assert payload["results"][0]["cleaned_artifacts"] == [".venv"]
     assert "Clean completed dependency/cache directories: True" in report.report_path.read_text()
+
+
+def test_cleanup_warnings_are_persisted_without_changing_completed_test_counts(tmp_path: Path) -> None:
+    from dataclasses import replace
+    from scripts.generated_eval_report import write_report
+
+    report = _report(tmp_path)
+    result = replace(report.results[0], cleanup_errors=("node_modules: OSError errno=66",))
+    summary = write_report(replace(report, results=(result,), clean_completed=True))
+
+    payload = json.loads(Path(summary.json_report).read_text())
+    assert summary.passed == 1 and summary.failed == 0
+    assert summary.cleanup_failed_components == 1 and summary.cleaned_components == 0
+    assert payload["results"][0]["cleanup_errors"] == ["node_modules: OSError errno=66"]
+    assert "Components with cleanup warnings: 1" in report.report_path.read_text()
+    assert "node_modules: OSError errno=66" in report.report_path.read_text()

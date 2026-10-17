@@ -39,6 +39,14 @@ class CommandResult:
     timed_out: bool
 
 
+@dataclass(frozen=True)
+class CleanupResult:
+    """Best-effort cleanup details independent of the completed test result."""
+
+    removed: tuple[str, ...] = ()
+    errors: tuple[str, ...] = ()
+
+
 def run_make_tests(
     output_root: Path,
     *,
@@ -134,6 +142,7 @@ def _run_one(
     returncode = completed.returncode
 
     duration = time.monotonic() - started
+    cleanup = _cleanup_component_dependencies(path, kind) if clean_completed else CleanupResult()
     return MakeTestResult(
         path=path,
         kind=kind,
@@ -143,30 +152,36 @@ def _run_one(
         duration_seconds=duration,
         reason=_classify_output(output, returncode, completed.timed_out, target=target),
         output_tail=_tail(output),
-        cleaned_artifacts=_cleanup_component_dependencies(path, kind) if clean_completed else (),
+        cleaned_artifacts=cleanup.removed,
+        cleanup_errors=cleanup.errors,
     )
 
 
-def _cleanup_component_dependencies(path: Path, kind: str) -> tuple[str, ...]:
+def _cleanup_component_dependencies(path: Path, kind: str) -> CleanupResult:
     """Remove only local install directories after a leaf target has exited."""
     if kind not in {"service", "worker", "frontend", "library", "lib", "cli"}:
-        return ()
+        return CleanupResult()
     try:
         ownership = json.loads((path / ".kickstart/scaffold.json").read_text()).get("ownership", {})
     except (OSError, json.JSONDecodeError):
-        return ()
+        return CleanupResult()
     if not isinstance(ownership, dict):
-        return ()
+        return CleanupResult()
     removed = []
+    errors = []
     for name in (".venv", "node_modules", ".cache"):
         if any(isinstance(source, str) and (source == name or source.startswith(name + "/")) for source in ownership):
             continue
         directory = path / name
         if directory.is_symlink() or not directory.is_dir():
             continue
-        shutil.rmtree(directory)
-        removed.append(name)
-    return tuple(removed)
+        try:
+            shutil.rmtree(directory)
+        except OSError as exc:
+            errors.append(f"{name}: {type(exc).__name__} errno={exc.errno}")
+        else:
+            removed.append(name)
+    return CleanupResult(removed=tuple(removed), errors=tuple(errors))
 
 
 def _run_command(command: list[str], *, cwd: Path, timeout_seconds: int, env: dict[str, str]) -> CommandResult:
