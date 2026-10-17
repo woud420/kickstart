@@ -728,7 +728,7 @@ def create(
     database: Optional[str] = typer.Option(
         None,
         "--database",
-        help="Database extension (implemented: postgres for Python/FastAPI and TypeScript container services)",
+        help="Database extension (postgres: Python/FastAPI and TypeScript containers; sqlite: Python/FastAPI containers)",
     ),
     cache: Optional[str] = typer.Option(
         None,

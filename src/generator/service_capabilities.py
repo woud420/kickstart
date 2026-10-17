@@ -27,7 +27,7 @@ class ServiceExtensionSupport:
     auth: tuple[str, ...] = ()
 
 
-IMPLEMENTED_DATABASE_EXTENSIONS = ("postgres",)
+IMPLEMENTED_DATABASE_EXTENSIONS = ("postgres", "sqlite")
 IMPLEMENTED_CACHE_EXTENSIONS = ("redis",)
 IMPLEMENTED_AUTH_EXTENSIONS = ("jwt",)
 
@@ -42,7 +42,7 @@ _SERVICE_EXTENSION_SUPPORT: dict[tuple[str, str, str], ServiceExtensionSupport] 
         auth=IMPLEMENTED_AUTH_EXTENSIONS,
     ),
     ("typescript", "container", "default"): ServiceExtensionSupport(
-        databases=IMPLEMENTED_DATABASE_EXTENSIONS,
+        databases=("postgres",),
         auth=IMPLEMENTED_AUTH_EXTENSIONS,
     ),
 }

@@ -140,6 +140,23 @@ class ExtensionManager:
             directories=("migrations",),
         )
         self._register_extension(DatabaseExtension(postgres_config))
+        sqlite_config = ExtensionConfig(
+            name="sqlite",
+            extension_type="database",
+            templates=(
+                TemplateConfig("src/clients/database.py", "python/extensions/sqlite/client.py.tpl"),
+                TemplateConfig("tests/unit/clients/test_database.py", "python/extensions/sqlite/test_client.py.tpl"),
+                TemplateConfig("src/config/settings.py", "python/core/config/settings.py.tpl", {"database": "sqlite"}),
+                TemplateConfig(".env.example", "python/extensions/sqlite/env.example.tpl"),
+                TemplateConfig(".gitignore", "python/extensions/sqlite/gitignore.tpl"),
+                TemplateConfig(".dockerignore", "python/extensions/sqlite/dockerignore.tpl"),
+                TemplateConfig("migrations/001_initial.sql", "python/extensions/sqlite/migration.sql.tpl"),
+                TemplateConfig("docs/operations/sqlite.md", "python/extensions/sqlite/operations.md.tpl"),
+            ),
+            requirements_file="python/extensions/sqlite/requirements.txt.tpl",
+            directories=("migrations",),
+        )
+        self._register_extension(DatabaseExtension(sqlite_config))
 
         # Cache extensions
         redis_config = ExtensionConfig(

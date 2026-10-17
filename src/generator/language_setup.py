@@ -81,14 +81,17 @@ def python_init_content_files(package_paths: Sequence[str]) -> tuple[ContentFile
 
 
 def python_service_content_files(
-    *, env_content: str, migration_content: str, framework: str | None = None
+    *, env_content: str, migration_content: str, framework: str | None = None, include_sqlite_database: bool = False
 ) -> tuple[ContentFile, ...]:
     """Return direct content files for Python services."""
     smoke_test = PYTHON_MINIMAL_SMOKE_TEST_CONTENT if framework == "minimal" else PYTHON_FASTAPI_SMOKE_TEST_CONTENT
+    files = (ContentFile("tests/test_smoke.py", smoke_test),)
+    if include_sqlite_database:
+        return files
     return (
         ContentFile(".env.example", env_content),
         ContentFile("migrations/001_initial.sql", migration_content),
-        ContentFile("tests/test_smoke.py", smoke_test),
+        *files,
     )
 
 

@@ -162,6 +162,10 @@ DEFAULT_CASES: tuple[BootstrapCase, ...] = (
         ),
     ),
     BootstrapCase(
+        slug="python-service-sqlite",
+        args=("create", "service", "local-api", "--lang", "python", "--database", "sqlite"),
+    ),
+    BootstrapCase(
         slug="typescript-worker",
         args=("create", "service", "edge", "--lang", "typescript", "--runtime", "cloudflare-workers"),
     ),

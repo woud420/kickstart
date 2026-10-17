@@ -1,6 +1,9 @@
 """Runtime settings for {{ service_name }}."""
 
 from functools import lru_cache
+{% if database|default('') == 'sqlite' %}
+from pathlib import Path
+{% endif %}
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,6 +17,9 @@ class Settings(BaseSettings):
     environment: str = "local"
     host: str = "0.0.0.0"
     port: int = 8000
+{% if database|default('') == 'sqlite' %}
+    sqlite_path: Path = Path("data/app.sqlite3")
+{% endif %}
 
 
 @lru_cache
