@@ -120,10 +120,6 @@ class ServiceGenerator(BaseGenerator):
         self.lang_template_dir = self.template_dir / self.lang
         self.extension_manager = ExtensionManager()
 
-    def _normalize_runtime(self, runtime: str) -> str:
-        """Normalize runtime aliases to canonical service runtime ids."""
-        return stack_registry.normalize_service_runtime(runtime)
-
     def create(self) -> None:
         """Create a complete microservice project.
 
@@ -179,7 +175,11 @@ class ServiceGenerator(BaseGenerator):
                     image="dockerfile",
                     kubernetes="helm" if self.helm else None,
                 ),
-                service_extensions=self._scaffold_service_extensions(extension_selection),
+                service_extensions=ScaffoldServiceExtensions(
+                    database=extension_selection.database,
+                    cache=extension_selection.cache,
+                    auth=extension_selection.auth,
+                ),
             ),
             success_message=success_message,
             language_setup_fn=self._setup_service_specific,
@@ -196,17 +196,6 @@ class ServiceGenerator(BaseGenerator):
             database=self.database,
             cache=self.cache,
             auth=self.auth,
-        )
-
-    def _scaffold_service_extensions(
-        self,
-        selection: ServiceExtensionSelection,
-    ) -> ScaffoldServiceExtensions:
-        """Convert validated extension selections to manifest metadata."""
-        return ScaffoldServiceExtensions(
-            database=selection.database,
-            cache=selection.cache,
-            auth=selection.auth,
         )
 
     def _create_cloudflare_worker_project(self) -> None:
