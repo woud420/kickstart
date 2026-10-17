@@ -290,27 +290,31 @@ PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
   --report /tmp/kickstart-bootstrap-eval.md
 ```
 
-Default cases: python CLI (the kickstart-like headline case), python lib,
-python service with all extensions, a SQLite Python service, python service on
-the minimal stdlib framework, typescript worker, typescript container service
-with Postgres and JWT, rust CLI, C++ service, Go service, and frontend. Use
-`--cases` to iterate on a single scaffold. Beyond the taste rules, every
+The default bootstrap matrix is the `DEFAULT_CASES` registry in
+[`scripts/bootstrap_eval.py`](../scripts/bootstrap_eval.py). Each record
+includes the scaffold arguments that define the case. Use `--cases` to select
+a subset. Beyond the taste rules, every
 capability declared in `.kickstart/scaffold.json` must be exercised by at
 least one generated test (`capability-tests` rule). The eval exits non-zero
 when any case fails generation, taste, capability coverage, or `make check`.
 
-CI runs `run_evals.py --tier pr` on every PR (python CLI, full-extension
-python service, SQLite Python service, typescript worker, rust CLI, plus the weight-baseline
-check); the `Scheduled Evals` workflow runs `--tier full` weekly against
-live toolchains — the whole bootstrap matrix, weight baselines,
-determinism, and the website-examples drift check. Template rot in the
-bootstrap matrix surfaces within a week without slowing PRs. The full matrix
-includes a Go service and a frontend; each runs its own generated `make check`,
+CI runs `run_evals.py --tier pr` on every PR.
+[`scripts/run_evals.py`](../scripts/run_evals.py) defines `TIERS` and
+`_PR_BOOTSTRAP_CASES`, including the bootstrap selection and additional checks
+for each tier. The `Scheduled Evals` workflow runs `--tier full` weekly
+against live toolchains.
+
+The full matrix includes a Go service and a frontend; each runs its own generated `make check`,
 including tests. The weekly workflow reads the Go version from the generator's
 toolchain registry and installs it explicitly. Go sources participate in the
 common file-size and depth audits; TSX sources use the same TypeScript pattern
 rules as TS. These audits remain bounded heuristics, with failures reported by
 rule rather than exempting cases.
+
+Bootstrap coverage is limited to the registered cases: a supported scaffold
+without a case is not exercised by that gate. Add new cases to the executable
+registry and choose their tier explicitly; keep the fast PR selection separate
+from the full weekly matrix.
 
 ## Scaffold Weight Baselines
 
