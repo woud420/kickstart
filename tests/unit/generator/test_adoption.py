@@ -1,9 +1,12 @@
 """Tiered adoption check: Level 1 conformant, Level 2 managed."""
 
+from dataclasses import replace
 import json
 from pathlib import Path
 
 import pytest
+
+import src.generator.adoption as adoption
 
 from src.generator.adoption import (
     LEVEL1_ARTIFACTS,
@@ -20,7 +23,8 @@ from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 def _cli_contract() -> ScaffoldContract:
     return ScaffoldContract(
         project_kind="cli",
-        language="python", framework="typer",
+        language="python",
+        framework="typer",
         execution_models=("cli",),
         runtime_platforms=("local",),
         artifacts=ScaffoldArtifacts(package="pyproject"),
@@ -194,3 +198,95 @@ def test_empty_workflows_directory_is_not_conformant(tmp_path: Path) -> None:
     status = next(artifact for artifact in report.artifacts if artifact.path == ".github/workflows/")
     assert not status.ok
     assert "no workflow file" in status.issue
+
+
+@pytest.mark.parametrize("ownership", [{}, {"AGENTS.md": "seed"}])
+def test_recorded_seed_and_unlisted_docs_do_not_claim_fences(tmp_path: Path, ownership: dict[str, str]) -> None:
+    scaffold_managed_repo(tmp_path)
+    manifest_path = tmp_path / MANIFEST_PATH
+    manifest = json.loads(manifest_path.read_text())
+    manifest["ownership"] = ownership
+    manifest_path.write_text(json.dumps(manifest))
+    (tmp_path / "AGENTS.md").write_text("Human-authored instructions stay here.\n")
+    (tmp_path / "CLAUDE.md").write_text("<!-- kickstart:begin claude-pointer -->\nunlisted and malformed\n")
+
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    report = inspect_repo(tmp_path)
+
+    assert report.complete
+    assert report.claimed_level == report.achieved_level == "managed"
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+
+
+@pytest.mark.parametrize("owned_body", ["human prose without a fence\n", "<!-- kickstart:begin contracts-readme -->\n"])
+def test_recorded_managed_doc_still_requires_healthy_fences(tmp_path: Path, owned_body: str) -> None:
+    scaffold_managed_repo(tmp_path)
+    manifest_path = tmp_path / MANIFEST_PATH
+    manifest = json.loads(manifest_path.read_text())
+    manifest["ownership"] = {"AGENTS.md": "seed", "docs/contracts/README.md": "contracts-readme"}
+    manifest_path.write_text(json.dumps(manifest))
+    (tmp_path / "AGENTS.md").write_text("Human-authored instructions stay here.\n")
+    (tmp_path / "docs/contracts/README.md").write_text(owned_body)
+
+    report = inspect_repo(tmp_path)
+
+    assert not report.complete
+    assert report.achieved_level == "conformant"
+    assert "docs/contracts/README.md" in next(s.issue for s in report.missing if s.path == "managed docs fences")
+
+
+def test_recorded_owned_fence_and_seed_docs_can_coexist(tmp_path: Path) -> None:
+    scaffold_managed_repo(tmp_path)
+    manifest_path = tmp_path / MANIFEST_PATH
+    manifest = json.loads(manifest_path.read_text())
+    manifest["ownership"] = {"AGENTS.md": "seed", "docs/contracts/README.md": "contracts-readme"}
+    manifest_path.write_text(json.dumps(manifest))
+    (tmp_path / "AGENTS.md").write_text("Human-authored instructions stay here.\n")
+
+    assert inspect_repo(tmp_path).complete
+
+
+@pytest.mark.parametrize("schema", ["3.0", "3.1", "3.2"])
+def test_legacy_manifest_does_not_use_new_ownership_to_skip_fences(tmp_path: Path, schema: str) -> None:
+    scaffold_managed_repo(tmp_path)
+    manifest = replace(_cli_contract(), schema_version=schema).manifest("demo")
+    manifest["ownership"] = {"AGENTS.md": "seed"}
+    (tmp_path / MANIFEST_PATH).write_text(json.dumps(manifest))
+    (tmp_path / "AGENTS.md").write_text("Legacy unfenced instructions\n")
+
+    assert not inspect_repo(tmp_path).complete
+
+
+def test_recorded_seed_does_not_skip_level_one_presence(tmp_path: Path) -> None:
+    scaffold_managed_repo(tmp_path)
+    manifest_path = tmp_path / MANIFEST_PATH
+    manifest = json.loads(manifest_path.read_text())
+    manifest["ownership"] = {"AGENTS.md": "seed"}
+    manifest_path.write_text(json.dumps(manifest))
+    (tmp_path / "AGENTS.md").unlink()
+
+    report = inspect_repo(tmp_path)
+
+    assert not report.complete
+    assert report.achieved_level == "below-standard"
+
+
+@pytest.mark.parametrize("replacement", [None, "invalid json"])
+def test_manifest_changed_before_fence_check_fails_closed(tmp_path: Path, monkeypatch, replacement: str | None) -> None:
+    scaffold_managed_repo(tmp_path)
+    original = adoption._fence_readiness_status
+
+    def changed_manifest(root: Path):
+        path = root / MANIFEST_PATH
+        if replacement is None:
+            path.unlink()
+        else:
+            path.write_text(replacement)
+        return original(root)
+
+    monkeypatch.setattr(adoption, "_fence_readiness_status", changed_manifest)
+    report = inspect_repo(tmp_path)
+
+    assert not report.complete
+    assert report.achieved_level == "conformant"
+    assert any(s.path == "managed docs fences" and "manifest cannot drive" in s.issue for s in report.missing)
