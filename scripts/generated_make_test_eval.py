@@ -3,20 +3,29 @@
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 import json
 import os
+import platform
 from pathlib import Path
 import signal
 import subprocess
+import sys
 import tempfile
 import time
-from typing import Literal, cast
+from typing import cast
+from uuid import uuid4
 
 
-DependencyMode = Literal["network", "cached", "offline"]
+from scripts.generated_eval_report import (
+    DependencyMode,
+    GeneratedEvalReport,
+    MakeTestResult,
+    RunProvenance,
+    write_report,
+)
 
 
 @dataclass(frozen=True)
@@ -29,20 +38,6 @@ class CommandResult:
     timed_out: bool
 
 
-@dataclass(frozen=True)
-class MakeTestResult:
-    """Result from one generated component Makefile."""
-
-    path: Path
-    kind: str
-    platform: str
-    artifacts: str
-    returncode: int
-    duration_seconds: float
-    reason: str
-    output_tail: str
-
-
 def run_make_tests(
     output_root: Path,
     *,
@@ -52,7 +47,7 @@ def run_make_tests(
     env: dict[str, str],
 ) -> tuple[MakeTestResult, ...]:
     """Run a make target under every generated Makefile."""
-    makefiles = sorted(output_root.rglob("Makefile"))
+    makefiles = _generated_makefiles(output_root)
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [
             executor.submit(_run_one, makefile.parent, target=target, timeout_seconds=timeout_seconds, env=env)
@@ -91,6 +86,7 @@ def eval_environment(dependency_mode: DependencyMode, cache_root: Path) -> dict[
 
     cache_paths = {
         "XDG_CACHE_HOME": cache_root / "xdg",
+        "PY_CACHE_DIR": cache_root / "python",
         "PIP_CACHE_DIR": cache_root / "pip",
         "POETRY_CACHE_DIR": cache_root / "poetry",
         "POETRY_VIRTUALENVS_PATH": cache_root / "poetry-venvs",
@@ -190,9 +186,19 @@ def _manifest_summary(path: Path) -> tuple[str, str, str]:
     )
 
 
+def _generated_makefiles(output_root: Path) -> tuple[Path, ...]:
+    return tuple(
+        sorted(
+            path.parent.parent / "Makefile"
+            for path in output_root.rglob(".kickstart/scaffold.json")
+            if (path.parent.parent / "Makefile").is_file()
+        )
+    )
+
+
 def _prewarm_targets(output_root: Path) -> tuple[Path, ...]:
     selected: dict[str, Path] = {}
-    for makefile in sorted(output_root.rglob("Makefile")):
+    for makefile in _generated_makefiles(output_root):
         path = makefile.parent
         key = _dependency_family(path)
         if key is None or key in selected:
@@ -281,71 +287,43 @@ def _tail(output: str) -> str:
     return " / ".join(lines[-4:])[:400]
 
 
-def write_report(
-    path: Path,
-    results: tuple[MakeTestResult, ...],
-    output_root: Path,
-    *,
-    target: str,
-    dependency_mode: DependencyMode,
-    cache_root: Path,
-    prewarm_workers: int = 0,
-    prewarm_results: tuple[MakeTestResult, ...] = (),
-) -> None:
-    """Write a Markdown report for generated make-target results."""
-    by_reason = Counter(result.reason for result in results)
-    by_kind = Counter(result.kind for result in results)
-    by_kind_reason = Counter((result.kind, result.reason) for result in results)
-    prewarm_by_reason = Counter(result.reason for result in prewarm_results)
+def _capture_provenance(started_at: str, finished_at: str, *, workers: int, timeout_seconds: int) -> RunProvenance:
+    repo = Path(__file__).resolve().parents[1]
 
-    lines = [
-        "# Generated Make Test Eval",
-        "",
-        f"- Output root: `{output_root}`",
-        f"- Target: `make {target}`",
-        f"- Dependency mode: `{dependency_mode}`",
-        f"- Cache root: `{cache_root if dependency_mode != 'network' else 'default tool caches'}`",
-        f"- Makefiles tested: {len(results)}",
-        f"- Passed: {by_reason.get('pass', 0)}",
-        f"- Failed: {len(results) - by_reason.get('pass', 0)}",
-        "",
-    ]
-    if prewarm_results:
-        lines.extend(
-            [
-                "## Prewarm",
-                "",
-                f"- Targets: {len(prewarm_results)}",
-                f"- Workers: {prewarm_workers}",
-                f"- Passed: {prewarm_by_reason.get('pass', 0)}",
-                f"- Failed: {len(prewarm_results) - prewarm_by_reason.get('pass', 0)}",
-                "",
-            ]
-        )
-    lines.extend(["## By Kind", ""])
-    lines.extend(f"- {kind}: {count}" for kind, count in sorted(by_kind.items()))
-    lines.extend(["", "## By Result", ""])
-    lines.extend(f"- {reason}: {count}" for reason, count in by_reason.most_common())
-    lines.extend(["", "## By Kind And Result", ""])
-    lines.extend(f"- {kind} / {reason}: {count}" for (kind, reason), count in sorted(by_kind_reason.items()))
-    lines.extend(["", "## Failures", ""])
-    for result in results:
-        if result.reason == "pass":
-            continue
-        lines.extend(
-            [
-                f"### {result.kind} - {result.reason}",
-                f"- Path: `{result.path}`",
-                f"- Platform: `{result.platform}`",
-                f"- Artifacts: `{result.artifacts}`",
-                f"- Exit: `{result.returncode}` in {result.duration_seconds:.2f}s",
-                f"- Output: `{result.output_tail}`",
-                "",
-            ]
-        )
+    def read_command(command: tuple[str, ...]) -> tuple[str, int]:
+        try:
+            completed = subprocess.run(command, cwd=repo, text=True, capture_output=True, timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            return ("unavailable", 1)
+        return (completed.stdout.strip(), completed.returncode)
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n")
+    revision, revision_exit = read_command(("git", "rev-parse", "HEAD"))
+    status, status_exit = read_command(("git", "status", "--porcelain"))
+    tools = {"python": sys.version.splitlines()[0]}
+    for name, command in (
+        ("bun", ("bun", "--version")),
+        ("node", ("node", "--version")),
+        ("cargo", ("cargo", "--version")),
+        ("rustc", ("rustc", "--version")),
+        ("go", ("go", "version")),
+        ("cmake", ("cmake", "--version")),
+        ("poetry", ("poetry", "--version")),
+        ("make", ("make", "--version")),
+    ):
+        version, exit_code = read_command(command)
+        tools[name] = version.splitlines()[0] if exit_code == 0 and version else "unavailable"
+    return RunProvenance(
+        run_id=str(uuid4()),
+        started_at_utc=started_at,
+        finished_at_utc=finished_at,
+        source_revision=revision if revision_exit == 0 else "unknown",
+        source_dirty=bool(status) if status_exit == 0 else None,
+        execution_context=platform.platform(),
+        command=(sys.executable, *sys.argv),
+        tools=tools,
+        workers=workers,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 def main() -> int:
@@ -362,6 +340,9 @@ def main() -> int:
     parser.add_argument("--prewarm-workers", type=int, default=2)
     args = parser.parse_args()
 
+    if not _generated_makefiles(args.output_root):
+        parser.error(f"no generated Makefiles found under {args.output_root}")
+    started_at = datetime.now(UTC).isoformat()
     dependency_mode = cast(DependencyMode, args.dependency_mode)
     env = eval_environment(dependency_mode, args.cache_root)
     prewarm_results: tuple[MakeTestResult, ...] = ()
@@ -380,42 +361,25 @@ def main() -> int:
         target=args.target,
         env=env,
     )
-    write_report(
-        args.report,
-        results,
-        args.output_root,
+    report = GeneratedEvalReport(
+        report_path=args.report,
+        output_root=args.output_root,
         target=args.target,
         dependency_mode=dependency_mode,
         cache_root=args.cache_root,
+        provenance=_capture_provenance(
+            started_at,
+            datetime.now(UTC).isoformat(),
+            workers=args.workers,
+            timeout_seconds=args.timeout_seconds,
+        ),
+        results=results,
+        prewarm_requested=args.prewarm,
         prewarm_workers=args.prewarm_workers,
         prewarm_results=prewarm_results,
     )
-
-    by_reason = Counter(result.reason for result in results)
-    prewarm_by_reason = Counter(result.reason for result in prewarm_results)
-    print(
-        json.dumps(
-            {
-                "target": args.target,
-                "dependency_mode": dependency_mode,
-                "cache_root": str(args.cache_root if dependency_mode != "network" else "default tool caches"),
-                "prewarm": {
-                    "targets": len(prewarm_results),
-                    "workers": args.prewarm_workers,
-                    "passed": prewarm_by_reason.get("pass", 0),
-                    "failed": len(prewarm_results) - prewarm_by_reason.get("pass", 0),
-                    "by_reason": dict(prewarm_by_reason),
-                },
-                "makefiles": len(results),
-                "passed": by_reason.get("pass", 0),
-                "failed": len(results) - by_reason.get("pass", 0),
-                "by_reason": dict(by_reason),
-                "report": str(args.report),
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
+    summary = write_report(report)
+    print(json.dumps(asdict(summary), indent=2, sort_keys=True))
     return 0
 
 

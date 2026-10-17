@@ -13,6 +13,7 @@ def test_eval_environment_cached_sets_shared_tool_caches(tmp_path: Path) -> None
     env = eval_environment("cached", tmp_path)
 
     assert env["XDG_CACHE_HOME"] == str(tmp_path / "xdg")
+    assert env["PY_CACHE_DIR"] == str(tmp_path / "python")
     assert env["PIP_CACHE_DIR"] == str(tmp_path / "pip")
     assert env["POETRY_CACHE_DIR"] == str(tmp_path / "poetry")
     assert env["POETRY_VIRTUALENVS_PATH"] == str(tmp_path / "poetry-venvs")
@@ -86,3 +87,19 @@ def _component(root: Path, name: str, *, kind: str) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def test_eval_and_prewarm_ignore_dependency_makefiles(tmp_path: Path) -> None:
+    from scripts.generated_make_test_eval import run_make_tests
+
+    component = _component(tmp_path, "service", kind="service")
+    (component / "package.json").write_text("{}\n")
+    dependency = component / "node_modules" / "dependency"
+    dependency.mkdir(parents=True)
+    (dependency / "Makefile").write_text("test:\n\t@false\ninstall:\n\t@false\n")
+    (dependency / "package.json").write_text("{}\n")
+
+    assert _prewarm_targets(tmp_path) == (component,)
+    results = run_make_tests(tmp_path, timeout_seconds=5, workers=1, target="test", env=os.environ.copy())
+    assert len(results) == 1 and results[0].path == component
+    assert results[0].returncode == 0
