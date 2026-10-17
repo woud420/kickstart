@@ -9,9 +9,10 @@ from src.generator.scaffold_contract import ScaffoldContract
 from src.utils.errors import ManifestShapeError
 
 
-def _contract() -> ScaffoldContract:
+def _contract(schema_version: str = "4.0") -> ScaffoldContract:
     return ScaffoldContract(
         project_kind="service",
+        schema_version=schema_version, language="python", framework="minimal",
         execution_models=("container",),
         runtime_platforms=("local",),
     )
@@ -20,13 +21,13 @@ def _contract() -> ScaffoldContract:
 def test_new_manifest_records_generator_release() -> None:
     manifest = _contract().manifest("api")
     assert manifest["generated_by"] == f"kickstart@{__version__}"
-    assert f"/v{__version__}/" in manifest["semantics"]
+    assert "semantics" not in manifest
 
 
 @pytest.mark.parametrize("schema_version", ["3.0", "3.1"])
 @pytest.mark.parametrize("generator", ["kickstart", "kickstart@0.4.2"])
 def test_reading_manifest_preserves_recorded_generator(schema_version: str, generator: str) -> None:
-    manifest = json.loads(_contract().manifest_json("api"))
+    manifest = json.loads(_contract(schema_version).manifest_json("api"))
     manifest["schema_version"] = schema_version
     manifest["generated_by"] = generator
     manifest["semantics"] = "https://github.com/woud420/kickstart/blob/v0.4.2/docs/scaffold-contract.md"
@@ -36,7 +37,7 @@ def test_reading_manifest_preserves_recorded_generator(schema_version: str, gene
 
 
 def test_missing_legacy_generator_does_not_claim_current_release() -> None:
-    manifest = json.loads(_contract().manifest_json("api"))
+    manifest = json.loads(_contract("3.0").manifest_json("api"))
     del manifest["generated_by"]
     rebuilt = ScaffoldContract.from_manifest(manifest)
     assert rebuilt.manifest("api")["generated_by"] == "kickstart"

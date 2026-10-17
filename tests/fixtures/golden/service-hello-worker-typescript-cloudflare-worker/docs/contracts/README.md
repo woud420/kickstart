@@ -2,7 +2,7 @@
 # Contracts
 
 ## Scaffold identity
-- Kind: `worker`
+- Kind: `service`
 - Execution model: `cloudflare-worker`
 - Runtime platform: `cloudflare-workers`
 - Artifact: `wrangler`

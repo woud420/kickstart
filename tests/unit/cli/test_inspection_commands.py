@@ -25,6 +25,7 @@ def runner() -> CliRunner:
 def _service_contract() -> ScaffoldContract:
     return ScaffoldContract(
         project_kind="service",
+        language="python", framework="minimal",
         execution_models=("container",),
         runtime_platforms=("local",),
         artifacts=ScaffoldArtifacts(image="dockerfile"),

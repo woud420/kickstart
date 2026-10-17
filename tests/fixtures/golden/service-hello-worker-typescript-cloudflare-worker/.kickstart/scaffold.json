@@ -2,14 +2,6 @@
   "artifacts": {
     "worker": "wrangler"
   },
-  "capabilities": {},
-  "docs": {
-    "agent_map": "AGENTS.md",
-    "architecture": "docs/architecture/",
-    "contracts": "docs/contracts/",
-    "decisions": "docs/decisions/",
-    "operations": "docs/operations/"
-  },
   "execution": {
     "models": [
       "cloudflare-worker"
@@ -18,6 +10,7 @@
       "cloudflare-workers"
     ]
   },
+  "extensions": {},
   "generated_by": "kickstart@0.4.5",
   "knowledge_adapter": "none",
   "lifecycle": {
@@ -27,8 +20,32 @@
     "install": "make install",
     "test": "make test"
   },
+  "ownership": {
+    ".agents/skills/README.md": "agents-skills-readme",
+    ".claude/skills": "seed",
+    ".dev.vars.example": "seed",
+    ".github/workflows/ci.yml": "workflow-presence",
+    ".gitignore": "seed",
+    ".kickstart/scaffold.json": "manifest-shape",
+    ".prettierignore": "seed",
+    ".prettierrc.json": "seed",
+    "AGENTS.md": "agent-map",
+    "CLAUDE.md": "claude-pointer",
+    "Makefile": "make-check",
+    "README.md": "seed",
+    "docs/architecture/README.md": "architecture-readme",
+    "docs/contracts/README.md": "contracts-readme",
+    "docs/decisions/README.md": "decisions-readme",
+    "docs/operations/README.md": "operations-readme",
+    "eslint.config.mjs": "seed",
+    "package.json": "seed",
+    "src/index.ts": "seed",
+    "tests/worker.test.ts": "seed",
+    "tsconfig.json": "seed",
+    "wrangler.toml": "seed"
+  },
   "project": {
-    "kind": "worker",
+    "kind": "service",
     "language": "typescript",
     "name": "hello-worker",
     "repo_layout": "single-project"
@@ -38,6 +55,5 @@
       "cloudflare"
     ]
   },
-  "schema_version": "3.2",
-  "semantics": "https://github.com/woud420/kickstart/blob/v0.4.5/docs/scaffold-contract.md"
+  "schema_version": "4.0"
 }

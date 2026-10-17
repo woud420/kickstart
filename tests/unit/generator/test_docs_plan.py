@@ -20,6 +20,7 @@ from src.utils.errors import ManifestShapeError
 
 def _service_contract() -> ScaffoldContract:
     return ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
@@ -29,6 +30,7 @@ def _service_contract() -> ScaffoldContract:
 
 def _cli_contract() -> ScaffoldContract:
     return ScaffoldContract(
+        schema_version="3.2",
         project_kind="cli",
         execution_models=("cli",),
         runtime_platforms=("local",),
@@ -43,6 +45,7 @@ def _cli_contract() -> ScaffoldContract:
 
 def _worker_contract() -> ScaffoldContract:
     return ScaffoldContract(
+        schema_version="3.2",
         project_kind="worker",
         execution_models=("cloudflare-worker",),
         runtime_platforms=("cloudflare-workers",),
@@ -53,6 +56,7 @@ def _worker_contract() -> ScaffoldContract:
 
 def _system_contract() -> ScaffoldContract:
     return ScaffoldContract(
+        schema_version="3.2",
         project_kind="system",
         execution_models=("container",),
         runtime_platforms=("kubernetes",),

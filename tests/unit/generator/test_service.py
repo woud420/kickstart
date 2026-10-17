@@ -112,7 +112,8 @@ def test_create_success_python_with_helm_and_gh(
     
     mock_create_architecture_docs.assert_called_once()
     assert mock_create_architecture_docs.call_args.args[0] == "test-service Architecture Notes"
-    mock_write_content.assert_called_once_with(".env.example", "EXAMPLE_ENV_VAR=value\n")
+    mock_write_content.assert_any_call(".env.example", "EXAMPLE_ENV_VAR=value\n")
+    assert [c.args[0] for c in mock_write_content.call_args_list] == [".env.example", ".kickstart/scaffold.json"]
     mock_create_python_structure.assert_called_once()
     mock_create_helm_chart.assert_called_once()
     mock_log_success.assert_called_once_with("Python service 'test-service' created successfully in 'test-service'!")
@@ -693,7 +694,7 @@ def test_create_cloudflare_worker_uses_worker_flow(mock_execute_create_flow, tmp
         "docs/decisions",
     ]
     assert kwargs["architecture_title"] == "edge-api Cloudflare Worker Architecture Notes"
-    assert kwargs["scaffold_contract"].project_kind == "worker"
+    assert kwargs["scaffold_contract"].project_kind == "service"
     assert kwargs["scaffold_contract"].execution_models == ("cloudflare-worker",)
     assert kwargs["scaffold_contract"].runtime_platforms == ("cloudflare-workers",)
     assert kwargs["scaffold_contract"].artifacts == ScaffoldArtifacts(worker="wrangler")

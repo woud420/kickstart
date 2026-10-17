@@ -195,6 +195,12 @@ Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports 
 
 
 Scaffold metadata readers support schemas 3.0, 3.1, 3.2 and 4.0. Fresh generation
-remains on 3.2 pending the tested migration path; the
+emits 4.0. `kickstart migrate <repo>` produces a read-only legacy migration plan;
+`--apply` explicitly writes the resolved manifest. See the
+[migration contract](docs/contracts/manifest-migration.md). The
 [schema-4 format contract](docs/contracts/scaffold-schema-4.md) documents the
 flattened extensions and Cloudflare Worker service profile.
+
+Inspect the persisted scaffold envelope with `kickstart plan <repo> --ownership`;
+[the ownership contract](docs/contracts/scaffold-ownership.md) explains seed
+exclusions, fence comparisons and the structural checks on co-owned artifacts.

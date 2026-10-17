@@ -241,6 +241,205 @@
     },
     {
       "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "cli"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "models": {
+                "const": [
+                  "cli"
+                ]
+              }
+            },
+            "required": [
+              "models"
+            ]
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "library"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "models": {
+                "const": [
+                  "library"
+                ]
+              }
+            },
+            "required": [
+              "models"
+            ]
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "frontend"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "models": {
+                "const": [
+                  "static-site"
+                ]
+              }
+            },
+            "required": [
+              "models"
+            ]
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "service"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "models": {
+                "enum": [
+                  [
+                    "container"
+                  ],
+                  [
+                    "cloudflare-worker"
+                  ]
+                ]
+              }
+            },
+            "required": [
+              "models"
+            ]
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "project": {
+            "properties": {
+              "kind": {
+                "const": "system"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "models": {
+                "items": {
+                  "enum": [
+                    "container",
+                    "cloudflare-worker"
+                  ]
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "models"
+            ]
+          }
+        },
+        "required": [
+          "execution"
+        ]
+      }
+    },
+    {
+      "if": {
         "allOf": [
           {
             "properties": {
@@ -707,6 +906,89 @@
           "project"
         ]
       }
+    },
+    {
+      "properties": {
+        "ownership": {
+          "additionalProperties": {
+            "const": "seed"
+          },
+          "patternProperties": {
+            "^AGENTS\\.md$": {
+              "enum": [
+                "seed",
+                "agent-map"
+              ]
+            },
+            "^CLAUDE\\.md$": {
+              "enum": [
+                "seed",
+                "claude-pointer"
+              ]
+            },
+            "^Makefile$": {
+              "enum": [
+                "seed",
+                "make-check"
+              ]
+            },
+            "^\\.agents/skills/README\\.md$": {
+              "enum": [
+                "seed",
+                "agents-skills-readme"
+              ]
+            },
+            "^\\.github/workflows/[A-Za-z0-9_.-]+\\.(?:yml|yaml)$": {
+              "enum": [
+                "seed",
+                "workflow-presence"
+              ]
+            },
+            "^\\.kickstart/scaffold\\.json$": {
+              "enum": [
+                "seed",
+                "manifest-shape"
+              ]
+            },
+            "^docs/architecture/README\\.md$": {
+              "enum": [
+                "seed",
+                "architecture-readme"
+              ]
+            },
+            "^docs/contracts/README\\.md$": {
+              "enum": [
+                "seed",
+                "contracts-readme"
+              ]
+            },
+            "^docs/decisions/README\\.md$": {
+              "enum": [
+                "seed",
+                "decisions-readme"
+              ]
+            },
+            "^docs/operations/README\\.md$": {
+              "enum": [
+                "seed",
+                "operations-readme"
+              ]
+            }
+          },
+          "propertyNames": {
+            "allOf": [
+              {
+                "pattern": "^(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+              },
+              {
+                "not": {
+                  "pattern": "[\\r\\n]"
+                }
+              }
+            ]
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -868,6 +1150,24 @@
         }
       },
       "required": [],
+      "type": "object"
+    },
+    "ownership": {
+      "additionalProperties": {
+        "enum": [
+          "seed",
+          "agent-map",
+          "claude-pointer",
+          "agents-skills-readme",
+          "contracts-readme",
+          "operations-readme",
+          "decisions-readme",
+          "architecture-readme",
+          "make-check",
+          "workflow-presence",
+          "manifest-shape"
+        ]
+      },
       "type": "object"
     },
     "project": {

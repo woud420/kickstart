@@ -29,6 +29,7 @@ def _write_manifest(root: Path, contract: ScaffoldContract, name: str) -> None:
 
 def _service_repo(root: Path) -> None:
     contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
@@ -115,6 +116,7 @@ def test_kind_type_mapping(tmp_path: Path) -> None:
         root = tmp_path / kind
         root.mkdir()
         contract = ScaffoldContract(
+            schema_version="3.2",
             project_kind=cast(ProjectKind, kind),
             execution_models=("cli",),
             runtime_platforms=("local",),
@@ -129,6 +131,7 @@ def test_kind_type_mapping(tmp_path: Path) -> None:
 
 def test_system_export_emits_system_and_children(tmp_path: Path) -> None:
     system_contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="system",
         execution_models=("container",),
         runtime_platforms=("kubernetes",),
@@ -136,6 +139,7 @@ def test_system_export_emits_system_and_children(tmp_path: Path) -> None:
     )
     _write_manifest(tmp_path, system_contract, "demo-sys")
     child_contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
@@ -162,6 +166,7 @@ def test_system_export_emits_system_and_children(tmp_path: Path) -> None:
 
 def test_child_fences_refresh_and_underscore_names_are_safe(tmp_path: Path) -> None:
     system_contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="system",
         execution_models=("container",),
         runtime_platforms=("kubernetes",),
@@ -169,6 +174,7 @@ def test_child_fences_refresh_and_underscore_names_are_safe(tmp_path: Path) -> N
     )
     _write_manifest(tmp_path, system_contract, "demo-sys")
     child_contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
@@ -184,6 +190,7 @@ def test_child_fences_refresh_and_underscore_names_are_safe(tmp_path: Path) -> N
 
     # A derived change in the child (new extension tag) refreshes its fence.
     richer_child = ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
@@ -198,6 +205,7 @@ def test_child_fences_refresh_and_underscore_names_are_safe(tmp_path: Path) -> N
 
 def test_nameless_child_is_skipped_not_fatal(tmp_path: Path) -> None:
     system_contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="system",
         execution_models=("container",),
         runtime_platforms=("kubernetes",),
@@ -208,6 +216,7 @@ def test_nameless_child_is_skipped_not_fatal(tmp_path: Path) -> None:
     broken_child.mkdir(parents=True)
     manifest = json.loads(
         ScaffoldContract(
+            schema_version="3.2",
             project_kind="service", execution_models=("container",), runtime_platforms=("local",)
         ).manifest_json("mystery")
     )
@@ -221,9 +230,10 @@ def test_nameless_child_is_skipped_not_fatal(tmp_path: Path) -> None:
 
 
 def test_template_owner_default_matches_exporter_constant() -> None:
+    root = Path(__file__).resolve().parents[3]
     templates = (
-        Path("src/templates/monorepo/catalog-info.yaml"),
-        Path("src/templates/monorepo/backstage_template.yaml"),
+        root / "src/templates/monorepo/catalog-info.yaml",
+        root / "src/templates/monorepo/backstage_template.yaml",
     )
     for template_path in templates:
         template = template_path.read_text(encoding="utf-8")
@@ -247,6 +257,7 @@ def test_export_result_reports_missing_required_lines(tmp_path: Path) -> None:
 
 def test_manifest_name_round_trips_from_generated_manifest(tmp_path: Path) -> None:
     contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
@@ -259,6 +270,7 @@ def test_manifest_name_round_trips_from_generated_manifest(tmp_path: Path) -> No
 
 def test_yaml_reserved_name_is_quoted_as_a_string(tmp_path: Path) -> None:
     contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
@@ -274,6 +286,7 @@ def test_yaml_reserved_name_is_quoted_as_a_string(tmp_path: Path) -> None:
 
 def test_colliding_child_fence_ids_fail_instead_of_dropping(tmp_path: Path) -> None:
     system_contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="system",
         execution_models=("container",),
         runtime_platforms=("kubernetes",),
@@ -281,6 +294,7 @@ def test_colliding_child_fence_ids_fail_instead_of_dropping(tmp_path: Path) -> N
     )
     _write_manifest(tmp_path, system_contract, "demo-sys")
     child_contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
@@ -296,6 +310,7 @@ def test_colliding_child_fence_ids_fail_instead_of_dropping(tmp_path: Path) -> N
 
 def test_name_beyond_backstage_limit_is_refused(tmp_path: Path) -> None:
     contract = ScaffoldContract(
+        schema_version="3.2",
         project_kind="service",
         execution_models=("container",),
         runtime_platforms=("local",),
