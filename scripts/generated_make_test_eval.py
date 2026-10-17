@@ -20,6 +20,7 @@ from typing import cast
 from uuid import uuid4
 
 
+from scripts.generated_eval_workspaces import target_groups
 from scripts.generated_eval_report import (
     DependencyMode,
     GeneratedEvalReport,
@@ -57,21 +58,14 @@ def run_make_tests(
     clean_completed: bool = False,
 ) -> tuple[MakeTestResult, ...]:
     """Run a make target under every generated Makefile."""
-    makefiles = _generated_makefiles(output_root)
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = [
-            executor.submit(
-                _run_one,
-                makefile.parent,
-                target=target,
-                timeout_seconds=timeout_seconds,
-                env=env,
-                clean_completed=clean_completed,
-            )
-            for makefile in makefiles
-        ]
-        results = [future.result() for future in as_completed(futures)]
-    return tuple(sorted(results, key=lambda result: str(result.path)))
+    return _run_targets(
+        tuple(makefile.parent for makefile in _generated_makefiles(output_root)),
+        timeout_seconds=timeout_seconds,
+        workers=workers,
+        target=target,
+        env=env,
+        clean_completed=clean_completed,
+    )
 
 
 def prewarm_dependencies(
@@ -82,17 +76,54 @@ def prewarm_dependencies(
     env: dict[str, str],
 ) -> tuple[MakeTestResult, ...]:
     """Run `make install` once per dependency family to seed package caches."""
-    targets = _prewarm_targets(output_root)
-    if not targets:
-        return ()
+    return _run_targets(
+        _prewarm_targets(output_root),
+        timeout_seconds=timeout_seconds,
+        workers=workers,
+        target="install",
+        env=env,
+    )
 
+
+def _run_targets(
+    paths: tuple[Path, ...],
+    *,
+    timeout_seconds: int,
+    workers: int,
+    target: str,
+    env: dict[str, str],
+    clean_completed: bool = False,
+) -> tuple[MakeTestResult, ...]:
+    if not paths:
+        return ()
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [
-            executor.submit(_run_one, target_path, target="install", timeout_seconds=timeout_seconds, env=env)
-            for target_path in targets
+            executor.submit(
+                _run_group,
+                group,
+                target=target,
+                timeout_seconds=timeout_seconds,
+                env=env,
+                clean_completed=clean_completed,
+            )
+            for group in target_groups(paths)
         ]
-        results = [future.result() for future in as_completed(futures)]
+        results = [result for future in as_completed(futures) for result in future.result()]
     return tuple(sorted(results, key=lambda result: str(result.path)))
+
+
+def _run_group(
+    paths: tuple[Path, ...],
+    *,
+    target: str,
+    timeout_seconds: int,
+    env: dict[str, str],
+    clean_completed: bool,
+) -> tuple[MakeTestResult, ...]:
+    return tuple(
+        _run_one(path, target=target, timeout_seconds=timeout_seconds, env=env, clean_completed=clean_completed)
+        for path in paths
+    )
 
 
 def eval_environment(dependency_mode: DependencyMode, cache_root: Path) -> dict[str, str]:
