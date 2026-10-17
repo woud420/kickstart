@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 from pathlib import Path
 from unittest.mock import patch, call
@@ -70,6 +72,24 @@ def monorepo_generator_with_root():
 def mock_scaffold_contract_docs():
     with patch.object(MonorepoGenerator, "create_scaffold_contract_docs", return_value=True):
         yield
+
+
+@pytest.fixture
+def create_mocks():
+    with (
+        patch.object(MonorepoGenerator, "create_project", return_value=True) as create_project,
+        patch.object(MonorepoGenerator, "init_basic_structure") as init_basic_structure,
+        patch.object(MonorepoGenerator, "write_template") as write_template,
+        patch.object(MonorepoGenerator, "create_architecture_docs") as create_architecture_docs,
+        patch.object(MonorepoGenerator, "log_success") as log_success,
+    ):
+        yield SimpleNamespace(
+            create_project=create_project,
+            init_basic_structure=init_basic_structure,
+            write_template=write_template,
+            create_architecture_docs=create_architecture_docs,
+            log_success=log_success,
+        )
 
 
 def test_monorepo_generator_initialization(monorepo_generator):
@@ -170,28 +190,24 @@ def test_monorepo_rejects_invalid_profile_options():
         MonorepoGenerator("test", False, {}, runtime="lambda").create()
 
 
-@patch('src.generator.monorepo.create_repo')
-@patch.object(MonorepoGenerator, '_create_kustomize_structure')
-@patch.object(MonorepoGenerator, 'write_template')
-@patch.object(MonorepoGenerator, 'create_architecture_docs')
-@patch.object(MonorepoGenerator, 'init_basic_structure')
-@patch.object(MonorepoGenerator, 'create_project')
-@patch.object(MonorepoGenerator, 'log_success')
-def test_create_success_with_kustomize_and_gh(
-    mock_log_success, mock_create_project, mock_init_basic_structure,
-    mock_create_architecture_docs, mock_write_template, 
-    mock_create_kustomize_structure, mock_create_repo
-):
+@patch("src.generator.monorepo.create_repo")
+@patch.object(MonorepoGenerator, "_create_kustomize_structure")
+def test_create_success_with_kustomize_and_gh(mock_create_kustomize_structure, mock_create_repo, create_mocks):
+    mock_log_success = create_mocks.log_success
+    mock_create_project = create_mocks.create_project
+    mock_init_basic_structure = create_mocks.init_basic_structure
+    mock_create_architecture_docs = create_mocks.create_architecture_docs
+    mock_write_template = create_mocks.write_template
+
     generator = MonorepoGenerator("test-monorepo", True, {"key": "value"})
-    mock_create_project.return_value = True
 
     generator.create()
 
     mock_create_project.assert_called_once()
     mock_init_basic_structure.assert_called_once_with(_expected_monorepo_dirs())
-    
+
     mock_create_kustomize_structure.assert_called_once()
-    
+
     expected_templates = [
         ("infra/docker/docker-compose.yml", "docker-compose.yml"),
         ("infra/terraform/env/dev/main.tf", "terraform_env_main.tf"),
@@ -215,7 +231,7 @@ def test_create_success_with_kustomize_and_gh(
 
     for target, template in expected_templates:
         assert _template_written(mock_write_template, target, template)
-    
+
     mock_create_architecture_docs.assert_called_once()
     assert mock_create_architecture_docs.call_args.args[0] == "test-monorepo System Docs"
     mock_log_success.assert_called_once_with(
@@ -224,20 +240,12 @@ def test_create_success_with_kustomize_and_gh(
     mock_create_repo.assert_called_once_with("test-monorepo")
 
 
-@patch('src.generator.monorepo.create_repo')
-@patch.object(MonorepoGenerator, '_create_helm_structure')
-@patch.object(MonorepoGenerator, 'write_template')
-@patch.object(MonorepoGenerator, 'create_architecture_docs')
-@patch.object(MonorepoGenerator, 'init_basic_structure')
-@patch.object(MonorepoGenerator, 'create_project')
-@patch.object(MonorepoGenerator, 'log_success')
-def test_create_success_with_helm(
-    mock_log_success, mock_create_project, mock_init_basic_structure,
-    mock_create_architecture_docs, mock_write_template, 
-    mock_create_helm_structure, mock_create_repo
-):
+@patch("src.generator.monorepo.create_repo")
+@patch.object(MonorepoGenerator, "_create_helm_structure")
+def test_create_success_with_helm(mock_create_helm_structure, mock_create_repo, create_mocks):
+    mock_log_success = create_mocks.log_success
+
     generator = MonorepoGenerator("test-monorepo", False, {"key": "value"}, helm=True)
-    mock_create_project.return_value = True
 
     generator.create()
 
@@ -248,18 +256,13 @@ def test_create_success_with_helm(
     mock_create_repo.assert_not_called()
 
 
-@patch.object(MonorepoGenerator, '_create_kustomize_structure')
-@patch.object(MonorepoGenerator, 'write_template')
-@patch.object(MonorepoGenerator, 'create_architecture_docs')
-@patch.object(MonorepoGenerator, 'init_basic_structure')
-@patch.object(MonorepoGenerator, 'create_project')
-@patch.object(MonorepoGenerator, 'log_success')
-def test_create_success_with_cloudflare_workers_runtime(
-    mock_log_success, mock_create_project, mock_init_basic_structure,
-    mock_create_architecture_docs, mock_write_template, mock_create_kustomize_structure
-):
+@patch.object(MonorepoGenerator, "_create_kustomize_structure")
+def test_create_success_with_cloudflare_workers_runtime(mock_create_kustomize_structure, create_mocks):
+    mock_log_success = create_mocks.log_success
+    mock_init_basic_structure = create_mocks.init_basic_structure
+    mock_write_template = create_mocks.write_template
+
     generator = MonorepoGenerator("edge-stack", False, {}, cloud="cloudflare", runtime="cloudflare-workers")
-    mock_create_project.return_value = True
 
     generator.create()
 
@@ -335,27 +338,25 @@ def test_create_kustomize_structure(mock_create_directories, mock_write_template
         assert _template_written(mock_write_template, *expected_call.args)
 
 
-def test_terraform_environments_coverage():
+def test_terraform_environments_coverage(create_mocks):
     """Test that all expected environments are covered in terraform file generation."""
     expected_envs = ["dev", "staging", "prod"]
-    
-    with patch.object(MonorepoGenerator, 'create_project', return_value=True), \
-         patch.object(MonorepoGenerator, 'init_basic_structure'), \
-         patch.object(MonorepoGenerator, '_create_kustomize_structure'), \
-         patch.object(MonorepoGenerator, 'create_architecture_docs'), \
-         patch.object(MonorepoGenerator, 'log_success'), \
-         patch.object(MonorepoGenerator, 'write_template') as mock_write_template:
-        
+
+    with patch.object(MonorepoGenerator, "_create_kustomize_structure"):
+        mock_write_template = create_mocks.write_template
         generator = MonorepoGenerator("test", False, {})
         generator.create()
-        
+
         # Check that terraform files are created for each environment
-        terraform_calls = [call for call in mock_write_template.call_args_list 
-                          if any(f"infra/terraform/env/{env}" in str(call) for env in expected_envs)]
-        
+        terraform_calls = [
+            call
+            for call in mock_write_template.call_args_list
+            if any(f"infra/terraform/env/{env}" in str(call) for env in expected_envs)
+        ]
+
         # Should have 3 files per environment (main.tf, variables.tf, tfvars example)
         assert len(terraform_calls) == len(expected_envs) * 3
-        
+
         # Check specific calls exist
         for env in expected_envs:
             main_tf_call = call(f"infra/terraform/env/{env}/main.tf", "terraform_env_main.tf")
@@ -366,37 +367,27 @@ def test_terraform_environments_coverage():
             assert _template_written(mock_write_template, *tfvars_call.args)
 
 
-def test_github_workflows_coverage():
+def test_github_workflows_coverage(create_mocks):
     """Test that all expected GitHub workflow files are created."""
     expected_workflows = ["build.yml", "test.yml", "deploy.yml"]
-    
-    with patch.object(MonorepoGenerator, 'create_project', return_value=True), \
-         patch.object(MonorepoGenerator, 'init_basic_structure'), \
-         patch.object(MonorepoGenerator, '_create_kustomize_structure'), \
-         patch.object(MonorepoGenerator, 'create_architecture_docs'), \
-         patch.object(MonorepoGenerator, 'log_success'), \
-         patch.object(MonorepoGenerator, 'write_template') as mock_write_template:
-        
+
+    with patch.object(MonorepoGenerator, "_create_kustomize_structure"):
+        mock_write_template = create_mocks.write_template
         generator = MonorepoGenerator("test", False, {})
         generator.create()
-        
+
         # Check that workflow files are created
         for workflow in expected_workflows:
             assert _template_written(mock_write_template, f".github/workflows/{workflow}", workflow)
 
 
-def test_monorepo_name_passed_to_templates():
+def test_monorepo_name_passed_to_templates(create_mocks):
     """Test that monorepo name is correctly passed to Makefile and README templates."""
-    with patch.object(MonorepoGenerator, 'create_project', return_value=True), \
-         patch.object(MonorepoGenerator, 'init_basic_structure'), \
-         patch.object(MonorepoGenerator, '_create_kustomize_structure'), \
-         patch.object(MonorepoGenerator, 'create_architecture_docs'), \
-         patch.object(MonorepoGenerator, 'log_success'), \
-         patch.object(MonorepoGenerator, 'write_template') as mock_write_template:
-        
+    with patch.object(MonorepoGenerator, "_create_kustomize_structure"):
+        mock_write_template = create_mocks.write_template
         generator = MonorepoGenerator("my-awesome-repo", False, {})
         generator.create()
-        
+
         # Check that monorepo name is passed to templates
         makefile_call = next(
             template_call
@@ -416,16 +407,11 @@ def test_monorepo_name_passed_to_templates():
         assert readme_call.kwargs["system_name"] == "my-awesome-repo"
 
 
-def test_basic_structure_includes_all_required_directories():
+def test_basic_structure_includes_all_required_directories(create_mocks):
     """Test that init_basic_structure is called with all required directories."""
-    with patch.object(MonorepoGenerator, 'create_project', return_value=True), \
-         patch.object(MonorepoGenerator, '_create_kustomize_structure'), \
-         patch.object(MonorepoGenerator, 'write_template'), \
-         patch.object(MonorepoGenerator, 'create_architecture_docs'), \
-         patch.object(MonorepoGenerator, 'log_success'), \
-         patch.object(MonorepoGenerator, 'init_basic_structure') as mock_init_structure:
-        
+    with patch.object(MonorepoGenerator, "_create_kustomize_structure"):
+        mock_init_structure = create_mocks.init_basic_structure
         generator = MonorepoGenerator("test", False, {})
         generator.create()
-        
+
         mock_init_structure.assert_called_once_with(_expected_monorepo_dirs())

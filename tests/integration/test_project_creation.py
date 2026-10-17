@@ -216,53 +216,43 @@ class TestServiceCreation:
         assert manifest["execution"] == {"models": ["container"], "platforms": ["kubernetes"]}
         assert manifest["artifacts"] == {"image": "dockerfile", "kubernetes": "helm"}
 
-    def test_rust_service_redis_cache_extension(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test Rust service generation with Redis cache support."""
-        service_name = "test-rust-redis-service"
-
+    @pytest.mark.parametrize(
+        ("extension", "value", "module_dir", "dependency", "environment"),
+        [
+            ("cache", "redis", "clients", "redis = ", "REDIS_URL=redis://127.0.0.1:6379/0"),
+            ("auth", "jwt", "handler", "jsonwebtoken = ", "JWT_SECRET=change-me-change-me"),
+        ],
+        ids=["redis-cache", "jwt-auth"],
+    )
+    def test_rust_service_extension(
+        self,
+        temp_project_dir: Path,
+        mock_config: GeneratorConfig,
+        extension,
+        value,
+        module_dir,
+        dependency,
+        environment,
+    ):
+        service_name = f"test-rust-{value}-service"
         generator = ServiceGenerator(
             name=service_name,
             lang="rust",
             gh=False,
             config=mock_config,
             root=str(temp_project_dir),
-            cache="redis",
+            **{extension: value},
         )
         generator.create()
-
         project_path = temp_project_dir / service_name
         manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
 
-        assert manifest["extensions"] == {"cache": "redis"}
-        assert (project_path / "src/clients/mod.rs").read_text() == "pub mod cache;\n"
-        assert (project_path / "src/clients/cache.rs").exists()
-        assert "mod clients;" in (project_path / "src/main.rs").read_text()
-        assert "redis = " in (project_path / "Cargo.toml").read_text()
-        assert "REDIS_URL=redis://127.0.0.1:6379/0" in (project_path / ".env.example").read_text()
-
-    def test_rust_service_jwt_auth_extension(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test Rust service generation with JWT auth support."""
-        service_name = "test-rust-jwt-service"
-
-        generator = ServiceGenerator(
-            name=service_name,
-            lang="rust",
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir),
-            auth="jwt",
-        )
-        generator.create()
-
-        project_path = temp_project_dir / service_name
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
-
-        assert manifest["extensions"] == {"auth": "jwt"}
-        assert (project_path / "src/handler/mod.rs").read_text() == "pub mod auth;\n"
-        assert (project_path / "src/handler/auth.rs").exists()
-        assert "mod handler;" in (project_path / "src/main.rs").read_text()
-        assert "jsonwebtoken = " in (project_path / "Cargo.toml").read_text()
-        assert "JWT_SECRET=change-me-change-me" in (project_path / ".env.example").read_text()
+        assert manifest["extensions"] == {extension: value}
+        assert (project_path / f"src/{module_dir}/mod.rs").read_text() == f"pub mod {extension};\n"
+        assert (project_path / f"src/{module_dir}/{extension}.rs").exists()
+        assert f"mod {module_dir};" in (project_path / "src/main.rs").read_text()
+        assert dependency in (project_path / "Cargo.toml").read_text()
+        assert environment in (project_path / ".env.example").read_text()
 
     def test_typescript_service_postgres_database_extension(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test TypeScript service generation with Postgres database support."""
@@ -423,164 +413,62 @@ class TestServiceCreation:
         assert not (existing_dir / "src").exists()
 
 
-class TestFrontendCreation:
-    """Test end-to-end frontend creation workflows."""
-    
-    def test_react_frontend_creation(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test React frontend project creation."""
-        frontend_name = "test-react-app"
-        
-        with patch('src.utils.github.create_repo'):
-            generator = FrontendGenerator(
-                name=frontend_name,
-                gh=False,
-                config=mock_config,
-                root=str(temp_project_dir)
-            )
+class TestProjectStructure:
+    """Common scaffold directories across project kinds."""
+
+    @pytest.mark.parametrize(
+        ("generator_class", "name", "options", "directories"),
+        [
+            (FrontendGenerator, "test-react-app", {}, ("src", "public", "tests")),
+            (LibGenerator, "test-python-lib", {"lang": "python"}, ("src", "tests")),
+            (MonorepoGenerator, "test-monorepo", {"helm": True}, ("services", "libs", "frontend", "infra")),
+        ],
+        ids=["react-frontend", "python-library", "helm-monorepo"],
+    )
+    def test_generator_directories(
+        self,
+        temp_project_dir: Path,
+        mock_config: GeneratorConfig,
+        generator_class,
+        name,
+        options,
+        directories,
+    ):
+        with patch("src.utils.github.create_repo"):
+            generator = generator_class(name=name, gh=False, config=mock_config, root=str(temp_project_dir), **options)
             generator.create()
-        
-        project_path = temp_project_dir / frontend_name
-        
-        # Verify frontend directory structure
+
+        project_path = temp_project_dir / name
         assert project_path.exists()
-        expected_dirs = [
-            "src",
-            "public",
-            "tests",
+        for directory in (
+            *directories,
             "docs/architecture",
             "docs/contracts",
             "docs/operations",
             "docs/decisions",
             ".kickstart",
             ".agents/skills",
-        ]
-        for expected_dir in expected_dirs:
-            assert (project_path / expected_dir).exists()
-
-
-class TestLibraryCreation:
-    """Test end-to-end library creation workflows."""
-    
-    def test_python_library_creation(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test Python library project creation."""
-        lib_name = "test-python-lib"
-        
-        with patch('src.utils.github.create_repo'):
-            generator = LibGenerator(
-                name=lib_name,
-                lang="python",
-                gh=False,
-                config=mock_config,
-                root=str(temp_project_dir)
-            )
-            generator.create()
-        
-        project_path = temp_project_dir / lib_name
-        
-        # Verify library structure
-        assert project_path.exists()
-        expected_dirs = [
-            "src",
-            "tests",
-            "docs/architecture",
-            "docs/contracts",
-            "docs/operations",
-            "docs/decisions",
-            ".kickstart",
-            ".agents/skills",
-        ]
-        for expected_dir in expected_dirs:
-            assert (project_path / expected_dir).exists()
-
-
-class TestMonorepoCreation:
-    """Test end-to-end monorepo creation workflows."""
-    
-    def test_monorepo_creation_with_helm(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test monorepo creation with Helm support."""
-        mono_name = "test-monorepo"
-        
-        with patch('src.utils.github.create_repo'):
-            generator = MonorepoGenerator(
-                name=mono_name,
-                gh=False,
-                config=mock_config,
-                helm=True,
-                root=str(temp_project_dir)
-            )
-            generator.create()
-        
-        project_path = temp_project_dir / mono_name
-        
-        # Verify monorepo structure
-        assert project_path.exists()
-        expected_dirs = [
-            "services",
-            "libs",
-            "frontend",
-            "docs/architecture",
-            "docs/contracts",
-            "docs/operations",
-            "docs/decisions",
-            ".kickstart",
-            ".agents/skills",
-            "infra",
-        ]
-        for expected_dir in expected_dirs:
-            assert (project_path / expected_dir).exists()
+        ):
+            assert (project_path / directory).exists()
 
 
 class TestAPIFunctions:
     """Test the high-level API functions used by CLI."""
     
-    def test_create_service_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test the create_service API function."""
-        service_name = "api-test-service"
-        
-        with patch('src.utils.github.create_repo'):
-            create_service(
-                name=service_name,
-                lang="python",
-                gh=False,
-                config=mock_config,
-                helm=False,
-                root=str(temp_project_dir)
-            )
-        
-        project_path = temp_project_dir / service_name
-        assert project_path.exists()
-        assert (project_path / "src").exists()
-    
-    def test_create_frontend_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test the create_frontend API function."""
-        frontend_name = "api-test-frontend"
-        
-        with patch('src.utils.github.create_repo'):
-            create_frontend(
-                name=frontend_name,
-                gh=False,
-                config=mock_config,
-                root=str(temp_project_dir)
-            )
-        
-        project_path = temp_project_dir / frontend_name
-        assert project_path.exists()
-        assert (project_path / "src").exists()
-    
-    def test_create_lib_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test the create_lib API function."""
-        lib_name = "api-test-lib"
-        
-        with patch('src.utils.github.create_repo'):
-            create_lib(
-                name=lib_name,
-                lang="python",
-                gh=False,
-                config=mock_config,
-                root=str(temp_project_dir)
-            )
-        
-        project_path = temp_project_dir / lib_name
+    @pytest.mark.parametrize(
+        ("create", "name", "options"),
+        [
+            (create_service, "api-test-service", {"lang": "python", "helm": False}),
+            (create_frontend, "api-test-frontend", {}),
+            (create_lib, "api-test-lib", {"lang": "python"}),
+        ],
+        ids=["service", "frontend", "lib"],
+    )
+    def test_create_api(self, temp_project_dir: Path, mock_config: GeneratorConfig, create, name, options):
+        with patch("src.utils.github.create_repo"):
+            create(name=name, gh=False, config=mock_config, root=str(temp_project_dir), **options)
+
+        project_path = temp_project_dir / name
         assert project_path.exists()
         assert (project_path / "src").exists()
     
