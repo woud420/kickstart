@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+import src.generator.adoption as adoption
+
 from src.generator.adoption import inspect_repo
 from src.generator.drift import inspect_drift
 from src.generator.service import ServiceGenerator
@@ -220,3 +222,30 @@ def test_workflow_changes_between_reads_are_findings_not_escaped_reads(
     report = inspect_drift(project)
     assert next(e for e in report.entries if e.target == ".github/workflows/ci.yml").status == "unreadable"
     assert "private external workflow sentinel" not in report.to_json()
+
+
+@pytest.mark.parametrize("replacement", [None, "invalid json"])
+def test_adoption_reports_manifest_changes_before_drift_as_a_gap(
+    project: Path, monkeypatch, replacement: str | None
+) -> None:
+    original = adoption.inspect_drift
+
+    def changed_manifest(root: Path):
+        path = root / ".kickstart/scaffold.json"
+        if replacement is None:
+            path.unlink()
+        else:
+            path.write_text(replacement)
+        return original(root)
+
+    monkeypatch.setattr(adoption, "inspect_drift", changed_manifest)
+    report = inspect_repo(project)
+
+    assert not report.complete
+    assert report.claimed_level == "managed"
+    assert report.achieved_level == "conformant"
+    assert report.drift is None
+    assert any(
+        status.path == "recorded scaffold drift" and "manifest cannot drive" in status.issue
+        for status in report.missing
+    )

@@ -29,7 +29,7 @@ from src.generator.artifact_checks import has_check_target
 from src.generator.drift import DriftReport, inspect_drift
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.generator.scaffold_contract import MANIFEST_PATH, ScaffoldContract, load_parsed_manifest
-from src.utils.errors import KickstartError, ManifestShapeError
+from src.utils.errors import DriftTargetError, KickstartError, ManifestShapeError
 
 
 class AdoptionTargetError(KickstartError):
@@ -156,10 +156,7 @@ def _makefile_issue(makefile: Path) -> str:
 
 def _has_workflow_file(workflows_dir: Path) -> bool:
     """Return True when the directory holds at least one workflow file."""
-    return any(
-        entry.is_file() and entry.suffix in (".yml", ".yaml")
-        for entry in workflows_dir.iterdir()
-    )
+    return any(entry.is_file() and entry.suffix in (".yml", ".yaml") for entry in workflows_dir.iterdir())
 
 
 def _artifact_status(root: Path, artifact: str, level: AdoptionLevel = LEVEL_CONFORMANT) -> ArtifactStatus:
@@ -199,9 +196,7 @@ def _fence_readiness_status(resolved: Path) -> ArtifactStatus:
         )
 
     not_ready = [
-        f"{entry.target} ({entry.status})"
-        for entry in plan.entries
-        if entry.status not in _FENCE_READY_STATUSES
+        f"{entry.target} ({entry.status})" for entry in plan.entries if entry.status not in _FENCE_READY_STATUSES
     ]
     if not_ready:
         return ArtifactStatus(
@@ -237,7 +232,18 @@ def inspect_repo(root: Path) -> AdoptionReport:
             # A broken manifest is one gap, not two: fence readiness re-parses
             # the same file, so only report it when the manifest itself is fine.
             level2 = (manifest_status, _fence_readiness_status(resolved))
-            drift = inspect_drift(resolved)
+            try:
+                drift = inspect_drift(resolved)
+            except DriftTargetError as error:
+                level2 = (
+                    *level2,
+                    ArtifactStatus(
+                        path="recorded scaffold drift",
+                        present=False,
+                        issue=f"manifest cannot drive recorded drift: {error}",
+                        level=LEVEL_MANAGED,
+                    ),
+                )
 
     achieved_level: AdoptionLevel = LEVEL_BELOW_STANDARD
     if all(status.ok for status in level1):
