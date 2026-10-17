@@ -1,6 +1,7 @@
 """Build and record closed, provider-neutral product events."""
 
 import platform as runtime_platform
+from collections.abc import Callable
 
 from src.model.dto.telemetry import (
     CliArtifactKind,
@@ -58,6 +59,16 @@ _PROJECT_CREATION_ERRORS = (
 )
 
 
+def _capture_event(event_factory: Callable[[], TelemetryEvent], reporter: TelemetryReporter | None) -> None:
+    """Contain event mapping and delivery failures in one best-effort boundary."""
+    try:
+        event = event_factory()
+        target_reporter = default_telemetry_reporter() if reporter is None else reporter
+        target_reporter.record(event)
+    except Exception:
+        return
+
+
 def build_scaffold_create_event(
     context: ScaffoldCreateContext,
     outcome: ScaffoldCreateOutcome,
@@ -111,18 +122,12 @@ def capture_scaffold_create_terminal(
     reporter: TelemetryReporter | None = None,
 ) -> None:
     """Attempt one terminal capture while containing mapping and reporter failures."""
-    try:
-        event = build_scaffold_create_event(
-            context,
-            outcome,
-            error_category,
-            duration_seconds,
-            cli_version=cli_version,
-        )
-        target_reporter = default_telemetry_reporter() if reporter is None else reporter
-        target_reporter.record(event)
-    except Exception:
-        return
+    _capture_event(
+        lambda: build_scaffold_create_event(
+            context, outcome, error_category, duration_seconds, cli_version=cli_version
+        ),
+        reporter,
+    )
 
 
 def build_cli_install_event(
@@ -166,8 +171,8 @@ def capture_cli_install_terminal(
     reporter: TelemetryReporter | None = None,
 ) -> None:
     """Attempt one install capture while containing all telemetry failures."""
-    try:
-        event = build_cli_install_event(
+    _capture_event(
+        lambda: build_cli_install_event(
             outcome,
             error_category,
             artifact_kind,
@@ -175,11 +180,9 @@ def capture_cli_install_terminal(
             already_on_path=already_on_path,
             duration_seconds=duration_seconds,
             cli_version=cli_version,
-        )
-        target_reporter = default_telemetry_reporter() if reporter is None else reporter
-        target_reporter.record(event)
-    except Exception:
-        return
+        ),
+        reporter,
+    )
 
 
 def classify_cli_install_exception(
@@ -235,12 +238,7 @@ def capture_cli_upgrade_terminal(
     reporter: TelemetryReporter | None = None,
 ) -> None:
     """Attempt one upgrade capture while containing all telemetry failures."""
-    try:
-        event = build_cli_upgrade_event(result, duration_seconds, cli_version=cli_version)
-        target_reporter = default_telemetry_reporter() if reporter is None else reporter
-        target_reporter.record(event)
-    except Exception:
-        return
+    _capture_event(lambda: build_cli_upgrade_event(result, duration_seconds, cli_version=cli_version), reporter)
 
 
 def classify_scaffold_create_exception(
