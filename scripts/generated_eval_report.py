@@ -24,6 +24,7 @@ class MakeTestResult:
     duration_seconds: float
     reason: str
     output_tail: str
+    cleaned_artifacts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,8 @@ class EvaluationSummary:
     passed: int
     failed: int
     by_reason: dict[str, int]
+    clean_completed: bool
+    cleaned_components: int
     provenance: RunProvenance
     report: str
     json_report: str
@@ -77,6 +80,7 @@ class GeneratedEvalReport:
     cache_root: Path
     provenance: RunProvenance
     results: tuple[MakeTestResult, ...]
+    clean_completed: bool = False
     prewarm_requested: bool = False
     prewarm_workers: int = 0
     prewarm_results: tuple[MakeTestResult, ...] = ()
@@ -101,6 +105,8 @@ class GeneratedEvalReport:
             passed=results.get("pass", 0),
             failed=len(self.results) - results.get("pass", 0),
             by_reason=dict(sorted(results.items())),
+            clean_completed=self.clean_completed,
+            cleaned_components=sum(bool(result.cleaned_artifacts) for result in self.results),
             provenance=self.provenance,
             report=str(self.report_path),
             json_report=str(self.report_path) + ".json",
@@ -138,6 +144,8 @@ def _markdown(report: GeneratedEvalReport, summary: EvaluationSummary) -> str:
         f"- Target: `make {summary.target}`",
         f"- Dependency mode: `{summary.dependency_mode}`",
         f"- Cache root: `{summary.cache_root}`",
+        f"- Clean completed dependency/cache directories: {summary.clean_completed}",
+        f"- Components cleaned: {summary.cleaned_components}",
         f"- Makefiles tested: {summary.makefiles}",
         f"- Passed: {summary.passed}",
         f"- Failed: {summary.failed}",

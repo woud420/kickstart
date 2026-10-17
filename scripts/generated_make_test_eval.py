@@ -11,6 +11,7 @@ import os
 import platform
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -45,12 +46,20 @@ def run_make_tests(
     workers: int,
     target: str,
     env: dict[str, str],
+    clean_completed: bool = False,
 ) -> tuple[MakeTestResult, ...]:
     """Run a make target under every generated Makefile."""
     makefiles = _generated_makefiles(output_root)
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [
-            executor.submit(_run_one, makefile.parent, target=target, timeout_seconds=timeout_seconds, env=env)
+            executor.submit(
+                _run_one,
+                makefile.parent,
+                target=target,
+                timeout_seconds=timeout_seconds,
+                env=env,
+                clean_completed=clean_completed,
+            )
             for makefile in makefiles
         ]
         results = [future.result() for future in as_completed(futures)]
@@ -94,7 +103,8 @@ def eval_environment(dependency_mode: DependencyMode, cache_root: Path) -> dict[
         "CARGO_TARGET_DIR": cache_root / "cargo-targets",
         "GOCACHE": cache_root / "go-build",
         "GOMODCACHE": cache_root / "go-mod",
-        "BUN_INSTALL_CACHE_DIR": cache_root / "bun",
+        "BUN_CACHE_DIR": cache_root / "bun",
+        "BUN_INSTALL_CACHE_DIR": cache_root / "bun" / "install",
         "npm_config_cache": cache_root / "npm",
     }
     for path in cache_paths.values():
@@ -114,7 +124,9 @@ def eval_environment(dependency_mode: DependencyMode, cache_root: Path) -> dict[
     return env
 
 
-def _run_one(path: Path, *, target: str, timeout_seconds: int, env: dict[str, str]) -> MakeTestResult:
+def _run_one(
+    path: Path, *, target: str, timeout_seconds: int, env: dict[str, str], clean_completed: bool = False
+) -> MakeTestResult:
     kind, platform, artifacts = _manifest_summary(path)
     started = time.monotonic()
     completed = _run_command(["make", target], cwd=path, timeout_seconds=timeout_seconds, env=env)
@@ -131,7 +143,30 @@ def _run_one(path: Path, *, target: str, timeout_seconds: int, env: dict[str, st
         duration_seconds=duration,
         reason=_classify_output(output, returncode, completed.timed_out, target=target),
         output_tail=_tail(output),
+        cleaned_artifacts=_cleanup_component_dependencies(path, kind) if clean_completed else (),
     )
+
+
+def _cleanup_component_dependencies(path: Path, kind: str) -> tuple[str, ...]:
+    """Remove only local install directories after a leaf target has exited."""
+    if kind not in {"service", "worker", "frontend", "library", "lib", "cli"}:
+        return ()
+    try:
+        ownership = json.loads((path / ".kickstart/scaffold.json").read_text()).get("ownership", {})
+    except (OSError, json.JSONDecodeError):
+        return ()
+    if not isinstance(ownership, dict):
+        return ()
+    removed = []
+    for name in (".venv", "node_modules", ".cache"):
+        if any(isinstance(source, str) and (source == name or source.startswith(name + "/")) for source in ownership):
+            continue
+        directory = path / name
+        if directory.is_symlink() or not directory.is_dir():
+            continue
+        shutil.rmtree(directory)
+        removed.append(name)
+    return tuple(removed)
 
 
 def _run_command(command: list[str], *, cwd: Path, timeout_seconds: int, env: dict[str, str]) -> CommandResult:
@@ -338,6 +373,12 @@ def main() -> int:
     parser.add_argument("--cache-root", type=Path, default=scratch / "kickstart-eval-cache")
     parser.add_argument("--prewarm", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--prewarm-workers", type=int, default=2)
+    parser.add_argument(
+        "--clean-completed",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Remove completed leaf .venv/node_modules/.cache directories; preserve recorded source and shared caches.",
+    )
     args = parser.parse_args()
 
     if not _generated_makefiles(args.output_root):
@@ -360,6 +401,7 @@ def main() -> int:
         workers=args.workers,
         target=args.target,
         env=env,
+        clean_completed=args.clean_completed,
     )
     report = GeneratedEvalReport(
         report_path=args.report,
@@ -374,6 +416,7 @@ def main() -> int:
             timeout_seconds=args.timeout_seconds,
         ),
         results=results,
+        clean_completed=args.clean_completed,
         prewarm_requested=args.prewarm,
         prewarm_workers=args.prewarm_workers,
         prewarm_results=prewarm_results,
