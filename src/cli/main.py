@@ -23,6 +23,7 @@ from src.api import (
     create_service,
     create_system,
 )
+from src.cli.migrate import migrate
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.generator.adoption import AdoptionTargetError, inspect_repo
 from src.generator.backstage_export import (
@@ -88,6 +89,7 @@ logger = logging.getLogger(__name__)
 
 app: typer.Typer = typer.Typer(help="kickstart: Full-stack project scaffolding CLI")
 app.add_typer(telemetry_app, name="telemetry")
+app.command()(migrate)
 
 
 def _print_version_and_exit(value: bool) -> None:

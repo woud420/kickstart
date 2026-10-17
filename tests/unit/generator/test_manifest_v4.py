@@ -103,6 +103,7 @@ def test_v4_rejects_missing_or_conflicting_identity(change: str) -> None:
         manifest["execution"]["models"] = ["container", "cloudflare-worker"]
     else:
         manifest["project"].update(kind="cli", framework="typer", cli_framework="clap")
+        manifest["execution"]["models"] = ["cli"]
     with pytest.raises(ManifestShapeError):
         ScaffoldContract.from_manifest(manifest)
 
@@ -230,3 +231,24 @@ def test_adoption_surfaces_invalid_v4_as_a_manifest_gap(tmp_path: Path) -> None:
     issue = next(item for item in report.artifacts if item.path == ".kickstart/scaffold.json")
     assert not issue.ok and "unexpected" in issue.issue
     assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    "kind,language,framework,models",
+    [
+        ("library", "rust", None, ["cloudflare-worker"]),
+        ("frontend", "typescript", "react", ["container"]),
+        ("cli", "python", "typer", ["static-site"]),
+        ("service", "go", None, ["cli"]),
+    ],
+)
+def test_v4_rejects_execution_models_from_another_project_kind(kind, language, framework, models) -> None:
+    manifest = json.loads(service().manifest_json("api"))
+    manifest["project"].update(kind=kind, language=language)
+    if framework is None:
+        manifest["project"].pop("framework", None)
+    else:
+        manifest["project"]["framework"] = framework
+    manifest["execution"]["models"] = models
+    with pytest.raises(ManifestShapeError, match="models"):
+        ScaffoldContract.from_manifest(manifest)

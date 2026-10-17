@@ -189,8 +189,7 @@ class ScaffoldContract:
     entrypoint: str | None = None
     operation_root: str | None = None
     src_root_files: tuple[str, ...] = ()
-    # 3.2 records optional project language and framework choices.
-    schema_version: str = "3.2"
+    schema_version: str = "4.0"
     generated_by: str = f"kickstart@{__version__}"
     semantics_reference: str = SEMANTICS_REFERENCE
     language: str | None = None
