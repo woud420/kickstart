@@ -200,3 +200,7 @@ emits 4.0. `kickstart migrate <repo>` produces a read-only legacy migration plan
 [migration contract](docs/contracts/manifest-migration.md). The
 [schema-4 format contract](docs/contracts/scaffold-schema-4.md) documents the
 flattened extensions and Cloudflare Worker service profile.
+
+Inspect the persisted scaffold envelope with `kickstart plan <repo> --ownership`;
+[the ownership contract](docs/contracts/scaffold-ownership.md) explains seed
+exclusions, fence comparisons and the structural checks on co-owned artifacts.

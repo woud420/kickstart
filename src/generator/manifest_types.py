@@ -4,6 +4,7 @@ from typing import Literal, NotRequired, TypedDict
 
 ProjectKind = Literal["service", "worker", "frontend", "library", "cli", "system"]
 RepoLayout = Literal["single-project", "monorepo"]
+MANIFEST_PATH = ".kickstart/scaffold.json"
 JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
 ParsedManifest = dict[str, JsonValue]
 
@@ -102,7 +103,28 @@ class SystemScaffoldManifest(ScaffoldManifest):
     composition: ScaffoldCompositionManifest
 
 
+OwnershipClass = Literal["seed", "managed-region", "structural"]
+OwnershipCheck = Literal["fenced-content", "fenced-presence", "make-check", "workflow-presence", "manifest-shape"]
+
+
+OwnershipTag = Literal[
+    "seed",
+    "agent-map",
+    "claude-pointer",
+    "agents-skills-readme",
+    "contracts-readme",
+    "operations-readme",
+    "decisions-readme",
+    "architecture-readme",
+    "make-check",
+    "workflow-presence",
+    "manifest-shape",
+]
+OwnershipManifest = dict[str, OwnershipTag]
+
+
 class ScaffoldManifestV4(TypedDict):
+    ownership: NotRequired[OwnershipManifest]
     schema_version: Literal["4.0"]
     generated_by: str
     project: ScaffoldProjectV4

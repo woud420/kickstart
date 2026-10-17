@@ -101,3 +101,7 @@ class HandoffError(KickstartError):
 
 class ManifestMigrationError(KickstartError):
     """Raised when manifest migration cannot inspect or apply safely."""
+
+
+class OwnershipPlanTargetError(KickstartError):
+    """Raised when persisted ownership cannot be inspected safely."""
