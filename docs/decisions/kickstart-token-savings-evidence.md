@@ -2,7 +2,7 @@
 
 Date: 2026-05-08
 
-> Superseded (v0.4.2): the maintained methodology lives in `docs/evals.md`
+> Superseded (v0.4.2): the maintained methodology lives in `docs/operations/evals.md`
 > (Token Savings) and `scripts/token_savings_eval.py`. The all-bytes baseline
 > below is now reported explicitly as an upper bound, with a separate
 > app-code ratio that excludes scaffold metadata.

@@ -61,7 +61,7 @@ For website changes, also run:
 cd website && bun run check
 ```
 
-For generator wiring changes, also run the evals in `docs/evals.md` and report both command output and failure classes (see the `scaffold-evals` skill).
+For generator wiring changes, also run the evals in `docs/operations/evals.md` and report both command output and failure classes (see the `scaffold-evals` skill).
 
 ## Releases
 

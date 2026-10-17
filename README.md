@@ -192,7 +192,7 @@ poetry run kickstart create system web-platform --workspace-tooling bun-turbo
 - [Agent Map](AGENTS.md): repo-local map for agents modifying kickstart itself.
 - [Scaffold Contract](docs/scaffold-contract.md): always-generated docs, metadata, and option vocabulary.
 - [CLI Framework Research](docs/decisions/cli-framework-research.md): decision record for clap, Typer, and oclif defaults.
-- [Local Evals](docs/evals.md): scaffold matrix and generated-project validation commands.
+- [Local Evals](docs/operations/evals.md): scaffold matrix and generated-project validation commands.
 - [Contributing](docs/contributing.md): how humans should change the repo.
 - [Agent Contributing](docs/agent-contributing.md): how agents should safely modify the repo.
 
@@ -206,7 +206,7 @@ make binary
 
 kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`; other platforms use the source/wheel install path in [Install](#install).
 
-Current local eval evidence is tracked in [Local Evals](docs/evals.md). Reports are generated under `/tmp` or another scratch path and are not committed.
+Current local eval evidence is tracked in [Local Evals](docs/operations/evals.md). Reports are generated under `/tmp` or another scratch path and are not committed.
 
 
 Scaffold metadata readers support schemas 3.0, 3.1, 3.2 and 4.0. Fresh generation
