@@ -108,6 +108,21 @@ CLI_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
 }
 
 
+@dataclass(frozen=True)
+class CliMetadata:
+    framework: str = "custom"
+    command_root: str = "src/cli"
+    entrypoint: str = "src/main"
+    src_root_files: tuple[str, ...] = ()
+
+
+CLI_METADATA: dict[str, CliMetadata] = {
+    "python": CliMetadata("typer", "src/cli/commands", "src/main.py", ("__init__.py", "main.py")),
+    "rust": CliMetadata("clap", "src/cli", "src/main.rs", ("main.rs",)),
+    "typescript": CliMetadata("oclif", "src/commands", "bin/run.js", ("base-command.ts",)),
+}
+
+
 class LibraryGenerator(BaseGenerator):
     lang: str
     gh: bool
@@ -183,10 +198,8 @@ class LibraryGenerator(BaseGenerator):
 
     def _validate_package_language(self, package_kind: PackageKind) -> None:
         """Fail loudly when a package target does not have a complete setup plan."""
-        profile = stack_registry.languages.get(self.lang)
         supported = _supported_package_languages(package_kind)
-        is_supported = profile is not None and (profile.library if package_kind == "library" else profile.cli)
-        if is_supported:
+        if self.lang in supported:
             return
 
         label = "CLI" if package_kind == "cli" else "library"
@@ -208,6 +221,7 @@ class CLIGenerator(LibraryGenerator):
 
     def create(self) -> None:
         self._validate_package_language("cli")
+        metadata = CLI_METADATA.get(self.lang, CliMetadata())
         self._create_package_project(
             directories=cli_directories(self.lang),
             template_plan=cli_template_plan(self.lang),
@@ -215,16 +229,16 @@ class CLIGenerator(LibraryGenerator):
             scaffold_contract=ScaffoldContract(
                 project_kind="cli",
                 language=self.lang,
-                framework=self._cli_framework(),
+                framework=metadata.framework,
                 execution_models=("cli",),
                 runtime_platforms=("local",),
                 artifacts=ScaffoldArtifacts(package=self.lang),
                 architecture="modular-cli",
-                cli_framework=self._cli_framework(),
-                command_root=self._command_root(),
-                entrypoint=self._entrypoint(),
+                cli_framework=metadata.framework,
+                command_root=metadata.command_root,
+                entrypoint=metadata.entrypoint,
                 operation_root="src/operations",
-                src_root_files=self._src_root_files(),
+                src_root_files=metadata.src_root_files,
             ),
             success_message=f"{self.lang.title()} CLI '{self.name}' created successfully in '{self.project}'!",
             language_setup_fn=self._setup_cli_specific_files,
@@ -234,38 +248,6 @@ class CLIGenerator(LibraryGenerator):
         """Setup language-specific files for CLI."""
         self._write_package_setup(CLI_LANGUAGE_SETUP.get(self.lang))
         return True
-
-    def _src_root_files(self) -> tuple[str, ...]:
-        """Return expected language root files below ``src/`` for CLI contracts."""
-        return {
-            "python": ("__init__.py", "main.py"),
-            "rust": ("main.rs",),
-            "typescript": ("base-command.ts",),
-        }.get(self.lang, ())
-
-    def _cli_framework(self) -> str:
-        """Return the default CLI framework for the selected language."""
-        return {
-            "python": "typer",
-            "rust": "clap",
-            "typescript": "oclif",
-        }.get(self.lang, "custom")
-
-    def _command_root(self) -> str:
-        """Return the framework-native command adapter root."""
-        return {
-            "python": "src/cli/commands",
-            "rust": "src/cli",
-            "typescript": "src/commands",
-        }.get(self.lang, "src/cli")
-
-    def _entrypoint(self) -> str:
-        """Return the generated process entrypoint."""
-        return {
-            "python": "src/main.py",
-            "rust": "src/main.rs",
-            "typescript": "bin/run.js",
-        }.get(self.lang, "src/main")
 
 
 LibGenerator = LibraryGenerator
@@ -277,13 +259,6 @@ def _supported_package_languages(package_kind: PackageKind) -> tuple[str, ...]:
         sorted(
             language
             for language, profile in stack_registry.languages.items()
-            if _supports_package_kind(profile.library, profile.cli, package_kind)
+            if (profile.library if package_kind == "library" else profile.cli)
         )
     )
-
-
-def _supports_package_kind(library: bool, cli: bool, package_kind: PackageKind) -> bool:
-    """Return whether a language profile supports the package kind."""
-    if package_kind == "library":
-        return library
-    return cli
