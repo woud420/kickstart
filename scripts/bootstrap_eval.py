@@ -165,6 +165,10 @@ DEFAULT_CASES: tuple[BootstrapCase, ...] = (
         slug="typescript-worker",
         args=("create", "service", "edge", "--lang", "typescript", "--runtime", "cloudflare-workers"),
     ),
+    BootstrapCase(
+        slug="typescript-service-jwt",
+        args=("create", "service", "secure-api", "--lang", "typescript", "--database", "postgres", "--auth", "jwt"),
+    ),
     BootstrapCase(slug="rust-cli", args=("create", "cli", "ops-tool", "--lang", "rust")),
     BootstrapCase(
         slug="python-service-minimal",

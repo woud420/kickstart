@@ -76,7 +76,7 @@ evidence with versioned `generated_by` and removes the constant docs map.
 - `composition.workspace_tooling`: system-only root workspace tooling, for example `none` or `bun-turbo`.
 - `knowledge_adapter`: external knowledge integration metadata, for example `none`, `obsidian`, `backstage`, or `both`.
 
-Implemented service extensions are intentionally narrow. Python/FastAPI container services support Postgres, Redis, and JWT. Rust container services support Redis and JWT. TypeScript container services support Postgres. Unsupported combinations fail instead of generating a partial or silent scaffold.
+Implemented service extensions are intentionally narrow. Python/FastAPI container services support Postgres, Redis, and JWT. Rust container services support Redis and JWT. TypeScript container services support Postgres and JWT. Unsupported combinations fail instead of generating a partial or silent scaffold.
 
 CLI scaffolds use `project.architecture: modular-cli` and align Rust, Python, and TypeScript around the same agent-facing boundaries: command adapters, config, clients, DTO/model, operations, output, and errors. Language idioms still apply: Rust uses `project.cli_framework: clap` with `project.command_root: src/cli`, Python uses `typer` with `src/cli/commands`, and TypeScript uses `oclif` with `src/commands` and `bin/run.js`.
 
