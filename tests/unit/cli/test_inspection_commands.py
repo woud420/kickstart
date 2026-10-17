@@ -9,9 +9,11 @@ import json
 from pathlib import Path
 
 import pytest
+from rich.console import Console
 from typer.testing import CliRunner
 
 from src.cli.main import app
+from tests.unit.cli.command_helpers import command_owner
 from src.generator.markers import fence
 from src.generator.projections import scaffold_docs_projections
 from src.generator.scaffold_contract import MANIFEST_PATH, ScaffoldArtifacts, ScaffoldContract
@@ -25,7 +27,8 @@ def runner() -> CliRunner:
 def _service_contract() -> ScaffoldContract:
     return ScaffoldContract(
         project_kind="service",
-        language="python", framework="minimal",
+        language="python",
+        framework="minimal",
         execution_models=("container",),
         runtime_platforms=("local",),
         artifacts=ScaffoldArtifacts(image="dockerfile"),
@@ -182,3 +185,18 @@ def test_export_backstage_warns_on_missing_required_lines(runner: CliRunner, tmp
 
     assert result.exit_code == 1
     assert "warning" in result.stdout
+
+
+@pytest.mark.parametrize("columns", [20, 80])
+def test_adopt_check_rejects_missing_directory(tmp_path: Path, columns: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    target = tmp_path / "absent-repo"
+    monkeypatch.setattr(command_owner("adopt"), "print", Console(width=columns).print)
+
+    result = CliRunner().invoke(app, ["adopt", str(target), "--check"])
+
+    assert result.exit_code == 2
+    unwrapped = result.stdout.replace("\n", "")
+    assert str(target) in unwrapped
+    expected = f"adoption target '{target}' is not an existing directory"
+    assert " ".join(unwrapped.split()) == " ".join(expected.split())
+    assert not target.exists()

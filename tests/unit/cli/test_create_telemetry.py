@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
+from tests.unit.cli.command_helpers import CREATE
+
 from src.cli.main import app
 from src.model.dto.telemetry import (
     ScaffoldCreateContext,
@@ -15,12 +17,14 @@ def test_success_attempts_one_terminal_event_after_creation() -> None:
     order: list[str] = []
     runner = CliRunner()
     with (
-        patch("src.cli.main.load_config", return_value={}),
-        patch("src.cli.main.create_service", side_effect=lambda *args, **kwargs: order.append("create")),
-        patch(
-            "src.cli.main.capture_scaffold_create_terminal", side_effect=lambda *args, **kwargs: order.append("capture")
+        patch.object(CREATE, "load_config", return_value={}),
+        patch.object(CREATE, "create_service", side_effect=lambda *args, **kwargs: order.append("create")),
+        patch.object(
+            CREATE,
+            "capture_scaffold_create_terminal",
+            side_effect=lambda *args, **kwargs: order.append("capture"),
         ) as capture,
-        patch("src.cli.main.monotonic", side_effect=[10.0, 12.0]),
+        patch.object(CREATE, "monotonic", side_effect=[10.0, 12.0]),
     ):
         result = runner.invoke(
             app,
@@ -45,9 +49,9 @@ def test_expected_creation_failure_preserves_exit_and_attempts_one_terminal_even
     runner = CliRunner()
     private_error = "private failure at /private/project/root"
     with (
-        patch("src.cli.main.load_config", return_value={}),
-        patch("src.cli.main.create_service", side_effect=ProjectCreationError(private_error)),
-        patch("src.cli.main.capture_scaffold_create_terminal") as capture,
+        patch.object(CREATE, "load_config", return_value={}),
+        patch.object(CREATE, "create_service", side_effect=ProjectCreationError(private_error)),
+        patch.object(CREATE, "capture_scaffold_create_terminal") as capture,
     ):
         result = runner.invoke(app, ["create", "service", "private-project-name", "--root", "/tmp"])
 
@@ -64,9 +68,9 @@ def test_expected_creation_failure_preserves_exit_and_attempts_one_terminal_even
 def test_unexpected_creation_failure_attempts_one_terminal_event() -> None:
     runner = CliRunner()
     with (
-        patch("src.cli.main.load_config", return_value={}),
-        patch("src.cli.main.create_service", side_effect=RuntimeError("synthetic unexpected failure")),
-        patch("src.cli.main.capture_scaffold_create_terminal") as capture,
+        patch.object(CREATE, "load_config", return_value={}),
+        patch.object(CREATE, "create_service", side_effect=RuntimeError("synthetic unexpected failure")),
+        patch.object(CREATE, "capture_scaffold_create_terminal") as capture,
     ):
         result = runner.invoke(app, ["create", "service", "private-project-name", "--root", "/tmp"])
 
@@ -81,8 +85,8 @@ def test_unexpected_creation_failure_attempts_one_terminal_event() -> None:
 def test_keyboard_interrupt_preserves_exit_130_and_attempts_one_terminal_event() -> None:
     runner = CliRunner()
     with (
-        patch("src.cli.main.load_config", side_effect=KeyboardInterrupt),
-        patch("src.cli.main.capture_scaffold_create_terminal") as capture,
+        patch.object(CREATE, "load_config", side_effect=KeyboardInterrupt),
+        patch.object(CREATE, "capture_scaffold_create_terminal") as capture,
     ):
         result = runner.invoke(app, ["create", "service", "private-project-name"])
 
@@ -97,8 +101,8 @@ def test_keyboard_interrupt_preserves_exit_130_and_attempts_one_terminal_event()
 def test_input_end_preserves_exit_2_and_attempts_one_terminal_event() -> None:
     runner = CliRunner()
     with (
-        patch("src.cli.main.load_config", side_effect=EOFError),
-        patch("src.cli.main.capture_scaffold_create_terminal") as capture,
+        patch.object(CREATE, "load_config", side_effect=EOFError),
+        patch.object(CREATE, "capture_scaffold_create_terminal") as capture,
     ):
         result = runner.invoke(app, ["create", "service", "private-project-name"])
 
@@ -113,9 +117,9 @@ def test_input_end_preserves_exit_2_and_attempts_one_terminal_event() -> None:
 def test_missing_name_marks_partial_argument_prompt_flow_interactive() -> None:
     runner = CliRunner()
     with (
-        patch("src.cli.main.load_config", return_value={}),
-        patch("src.cli.main.Prompt.ask", side_effect=["none", "none", "none", "fastapi"]),
-        patch("src.cli.main.capture_scaffold_create_terminal") as capture,
+        patch.object(CREATE, "load_config", return_value={}),
+        patch.object(CREATE.Prompt, "ask", side_effect=["none", "none", "none", "fastapi"]),
+        patch.object(CREATE, "capture_scaffold_create_terminal") as capture,
     ):
         result = runner.invoke(app, ["create", "service"])
 
@@ -128,7 +132,7 @@ def test_missing_name_marks_partial_argument_prompt_flow_interactive() -> None:
 
 def test_parser_failure_before_create_emits_no_event() -> None:
     runner = CliRunner()
-    with patch("src.cli.main.capture_scaffold_create_terminal") as capture:
+    with patch.object(CREATE, "capture_scaffold_create_terminal") as capture:
         result = runner.invoke(app, ["create", "service", "private-project-name", "--not-a-real-option"])
 
     assert result.exit_code == 2
@@ -137,7 +141,7 @@ def test_parser_failure_before_create_emits_no_event() -> None:
 
 def test_non_create_commands_emit_no_event() -> None:
     runner = CliRunner()
-    with patch("src.cli.main.capture_scaffold_create_terminal") as capture:
+    with patch.object(CREATE, "capture_scaffold_create_terminal") as capture:
         help_result = runner.invoke(app, ["--help"])
         version_result = runner.invoke(app, ["version"])
 
