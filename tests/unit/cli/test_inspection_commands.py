@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import pytest
+from rich.console import Console
 from typer.testing import CliRunner
 
 from src.cli.main import app
@@ -186,9 +187,14 @@ def test_export_backstage_warns_on_missing_required_lines(runner: CliRunner, tmp
 
 
 @pytest.mark.parametrize("name", ["missing[/oops]", "missing[red]name"])
-def test_adopt_reports_literal_invalid_path(tmp_path: Path, name: str) -> None:
+@pytest.mark.parametrize("columns", [20, 80])
+def test_adopt_reports_literal_invalid_path(
+    tmp_path: Path, name: str, columns: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("src.cli.inspection.print", Console(width=columns).print)
     result = CliRunner().invoke(app, ["adopt", str(tmp_path / name), "--check"])
 
     assert result.exit_code == 2
-    assert name in result.stdout
-    assert "not an existing directory" in result.stdout
+    # Rich can wrap inside the path as well as between diagnostic words.
+    assert name in result.stdout.replace("\n", "")
+    assert "not an existing directory" in " ".join(result.stdout.split())
