@@ -293,7 +293,7 @@ PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
 Default cases: python CLI (the kickstart-like headline case), python lib,
 python service with all extensions, a SQLite Python service, python service on
 the minimal stdlib framework, typescript worker, typescript container service
-with Postgres and JWT, rust CLI, and C++ service. Use
+with Postgres and JWT, rust CLI, C++ service, Go service, and frontend. Use
 `--cases` to iterate on a single scaffold. Beyond the taste rules, every
 capability declared in `.kickstart/scaffold.json` must be exercised by at
 least one generated test (`capability-tests` rule). The eval exits non-zero
@@ -304,11 +304,13 @@ python service, SQLite Python service, typescript worker, rust CLI, plus the wei
 check); the `Scheduled Evals` workflow runs `--tier full` weekly against
 live toolchains — the whole bootstrap matrix, weight baselines,
 determinism, and the website-examples drift check. Template rot in the
-bootstrap matrix surfaces within a week without slowing PRs. Honest
-coverage note: go services and frontend scaffolds are not yet in the
-bootstrap matrix (their generation shape and weight are guarded, their
-generated `make test` is not), so rot there does not surface weekly —
-extending the matrix is tracked on the board.
+bootstrap matrix surfaces within a week without slowing PRs. The full matrix
+includes a Go service and a frontend; each runs its own generated `make check`,
+including tests. The weekly workflow reads the Go version from the generator's
+toolchain registry and installs it explicitly. Go sources participate in the
+common file-size and depth audits; TSX sources use the same TypeScript pattern
+rules as TS. These audits remain bounded heuristics, with failures reported by
+rule rather than exempting cases.
 
 ## Scaffold Weight Baselines
 

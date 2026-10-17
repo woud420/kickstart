@@ -49,12 +49,13 @@ class UnknownCaseError(BootstrapEvalError):
         super().__init__(f"unknown case '{slug}'; known cases: {', '.join(known)}")
 
 
-SOURCE_SUFFIXES = (".py", ".rs", ".ts")
+LINE_COMMENT_MARKERS = {".py": "#", ".ts": "//", ".tsx": "//", ".rs": "//", ".go": "//"}
+SOURCE_SUFFIXES = tuple(LINE_COMMENT_MARKERS)
 SKIP_DIR_PARTS = frozenset({".venv", ".cache", "node_modules", "target", ".git", "__pycache__"})
 
 # Split so the repo's own type-hygiene audit does not flag this file for
 # naming the loose type it forbids (same idiom as type_hygiene_audit.py).
-ANY_NAME = "A" "ny"
+ANY_NAME = "A" + "ny"
 
 # Generated source trees stay shallow: at most src/<area>/<group>/<file>.
 MAX_SRC_DEPTH = 3
@@ -68,7 +69,7 @@ class TasteRule:
     """One forbidden-pattern rule applied to generated source files."""
 
     name: str
-    suffix: str
+    suffixes: tuple[str, ...]
     pattern: re.Pattern[str]
     explanation: str
     # Suppression markers live inside comments, so those rules must see the
@@ -79,45 +80,45 @@ class TasteRule:
 TASTE_RULES: tuple[TasteRule, ...] = (
     TasteRule(
         name="python-no-any",
-        suffix=".py",
+        suffixes=(".py",),
         pattern=re.compile(rf"(?:^|[^.\w]){ANY_NAME}\b(?!\w)|\btyping\s*\.\s*{ANY_NAME}\b|\bimport\s+{ANY_NAME}\b"),
         explanation=f"Python sources must use precise types instead of typing.{ANY_NAME}",
     ),
     TasteRule(
         name="python-no-object-type",
-        suffix=".py",
+        suffixes=(".py",),
         pattern=re.compile(r":\s*object\b|->\s*object\b|[\[,]\s*object\s*[\],]"),
         explanation="Python annotations must not fall back to object",
     ),
     TasteRule(
         name="python-specific-errors",
-        suffix=".py",
+        suffixes=(".py",),
         pattern=re.compile(r"raise\s+Exception\(|except\s+Exception\b|raise\s+BaseException\b"),
         explanation="Python errors must be specific exception types",
     ),
     TasteRule(
         name="python-no-suppressions",
-        suffix=".py",
+        suffixes=(".py",),
         pattern=re.compile(r"#\s*type:\s*ignore"),
         explanation="Python sources must fix types instead of suppressing the checker",
         matches_comments=True,
     ),
     TasteRule(
         name="typescript-no-any",
-        suffix=".ts",
+        suffixes=(".ts", ".tsx"),
         pattern=re.compile(r":\s*any\b|as\s+any\b|<any>|:\s*Object\b"),
         explanation="TypeScript sources must not use any or Object",
     ),
     TasteRule(
         name="typescript-no-suppressions",
-        suffix=".ts",
+        suffixes=(".ts", ".tsx"),
         pattern=re.compile(r"@ts-ignore|@ts-expect-error"),
         explanation="TypeScript sources must fix types instead of suppressing the checker",
         matches_comments=True,
     ),
     TasteRule(
         name="rust-no-panic-paths",
-        suffix=".rs",
+        suffixes=(".rs",),
         pattern=re.compile(r"\.unwrap\(\)|\.expect\(|panic!\("),
         explanation="Rust non-test sources must surface specific errors instead of panicking",
     ),
@@ -179,6 +180,8 @@ DEFAULT_CASES: tuple[BootstrapCase, ...] = (
         args=("create", "service", "pinger", "--lang", "python", "--framework", "minimal"),
     ),
     BootstrapCase(slug="cpp-service", args=("create", "service", "msink", "--lang", "cpp")),
+    BootstrapCase(slug="go-service", args=("create", "service", "go-api", "--lang", "go")),
+    BootstrapCase(slug="frontend", args=("create", "frontend", "web-app")),
 )
 
 
@@ -201,9 +204,6 @@ class CaseResult:
 def is_test_path(path: Path) -> bool:
     """True when a file lives under a tests directory or is a test module."""
     return any(part in {"tests", "test"} for part in path.parts) or path.name.startswith("test_")
-
-
-LINE_COMMENT_MARKERS = {".py": "#", ".ts": "//", ".rs": "//"}
 
 
 def strip_line_comment(line: str, suffix: str) -> str:
@@ -246,7 +246,7 @@ def audit_file(path: Path, root: Path, max_lines: int) -> tuple[Violation, ...]:
             )
         )
 
-    rules = tuple(rule for rule in TASTE_RULES if rule.suffix == path.suffix)
+    rules = tuple(rule for rule in TASTE_RULES if path.suffix in rule.suffixes)
     skip_pattern_rules = path.suffix == ".rs" and is_test_path(path.relative_to(root))
     if skip_pattern_rules:
         return tuple(violations)
@@ -256,9 +256,7 @@ def audit_file(path: Path, root: Path, max_lines: int) -> tuple[Violation, ...]:
         for rule in rules:
             subject = line if rule.matches_comments else code
             if rule.pattern.search(subject):
-                violations.append(
-                    Violation(rule=rule.name, file=relative, line=number, detail=rule.explanation)
-                )
+                violations.append(Violation(rule=rule.name, file=relative, line=number, detail=rule.explanation))
     return tuple(violations)
 
 
@@ -319,7 +317,8 @@ def audit_capability_tests(root: Path) -> tuple[Violation, ...]:
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     extensions = (
-        manifest.get("extensions", {}) if manifest.get("schema_version") == "4.0"
+        manifest.get("extensions", {})
+        if manifest.get("schema_version") == "4.0"
         else manifest.get("capabilities", {}).get("service_extensions", {})
     )
     if not extensions:
@@ -423,7 +422,9 @@ def render_report(results: tuple[CaseResult, ...], max_lines: int) -> str:
     lines.append("")
     for result in results:
         for violation in result.violations:
-            lines.append(f"- {result.case.slug}: {violation.rule} {violation.file}:{violation.line} — {violation.detail}")
+            lines.append(
+                f"- {result.case.slug}: {violation.rule} {violation.file}:{violation.line} — {violation.detail}"
+            )
         if result.failure_detail:
             lines.append(f"- {result.case.slug}: {result.failure_detail}")
     return "\n".join(lines) + "\n"
@@ -458,8 +459,7 @@ def main() -> int:
 
     cases = select_cases(tuple(args.cases))
     results = tuple(
-        run_case(case, args.output_root, repo_root, env, args.max_file_lines, args.timeout_seconds)
-        for case in cases
+        run_case(case, args.output_root, repo_root, env, args.max_file_lines, args.timeout_seconds) for case in cases
     )
 
     report = render_report(results, args.max_file_lines)

@@ -84,7 +84,7 @@ def test_audit_file_flags_typescript_any_and_rust_panics(tmp_path: Path) -> None
 
 
 def test_audit_file_catches_dotted_any_and_nested_object(tmp_path: Path) -> None:
-    object_name = "obj" "ect"
+    object_name = "object"
     path = write(
         tmp_path / "src" / "sneaky.py",
         f"import typing\n\ndef f(x: typing.{ANY_NAME}) -> dict[str, {object_name}]:\n    return {{}}\n",
@@ -157,7 +157,14 @@ def test_render_report_marks_failures() -> None:
     case = BootstrapCase(slug="demo", args=("create", "cli", "tool"))
     results = (
         CaseResult(case, generated=True, violations=(), check_passed=True, check_seconds=2.0, failure_detail=""),
-        CaseResult(case, generated=True, violations=(), check_passed=False, check_seconds=1.0, failure_detail="make check failed: boom"),
+        CaseResult(
+            case,
+            generated=True,
+            violations=(),
+            check_passed=False,
+            check_seconds=1.0,
+            failure_detail="make check failed: boom",
+        ),
     )
 
     report = render_report(results, max_lines=300)
@@ -206,3 +213,24 @@ def test_schema_four_extension_audit_does_not_skip_flat_extensions(tmp_path: Pat
     )
     write(tmp_path / "tests/test_auth.py", "from auth import jwt\n")
     assert "cache=redis" in audit_capability_tests(tmp_path)[0].detail
+
+
+def test_default_matrix_includes_go_service_and_frontend() -> None:
+    by_slug = {case.slug: case for case in DEFAULT_CASES}
+    assert by_slug["go-service"].args == ("create", "service", "go-api", "--lang", "go")
+    assert by_slug["frontend"].args == ("create", "frontend", "web-app")
+
+
+def test_go_sources_participate_in_file_size_and_depth_audits(tmp_path: Path) -> None:
+    write(tmp_path / "src/a/b/c/long.go", "package main\n" * 201)
+    assert {v.rule for v in audit_tree(tmp_path, max_lines=200)} == {"max-file-lines", "max-src-depth"}
+
+
+def test_tsx_sources_reuse_typescript_rules_without_skipping_comments(tmp_path: Path) -> None:
+    write(tmp_path / "src/App.tsx", "const value: any = load(); // user comment\n// @ts-expect-error unsafe\n")
+    assert {v.rule for v in audit_tree(tmp_path, max_lines=200)} == {"typescript-no-any", "typescript-no-suppressions"}
+
+
+def test_tsx_prose_is_not_checked_as_code(tmp_path: Path) -> None:
+    write(tmp_path / "src/App.tsx", "const value = 1; // consider as any inappropriate here\n")
+    assert audit_tree(tmp_path, max_lines=200) == ()

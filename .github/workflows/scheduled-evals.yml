@@ -3,13 +3,10 @@ name: Scheduled Evals
 # Weekly canary against live toolchains. Generated projects resolve their
 # dependencies fresh, so template rot (new ruff/mypy/clippy releases, crate
 # MSRV bumps, registry changes) surfaces here within a week even when no PR
-# touches the templates. PRs gate eval tier `pr` (four fast bootstrap
-# cases + weight baselines); this run covers tier `full`: the whole
-# bootstrap matrix (python cli/lib/service/service-minimal, typescript
-# worker, rust cli, cpp service), weight baselines, determinism, and the
-# website-examples drift check. Go services and frontend scaffolds are not
-# yet bootstrap-validated here — extending the matrix is tracked on the
-# board — so rot in those templates does NOT surface within a week.
+# touches the templates. PRs gate tier `pr`; this run covers tier `full`
+# from scripts/run_evals.py, including every registered bootstrap case in
+# scripts/bootstrap_eval.py, weight baselines, determinism, and the
+# website-examples drift check.
 
 on:
   schedule:
@@ -39,6 +36,18 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.3.5"
+
+      - name: Read generated Go toolchain version
+        id: go-toolchain
+        run: |
+          GO_TOOLCHAIN_VERSION=$(poetry run python -c 'from src.stack.toolchain_versions import GO_VERSION; print(GO_VERSION)')
+          echo "version=${GO_TOOLCHAIN_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.go-toolchain.outputs.version }}
+          cache: false
 
       # Tier `full` = full bootstrap matrix + weight baselines +
       # determinism tests + website-examples drift check, from the same
