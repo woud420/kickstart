@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 
 import pytest
+from click import unstyle
+from typer import rich_utils
 from typer.testing import CliRunner
 
 from src.cli.main import app
@@ -135,15 +137,19 @@ def test_invalid_output_format_is_usage_error(tmp_path: Path) -> None:
     assert "Invalid value" in result.stderr
 
 
-def test_input_is_required_and_existing_export_is_still_registered() -> None:
+@pytest.mark.parametrize("force_terminal", [False, True])
+def test_input_is_required_and_existing_export_is_still_registered(
+    monkeypatch: pytest.MonkeyPatch, force_terminal: bool
+) -> None:
+    monkeypatch.setattr(rich_utils, "FORCE_TERMINAL", force_terminal)
     runner = CliRunner()
     missing = runner.invoke(app, ["export", "external-io"])
     assert missing.exit_code == 2
-    assert "--input" in missing.stderr
+    assert "--input" in unstyle(missing.stderr)
     help_output = runner.invoke(app, ["export", "--help"])
     assert help_output.exit_code == 0
-    assert "backstage" in help_output.stdout
-    assert "external-io" in help_output.stdout
+    assert "backstage" in unstyle(help_output.stdout)
+    assert "external-io" in unstyle(help_output.stdout)
 
 
 def test_root_defaults_to_current_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
