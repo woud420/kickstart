@@ -157,7 +157,7 @@ jobs:
       # Dogfood gate, tier `pr` of the eval suite: the fast bootstrap
       # cases (taste rules + generated `make check`) plus the scaffold-weight
       # baseline check against tests/fixtures/scaffold-weight-baselines.json.
-      # One entrypoint so CI and local runs agree (docs/evals.md); the full
+      # One entrypoint so CI and local runs agree (docs/operations/evals.md); the full
       # matrix runs weekly in Scheduled Evals via `--tier full`.
       - name: Restore bootstrap eval dependency cache
         uses: actions/cache@v4

@@ -24,7 +24,7 @@ PYTHONPATH=$(pwd) poetry run python scripts/token_savings_eval.py --update-basel
 Use this skill after changing generators, layouts, template plans, language
 setup plans, stack defaults, or templates — anything that alters generated
 output. `make check` proves the code is healthy; these evals prove the
-generated projects are. Full context: `docs/evals.md`.
+generated projects are. Full context: `docs/operations/evals.md`.
 
 The individual commands below are alternatives for focused iteration, not an
 additional checklist after a tier already covered them. Reuse a passing result

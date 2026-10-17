@@ -10,7 +10,7 @@
 - [Decisions](decisions/README.md): durable project decisions.
 - [CLI Framework Research](decisions/cli-framework-research.md): sourced recommendation for Rust, Python, and TypeScript CLI framework defaults.
 - [Operations](operations/README.md): development, validation, release, and maintenance runbooks.
-- [Local Evals](evals.md): generated scaffold matrix and generated-project validation commands.
+- [Local Evals](operations/evals.md): generated scaffold matrix and generated-project validation commands.
 - [Contributing](contributing.md): human contribution workflow.
 - [Agent Contributing](agent-contributing.md): agent-safe development workflow.
 - [Release Policy](release-policy.md): version tags, release assets, and same-version updates.

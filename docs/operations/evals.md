@@ -291,7 +291,7 @@ PYTHONPATH=$(pwd) poetry run python scripts/bootstrap_eval.py \
 ```
 
 The default bootstrap matrix is the `DEFAULT_CASES` registry in
-[`scripts/bootstrap_eval.py`](../scripts/bootstrap_eval.py). Each record
+[`scripts/bootstrap_eval.py`](../../scripts/bootstrap_eval.py). Each record
 includes the scaffold arguments that define the case. Use `--cases` to select
 a subset. Beyond the taste rules, every
 capability declared in `.kickstart/scaffold.json` must be exercised by at
@@ -299,7 +299,7 @@ least one generated test (`capability-tests` rule). The eval exits non-zero
 when any case fails generation, taste, capability coverage, or `make check`.
 
 CI runs `run_evals.py --tier pr` on every PR.
-[`scripts/run_evals.py`](../scripts/run_evals.py) defines `TIERS` and
+[`scripts/run_evals.py`](../../scripts/run_evals.py) defines `TIERS` and
 `_PR_BOOTSTRAP_CASES`, including the bootstrap selection and additional checks
 for each tier. The `Scheduled Evals` workflow runs `--tier full` weekly
 against live toolchains.

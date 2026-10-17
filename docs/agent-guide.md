@@ -127,4 +127,4 @@ make check
 
 The supported Python range is `>=3.12,<3.15`. Treat Python 3.12 as the compatibility floor and Python 3.14 as the current stable target.
 
-For generator wiring changes, also use the local evals in [Local Evals](evals.md). Scaffold-shape evals should pass with zero failed commands. Generated-project dependency evals may require network and should be reported with classified failures rather than treated as invisible noise.
+For generator wiring changes, also use the local evals in [Local Evals](operations/evals.md). Scaffold-shape evals should pass with zero failed commands. Generated-project dependency evals may require network and should be reported with classified failures rather than treated as invisible noise.

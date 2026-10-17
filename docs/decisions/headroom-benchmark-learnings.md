@@ -5,7 +5,7 @@ Date: 2026-06-12
 Source studied: https://github.com/chopratejas/headroom — a context-compression
 layer for AI agents (60–95% token reduction claims). Its `/benchmarks`
 directory and published methodology carry several practices worth comparing
-against kickstart's eval suite (`docs/evals.md`).
+against kickstart's eval suite (`docs/operations/evals.md`).
 
 ## What headroom does that we should notice
 
@@ -39,7 +39,7 @@ against kickstart's eval suite (`docs/evals.md`).
 | Regression baselines | None. Nothing stops generated output from silently bloating (or losing files) between releases — and token weight is a core promise. |
 | Scenario fixtures | Cases are typed tuples inline in each eval — fine at current scale. |
 | Real-workload studies | The 20-run cold-start evaluation (documented in CHANGELOG/PR #68) is exactly this, but it is methodology-by-anecdote, not a committed artifact. |
-| Reproduce command with numbers | `docs/evals.md` does this. |
+| Reproduce command with numbers | `docs/operations/evals.md` does this. |
 
 ## Adopted in this branch
 
