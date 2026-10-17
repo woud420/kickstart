@@ -18,6 +18,10 @@ class ExternalIOContractError(KickstartError):
 def _text(value: str, label: str) -> None:
     if not isinstance(value, str) or not value.strip() or any(ord(c) < 32 or ord(c) == 127 for c in value):
         raise ExternalIOContractError(f"{label} must be nonempty single-line text")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise ExternalIOContractError(f"{label} must be valid UTF-8 text") from error
 
 
 def _choice(value: str, choices: tuple[str, ...], label: str) -> None:

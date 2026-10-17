@@ -1,10 +1,11 @@
 # External I/O exporter contract
 
-The first phase defines `ExternalIOContract` and pure JSON/Markdown renderers.
-It supplies a shared representation for the optional exporter planned under
-ENG-13. CLI registration, source extraction, scaffold activation and adoption
-integration are subsequent phases. No existing generation path imports these
-modules; this phase leaves default generated output unchanged.
+`ExternalIOContract` and pure JSON/Markdown renderers define the shared
+representation for the optional exporter planned under ENG-13. The explicit
+`kickstart export external-io` command now accepts declared observations and
+checks their source locations. Automatic extraction, scaffold activation and
+adoption insertion remain subsequent phases. Default generated output is
+unchanged.
 
 External I/O observations belong to derived exporter artifacts. They do not
 become scaffold regeneration inputs or new `.kickstart/scaffold.json` fields.
@@ -33,6 +34,8 @@ The surface discriminator and data are:
 
 Configuration records describe names and requirements; they have no value field.
 Surface text is supplied explicitly, never looked up in the process environment.
+Text must be representable as UTF-8; escaped unpaired Unicode surrogates are
+rejected before rendering.
 File surface paths describe observed I/O and may be absolute. Evidence paths
 are separately constrained to normalized, repository-relative POSIX file paths:
 no absolute paths, parent traversal, drive/colon syntax, backslashes, trailing
@@ -41,10 +44,11 @@ an optional end line is at or after the start.
 
 `SurfaceUnknown` records a category (`http`, `cli`, `file`, `config`, `network`,
 or `all`) and a nonempty reason. A producer without evidence should emit an
-unknown instead of fabricating an observation. Citation checks validate path
-and range shape; verifying file existence and whether its contents support the
-claim belongs to the later evidence mapper. This model does not infer protocol
-semantics, authentication, completeness, or source facts.
+unknown instead of fabricating an observation. The typed model validates path
+and range shape. The explicit exporter additionally checks that cited files and
+line ranges exist inside the selected repository. Whether source content proves
+a claimed surface belongs to a later evidence mapper. This model does not infer
+protocol semantics, authentication, completeness, or source facts.
 
 All records are frozen dataclasses with tuple collections. JSON preserves
 observation and citation order, uses stable keys, UTF-8 text and one trailing
@@ -131,10 +135,37 @@ citation escapes the repository. `ExternalIOContract("sample", (), ())` is
 rejected because absence of observations needs an explicit unknown reason.
 Malformed declarations raise `ExternalIOContractError`.
 
+## Read-only CLI export
+
+Supply a version-1 declaration in the JSON shape above. No scaffold manifest is
+required: PATH may be an existing repository or another source directory.
+
+```bash
+kickstart export external-io path/to/repo --input declaration.json
+kickstart export external-io path/to/repo --input declaration.json --format markdown
+```
+
+JSON is the default; `--format` accepts `json` or `markdown`. The input file path
+is relative to the caller's working directory, while citation paths are relative
+to PATH. Both outputs go to stdout with one trailing newline. Success exits 0;
+invalid input, source locations or CLI arguments exit 2. Diagnostics go to stderr.
+
+The reader rejects duplicate keys, unknown/missing fields, unsupported versions,
+non-JSON numbers and invalid model values. All root fields are required. The
+optional `end_line`, CLI `option` and config `required` fields may be absent or
+null. Observations require citations; declarations without observations require
+explicit unknowns. No configuration value field is accepted or expanded.
+
+Cited sources must be UTF-8 files with existing one-based line ranges. Symlinks
+within the selected root are allowed; a citation resolving outside it is rejected.
+This checks locations and ranges, not whether the supplied claim follows from
+the source. Coverage remains partial. Repository content, owned fences, manifests
+and input declarations are not written.
+
 ## Integration boundary
 
-This contract defines data and rendering only. The follow-up must explicitly
-choose optional CLI/scaffold/adopt activation, obtain evidence, and preserve
-existing repository content when inserting a derived section. Deep analysis
-may be delegated later. No evidence, runtime API semantics or exporter state
-is added to scaffold.json in this phase.
+The explicit command consumes declared evidence and renders one representation.
+Automatic source discovery, optional create/adopt activation and safe insertion
+into owned `docs/contracts/README.md` and `surface.json` remain follow-ups. Deep
+analysis may be delegated later. No evidence, runtime API semantics or exporter
+state is added to scaffold.json.
