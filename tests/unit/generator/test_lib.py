@@ -1,3 +1,6 @@
+from contextlib import contextmanager
+from types import SimpleNamespace
+
 import pytest
 from pathlib import Path
 from unittest.mock import patch, call
@@ -34,6 +37,26 @@ def mock_scaffold_contract_docs():
         yield
 
 
+@contextmanager
+def create_mocks(generator_type, content_method):
+    with (
+        patch.object(generator_type, "log_success") as log_success,
+        patch.object(generator_type, "create_project", return_value=True) as create_project,
+        patch.object(generator_type, "init_basic_structure") as init_basic_structure,
+        patch.object(generator_type, "create_architecture_docs") as create_architecture_docs,
+        patch.object(generator_type, "write_template") as write_template,
+        patch.object(generator_type, content_method) as content_writer,
+    ):
+        yield SimpleNamespace(
+            log_success=log_success,
+            create_project=create_project,
+            init_basic_structure=init_basic_structure,
+            create_architecture_docs=create_architecture_docs,
+            write_template=write_template,
+            content_writer=content_writer,
+        )
+
+
 def test_library_generator_initialization(library_generator):
     assert library_generator.name == "test-lib"
     assert library_generator.lang == "python"
@@ -60,97 +83,79 @@ def test_cli_generator_inherits_from_library_generator():
 
 
 @patch("src.generator.lib.create_repo")
-@patch.object(LibraryGenerator, "write_content_files")
-@patch.object(LibraryGenerator, "write_template")
-@patch.object(LibraryGenerator, "create_architecture_docs")
-@patch.object(LibraryGenerator, "init_basic_structure")
-@patch.object(LibraryGenerator, "create_project")
-@patch.object(LibraryGenerator, "log_success")
-def test_library_create_python_success_with_gh(
-    mock_log_success,
-    mock_create_project,
-    mock_init_basic_structure,
-    mock_create_architecture_docs,
-    mock_write_template,
-    mock_write_content_files,
-    mock_create_repo,
-):
-    generator = LibraryGenerator("test-lib", "python", True, {"key": "value"})
-    mock_create_project.return_value = True
+def test_library_create_python_success_with_gh(mock_create_repo):
+    with create_mocks(LibraryGenerator, "write_content_files") as mocks:
+        mock_log_success = mocks.log_success
+        mock_create_project = mocks.create_project
+        mock_init_basic_structure = mocks.init_basic_structure
+        mock_create_architecture_docs = mocks.create_architecture_docs
+        mock_write_template = mocks.write_template
 
-    generator.create()
+        generator = LibraryGenerator("test-lib", "python", True, {"key": "value"})
 
-    mock_create_project.assert_called_once()
-    mock_init_basic_structure.assert_called_once_with(
-        [
-            "src",
-            "tests",
-            ".kickstart",
-            ".agents/skills",
-            "docs/architecture",
-            "docs/contracts",
-            "docs/operations",
-            "docs/decisions",
+        generator.create()
+
+        mock_create_project.assert_called_once()
+        mock_init_basic_structure.assert_called_once_with(
+            [
+                "src",
+                "tests",
+                ".kickstart",
+                ".agents/skills",
+                "docs/architecture",
+                "docs/contracts",
+                "docs/operations",
+                "docs/decisions",
+            ]
+        )
+
+        # Verify common template files are written
+        expected_common_calls = [
+            call(".gitignore", "python/gitignore.tpl"),
+            call("Makefile", "python/Makefile.tpl"),
+            call("README.md", "python/README.md.tpl"),
         ]
-    )
 
-    # Verify common template files are written
-    expected_common_calls = [
-        call(".gitignore", "python/gitignore.tpl"),
-        call("Makefile", "python/Makefile.tpl"),
-        call("README.md", "python/README.md.tpl"),
-    ]
+        # Verify Python-specific file
+        expected_python_call = call("pyproject.toml", "python/pyproject.toml.tpl")
 
-    # Verify Python-specific file
-    expected_python_call = call("pyproject.toml", "python/pyproject.toml.tpl")
+        all_expected_calls = expected_common_calls + [expected_python_call]
+        mock_write_template.assert_has_calls(all_expected_calls, any_order=True)
 
-    all_expected_calls = expected_common_calls + [expected_python_call]
-    mock_write_template.assert_has_calls(all_expected_calls, any_order=True)
-
-    mock_create_architecture_docs.assert_called_once()
-    assert mock_create_architecture_docs.call_args.args[0] == "test-lib Library Docs"
-    mock_log_success.assert_called_once_with("Python library 'test-lib' created successfully in 'test-lib'!")
-    mock_create_repo.assert_called_once_with("test-lib")
+        mock_create_architecture_docs.assert_called_once()
+        assert mock_create_architecture_docs.call_args.args[0] == "test-lib Library Docs"
+        mock_log_success.assert_called_once_with("Python library 'test-lib' created successfully in 'test-lib'!")
+        mock_create_repo.assert_called_once_with("test-lib")
 
 
 @patch("src.generator.lib.create_repo")
-@patch.object(LibraryGenerator, "write_content_files")
-@patch.object(LibraryGenerator, "write_template")
-@patch.object(LibraryGenerator, "create_architecture_docs")
-@patch.object(LibraryGenerator, "init_basic_structure")
-@patch.object(LibraryGenerator, "create_project")
-@patch.object(LibraryGenerator, "log_success")
-def test_library_create_rust_success(
-    mock_log_success,
-    mock_create_project,
-    mock_init_basic_structure,
-    mock_create_architecture_docs,
-    mock_write_template,
-    mock_write_content_files,
-    mock_create_repo,
-):
-    generator = LibraryGenerator("test-lib", "rust", False, {"key": "value"})
-    mock_create_project.return_value = True
+def test_library_create_rust_success(mock_create_repo):
+    with create_mocks(LibraryGenerator, "write_content_files") as mocks:
+        mock_log_success = mocks.log_success
+        mock_create_architecture_docs = mocks.create_architecture_docs
+        mock_write_template = mocks.write_template
 
-    generator.create()
+        generator = LibraryGenerator("test-lib", "rust", False, {"key": "value"})
 
-    # Verify common template files are written
-    expected_common_calls = [
-        call(".gitignore", "rust/gitignore.tpl"),
-        call("Makefile", "rust/Makefile.tpl"),
-        call("README.md", "rust/README.md.tpl"),
-    ]
+        generator.create()
 
-    # Verify Rust-specific file
-    expected_rust_call = call("Cargo.toml", "rust/Cargo.lib.toml.tpl")
+        # Verify common template files are written
+        expected_common_calls = [
+            call(".gitignore", "rust/gitignore.tpl"),
+            call("Makefile", "rust/Makefile.tpl"),
+            call("README.md", "rust/README.md.tpl"),
+        ]
 
-    all_expected_calls = expected_common_calls + [expected_rust_call]
-    mock_write_template.assert_has_calls(all_expected_calls, any_order=True)
+        # Verify Rust-specific file
+        expected_rust_call = call("Cargo.toml", "rust/Cargo.lib.toml.tpl")
 
-    mock_create_architecture_docs.assert_called_once()
-    assert mock_create_architecture_docs.call_args.args[0] == "test-lib Library Docs"
-    mock_log_success.assert_called_once_with("Rust library 'test-lib' created successfully in 'test-lib'!")
-    mock_create_repo.assert_not_called()
+        all_expected_calls = expected_common_calls + [expected_rust_call]
+        mock_write_template.assert_has_calls(all_expected_calls, any_order=True)
+
+        mock_create_architecture_docs.assert_called_once()
+        assert mock_create_architecture_docs.call_args.args[0] == "test-lib Library Docs"
+        mock_log_success.assert_called_once_with("Rust library 'test-lib' created successfully in 'test-lib'!")
+        mock_create_repo.assert_not_called()
 
 
 @patch.object(LibraryGenerator, "create_project")
@@ -164,152 +169,127 @@ def test_library_create_fails_when_create_project_fails(mock_create_project, lib
 
 
 @patch("src.generator.lib.create_repo")
-@patch.object(CLIGenerator, "write_content")
-@patch.object(CLIGenerator, "write_template")
-@patch.object(CLIGenerator, "create_architecture_docs")
-@patch.object(CLIGenerator, "init_basic_structure")
-@patch.object(CLIGenerator, "create_project")
-@patch.object(CLIGenerator, "log_success")
-def test_cli_create_python_success_with_gh(
-    mock_log_success,
-    mock_create_project,
-    mock_init_basic_structure,
-    mock_create_architecture_docs,
-    mock_write_template,
-    mock_write_content,
-    mock_create_repo,
-):
-    generator = CLIGenerator("test-cli", "python", True, {"key": "value"})
-    mock_create_project.return_value = True
+def test_cli_create_python_success_with_gh(mock_create_repo):
+    with create_mocks(CLIGenerator, "write_content") as mocks:
+        mock_log_success = mocks.log_success
+        mock_create_project = mocks.create_project
+        mock_init_basic_structure = mocks.init_basic_structure
+        mock_create_architecture_docs = mocks.create_architecture_docs
+        mock_write_template = mocks.write_template
+        mock_write_content = mocks.content_writer
 
-    generator.create()
+        generator = CLIGenerator("test-cli", "python", True, {"key": "value"})
 
-    mock_create_project.assert_called_once()
-    mock_init_basic_structure.assert_called_once_with(
-        [
-            "src/cli",
-            "src/cli/commands",
-            "src/config",
-            "src/clients",
-            "src/model",
-            "src/operations",
-            "src/output",
-            "src/error",
-            "tests",
-            ".kickstart",
-            ".agents/skills",
-            "docs/architecture",
-            "docs/contracts",
-            "docs/operations",
-            "docs/decisions",
+        generator.create()
+
+        mock_create_project.assert_called_once()
+        mock_init_basic_structure.assert_called_once_with(
+            [
+                "src/cli",
+                "src/cli/commands",
+                "src/config",
+                "src/clients",
+                "src/model",
+                "src/operations",
+                "src/output",
+                "src/error",
+                "tests",
+                ".kickstart",
+                ".agents/skills",
+                "docs/architecture",
+                "docs/contracts",
+                "docs/operations",
+                "docs/decisions",
+            ]
+        )
+
+        # Verify common template files are written
+        expected_template_calls = [
+            call(".gitignore", "python/gitignore.tpl"),
+            call("Makefile", "cli/python/Makefile.tpl"),
+            call("README.md", "cli/python/README.md.tpl"),
+            call("pyproject.toml", "python/pyproject.cli.toml.tpl"),
+            call("src/main.py", "cli/python/src/main.py.tpl"),
+            call("src/cli/app.py", "cli/python/src/cli/app.py.tpl"),
+            call("src/cli/commands/check.py", "cli/python/src/cli/commands/check.py.tpl"),
+            call("src/model/dto.py", "cli/python/src/model/dto.py.tpl"),
+            call("tests/test_cli_smoke.py", "cli/python/tests/test_cli_smoke.py.tpl"),
         ]
-    )
+        mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
+        mock_write_content.assert_any_call("src/__init__.py", '__version__ = "0.1.0"\n')
+        assert [c.args[0] for c in mock_write_content.call_args_list] == ["src/__init__.py", ".kickstart/scaffold.json"]
 
-    # Verify common template files are written
-    expected_template_calls = [
-        call(".gitignore", "python/gitignore.tpl"),
-        call("Makefile", "cli/python/Makefile.tpl"),
-        call("README.md", "cli/python/README.md.tpl"),
-        call("pyproject.toml", "python/pyproject.cli.toml.tpl"),
-        call("src/main.py", "cli/python/src/main.py.tpl"),
-        call("src/cli/app.py", "cli/python/src/cli/app.py.tpl"),
-        call("src/cli/commands/check.py", "cli/python/src/cli/commands/check.py.tpl"),
-        call("src/model/dto.py", "cli/python/src/model/dto.py.tpl"),
-        call("tests/test_cli_smoke.py", "cli/python/tests/test_cli_smoke.py.tpl"),
-    ]
-    mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    mock_write_content.assert_any_call("src/__init__.py", '__version__ = "0.1.0"\n')
-    assert [c.args[0] for c in mock_write_content.call_args_list] == ["src/__init__.py", ".kickstart/scaffold.json"]
-
-    mock_create_architecture_docs.assert_called_once()
-    assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
-    mock_log_success.assert_called_once_with("Python CLI 'test-cli' created successfully in 'test-cli'!")
-    mock_create_repo.assert_called_once_with("test-cli")
+        mock_create_architecture_docs.assert_called_once()
+        assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
+        mock_log_success.assert_called_once_with("Python CLI 'test-cli' created successfully in 'test-cli'!")
+        mock_create_repo.assert_called_once_with("test-cli")
 
 
 @patch("src.generator.lib.create_repo")
-@patch.object(CLIGenerator, "write_content")
-@patch.object(CLIGenerator, "write_template")
-@patch.object(CLIGenerator, "create_architecture_docs")
-@patch.object(CLIGenerator, "init_basic_structure")
-@patch.object(CLIGenerator, "create_project")
-@patch.object(CLIGenerator, "log_success")
-def test_cli_create_rust_success(
-    mock_log_success,
-    mock_create_project,
-    mock_init_basic_structure,
-    mock_create_architecture_docs,
-    mock_write_template,
-    mock_write_content,
-    mock_create_repo,
-):
-    generator = CLIGenerator("test-cli", "rust", False, {"key": "value"})
-    mock_create_project.return_value = True
+def test_cli_create_rust_success(mock_create_repo):
+    with create_mocks(CLIGenerator, "write_content") as mocks:
+        mock_log_success = mocks.log_success
+        mock_create_architecture_docs = mocks.create_architecture_docs
+        mock_write_template = mocks.write_template
+        mock_write_content = mocks.content_writer
 
-    generator.create()
+        generator = CLIGenerator("test-cli", "rust", False, {"key": "value"})
 
-    # Verify common template files are written
-    expected_template_calls = [
-        call(".gitignore", "rust/gitignore.tpl"),
-        call("Makefile", "cli/rust/Makefile.tpl"),
-        call("README.md", "cli/rust/README.md.tpl"),
-        call("Cargo.toml", "rust/Cargo.cli.toml.tpl"),
-        call("src/main.rs", "cli/rust/src/main.rs.tpl"),
-        call("src/cli/args.rs", "cli/rust/src/cli/args.rs.tpl"),
-        call("src/cli/dispatch.rs", "cli/rust/src/cli/dispatch.rs.tpl"),
-        call("src/model/dto.rs", "cli/rust/src/model/dto.rs.tpl"),
-        call("tests/cli_smoke.rs", "cli/rust/tests/cli_smoke.rs.tpl"),
-    ]
-    mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    assert [c.args[0] for c in mock_write_content.call_args_list] == [".kickstart/scaffold.json"]
+        generator.create()
 
-    mock_create_architecture_docs.assert_called_once()
-    assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
-    mock_log_success.assert_called_once_with("Rust CLI 'test-cli' created successfully in 'test-cli'!")
-    mock_create_repo.assert_not_called()
+        # Verify common template files are written
+        expected_template_calls = [
+            call(".gitignore", "rust/gitignore.tpl"),
+            call("Makefile", "cli/rust/Makefile.tpl"),
+            call("README.md", "cli/rust/README.md.tpl"),
+            call("Cargo.toml", "rust/Cargo.cli.toml.tpl"),
+            call("src/main.rs", "cli/rust/src/main.rs.tpl"),
+            call("src/cli/args.rs", "cli/rust/src/cli/args.rs.tpl"),
+            call("src/cli/dispatch.rs", "cli/rust/src/cli/dispatch.rs.tpl"),
+            call("src/model/dto.rs", "cli/rust/src/model/dto.rs.tpl"),
+            call("tests/cli_smoke.rs", "cli/rust/tests/cli_smoke.rs.tpl"),
+        ]
+        mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
+        assert [c.args[0] for c in mock_write_content.call_args_list] == [".kickstart/scaffold.json"]
+
+        mock_create_architecture_docs.assert_called_once()
+        assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
+        mock_log_success.assert_called_once_with("Rust CLI 'test-cli' created successfully in 'test-cli'!")
+        mock_create_repo.assert_not_called()
 
 
 @patch("src.generator.lib.create_repo")
-@patch.object(CLIGenerator, "write_content")
-@patch.object(CLIGenerator, "write_template")
-@patch.object(CLIGenerator, "create_architecture_docs")
-@patch.object(CLIGenerator, "init_basic_structure")
-@patch.object(CLIGenerator, "create_project")
-@patch.object(CLIGenerator, "log_success")
-def test_cli_create_typescript_success(
-    mock_log_success,
-    mock_create_project,
-    mock_init_basic_structure,
-    mock_create_architecture_docs,
-    mock_write_template,
-    mock_write_content,
-    mock_create_repo,
-):
-    generator = CLIGenerator("test-cli", "typescript", False, {"key": "value"})
-    mock_create_project.return_value = True
+def test_cli_create_typescript_success(mock_create_repo):
+    with create_mocks(CLIGenerator, "write_content") as mocks:
+        mock_log_success = mocks.log_success
+        mock_create_architecture_docs = mocks.create_architecture_docs
+        mock_write_template = mocks.write_template
+        mock_write_content = mocks.content_writer
 
-    generator.create()
+        generator = CLIGenerator("test-cli", "typescript", False, {"key": "value"})
 
-    expected_template_calls = [
-        call(".gitignore", "typescript/gitignore.tpl"),
-        call("Makefile", "cli/typescript/Makefile.tpl"),
-        call("README.md", "cli/typescript/README.md.tpl"),
-        call("package.json", "cli/typescript/package.json.tpl"),
-        call("tsconfig.json", "cli/typescript/tsconfig.json.tpl"),
-        call("vitest.config.ts", "cli/typescript/vitest.config.ts.tpl"),
-        call("bin/dev.js", "cli/typescript/bin/dev.js.tpl"),
-        call("bin/run.js", "cli/typescript/bin/run.js.tpl"),
-        call("src/base-command.ts", "cli/typescript/src/base-command.ts.tpl"),
-        call("src/commands/check.ts", "cli/typescript/src/commands/check.ts.tpl"),
-        call("src/model/dto.ts", "cli/typescript/src/model/dto.ts.tpl"),
-        call("tests/cli-smoke.test.ts", "cli/typescript/tests/cli-smoke.test.ts.tpl"),
-    ]
-    mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    assert [c.args[0] for c in mock_write_content.call_args_list] == [".kickstart/scaffold.json"]
-    mock_create_architecture_docs.assert_called_once()
-    assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
-    mock_log_success.assert_called_once_with("Typescript CLI 'test-cli' created successfully in 'test-cli'!")
-    mock_create_repo.assert_not_called()
+        generator.create()
+
+        expected_template_calls = [
+            call(".gitignore", "typescript/gitignore.tpl"),
+            call("Makefile", "cli/typescript/Makefile.tpl"),
+            call("README.md", "cli/typescript/README.md.tpl"),
+            call("package.json", "cli/typescript/package.json.tpl"),
+            call("tsconfig.json", "cli/typescript/tsconfig.json.tpl"),
+            call("vitest.config.ts", "cli/typescript/vitest.config.ts.tpl"),
+            call("bin/dev.js", "cli/typescript/bin/dev.js.tpl"),
+            call("bin/run.js", "cli/typescript/bin/run.js.tpl"),
+            call("src/base-command.ts", "cli/typescript/src/base-command.ts.tpl"),
+            call("src/commands/check.ts", "cli/typescript/src/commands/check.ts.tpl"),
+            call("src/model/dto.ts", "cli/typescript/src/model/dto.ts.tpl"),
+            call("tests/cli-smoke.test.ts", "cli/typescript/tests/cli-smoke.test.ts.tpl"),
+        ]
+        mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
+        assert [c.args[0] for c in mock_write_content.call_args_list] == [".kickstart/scaffold.json"]
+        mock_create_architecture_docs.assert_called_once()
+        assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
+        mock_log_success.assert_called_once_with("Typescript CLI 'test-cli' created successfully in 'test-cli'!")
+        mock_create_repo.assert_not_called()
 
 
 @patch.object(CLIGenerator, "create_project")
@@ -359,14 +339,8 @@ def test_cli_unsupported_language_fails_loudly():
 def test_library_vs_cli_architecture_docs_difference():
     """Test that library and CLI generators create different architecture docs."""
     # Test library
-    with (
-        patch.object(LibraryGenerator, "create_project", return_value=True),
-        patch.object(LibraryGenerator, "init_basic_structure"),
-        patch.object(LibraryGenerator, "write_template"),
-        patch.object(LibraryGenerator, "write_content_files"),
-        patch.object(LibraryGenerator, "log_success"),
-        patch.object(LibraryGenerator, "create_architecture_docs") as mock_lib_arch_docs,
-    ):
+    with create_mocks(LibraryGenerator, "write_content_files") as mocks:
+        mock_lib_arch_docs = mocks.create_architecture_docs
         lib_generator = LibraryGenerator("my-lib", "python", False, {})
         lib_generator.create()
 
@@ -374,14 +348,8 @@ def test_library_vs_cli_architecture_docs_difference():
         assert mock_lib_arch_docs.call_args.args[0] == "my-lib Library Docs"
 
     # Test CLI
-    with (
-        patch.object(CLIGenerator, "create_project", return_value=True),
-        patch.object(CLIGenerator, "init_basic_structure"),
-        patch.object(CLIGenerator, "write_template"),
-        patch.object(CLIGenerator, "write_content"),
-        patch.object(CLIGenerator, "log_success"),
-        patch.object(CLIGenerator, "create_architecture_docs") as mock_cli_arch_docs,
-    ):
+    with create_mocks(CLIGenerator, "write_content") as mocks:
+        mock_cli_arch_docs = mocks.create_architecture_docs
         cli_generator = CLIGenerator("my-cli", "python", False, {})
         cli_generator.create()
 
@@ -392,14 +360,8 @@ def test_library_vs_cli_architecture_docs_difference():
 def test_library_vs_cli_success_message_difference():
     """Test that library and CLI generators have different success messages."""
     # Test library
-    with (
-        patch.object(LibraryGenerator, "create_project", return_value=True),
-        patch.object(LibraryGenerator, "init_basic_structure"),
-        patch.object(LibraryGenerator, "write_template"),
-        patch.object(LibraryGenerator, "write_content_files"),
-        patch.object(LibraryGenerator, "create_architecture_docs"),
-        patch.object(LibraryGenerator, "log_success") as mock_lib_success,
-    ):
+    with create_mocks(LibraryGenerator, "write_content_files") as mocks:
+        mock_lib_success = mocks.log_success
         lib_generator = LibraryGenerator("my-lib", "python", False, {})
         lib_generator.create()
 
