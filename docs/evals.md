@@ -155,6 +155,95 @@ When reporting this eval, include the date, source, context, pass count, prewarm
 results, cleanup warnings and failure classes. Do not compress failures into a
 single success flag or reuse undated totals.
 
+### Bun workspace coordination: 2026-10-17
+
+The evaluator groups a generated Bun workspace's root and declared members into
+one serial task, including each target's cleanup. Separate workspaces,
+standalone packages, nonmembers and nested workspaces retain their own parallel
+slots. Runtime and prewarm use the same scheduling policy. This coordination
+applies within one evaluator invocation.
+
+The controlled reproduction uses `create system` with explicit
+`--workspace-tooling bun-turbo`, a TypeScript Worker and a React frontend under
+`apps/`. A neutral system root leaves those apps independent and cannot exercise
+shared-workspace installation. Each configuration below has three independent
+repetitions and two targets per workspace. All warm setup installs passed; each
+case had a private cache. Before source was clean `e048a6d`; after source was
+clean `fdff607`. Bun was **1.3.5**, Node **v26.11.1**, on the same macOS host.
+All 48 Bun lockfiles are byte-identical across the before/after cases
+(`/tmp/eng635-control-dependency-locks.json`), excluding a resolved-version
+change as the explanation for the result.
+
+| Dependency tree | Workers requested | Cleanup | Before pass/fail | After pass/fail |
+|---|---:|---|---:|---:|
+| Fresh | 1 | Off | 6/0 | 6/0 |
+| Fresh | 1 | On | 6/0 | 6/0 |
+| Fresh | 2 | Off | 6/0 | 6/0 |
+| Fresh | 2 | On | 6/0 | 6/0 |
+| Warm | 1 | Off | 6/0 | 6/0 |
+| Warm | 1 | On | 6/0 | 6/0 |
+| Warm | 2 | Off | 0/6 | 6/0 |
+| Warm | 2 | On | 1/5 | 6/0 |
+
+The 11 before-repair failures occur during `bun install`, before generated tests
+start. They reproduce with cleanup off. All **48/48** after-repair targets pass.
+Two independent warm workspaces sharing one cache also pass **6/6** targets,
+with actual command overlap in all three repetitions. Additional nested-member
+workspace controls pass **6/6** across three independent generated workspaces
+(`/tmp/eng635-nested-member-proof.json`). The network-free
+regressions exercise runtime, prewarm, root targets, cleanup ordering,
+membership, nested boundaries and malformed metadata. Five overlap/cleanup
+controls fail before repair; all 30 focused runner/reporting checks pass after,
+with 100% executable-line coverage in the workspace grouping module.
+
+Detailed control logs and source checks are indexed by
+`/tmp/eng635-workspace-proof.json` and `/tmp/eng635-workspace-proof.md`.
+The earlier neutral-system comparison passed 72/72 standalone targets; it is
+not a shared-workspace reproduction. The initial sandboxed workspace run was
+registry-blocked, including warm setup, and supplies no concurrency conclusion.
+
+#### Fresh full runtime comparison
+
+A new exact supported matrix generated **500 projects / 4,696 components** with
+zero generation failures or component issues. Generator tree
+`74bddecce6a8b4300f7ee6c49b362d79b024cafe` matches `master` at `c71c6df` and the earlier
+snapshot. From clean evaluator source
+`fdff607bdfc736f1cb833440def6262bedb6b158`, all **4,696/4,696** runtime targets pass;
+prewarm passes **21/21**. No component or prewarm failure class was observed in
+this run. Native `make check` passes **1,100 tests**.
+
+| Context | Recorded value |
+|---|---|
+| Run window | 2026-10-17 09:20:55–09:43:14 UTC |
+| Run ID | `b77f1a7f-bb89-473d-82b7-23ab0fad0890` |
+| Dependencies | Fresh generated trees; existing warm shared package/build caches; network enabled |
+| Parallelism | 12 workers; 90-second target timeout; 2 prewarm workers |
+| Cleanup | Enabled; 2397 components cleaned; 0 components with warnings |
+| JavaScript | Bun 1.3.5 / Node v26.11.1 |
+| Host and other tools | Same recorded host/toolchain as the earlier snapshot; full versions in JSON |
+
+The actual CLI command and source/tool provenance are in
+`/tmp/eng635-final-generated-make-test.md.json`; Markdown:
+`/tmp/eng635-final-generated-make-test.md`; console:
+`/tmp/eng635-final-generated-make-test.log`. Both report files and console totals
+were read back against the exact 4,696-target inventory. JSON SHA-256:
+`94177050f1c28f5c94b7a048307f924301d13516fe56dac7481e0e8cb2941bd3`. All **134,160** recorded scaffold source entries remain unchanged
+(`/tmp/eng635-generated-source-final.json`); their initial fingerprints also
+match the earlier matrix exactly (`/tmp/eng635-cross-run-scaffold-equality.json`).
+Shape and command context:
+`/tmp/eng635-generation-provenance.json` and
+`/tmp/eng635-final-runtime-start.json`.
+
+The original 4,595/101 warm-retry snapshot above retains its original hashes and
+counts. Inspection of two persistent startup examples found missing installed
+Vitest/Rollup files with intact shared-cache copies
+(`/tmp/eng635-retained-store-inspection.json`). The scheduler prevents overlapping
+workspace targets; it does not repair an already damaged dependency store or
+identify the cause of every historical startup symptom. After an interrupted
+evaluation, generate a fresh matrix into a new owned output root for a clean
+dependency-tree comparison. Preserve the earlier report and label cache warmth
+separately from the generated tree's install state.
+
 ## Token Savings
 
 kickstart's value to agents includes replacing hand-authored boilerplate
