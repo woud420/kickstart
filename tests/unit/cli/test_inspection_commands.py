@@ -25,7 +25,8 @@ def runner() -> CliRunner:
 def _service_contract() -> ScaffoldContract:
     return ScaffoldContract(
         project_kind="service",
-        language="python", framework="minimal",
+        language="python",
+        framework="minimal",
         execution_models=("container",),
         runtime_platforms=("local",),
         artifacts=ScaffoldArtifacts(image="dockerfile"),
@@ -182,3 +183,12 @@ def test_export_backstage_warns_on_missing_required_lines(runner: CliRunner, tmp
 
     assert result.exit_code == 1
     assert "warning" in result.stdout
+
+
+@pytest.mark.parametrize("name", ["missing[/oops]", "missing[red]name"])
+def test_adopt_reports_literal_invalid_path(tmp_path: Path, name: str) -> None:
+    result = CliRunner().invoke(app, ["adopt", str(tmp_path / name), "--check"])
+
+    assert result.exit_code == 2
+    assert name in result.stdout
+    assert "not an existing directory" in result.stdout
