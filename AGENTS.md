@@ -6,6 +6,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 
 - Public API: `src/api.py`
 - CLI parsing and dispatch: `src/cli/`
+- Explicit export commands: `src/cli/exports.py`; external I/O data/validation: `src/generator/external_io_*.py`
 - Generator specs: `src/generator/specs.py`
 - Directory plans: `src/generator/layouts.py`
 - Managed docs projections: `src/generator/projections.py`

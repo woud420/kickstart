@@ -114,6 +114,8 @@ def test_known_surface_still_emits_explicit_empty_unknowns() -> None:
         lambda: NetworkSurface("tcp", "host", "both"),
         lambda: SurfaceUnknown("other", "why"),
         lambda: SurfaceUnknown("all", ""),
+        lambda: ExternalIOContract("bad" + chr(0xD800), (), (SurfaceUnknown("all", "Uninspected"),)),
+        lambda: SurfaceUnknown("all", "bad" + chr(0xDFFF)),
     ],
 )
 def test_invalid_surface_declarations_fail_explicitly(factory) -> None:

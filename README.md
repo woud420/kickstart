@@ -141,6 +141,19 @@ Derive a Backstage catalog entry from the scaffold manifest (derived fields fenc
 poetry run kickstart export backstage path/to/repo
 ```
 
+
+Export a declared partial external I/O map after checking its source locations
+(read-only; no scaffold manifest is required):
+
+```bash
+poetry run kickstart export external-io path/to/repo --input declaration.json
+poetry run kickstart export external-io path/to/repo --input declaration.json --format markdown
+```
+
+The declaration supplies observations and explicit unknowns. The command checks
+JSON shape and citation files/ranges; source semantics remain caller-supplied.
+See the [external I/O contract](docs/contracts/external-io-export.md).
+
 ## What It Generates
 
 - `service`: Python, TypeScript, Rust, C++, or Go backend service structure.
