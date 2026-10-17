@@ -6,10 +6,8 @@ import time
 
 import pytest
 
-from tests.unit.cli.command_helpers import UPDATES
-
 from src.cli.main import app
-from src.cli.main import upgrade
+from src.cli.updates import upgrade
 from src.model.dto.telemetry import (
     CliUpgradeChecksumStatus,
     CliUpgradeErrorCategory,
@@ -19,8 +17,8 @@ from src.model.dto.upgrade import UpgradeResult
 from src.utils.handoff import HANDOFF_COMMAND, Handoff, HandoffMode
 
 
-@patch.object(UPDATES, "capture_cli_upgrade_terminal")
-@patch.object(UPDATES, "check_for_update")
+@patch("src.cli.updates.capture_cli_upgrade_terminal")
+@patch("src.cli.updates.check_for_update")
 def test_upgrade_command(mock_check_for_update, mock_capture, runner):
     """Test the upgrade command calls check_for_update."""
     update_result = UpgradeResult(
@@ -47,8 +45,8 @@ def test_upgrade_command(mock_check_for_update, mock_capture, runner):
 )
 def test_upgrade_captures_unhandled_terminal_outcomes(error, outcome, category):
     with (
-        patch.object(UPDATES, "check_for_update", side_effect=error),
-        patch.object(UPDATES, "capture_cli_upgrade_terminal") as capture,
+        patch("src.cli.updates.check_for_update", side_effect=error),
+        patch("src.cli.updates.capture_cli_upgrade_terminal") as capture,
         pytest.raises(type(error)),
     ):
         upgrade()
@@ -98,11 +96,11 @@ def test_handoff_command_is_hidden_from_help(runner):
     assert HANDOFF_COMMAND not in result.stdout
 
 
-@patch.object(UPDATES, "__version__", "1.0.0")
+@patch("src.cli.updates.__version__", "1.0.0")
 def test_handoff_activate_phase_repairs_layout_then_execs_finalize(runner, tmp_path, handoff_chain):
     stage_dir, handoff = _stage_with_manifest(tmp_path)
 
-    with patch.object(UPDATES, "capture_cli_upgrade_terminal") as capture:
+    with patch("src.cli.updates.capture_cli_upgrade_terminal") as capture:
         with pytest.raises(handoff_chain.replaced) as replaced:
             runner.invoke(
                 app, [HANDOFF_COMMAND, "--stage-dir", str(stage_dir), "--phase", "activate"], catch_exceptions=False
@@ -118,11 +116,11 @@ def test_handoff_activate_phase_repairs_layout_then_execs_finalize(runner, tmp_p
     assert not stage_dir.exists()
 
 
-@patch.object(UPDATES, "__version__", "1.0.0")
+@patch("src.cli.updates.__version__", "1.0.0")
 def test_handoff_finalize_phase_reports_once_and_exits_zero(runner, tmp_path):
     stage_dir, handoff = _stage_with_manifest(tmp_path)
 
-    with patch.object(UPDATES, "capture_cli_upgrade_terminal") as capture:
+    with patch("src.cli.updates.capture_cli_upgrade_terminal") as capture:
         result = runner.invoke(app, [HANDOFF_COMMAND, "--stage-dir", str(stage_dir), "--phase", "finalize"])
 
     assert result.exit_code == 0, result.stdout
@@ -136,7 +134,7 @@ def test_handoff_finalize_phase_reports_once_and_exits_zero(runner, tmp_path):
     assert capture.call_args.kwargs["cli_version"] == "1.0.0"
 
 
-@patch.object(UPDATES, "__version__", "1.0.0")
+@patch("src.cli.updates.__version__", "1.0.0")
 def test_handoff_activate_failure_exits_non_zero_and_leaves_install(runner, tmp_path):
     stage_dir, handoff = _stage_with_manifest(tmp_path)
     running = handoff.public_launcher.resolve()
@@ -146,7 +144,7 @@ def test_handoff_activate_failure_exits_non_zero_and_leaves_install(runner, tmp_
 
     with (
         patch("src.utils.installer.shutil.copytree", side_effect=fail_copytree),
-        patch.object(UPDATES, "capture_cli_upgrade_terminal") as capture,
+        patch("src.cli.updates.capture_cli_upgrade_terminal") as capture,
     ):
         result = runner.invoke(app, [HANDOFF_COMMAND, "--stage-dir", str(stage_dir), "--phase", "activate"])
 
@@ -162,7 +160,7 @@ def test_handoff_activate_failure_exits_non_zero_and_leaves_install(runner, tmp_
 
 
 def test_handoff_with_unreadable_manifest_reports_unexpected_error(runner, tmp_path):
-    with patch.object(UPDATES, "capture_cli_upgrade_terminal") as capture:
+    with patch("src.cli.updates.capture_cli_upgrade_terminal") as capture:
         result = runner.invoke(app, [HANDOFF_COMMAND, "--stage-dir", str(tmp_path), "--phase", "finalize"])
 
     assert result.exit_code == 1

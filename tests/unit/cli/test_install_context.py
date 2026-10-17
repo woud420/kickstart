@@ -5,9 +5,7 @@ from pathlib import Path
 import pytest
 import typer
 
-
-from tests.unit.cli.command_helpers import CONTEXT, InstallContext, report_failure, resolve_context
-
+from src.cli.install_context import InstallContext, report_failure, resolve_context
 from src.utils.errors import KickstartError
 
 
@@ -15,7 +13,7 @@ def test_resolve_context_defaults_to_xdg(tmp_path, monkeypatch):
     """When --target is omitted the resolved install_dir falls back to ~/.local/bin."""
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("SHELL", "/bin/zsh")
-    monkeypatch.setattr(CONTEXT, "path_contains", lambda *_args, **_kw: False)
+    monkeypatch.setattr("src.cli.install_context.path_contains", lambda *_args, **_kw: False)
     ctx = resolve_context(target=None, shell=None, rc_file=None)
     # The default install_dir module-level constant is computed at import time, so we just
     # assert the structural invariants instead of comparing against the live HOME.

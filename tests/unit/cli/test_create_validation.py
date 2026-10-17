@@ -5,13 +5,11 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 
-from tests.unit.cli.command_helpers import CREATE
-
 from src.cli.main import app
 from src.utils.errors import ExtensionError
 
 
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.load_config")
 def test_create_unsupported_type(mock_load_config, runner, mock_config):
     """Test creating an unsupported project type."""
     mock_load_config.return_value = mock_config
@@ -22,13 +20,13 @@ def test_create_unsupported_type(mock_load_config, runner, mock_config):
     assert "Type 'unsupported' not supported" in result.stdout
 
 
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Prompt")
 def test_create_defaults_root_to_cwd_without_prompting(mock_prompt, mock_load_config, runner, mock_config):
     """A fully specified create must not ambush automation with a root prompt."""
     mock_load_config.return_value = mock_config
 
-    with patch.object(CREATE, "create_service") as mock_create_service:
+    with patch("src.cli.create.create_service") as mock_create_service:
         result = runner.invoke(app, ["create", "service", "test-service"])
 
         assert result.exit_code == 0
@@ -39,10 +37,10 @@ def test_create_defaults_root_to_cwd_without_prompting(mock_prompt, mock_load_co
 def test_helm_option_only_for_service_and_mono():
     """Test that helm option is only prompted for service and mono project types."""
     with (
-        patch.object(CREATE, "load_config") as mock_load_config,
-        patch.object(CREATE, "Prompt") as mock_prompt,
-        patch.object(CREATE, "Confirm") as mock_confirm,
-        patch.object(CREATE, "create_frontend"),
+        patch("src.cli.create.load_config") as mock_load_config,
+        patch("src.cli.create.Prompt") as mock_prompt,
+        patch("src.cli.create.Confirm") as mock_confirm,
+        patch("src.cli.create.create_frontend"),
     ):
         mock_load_config.return_value = {"default_language": "python"}
         mock_prompt.ask.side_effect = ["frontend", "test", "/tmp", "python"]
@@ -59,8 +57,8 @@ def test_helm_option_only_for_service_and_mono():
 def test_default_values():
     """Test that default values are used when not specified."""
     with (
-        patch.object(CREATE, "load_config") as mock_load_config,
-        patch.object(CREATE, "create_service") as mock_create_service,
+        patch("src.cli.create.load_config") as mock_load_config,
+        patch("src.cli.create.create_service") as mock_create_service,
     ):
         mock_load_config.return_value = {"default_language": "python"}
 
@@ -73,15 +71,15 @@ def test_default_values():
         )
 
 
-@patch.object(CREATE, "create_service")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_service")
+@patch("src.cli.create.load_config")
 def test_create_service_exception_propagation(mock_load_config, mock_create_service, runner):
     """Test that exceptions from create_service are propagated."""
     mock_load_config.return_value = {}
     mock_create_service.side_effect = ValueError("Test error")
 
     # This test should use root prompt, so mock it
-    with patch.object(CREATE, "Prompt") as mock_prompt:
+    with patch("src.cli.create.Prompt") as mock_prompt:
         mock_prompt.ask.return_value = "/tmp"
         result = runner.invoke(app, ["create", "service", "test"])
 
@@ -90,8 +88,8 @@ def test_create_service_exception_propagation(mock_load_config, mock_create_serv
     assert "Test error" in result.stdout
 
 
-@patch.object(CREATE, "create_service")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_service")
+@patch("src.cli.create.load_config")
 def test_create_service_validation_error_is_concise(mock_load_config, mock_create_service, runner):
     """Test expected validation errors do not print tracebacks."""
     mock_load_config.return_value = {}

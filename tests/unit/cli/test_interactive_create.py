@@ -1,7 +1,6 @@
 from typer.testing import CliRunner
-from tests.unit.cli.command_helpers import CREATE
-
 from src.cli.main import app
+import src.cli.create as cli_create
 
 
 def test_interactive_create_service(tmp_path, monkeypatch):
@@ -13,8 +12,8 @@ def test_interactive_create_service(tmp_path, monkeypatch):
         recorded["root"] = root
         recorded["lang"] = lang
 
-    monkeypatch.setattr(CREATE, "create_service", fake_create_service)
-    monkeypatch.setattr(CREATE, "load_config", lambda: {})
+    monkeypatch.setattr(cli_create, "create_service", fake_create_service)
+    monkeypatch.setattr(cli_create, "load_config", lambda: {})
 
     inputs = f"service\nmy-svc\n{tmp_path}\npython\nn\nn\nnone\nnone\nnone\nfastapi\n"
     result = runner.invoke(app, ["create"], input=inputs)
