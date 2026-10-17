@@ -3,8 +3,6 @@
 from unittest.mock import patch
 
 
-from tests.unit.cli.command_helpers import INSTALL
-
 from src.cli.main import app
 from src.model.dto.telemetry import (
     CliInstallErrorCategory,
@@ -23,8 +21,8 @@ def test_install_from_nested_payload_refuses_and_points_at_upgrade(runner, tmp_p
     running.chmod(0o755)
 
     with (
-        patch.object(INSTALL, "current_binary_path", return_value=running),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", return_value=running),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,
@@ -45,8 +43,8 @@ def test_install_command_check_mode(runner, tmp_path, single_file_binary):
     target_dir = tmp_path / "user-bin"
 
     with (
-        patch.object(INSTALL, "current_binary_path", return_value=source),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", return_value=source),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,
@@ -67,8 +65,8 @@ def test_install_command_copies_binary_and_prints_path_hint(runner, tmp_path, si
     target_dir = tmp_path / "user-bin"
 
     with (
-        patch.object(INSTALL, "current_binary_path", return_value=source),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", return_value=source),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,
@@ -99,7 +97,7 @@ def test_install_command_updates_rc_file(runner, tmp_path, single_file_binary):
     rc_file = tmp_path / ".zshrc"
     rc_file.write_text("# existing\n")
 
-    with patch.object(INSTALL, "current_binary_path", return_value=source):
+    with patch("src.cli.installation.current_binary_path", return_value=source):
         result = runner.invoke(
             app,
             [
@@ -127,7 +125,7 @@ def test_install_command_skips_path_when_already_on_path(runner, tmp_path, singl
     target_dir = tmp_path / "user-bin"
     rc_file = tmp_path / ".zshrc"
 
-    with patch.object(INSTALL, "current_binary_path", return_value=source):
+    with patch("src.cli.installation.current_binary_path", return_value=source):
         result = runner.invoke(
             app,
             [
@@ -156,8 +154,8 @@ def test_install_command_refuses_overwrite_without_force(runner, tmp_path, singl
     (target_dir / "kickstart").write_text("placeholder")
 
     with (
-        patch.object(INSTALL, "current_binary_path", return_value=source),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", return_value=source),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,
@@ -219,7 +217,7 @@ def test_install_context_check_does_not_modify_filesystem(runner, tmp_path, sing
     target_dir = tmp_path / "untouched"
     rc_file = tmp_path / ".not-touched"
 
-    with patch.object(INSTALL, "current_binary_path", return_value=source):
+    with patch("src.cli.installation.current_binary_path", return_value=source):
         result = runner.invoke(
             app,
             [
@@ -246,7 +244,7 @@ def test_install_update_path_without_resolvable_rc(runner, tmp_path, single_file
     source = single_file_binary
     target_dir = tmp_path / "user-bin"
 
-    with patch.object(INSTALL, "current_binary_path", return_value=source):
+    with patch("src.cli.installation.current_binary_path", return_value=source):
         result = runner.invoke(
             app,
             [

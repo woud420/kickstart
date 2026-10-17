@@ -3,8 +3,6 @@
 from unittest.mock import patch
 
 
-from tests.unit.cli.command_helpers import INSTALL, PATH_UPDATE_NAME
-
 from src.cli.main import app
 from src.model.dto.telemetry import (
     CliArtifactKind,
@@ -18,9 +16,9 @@ def test_install_command_reports_partial_success_when_path_update_fails(runner, 
     target_dir = tmp_path / "user-bin"
 
     with (
-        patch.object(INSTALL, "current_binary_path", return_value=source),
-        patch.object(INSTALL, PATH_UPDATE_NAME, side_effect=OSError("private detail")),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", return_value=source),
+        patch("src.cli.installation.apply_path_update", side_effect=OSError("private detail")),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,
@@ -44,9 +42,9 @@ def test_install_command_reports_partial_success_when_path_update_fails_after_bi
     source.chmod(0o755)
 
     with (
-        patch.object(INSTALL, "current_binary_path", return_value=source),
-        patch.object(INSTALL, PATH_UPDATE_NAME, side_effect=OSError("private detail")),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", return_value=source),
+        patch("src.cli.installation.apply_path_update", side_effect=OSError("private detail")),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,
@@ -69,8 +67,8 @@ def test_install_command_reports_success_for_path_only_change(runner, tmp_path):
     rc_file = tmp_path / ".zshrc"
 
     with (
-        patch.object(INSTALL, "current_binary_path", return_value=source),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", return_value=source),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,
@@ -101,8 +99,8 @@ def test_install_command_reports_partial_success_when_path_update_cannot_be_reso
     target_dir = tmp_path / "user-bin"
 
     with (
-        patch.object(INSTALL, "current_binary_path", return_value=source),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", return_value=source),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,
@@ -119,8 +117,8 @@ def test_install_command_reports_partial_success_when_path_update_cannot_be_reso
 
 def test_install_command_captures_interrupt_before_binary_change(runner, tmp_path):
     with (
-        patch.object(INSTALL, "current_binary_path", side_effect=KeyboardInterrupt),
-        patch.object(INSTALL, "capture_cli_install_terminal") as capture,
+        patch("src.cli.installation.current_binary_path", side_effect=KeyboardInterrupt),
+        patch("src.cli.installation.capture_cli_install_terminal") as capture,
     ):
         result = runner.invoke(
             app,

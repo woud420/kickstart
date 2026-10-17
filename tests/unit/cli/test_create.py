@@ -3,13 +3,11 @@
 from unittest.mock import patch
 
 
-from tests.unit.cli.command_helpers import CREATE
-
 from src.cli.main import app
 
 
-@patch.object(CREATE, "create_service")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_service")
+@patch("src.cli.create.load_config")
 def test_create_service_with_args(mock_load_config, mock_create_service, runner, mock_config):
     """Test creating a service with command line arguments."""
     mock_load_config.return_value = mock_config
@@ -22,8 +20,8 @@ def test_create_service_with_args(mock_load_config, mock_create_service, runner,
     mock_create_service.assert_called_once_with("test-service", "rust", True, mock_config, helm=True, root="/tmp")
 
 
-@patch.object(CREATE, "create_frontend")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_frontend")
+@patch("src.cli.create.load_config")
 def test_create_frontend_with_args(mock_load_config, mock_create_frontend, runner, mock_config):
     """Test creating a frontend with command line arguments."""
     mock_load_config.return_value = mock_config
@@ -34,8 +32,8 @@ def test_create_frontend_with_args(mock_load_config, mock_create_frontend, runne
     mock_create_frontend.assert_called_once_with("test-frontend", True, mock_config, root="/tmp")
 
 
-@patch.object(CREATE, "create_lib")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_lib")
+@patch("src.cli.create.load_config")
 def test_create_lib_with_args(mock_load_config, mock_create_lib, runner, mock_config):
     """Test creating a library with command line arguments."""
     mock_load_config.return_value = mock_config
@@ -46,8 +44,8 @@ def test_create_lib_with_args(mock_load_config, mock_create_lib, runner, mock_co
     mock_create_lib.assert_called_once_with("test-lib", "go", False, mock_config, root="/tmp")
 
 
-@patch.object(CREATE, "create_cli")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_cli")
+@patch("src.cli.create.load_config")
 def test_create_cli_with_args(mock_load_config, mock_create_cli, runner, mock_config):
     """Test creating a CLI with command line arguments."""
     mock_load_config.return_value = mock_config
@@ -58,8 +56,8 @@ def test_create_cli_with_args(mock_load_config, mock_create_cli, runner, mock_co
     mock_create_cli.assert_called_once_with("test-cli", "rust", False, mock_config, root="/tmp")
 
 
-@patch.object(CREATE, "create_monorepo")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_monorepo")
+@patch("src.cli.create.load_config")
 def test_create_monorepo_with_args(mock_load_config, mock_create_monorepo, runner, mock_config):
     """Test creating a monorepo with command line arguments."""
     mock_load_config.return_value = mock_config
@@ -70,8 +68,8 @@ def test_create_monorepo_with_args(mock_load_config, mock_create_monorepo, runne
     mock_create_monorepo.assert_called_once_with("test-mono", True, mock_config, helm=True, root="/tmp")
 
 
-@patch.object(CREATE, "create_monorepo")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_monorepo")
+@patch("src.cli.create.load_config")
 def test_create_monorepo_with_cloud_and_knowledge(mock_load_config, mock_create_monorepo, runner, mock_config):
     """Test creating a monorepo with workflow profile options."""
     mock_load_config.return_value = mock_config
@@ -103,8 +101,8 @@ def test_create_monorepo_with_cloud_and_knowledge(mock_load_config, mock_create_
     )
 
 
-@patch.object(CREATE, "create_service")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_service")
+@patch("src.cli.create.load_config")
 def test_create_service_with_runtime(mock_load_config, mock_create_service, runner, mock_config):
     """Test creating a service with an explicit execution profile."""
     mock_load_config.return_value = mock_config
@@ -136,8 +134,8 @@ def test_create_service_with_runtime(mock_load_config, mock_create_service, runn
     )
 
 
-@patch.object(CREATE, "create_monorepo")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_monorepo")
+@patch("src.cli.create.load_config")
 def test_create_monorepo_with_runtime(mock_load_config, mock_create_monorepo, runner, mock_config):
     """Test creating a system monorepo with an explicit platform profile."""
     mock_load_config.return_value = mock_config
@@ -169,8 +167,8 @@ def test_create_monorepo_with_runtime(mock_load_config, mock_create_monorepo, ru
     )
 
 
-@patch.object(CREATE, "create_system")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_system")
+@patch("src.cli.create.load_config")
 def test_create_system_with_runtime(mock_load_config, mock_create_system, runner, mock_config):
     """Test creating a system with the canonical public project type."""
     mock_load_config.return_value = mock_config
@@ -204,8 +202,8 @@ def test_create_system_with_runtime(mock_load_config, mock_create_system, runner
     )
 
 
-@patch.object(CREATE, "create_system")
-@patch.object(CREATE, "load_config")
+@patch("src.cli.create.create_system")
+@patch("src.cli.create.load_config")
 def test_create_system_with_bun_turbo_workspace_tooling(mock_load_config, mock_create_system, runner, mock_config):
     """Test creating a system with explicit Bun + Turbo workspace tooling."""
     mock_load_config.return_value = mock_config

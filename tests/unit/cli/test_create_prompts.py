@@ -3,15 +3,13 @@
 from unittest.mock import patch
 
 
-from tests.unit.cli.command_helpers import CREATE
-
 from src.cli.main import app
 
 
-@patch.object(CREATE, "create_service")
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Confirm")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.create_service")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Confirm")
+@patch("src.cli.create.Prompt")
 def test_create_interactive_service(
     mock_prompt, mock_confirm, mock_load_config, mock_create_service, runner, mock_config
 ):
@@ -26,10 +24,10 @@ def test_create_interactive_service(
     mock_create_service.assert_called_once_with("my-service", "rust", True, mock_config, helm=True, root="/tmp")
 
 
-@patch.object(CREATE, "create_service")
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Confirm")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.create_service")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Confirm")
+@patch("src.cli.create.Prompt")
 def test_create_interactive_rust_service_can_select_jwt(
     mock_prompt,
     mock_confirm,
@@ -51,10 +49,10 @@ def test_create_interactive_rust_service_can_select_jwt(
     )
 
 
-@patch.object(CREATE, "create_service")
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Confirm")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.create_service")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Confirm")
+@patch("src.cli.create.Prompt")
 def test_create_interactive_typescript_service_can_select_postgres(
     mock_prompt,
     mock_confirm,
@@ -76,10 +74,10 @@ def test_create_interactive_typescript_service_can_select_postgres(
     )
 
 
-@patch.object(CREATE, "create_frontend")
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Confirm")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.create_frontend")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Confirm")
+@patch("src.cli.create.Prompt")
 def test_create_interactive_frontend(
     mock_prompt, mock_confirm, mock_load_config, mock_create_frontend, runner, mock_config
 ):
@@ -94,10 +92,10 @@ def test_create_interactive_frontend(
     mock_create_frontend.assert_called_once_with("my-frontend", False, mock_config, root="/tmp")
 
 
-@patch.object(CREATE, "create_lib")
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Confirm")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.create_lib")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Confirm")
+@patch("src.cli.create.Prompt")
 def test_create_interactive_lib(mock_prompt, mock_confirm, mock_load_config, mock_create_lib, runner, mock_config):
     """Test creating a library interactively."""
     mock_load_config.return_value = mock_config
@@ -110,10 +108,10 @@ def test_create_interactive_lib(mock_prompt, mock_confirm, mock_load_config, moc
     mock_create_lib.assert_called_once_with("my-lib", "go", True, mock_config, root="/tmp")
 
 
-@patch.object(CREATE, "create_cli")
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Confirm")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.create_cli")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Confirm")
+@patch("src.cli.create.Prompt")
 def test_create_interactive_cli(mock_prompt, mock_confirm, mock_load_config, mock_create_cli, runner, mock_config):
     """Test creating a CLI interactively."""
     mock_load_config.return_value = mock_config
@@ -126,10 +124,10 @@ def test_create_interactive_cli(mock_prompt, mock_confirm, mock_load_config, moc
     mock_create_cli.assert_called_once_with("my-cli", "rust", False, mock_config, root="/tmp")
 
 
-@patch.object(CREATE, "create_monorepo")
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Confirm")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.create_monorepo")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Confirm")
+@patch("src.cli.create.Prompt")
 def test_create_interactive_monorepo(
     mock_prompt, mock_confirm, mock_load_config, mock_create_monorepo, runner, mock_config
 ):
@@ -144,16 +142,16 @@ def test_create_interactive_monorepo(
     mock_create_monorepo.assert_called_once_with("my-mono", True, mock_config, helm=False, root="/tmp")
 
 
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Prompt")
-@patch.object(CREATE, "Confirm")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Prompt")
+@patch("src.cli.create.Confirm")
 def test_interactive_helm_prompt_for_service(mock_confirm, mock_prompt, mock_load_config, runner):
     """Test that helm is prompted for service type in interactive mode."""
     mock_load_config.return_value = {"default_language": "python"}
     mock_prompt.ask.side_effect = ["service", "test-service", "/tmp", "python", "none", "none", "none", "fastapi"]
     mock_confirm.ask.side_effect = [False, True]  # gh=False, helm=True
 
-    with patch.object(CREATE, "create_service") as mock_create_service:
+    with patch("src.cli.create.create_service") as mock_create_service:
         result = runner.invoke(app, ["create"])
 
         assert result.exit_code == 0
@@ -164,16 +162,16 @@ def test_interactive_helm_prompt_for_service(mock_confirm, mock_prompt, mock_loa
         )
 
 
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Prompt")
-@patch.object(CREATE, "Confirm")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Prompt")
+@patch("src.cli.create.Confirm")
 def test_interactive_helm_prompt_for_mono(mock_confirm, mock_prompt, mock_load_config, runner):
     """Test that helm is prompted for mono type in interactive mode."""
     mock_load_config.return_value = {"default_language": "python"}
     mock_prompt.ask.side_effect = ["mono", "test-mono", "/tmp", "python"]
     mock_confirm.ask.side_effect = [True, False]  # gh=True, helm=False
 
-    with patch.object(CREATE, "create_monorepo") as mock_create_monorepo:
+    with patch("src.cli.create.create_monorepo") as mock_create_monorepo:
         result = runner.invoke(app, ["create"])
 
         assert result.exit_code == 0
@@ -184,14 +182,14 @@ def test_interactive_helm_prompt_for_mono(mock_confirm, mock_prompt, mock_load_c
         )
 
 
-@patch.object(CREATE, "load_config")
-@patch.object(CREATE, "Prompt")
+@patch("src.cli.create.load_config")
+@patch("src.cli.create.Prompt")
 def test_config_default_language_used_in_interactive(mock_prompt, mock_load_config, runner):
     """Test that config default language is used in interactive mode."""
     mock_load_config.return_value = {"default_language": "rust"}
     mock_prompt.ask.side_effect = ["lib", "test-lib", "/tmp", "rust"]  # Last rust is the prompted default
 
-    with patch.object(CREATE, "Confirm") as mock_confirm, patch.object(CREATE, "create_lib"):
+    with patch("src.cli.create.Confirm") as mock_confirm, patch("src.cli.create.create_lib"):
         mock_confirm.ask.return_value = False
 
         result = runner.invoke(app, ["create"])
