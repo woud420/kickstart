@@ -230,9 +230,10 @@ def test_nameless_child_is_skipped_not_fatal(tmp_path: Path) -> None:
 
 
 def test_template_owner_default_matches_exporter_constant() -> None:
+    root = Path(__file__).resolve().parents[3]
     templates = (
-        Path("src/templates/monorepo/catalog-info.yaml"),
-        Path("src/templates/monorepo/backstage_template.yaml"),
+        root / "src/templates/monorepo/catalog-info.yaml",
+        root / "src/templates/monorepo/backstage_template.yaml",
     )
     for template_path in templates:
         template = template_path.read_text(encoding="utf-8")

@@ -2,6 +2,7 @@ import os
 import re
 import logging
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from src.generator.file_plan import ContentFile
@@ -11,7 +12,8 @@ from src.generator.projections import (
     architecture_readme_projection,
     scaffold_docs_projections,
 )
-from src.generator.scaffold_contract import ScaffoldContract
+from src.generator.scaffold_contract import MANIFEST_PATH, ScaffoldContract
+from src.generator.ownership_plan import plan_generated_ownership
 from src.generator.template_plan import TemplatePlan, TemplatePlanEntry
 from src.stack.toolchain_versions import toolchain_vars
 from src.stack.types import TemplateConfig
@@ -82,6 +84,7 @@ class BaseGenerator:
         self.template_dir = Path(__file__).parent.parent / "templates"
         self._templates_root = self.template_dir
         self.template_registry = get_template_registry(self.template_dir)
+        self._generated_paths: set[str] = set()
 
     def create_project(self) -> bool:
         """Check if the project directory exists.
@@ -157,6 +160,7 @@ class BaseGenerator:
             **vars,
         }
         write_file(self.project / target, resolved_template_path, **template_vars)
+        self._generated_paths.add(Path(target).as_posix())
         logger.debug(f"Successfully wrote template {template_path} to {target}")
         return True
 
@@ -177,6 +181,7 @@ class BaseGenerator:
             service_name=self.name,
             package_name=self._package_name(),
         )
+        self._generated_paths.add(Path(target).as_posix())
         logger.debug(f"Successfully wrote content to {target}")
         return True
 
@@ -307,6 +312,7 @@ class BaseGenerator:
             if link.is_symlink() or link.exists():
                 return True
             os.symlink(self.CLAUDE_SKILLS_LINK_TARGET, link, target_is_directory=True)
+            self._generated_paths.add(".claude/skills")
             return True
         except OSError as error:
             warn(f".claude/skills symlink unavailable ({error}); writing a pointer file instead.")
@@ -439,6 +445,12 @@ class BaseGenerator:
             raise ProjectCreationError(
                 f"Project '{self.name}' was generated with errors: {'; '.join(error_collector.errors)}"
             )
+
+        if scaffold_contract.schema_version == "4.0":
+            ownership = plan_generated_ownership(self._generated_paths)
+            final_contract = replace(scaffold_contract, ownership=ownership)
+            if not self.write_content(MANIFEST_PATH, final_contract.manifest_json(self.name)):
+                raise ProjectCreationError("Failed to persist scaffold ownership metadata")
 
         # Success message and GitHub integration
         with safe_operation_context("GitHub integration", log_errors=True):

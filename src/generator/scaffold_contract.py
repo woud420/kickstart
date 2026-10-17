@@ -9,6 +9,8 @@ from src import __version__
 from src.utils.errors import ManifestShapeError
 from src.generator.manifest_types import (
     JsonValue,
+    MANIFEST_PATH as MANIFEST_PATH,
+    OwnershipManifest,
     ManifestPayload,
     ParsedManifest,
     ProjectKind,
@@ -25,6 +27,7 @@ from src.generator.manifest_types import (
     SystemScaffoldManifest,
 )
 from src.generator.manifest_schema import validate_v4_manifest
+from src.generator.ownership_plan import OwnershipRecord, ownership_from_manifest
 
 # Field meanings live in one place instead of being duplicated into every
 # generated repo; the manifest carries this pointer so agents can resolve the
@@ -32,8 +35,6 @@ from src.generator.manifest_schema import validate_v4_manifest
 # generating version's tag so the referenced semantics cannot drift under a
 # manifest that has already been written.
 SEMANTICS_REFERENCE = f"https://github.com/woud420/kickstart/blob/v{__version__}/docs/scaffold-contract.md"
-
-MANIFEST_PATH = ".kickstart/scaffold.json"
 
 _PROJECT_KINDS: frozenset[str] = frozenset({"service", "worker", "frontend", "library", "cli", "system"})
 _REPO_LAYOUTS: frozenset[str] = frozenset({"single-project", "monorepo"})
@@ -195,6 +196,7 @@ class ScaffoldContract:
     language: str | None = None
     framework: str | None = None
     recorded_composition: ScaffoldCompositionManifest | None = None
+    ownership: tuple[OwnershipRecord, ...] | None = None
 
     def manifest(self, project_name: str) -> ManifestPayload:
         """Return the JSON-serializable scaffold manifest."""
@@ -279,6 +281,8 @@ class ScaffoldContract:
             }
             if self.project_kind == "system":
                 v4["composition"] = system_manifest["composition"]
+            if self.ownership is not None:
+                v4["ownership"] = {record.path: record.manifest() for record in self.ownership}
             validate_v4_manifest(cast(ParsedManifest, v4))
             return v4
         return manifest
@@ -428,6 +432,7 @@ class ScaffoldContract:
             semantics_reference=_optional_string(manifest, "semantics") or SEMANTICS_REFERENCE,
             language=_optional_string(project, "language"),
             framework=framework,
+            ownership=ownership_from_manifest(cast(OwnershipManifest | None, manifest.get("ownership"))) if schema_version == "4.0" else None,
             recorded_composition=(
                 cast(ScaffoldCompositionManifest, composition)
                 if schema_version == "4.0" and isinstance(composition, dict) else None

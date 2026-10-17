@@ -112,7 +112,7 @@ class DocsPlanReport:
         return json.dumps(payload, indent=2) + "\n"
 
 
-def inspect_docs(root: Path) -> DocsPlanReport:
+def inspect_docs(root: Path, *, artifact_ids: frozenset[str] | None = None) -> DocsPlanReport:
     """Plan the managed docs of an existing repository, read-only."""
     if not root.is_dir():
         raise DocsPlanTargetError(f"plan target '{root}' is not an existing directory")
@@ -125,8 +125,10 @@ def inspect_docs(root: Path) -> DocsPlanReport:
     entries = [
         _plan_entry(resolved, profiles, variants)
         for variants in zip(*renders, strict=True)
+        if artifact_ids is None or variants[0].id in artifact_ids
     ]
-    entries.append(_architecture_entry(resolved))
+    if artifact_ids is None or ARCHITECTURE_README_ID in artifact_ids:
+        entries.append(_architecture_entry(resolved))
     return DocsPlanReport(root=resolved, entries=tuple(entries))
 
 
@@ -154,6 +156,11 @@ def _candidate_profiles(contract: ScaffoldContract) -> tuple[ProjectionProfile, 
 def _owned_region_or_entry(resolved: Path, artifact_id: str, target: str) -> FencedRegion | DocsPlanEntry:
     """Resolve a managed file to its owned region, or the entry explaining why not."""
     path = resolved / target
+    try:
+        if not path.resolve(strict=path.is_symlink()).is_relative_to(resolved):
+            return DocsPlanEntry(artifact_id, target, "unreadable", detail="owned target resolves outside the project")
+    except (OSError, RuntimeError) as error:
+        return DocsPlanEntry(artifact_id, target, "unreadable", detail=str(error))
     if not path.is_file():
         return DocsPlanEntry(artifact_id, target, "would-create", detail=_MISSING_DETAIL)
 

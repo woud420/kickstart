@@ -44,6 +44,13 @@ cannot be represented after removing `docs`. It exposes missing language/framewo
 as unresolved inputs and preserves the source on failure. It does not infer inputs
 from current application files or rewrite managed docs.
 
+## Ownership metadata
+
+Fresh generation persists a compact typed per-file `ownership` map. The optional
+field remains absent when legacy migration cannot establish historical ownership.
+See [the ownership contract](scaffold-ownership.md) for trusted tags, fenced-region
+checks, structural facts, seed exclusions and the bounded `plan --ownership` mode.
+
 ## Consumers
 
 `adopt --check`, `plan`, Backstage export and generated-project evals recognize

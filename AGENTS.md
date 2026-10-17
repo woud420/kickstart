@@ -11,6 +11,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - Managed docs projections: `src/generator/projections.py`
 - Ownership fences: `src/generator/markers.py`
 - Docs drift plan: `src/generator/docs_plan.py`
+- Persisted ownership plan and bounded inspection: `src/generator/ownership_plan.py`, `src/generator/ownership_check.py`
 - Backstage export: `src/generator/backstage_export.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`
@@ -33,6 +34,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - Service runtimes are `container` and `cloudflare-workers`.
 - Manifest readers accept 3.0, 3.1, 3.2 and 4.0; fresh generation emits 4.0 after the tested explicit `migrate` path. Schema 4.0 represents Workers as service execution profiles.
 - Cloudflare Workers are not Docker containers. Cloudflare Containers are reserved for future support.
+- Fresh schema-4 manifests persist per-file ownership. `plan --ownership` inspects recorded fences and structural facts; migration leaves historical ownership unrecorded.
 - Generated docs and `.kickstart/scaffold.json` are baseline output. `--knowledge` only controls external Obsidian/Backstage metadata.
 
 ## Change Rules

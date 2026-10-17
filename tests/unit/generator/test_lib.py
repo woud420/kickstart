@@ -198,7 +198,8 @@ def test_cli_create_python_success_with_gh(
         call("tests/test_cli_smoke.py", "cli/python/tests/test_cli_smoke.py.tpl"),
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    mock_write_content.assert_called_once_with("src/__init__.py", '__version__ = "0.1.0"\n')
+    mock_write_content.assert_any_call("src/__init__.py", '__version__ = "0.1.0"\n')
+    assert [c.args[0] for c in mock_write_content.call_args_list] == ["src/__init__.py", ".kickstart/scaffold.json"]
     
     mock_create_architecture_docs.assert_called_once()
     assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
@@ -235,7 +236,7 @@ def test_cli_create_rust_success(
         call("tests/cli_smoke.rs", "cli/rust/tests/cli_smoke.rs.tpl"),
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    mock_write_content.assert_not_called()
+    assert [c.args[0] for c in mock_write_content.call_args_list] == [".kickstart/scaffold.json"]
     
     mock_create_architecture_docs.assert_called_once()
     assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
@@ -274,7 +275,7 @@ def test_cli_create_typescript_success(
         call("tests/cli-smoke.test.ts", "cli/typescript/tests/cli-smoke.test.ts.tpl"),
     ]
     mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    mock_write_content.assert_not_called()
+    assert [c.args[0] for c in mock_write_content.call_args_list] == [".kickstart/scaffold.json"]
     mock_create_architecture_docs.assert_called_once()
     assert mock_create_architecture_docs.call_args.args[0] == "test-cli CLI Docs"
     mock_log_success.assert_called_once_with("Typescript CLI 'test-cli' created successfully in 'test-cli'!")
@@ -373,7 +374,7 @@ def test_cli_language_differences():
             if lang == "python":
                 assert call("src/__init__.py", '__version__ = "0.1.0"\n') in mock_write_content.call_args_list
             else:
-                mock_write_content.assert_not_called()
+                assert [c.args[0] for c in mock_write_content.call_args_list] == [".kickstart/scaffold.json"]
 
 
 def test_library_vs_cli_architecture_docs_difference():

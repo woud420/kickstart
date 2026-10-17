@@ -47,6 +47,10 @@ Fresh generation and the published structural schema use 4.0. See
 [the schema-4 contract](contracts/scaffold-schema-4.md) for the flattened extensions,
 Worker service identity, strict validation and cutover boundary.
 
+Fresh metadata also records [per-file ownership](contracts/scaffold-ownership.md)
+from generator write plans. `kickstart plan --ownership` inspects that recorded
+scope read-only; legacy migration does not infer it from current user files.
+
 ## Option Vocabulary
 
 The [schema-4 structural definition](contracts/scaffold-4.0.schema.json) is generated
