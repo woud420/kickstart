@@ -105,3 +105,7 @@ class ManifestMigrationError(KickstartError):
 
 class OwnershipPlanTargetError(KickstartError):
     """Raised when persisted ownership cannot be inspected safely."""
+
+
+class DriftTargetError(KickstartError):
+    """Raised when a repository cannot supply a bounded scaffold drift report."""

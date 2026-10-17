@@ -12,6 +12,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - Ownership fences: `src/generator/markers.py`
 - Docs drift plan: `src/generator/docs_plan.py`
 - Persisted ownership plan and bounded inspection: `src/generator/ownership_plan.py`, `src/generator/ownership_check.py`
+- Classed scaffold drift and CI structural checks: `src/generator/drift.py`, `src/generator/workflow_check.py`
 - Backstage export: `src/generator/backstage_export.py`
 - Template plans: `src/generator/template_plans.py`
 - Language setup plans: `src/generator/language_setup.py`

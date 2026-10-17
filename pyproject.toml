@@ -17,6 +17,7 @@ dependencies = [
     "cryptography>=47.0.0,<48.0.0",
     "jinja2>=3.1.0,<4.0.0",
     "jsonschema (>=4,<5)",
+    "PyYAML>=6.0.3,<7.0.0",
 ]
 
 [project.scripts]
@@ -35,6 +36,7 @@ ruff = "^0.15.12"
 pyinstaller = "^6.20.0"
 pytest-cov = "^7.0"
 types-jsonschema = "^4.26.0.20261006"
+types-PyYAML = ">=6,<7"
 
 [tool.coverage.run]
 source = ["src", "ci"]

@@ -35,6 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from src.generator.artifact_checks import owned_target
 from src.generator.markers import FencedRegion, find_fenced_region
 from src.generator.projections import (
     ARCHITECTURE_README_ID,
@@ -155,12 +156,11 @@ def _candidate_profiles(contract: ScaffoldContract) -> tuple[ProjectionProfile, 
 
 def _owned_region_or_entry(resolved: Path, artifact_id: str, target: str) -> FencedRegion | DocsPlanEntry:
     """Resolve a managed file to its owned region, or the entry explaining why not."""
-    path = resolved / target
-    try:
-        if not path.resolve(strict=path.is_symlink()).is_relative_to(resolved):
-            return DocsPlanEntry(artifact_id, target, "unreadable", detail="owned target resolves outside the project")
-    except (OSError, RuntimeError) as error:
-        return DocsPlanEntry(artifact_id, target, "unreadable", detail=str(error))
+    path = owned_target(resolved, target)
+    if path is None:
+        return DocsPlanEntry(
+            artifact_id, target, "unreadable", detail="owned target resolves outside the project or cannot be resolved"
+        )
     if not path.is_file():
         return DocsPlanEntry(artifact_id, target, "would-create", detail=_MISSING_DETAIL)
 

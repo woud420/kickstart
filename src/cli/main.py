@@ -23,6 +23,7 @@ from src.api import (
     create_service,
     create_system,
 )
+from src.cli.drift import drift, print_drift
 from src.cli.migrate import migrate
 from src.cli.ownership import ownership_plan
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
@@ -56,7 +57,7 @@ from src.telemetry.events import (
     classify_scaffold_create_exception,
 )
 from src.utils.config import load_config
-from src.utils.errors import KickstartError
+from src.utils.errors import DriftTargetError, KickstartError
 from src.utils.handoff import (
     HANDOFF_COMMAND,
     Handoff,
@@ -91,6 +92,7 @@ logger = logging.getLogger(__name__)
 app: typer.Typer = typer.Typer(help="kickstart: Full-stack project scaffolding CLI")
 app.add_typer(telemetry_app, name="telemetry")
 app.command()(migrate)
+app.command()(drift)
 
 
 def _print_version_and_exit(value: bool) -> None:
@@ -274,7 +276,7 @@ def adopt(
     check: bool = typer.Option(False, "--check", help="Report standard-artifact status without writing"),
     json_output: bool = typer.Option(False, "--json", help="Emit a machine-readable report"),
 ) -> None:
-    """Check an existing repo against the kickstart scaffold standard (read-only).
+    """Check standard artifacts and recorded scaffold drift without writing.
 
     Exit codes: 0 = repo matches the standard, 1 = gaps found, 2 = usage error.
     """
@@ -284,7 +286,7 @@ def adopt(
 
     try:
         report = inspect_repo(path)
-    except AdoptionTargetError as error:
+    except (AdoptionTargetError, DriftTargetError) as error:
         print(f"[red]{error}[/]")
         raise typer.Exit(code=2) from error
 
@@ -305,6 +307,9 @@ def adopt(
                 print(f"  [green]ok[/]      {escape(status.path)}")
             else:
                 print(f"  [red]needed[/]  {escape(status.path)} ({escape(status.issue)})")
+
+        if report.drift is not None:
+            print_drift(report.drift)
 
     raise typer.Exit(code=0 if report.complete else 1)
 

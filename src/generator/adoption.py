@@ -21,14 +21,15 @@ standard to a repo is a later, explicit step.
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from src.generator.artifact_checks import has_check_target
+from src.generator.drift import DriftReport, inspect_drift
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.generator.scaffold_contract import MANIFEST_PATH, ScaffoldContract, load_parsed_manifest
-from src.utils.errors import KickstartError, ManifestShapeError
+from src.utils.errors import DriftTargetError, KickstartError, ManifestShapeError
 
 
 class AdoptionTargetError(KickstartError):
@@ -65,8 +66,7 @@ STANDARD_ARTIFACTS: tuple[str, ...] = (*LEVEL2_ARTIFACTS, *LEVEL1_ARTIFACTS)
 
 FENCE_MANAGED_PATH = "managed docs fences"
 
-# Plan statuses that mean "this managed doc is fence-managed" — content drift
-# is a plan concern, not an adoption gap.
+# Fence readiness is structural; recorded content drift is reported separately.
 _FENCE_READY_STATUSES = frozenset({"in-sync", "presence-only", "content-drift"})
 
 
@@ -92,10 +92,13 @@ class AdoptionReport:
     artifacts: tuple[ArtifactStatus, ...]
     achieved_level: AdoptionLevel
     claimed_level: AdoptionLevel
+    drift: DriftReport | None = None
 
     @property
     def complete(self) -> bool:
-        return self.achieved_level == self.claimed_level != LEVEL_BELOW_STANDARD
+        conformant = self.achieved_level == self.claimed_level != LEVEL_BELOW_STANDARD
+        drift_ok = self.drift is None or not self.drift.recorded or self.drift.in_sync
+        return conformant and drift_ok
 
     @property
     def missing(self) -> tuple[ArtifactStatus, ...]:
@@ -108,6 +111,7 @@ class AdoptionReport:
             "complete": self.complete,
             "achieved_level": self.achieved_level,
             "claimed_level": self.claimed_level,
+            "drift": self.drift.payload() if self.drift is not None else None,
             "artifacts": [
                 {
                     "path": status.path,
@@ -143,19 +147,16 @@ def _makefile_issue(makefile: Path) -> str:
     """A Makefile must expose the canonical check verb to count as standard."""
     try:
         content = makefile.read_text(encoding="utf-8")
-    except OSError as error:
+    except (OSError, UnicodeDecodeError) as error:
         return f"unreadable Makefile: {error}"
-    if not re.search(r"^check\s*:", content, re.MULTILINE):
+    if not has_check_target(content):
         return "Makefile has no 'check' target (the canonical verification verb)"
     return ""
 
 
 def _has_workflow_file(workflows_dir: Path) -> bool:
     """Return True when the directory holds at least one workflow file."""
-    return any(
-        entry.is_file() and entry.suffix in (".yml", ".yaml")
-        for entry in workflows_dir.iterdir()
-    )
+    return any(entry.is_file() and entry.suffix in (".yml", ".yaml") for entry in workflows_dir.iterdir())
 
 
 def _artifact_status(root: Path, artifact: str, level: AdoptionLevel = LEVEL_CONFORMANT) -> ArtifactStatus:
@@ -195,9 +196,7 @@ def _fence_readiness_status(resolved: Path) -> ArtifactStatus:
         )
 
     not_ready = [
-        f"{entry.target} ({entry.status})"
-        for entry in plan.entries
-        if entry.status not in _FENCE_READY_STATUSES
+        f"{entry.target} ({entry.status})" for entry in plan.entries if entry.status not in _FENCE_READY_STATUSES
     ]
     if not_ready:
         return ArtifactStatus(
@@ -225,6 +224,7 @@ def inspect_repo(root: Path) -> AdoptionReport:
     claimed_level: AdoptionLevel = LEVEL_MANAGED if manifest_claimed else LEVEL_CONFORMANT
 
     level2: tuple[ArtifactStatus, ...] = ()
+    drift: DriftReport | None = None
     if manifest_claimed:
         manifest_status = _artifact_status(resolved, MANIFEST_PATH, level=LEVEL_MANAGED)
         level2 = (manifest_status,)
@@ -232,6 +232,18 @@ def inspect_repo(root: Path) -> AdoptionReport:
             # A broken manifest is one gap, not two: fence readiness re-parses
             # the same file, so only report it when the manifest itself is fine.
             level2 = (manifest_status, _fence_readiness_status(resolved))
+            try:
+                drift = inspect_drift(resolved)
+            except DriftTargetError as error:
+                level2 = (
+                    *level2,
+                    ArtifactStatus(
+                        path="recorded scaffold drift",
+                        present=False,
+                        issue=f"manifest cannot drive recorded drift: {error}",
+                        level=LEVEL_MANAGED,
+                    ),
+                )
 
     achieved_level: AdoptionLevel = LEVEL_BELOW_STANDARD
     if all(status.ok for status in level1):
@@ -243,4 +255,5 @@ def inspect_repo(root: Path) -> AdoptionReport:
         artifacts=(*level1, *level2),
         achieved_level=achieved_level,
         claimed_level=claimed_level,
+        drift=drift,
     )

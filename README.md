@@ -115,6 +115,19 @@ poetry run kickstart adopt path/to/repo --check          # human report with ach
 poetry run kickstart adopt path/to/repo --check --json   # machine-readable, for agents and CI
 ```
 
+Check the recorded scaffold envelope, including managed docs, Makefile targets and CI job identities (read-only):
+
+```bash
+poetry run kickstart drift path/to/repo
+poetry run kickstart drift path/to/repo --json
+```
+
+Exit 0 means the recorded scope passes, 1 means findings or unavailable ownership
+coverage, and 2 means a usage error. `adopt --check` includes the same drift report;
+recorded findings also make adoption fail. Legacy conformance checks still pass
+without ownership, with drift coverage explicitly unavailable. See the
+[drift contract](docs/contracts/scaffold-drift.md).
+
 Show how a repo's managed docs differ from what the current standard would render (read-only; exit 0 = in sync, 1 = findings, 2 = usage error):
 
 ```bash

@@ -16,7 +16,7 @@ permissions:
 jobs:
   plan:
     runs-on: ubuntu-latest
-    environment: {% raw %}${{ inputs.environment }}{% endraw %}
+    environment: ${{ "{{" }} inputs.environment {{ "}}" }}
     steps:
       - uses: actions/checkout@v4
 

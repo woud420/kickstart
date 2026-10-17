@@ -84,9 +84,7 @@ def _generate(kickstart_run, spec: ScaffoldSpec, root: Path) -> Path:
         text=True,
     )
     assert completed.returncode == 0, (
-        f"kickstart create failed for {spec.label}\n"
-        f"STDOUT:\n{completed.stdout}\n"
-        f"STDERR:\n{completed.stderr}"
+        f"kickstart create failed for {spec.label}\nSTDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
     )
     return root / name
 
@@ -103,9 +101,7 @@ def test_scaffold_emits_ci_workflow(kickstart_run, spec: ScaffoldSpec) -> None:
         )
 
         ci_content = ci_file.read_text()
-        assert "make check" in ci_content, (
-            f"{spec.label} CI workflow does not invoke `make check`:\n{ci_content}"
-        )
+        assert "make check" in ci_content, f"{spec.label} CI workflow does not invoke `make check`:\n{ci_content}"
 
 
 @pytest.mark.parametrize("spec", SCAFFOLDS_THAT_EMIT_CI)
@@ -122,12 +118,43 @@ def test_dockerfile_and_docker_build_target_agree(kickstart_run, spec: ScaffoldS
 
         has_dockerfile = (project_root / "Dockerfile").exists()
         makefile_content = makefile.read_text()
-        has_docker_build = "\ndocker-build:" in makefile_content or makefile_content.startswith(
-            "docker-build:"
-        )
+        has_docker_build = "\ndocker-build:" in makefile_content or makefile_content.startswith("docker-build:")
 
         assert has_dockerfile == has_docker_build, (
             f"{spec.label}: Dockerfile present={has_dockerfile}, "
             f"docker-build target present={has_docker_build}. "
             "These must agree."
         )
+
+
+@pytest.mark.parametrize("runtime", ["kubernetes", "cloudflare-workers"])
+def test_system_deploy_workflow_preserves_yaml_field_boundaries(kickstart_run, tmp_path: Path, runtime: str) -> None:
+    import yaml
+    from yaml.nodes import MappingNode, ScalarNode, SequenceNode
+
+    completed = kickstart_run(
+        "create",
+        "system",
+        "workflow-system",
+        "--knowledge",
+        "none",
+        "--runtime",
+        runtime,
+        "--root",
+        str(tmp_path),
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    workflow = tmp_path / "workflow-system/.github/workflows/deploy.yml"
+    document = yaml.compose(workflow.read_text(), Loader=yaml.BaseLoader)
+    assert isinstance(document, MappingNode)
+    root = {key.value: value for key, value in document.value}
+    jobs = root["jobs"]
+    assert isinstance(jobs, MappingNode)
+    plan = {key.value: value for key, value in jobs.value}["plan"]
+    assert isinstance(plan, MappingNode)
+    fields = {key.value: value for key, value in plan.value}
+    assert isinstance(fields["environment"], ScalarNode)
+    assert fields["environment"].value == "${{ inputs.environment }}"
+    assert isinstance(fields["steps"], SequenceNode)
