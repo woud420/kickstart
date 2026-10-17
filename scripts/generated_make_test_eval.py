@@ -3,20 +3,30 @@
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 import json
 import os
+import platform
 from pathlib import Path
 import signal
+import shutil
 import subprocess
+import sys
 import tempfile
 import time
-from typing import Literal, cast
+from typing import cast
+from uuid import uuid4
 
 
-DependencyMode = Literal["network", "cached", "offline"]
+from scripts.generated_eval_report import (
+    DependencyMode,
+    GeneratedEvalReport,
+    MakeTestResult,
+    RunProvenance,
+    write_report,
+)
 
 
 @dataclass(frozen=True)
@@ -30,17 +40,11 @@ class CommandResult:
 
 
 @dataclass(frozen=True)
-class MakeTestResult:
-    """Result from one generated component Makefile."""
+class CleanupResult:
+    """Best-effort cleanup details independent of the completed test result."""
 
-    path: Path
-    kind: str
-    platform: str
-    artifacts: str
-    returncode: int
-    duration_seconds: float
-    reason: str
-    output_tail: str
+    removed: tuple[str, ...] = ()
+    errors: tuple[str, ...] = ()
 
 
 def run_make_tests(
@@ -50,12 +54,20 @@ def run_make_tests(
     workers: int,
     target: str,
     env: dict[str, str],
+    clean_completed: bool = False,
 ) -> tuple[MakeTestResult, ...]:
     """Run a make target under every generated Makefile."""
-    makefiles = sorted(output_root.rglob("Makefile"))
+    makefiles = _generated_makefiles(output_root)
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [
-            executor.submit(_run_one, makefile.parent, target=target, timeout_seconds=timeout_seconds, env=env)
+            executor.submit(
+                _run_one,
+                makefile.parent,
+                target=target,
+                timeout_seconds=timeout_seconds,
+                env=env,
+                clean_completed=clean_completed,
+            )
             for makefile in makefiles
         ]
         results = [future.result() for future in as_completed(futures)]
@@ -91,6 +103,7 @@ def eval_environment(dependency_mode: DependencyMode, cache_root: Path) -> dict[
 
     cache_paths = {
         "XDG_CACHE_HOME": cache_root / "xdg",
+        "PY_CACHE_DIR": cache_root / "python",
         "PIP_CACHE_DIR": cache_root / "pip",
         "POETRY_CACHE_DIR": cache_root / "poetry",
         "POETRY_VIRTUALENVS_PATH": cache_root / "poetry-venvs",
@@ -98,7 +111,8 @@ def eval_environment(dependency_mode: DependencyMode, cache_root: Path) -> dict[
         "CARGO_TARGET_DIR": cache_root / "cargo-targets",
         "GOCACHE": cache_root / "go-build",
         "GOMODCACHE": cache_root / "go-mod",
-        "BUN_INSTALL_CACHE_DIR": cache_root / "bun",
+        "BUN_CACHE_DIR": cache_root / "bun",
+        "BUN_INSTALL_CACHE_DIR": cache_root / "bun" / "install",
         "npm_config_cache": cache_root / "npm",
     }
     for path in cache_paths.values():
@@ -118,7 +132,9 @@ def eval_environment(dependency_mode: DependencyMode, cache_root: Path) -> dict[
     return env
 
 
-def _run_one(path: Path, *, target: str, timeout_seconds: int, env: dict[str, str]) -> MakeTestResult:
+def _run_one(
+    path: Path, *, target: str, timeout_seconds: int, env: dict[str, str], clean_completed: bool = False
+) -> MakeTestResult:
     kind, platform, artifacts = _manifest_summary(path)
     started = time.monotonic()
     completed = _run_command(["make", target], cwd=path, timeout_seconds=timeout_seconds, env=env)
@@ -126,6 +142,7 @@ def _run_one(path: Path, *, target: str, timeout_seconds: int, env: dict[str, st
     returncode = completed.returncode
 
     duration = time.monotonic() - started
+    cleanup = _cleanup_component_dependencies(path, kind) if clean_completed else CleanupResult()
     return MakeTestResult(
         path=path,
         kind=kind,
@@ -135,7 +152,36 @@ def _run_one(path: Path, *, target: str, timeout_seconds: int, env: dict[str, st
         duration_seconds=duration,
         reason=_classify_output(output, returncode, completed.timed_out, target=target),
         output_tail=_tail(output),
+        cleaned_artifacts=cleanup.removed,
+        cleanup_errors=cleanup.errors,
     )
+
+
+def _cleanup_component_dependencies(path: Path, kind: str) -> CleanupResult:
+    """Remove only local install directories after a leaf target has exited."""
+    if kind not in {"service", "worker", "frontend", "library", "lib", "cli"}:
+        return CleanupResult()
+    try:
+        ownership = json.loads((path / ".kickstart/scaffold.json").read_text()).get("ownership", {})
+    except (OSError, json.JSONDecodeError):
+        return CleanupResult()
+    if not isinstance(ownership, dict):
+        return CleanupResult()
+    removed = []
+    errors = []
+    for name in (".venv", "node_modules", ".cache"):
+        if any(isinstance(source, str) and (source == name or source.startswith(name + "/")) for source in ownership):
+            continue
+        directory = path / name
+        if directory.is_symlink() or not directory.is_dir():
+            continue
+        try:
+            shutil.rmtree(directory)
+        except OSError as exc:
+            errors.append(f"{name}: {type(exc).__name__} errno={exc.errno}")
+        else:
+            removed.append(name)
+    return CleanupResult(removed=tuple(removed), errors=tuple(errors))
 
 
 def _run_command(command: list[str], *, cwd: Path, timeout_seconds: int, env: dict[str, str]) -> CommandResult:
@@ -190,9 +236,19 @@ def _manifest_summary(path: Path) -> tuple[str, str, str]:
     )
 
 
+def _generated_makefiles(output_root: Path) -> tuple[Path, ...]:
+    return tuple(
+        sorted(
+            path.parent.parent / "Makefile"
+            for path in output_root.rglob(".kickstart/scaffold.json")
+            if (path.parent.parent / "Makefile").is_file()
+        )
+    )
+
+
 def _prewarm_targets(output_root: Path) -> tuple[Path, ...]:
     selected: dict[str, Path] = {}
-    for makefile in sorted(output_root.rglob("Makefile")):
+    for makefile in _generated_makefiles(output_root):
         path = makefile.parent
         key = _dependency_family(path)
         if key is None or key in selected:
@@ -281,71 +337,43 @@ def _tail(output: str) -> str:
     return " / ".join(lines[-4:])[:400]
 
 
-def write_report(
-    path: Path,
-    results: tuple[MakeTestResult, ...],
-    output_root: Path,
-    *,
-    target: str,
-    dependency_mode: DependencyMode,
-    cache_root: Path,
-    prewarm_workers: int = 0,
-    prewarm_results: tuple[MakeTestResult, ...] = (),
-) -> None:
-    """Write a Markdown report for generated make-target results."""
-    by_reason = Counter(result.reason for result in results)
-    by_kind = Counter(result.kind for result in results)
-    by_kind_reason = Counter((result.kind, result.reason) for result in results)
-    prewarm_by_reason = Counter(result.reason for result in prewarm_results)
+def _capture_provenance(started_at: str, finished_at: str, *, workers: int, timeout_seconds: int) -> RunProvenance:
+    repo = Path(__file__).resolve().parents[1]
 
-    lines = [
-        "# Generated Make Test Eval",
-        "",
-        f"- Output root: `{output_root}`",
-        f"- Target: `make {target}`",
-        f"- Dependency mode: `{dependency_mode}`",
-        f"- Cache root: `{cache_root if dependency_mode != 'network' else 'default tool caches'}`",
-        f"- Makefiles tested: {len(results)}",
-        f"- Passed: {by_reason.get('pass', 0)}",
-        f"- Failed: {len(results) - by_reason.get('pass', 0)}",
-        "",
-    ]
-    if prewarm_results:
-        lines.extend(
-            [
-                "## Prewarm",
-                "",
-                f"- Targets: {len(prewarm_results)}",
-                f"- Workers: {prewarm_workers}",
-                f"- Passed: {prewarm_by_reason.get('pass', 0)}",
-                f"- Failed: {len(prewarm_results) - prewarm_by_reason.get('pass', 0)}",
-                "",
-            ]
-        )
-    lines.extend(["## By Kind", ""])
-    lines.extend(f"- {kind}: {count}" for kind, count in sorted(by_kind.items()))
-    lines.extend(["", "## By Result", ""])
-    lines.extend(f"- {reason}: {count}" for reason, count in by_reason.most_common())
-    lines.extend(["", "## By Kind And Result", ""])
-    lines.extend(f"- {kind} / {reason}: {count}" for (kind, reason), count in sorted(by_kind_reason.items()))
-    lines.extend(["", "## Failures", ""])
-    for result in results:
-        if result.reason == "pass":
-            continue
-        lines.extend(
-            [
-                f"### {result.kind} - {result.reason}",
-                f"- Path: `{result.path}`",
-                f"- Platform: `{result.platform}`",
-                f"- Artifacts: `{result.artifacts}`",
-                f"- Exit: `{result.returncode}` in {result.duration_seconds:.2f}s",
-                f"- Output: `{result.output_tail}`",
-                "",
-            ]
-        )
+    def read_command(command: tuple[str, ...]) -> tuple[str, int]:
+        try:
+            completed = subprocess.run(command, cwd=repo, text=True, capture_output=True, timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            return ("unavailable", 1)
+        return (completed.stdout.strip(), completed.returncode)
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n")
+    revision, revision_exit = read_command(("git", "rev-parse", "HEAD"))
+    status, status_exit = read_command(("git", "status", "--porcelain"))
+    tools = {"python": sys.version.splitlines()[0]}
+    for name, command in (
+        ("bun", ("bun", "--version")),
+        ("node", ("node", "--version")),
+        ("cargo", ("cargo", "--version")),
+        ("rustc", ("rustc", "--version")),
+        ("go", ("go", "version")),
+        ("cmake", ("cmake", "--version")),
+        ("poetry", ("poetry", "--version")),
+        ("make", ("make", "--version")),
+    ):
+        version, exit_code = read_command(command)
+        tools[name] = version.splitlines()[0] if exit_code == 0 and version else "unavailable"
+    return RunProvenance(
+        run_id=str(uuid4()),
+        started_at_utc=started_at,
+        finished_at_utc=finished_at,
+        source_revision=revision if revision_exit == 0 else "unknown",
+        source_dirty=bool(status) if status_exit == 0 else None,
+        execution_context=platform.platform(),
+        command=(sys.executable, *sys.argv),
+        tools=tools,
+        workers=workers,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 def main() -> int:
@@ -360,8 +388,17 @@ def main() -> int:
     parser.add_argument("--cache-root", type=Path, default=scratch / "kickstart-eval-cache")
     parser.add_argument("--prewarm", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--prewarm-workers", type=int, default=2)
+    parser.add_argument(
+        "--clean-completed",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Remove completed leaf .venv/node_modules/.cache directories; preserve recorded source and shared caches.",
+    )
     args = parser.parse_args()
 
+    if not _generated_makefiles(args.output_root):
+        parser.error(f"no generated Makefiles found under {args.output_root}")
+    started_at = datetime.now(UTC).isoformat()
     dependency_mode = cast(DependencyMode, args.dependency_mode)
     env = eval_environment(dependency_mode, args.cache_root)
     prewarm_results: tuple[MakeTestResult, ...] = ()
@@ -379,43 +416,28 @@ def main() -> int:
         workers=args.workers,
         target=args.target,
         env=env,
+        clean_completed=args.clean_completed,
     )
-    write_report(
-        args.report,
-        results,
-        args.output_root,
+    report = GeneratedEvalReport(
+        report_path=args.report,
+        output_root=args.output_root,
         target=args.target,
         dependency_mode=dependency_mode,
         cache_root=args.cache_root,
+        provenance=_capture_provenance(
+            started_at,
+            datetime.now(UTC).isoformat(),
+            workers=args.workers,
+            timeout_seconds=args.timeout_seconds,
+        ),
+        results=results,
+        clean_completed=args.clean_completed,
+        prewarm_requested=args.prewarm,
         prewarm_workers=args.prewarm_workers,
         prewarm_results=prewarm_results,
     )
-
-    by_reason = Counter(result.reason for result in results)
-    prewarm_by_reason = Counter(result.reason for result in prewarm_results)
-    print(
-        json.dumps(
-            {
-                "target": args.target,
-                "dependency_mode": dependency_mode,
-                "cache_root": str(args.cache_root if dependency_mode != "network" else "default tool caches"),
-                "prewarm": {
-                    "targets": len(prewarm_results),
-                    "workers": args.prewarm_workers,
-                    "passed": prewarm_by_reason.get("pass", 0),
-                    "failed": len(prewarm_results) - prewarm_by_reason.get("pass", 0),
-                    "by_reason": dict(prewarm_by_reason),
-                },
-                "makefiles": len(results),
-                "passed": by_reason.get("pass", 0),
-                "failed": len(results) - by_reason.get("pass", 0),
-                "by_reason": dict(by_reason),
-                "report": str(args.report),
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
+    summary = write_report(report)
+    print(json.dumps(asdict(summary), indent=2, sort_keys=True))
     return 0
 
 

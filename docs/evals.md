@@ -39,7 +39,19 @@ PYTHONPATH=$(pwd) poetry run python scripts/scaffold_matrix_eval.py \
   --report /tmp/kickstart-scaffold-matrix-supported.md
 ```
 
-Expected result for the supported matrix is zero failed commands. The most recent local run generated 500 projects and 4696 components with 0 failed commands.
+Expected result for the supported matrix is zero failed commands. The dated
+2026-10-17 UTC snapshot generated **500 projects / 4,696 components**, with
+**0 failed commands and 0 component issues**. It used seed 6149, a maximum of 15
+components per project, depth 2 and known gaps excluded. The exact `build_plans`
+output was evaluated in four isolated output shards by
+`PYTHONPATH=$(pwd) poetry run python /tmp/eng557-matrix.py`.
+
+Generation ran at `39a5b1d56b94d5831ee75125f725e8312e0f9a30`; its `src` tree is
+identical to published master `c71c6df8e553a762031034fbbee5228c041ac200`.
+Reports: `/tmp/eng557-scaffold-matrix.md` and
+`/tmp/eng557-scaffold-matrix.json`; exact root and input provenance:
+`/tmp/eng557-generation-provenance.json`. This snapshot covers those published
+generator inputs; unmerged feature profiles require their own verification.
 
 ## Generated Project Validation
 
@@ -53,14 +65,95 @@ PYTHONPATH=$(pwd) poetry run python scripts/generated_make_test_eval.py \
   --timeout-seconds 90 \
   --workers 12 \
   --prewarm \
-  --prewarm-workers 2
+  --prewarm-workers 2 \
+  --clean-completed
 ```
 
-This eval may need network access when dependencies are not already cached. The dependency cache is a performance tool, not part of generated behavior.
+This eval may need network access when dependencies are not already cached.
+The dependency cache is a performance tool, not part of generated behavior.
+Inventory is based on Makefiles beside `.kickstart/scaffold.json`, so installed
+dependencies' unrelated Makefiles do not become extra scaffold targets. An empty
+inventory is a usage error.
 
-The most recent local cached-network run validated 4696 generated Makefiles: 4589 passed and 107 failed. The prewarm phase passed 21 of 21 targets. Remaining failures were classified into dependency, install, and toolchain failure classes, mostly Bun concurrent install/cache `EEXIST` errors and `workerd` install failures under Node 25.
+The example opts into `--clean-completed` for a large scratch matrix; the default
+is false. After a leaf target exits, this removes real local `.venv`,
+`node_modules` and `.cache` directories, preserving symlinks, aggregate roots,
+shared caches and directories containing recorded source paths. Removal errors
+become per-component cleanup warnings, separate from make-test verdicts.
 
-When reporting this eval, include the pass count and the failure classes. Do not compress failures into a single pass/fail number.
+The evaluator writes `<report>.json` alongside the Markdown report. Both retain
+one run ID, dates, source revision/dirty state, command, tool versions, dependency
+mode, prewarm results and per-component outcomes. Each file is replaced
+atomically; the pair is not a cross-file transaction, so verify matching run IDs.
+Console totals appear only after both files persist. A completed report retains
+the existing report-only exit status **0 even when component targets fail**;
+inspect `failed`, `by_reason`, prewarm failures and cleanup warnings.
+
+### Dated runtime snapshot: 2026-10-17
+
+The completed run recorded **4,595 passed / 101 failed out of 4,696 targets**;
+prewarm passed **21/21**, with zero prewarm failures. Runtime source was clean
+`e6c672bfcf14345d8ba97861b6f2081e2fbd4cba`, using the same generator inputs as
+the shape snapshot above.
+
+| Context | Recorded value |
+|---|---|
+| Run window | 2026-10-17 08:16:15–08:37:46 UTC |
+| Run ID | `5c9dbbbc-87d5-458e-89cc-a5a58a1ceebe` |
+| Host | macOS 15.6, arm64 |
+| Dependency mode | Cached, network enabled; warm retry after incomplete attempts |
+| Parallelism | 12 target workers, 90-second target timeout; 2 prewarm workers |
+| Cleanup | Enabled; 2,396 components cleaned, 1 component with a retained warning |
+| Python / Poetry | Python 3.14.8 / Poetry 2.5.1 |
+| JavaScript | Bun 1.3.5 / Node v26.11.1 |
+| Rust / Go | Cargo and rustc 1.99.0 / Go 1.27.2 |
+| Build tools | CMake 4.4.4 / GNU Make 3.81 |
+
+The exact command, output/cache roots and complete version strings are retained
+in `/tmp/eng557-final-generated-make-test.md.json` and
+`/tmp/eng557-final-runtime-start.json`. Markdown:
+`/tmp/eng557-final-generated-make-test.md`; matching console summary:
+`/tmp/eng557-final-generated-make-test.log`. Read-back and hashes:
+`/tmp/eng557-runtime-proof.json`. The JSON report SHA-256 is
+`3786b39ac5456f7680db69a9b05b0a3f1a7126b11e49758edcd81cd055e5888f`.
+All 134,160 recorded scaffold source entries remained unchanged
+(`/tmp/eng557-generated-source-final.json`).
+
+Raw classifier totals are **99 `other failure`** and
+**2 `node test dependency missing`**. Retained output tails support this finer
+symptom breakdown; these are execution symptoms, not proven root causes:
+
+| Observed symptom | Targets | Interpretation |
+|---|---:|---|
+| Bun install `EEXIST` | 34 | Dependency linking/symlink conflict |
+| Other Bun install failures | 45 | Install blocker; cause absent from retained tail |
+| Third-party module path in test startup failure | 11 | Dependency/startup symptom; cause truncated |
+| Node 26 test startup failure | 9 | Unresolved startup failure; cause truncated |
+| Missing `vitest` command | 2 | Test dependency unavailable |
+
+Five serialized, warm-cache representative retries passed three cases (one each
+from the install-conflict, unspecified-install and missing-command groups). Two
+still failed with `ERR_MODULE_NOT_FOUND` in Vitest/Rollup dependencies. Full
+retry logs and the symptom mapping are listed in
+`/tmp/eng557-failure-classification.json`. These retries do not replace the
+original 101 failures or prove all failures are external. No separate network or
+compiler/toolchain failure class was identified from the retained tails; no
+individual scaffold assertion defect was isolated. Further dependency/workspace
+investigation remains necessary; this is not a claim that the full generated
+runtime matrix is green.
+
+Two earlier attempts on 2026-10-17 have **unknown runtime totals**: raw retention
+was stopped at 07:33 UTC before disk exhaustion
+(`/tmp/eng557-first-attempt-stop.json`); the first bounded retry failed report
+collection at 08:11 UTC after a cleanup `ENOTEMPTY` exception
+(`/tmp/eng557-bounded-attempt-failure.json`). The completed run above includes
+the tested repair that retains cleanup warnings without losing make results.
+The older 2026-10-15 ENOSPC attempt also lacks completed runtime proof. None of
+these incomplete attempts supplies current pass/failure counts.
+
+When reporting this eval, include the date, source, context, pass count, prewarm
+results, cleanup warnings and failure classes. Do not compress failures into a
+single success flag or reuse undated totals.
 
 ## Token Savings
 

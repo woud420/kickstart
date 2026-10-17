@@ -13,6 +13,7 @@ def test_eval_environment_cached_sets_shared_tool_caches(tmp_path: Path) -> None
     env = eval_environment("cached", tmp_path)
 
     assert env["XDG_CACHE_HOME"] == str(tmp_path / "xdg")
+    assert env["PY_CACHE_DIR"] == str(tmp_path / "python")
     assert env["PIP_CACHE_DIR"] == str(tmp_path / "pip")
     assert env["POETRY_CACHE_DIR"] == str(tmp_path / "poetry")
     assert env["POETRY_VIRTUALENVS_PATH"] == str(tmp_path / "poetry-venvs")
@@ -20,7 +21,8 @@ def test_eval_environment_cached_sets_shared_tool_caches(tmp_path: Path) -> None
     assert env["CARGO_TARGET_DIR"] == str(tmp_path / "cargo-targets")
     assert env["GOCACHE"] == str(tmp_path / "go-build")
     assert env["GOMODCACHE"] == str(tmp_path / "go-mod")
-    assert env["BUN_INSTALL_CACHE_DIR"] == str(tmp_path / "bun")
+    assert env["BUN_CACHE_DIR"] == str(tmp_path / "bun")
+    assert env["BUN_INSTALL_CACHE_DIR"] == str(tmp_path / "bun" / "install")
     assert env["npm_config_cache"] == str(tmp_path / "npm")
     assert (tmp_path / "go-build").is_dir()
     assert "PIP_NO_INDEX" not in env
@@ -86,3 +88,103 @@ def _component(root: Path, name: str, *, kind: str) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def test_eval_and_prewarm_ignore_dependency_makefiles(tmp_path: Path) -> None:
+    from scripts.generated_make_test_eval import run_make_tests
+
+    component = _component(tmp_path, "service", kind="service")
+    (component / "package.json").write_text("{}\n")
+    dependency = component / "node_modules" / "dependency"
+    dependency.mkdir(parents=True)
+    (dependency / "Makefile").write_text("test:\n\t@false\ninstall:\n\t@false\n")
+    (dependency / "package.json").write_text("{}\n")
+
+    assert _prewarm_targets(tmp_path) == (component,)
+    results = run_make_tests(tmp_path, timeout_seconds=5, workers=1, target="test", env=os.environ.copy())
+    assert len(results) == 1 and results[0].path == component
+    assert results[0].returncode == 0
+
+
+def test_opt_in_cleanup_runs_only_after_a_leaf_target_and_preserves_source(tmp_path: Path) -> None:
+    from scripts.generated_make_test_eval import run_make_tests
+
+    component = _component(tmp_path, "leaf", kind="service")
+    source = component / "main.py"
+    source.write_text("print('source')\n")
+    for name in (".venv", "node_modules", ".cache"):
+        (component / name).mkdir()
+        (component / name / "installed.txt").write_text("rebuildable")
+
+    options = {"timeout_seconds": 5, "workers": 1, "target": "test", "env": os.environ.copy()}
+    assert run_make_tests(tmp_path, **options)[0].cleaned_artifacts == ()
+    assert (component / ".venv").is_dir()
+
+    result = run_make_tests(tmp_path, **options, clean_completed=True)[0]
+    assert result.returncode == 0 and result.cleaned_artifacts == (".venv", "node_modules", ".cache")
+    assert not (component / ".venv").exists() and not (component / "node_modules").exists()
+    assert not (component / ".cache").exists()
+    assert source.read_text() == "print('source')\n"
+    assert (component / "Makefile").is_file() and (component / ".kickstart/scaffold.json").is_file()
+
+
+def test_cleanup_preserves_aggregate_roots_unknown_kinds_symlinks_and_files(tmp_path: Path) -> None:
+    from scripts.generated_make_test_eval import CleanupResult, _cleanup_component_dependencies
+
+    aggregate = _component(tmp_path, "aggregate", kind="system")
+    (aggregate / "node_modules").mkdir()
+    for kind in ("system", "unknown", "manifest-error"):
+        assert _cleanup_component_dependencies(aggregate, kind) == CleanupResult()
+        assert (aggregate / "node_modules").is_dir()
+
+    leaf = _component(tmp_path, "leaf", kind="service")
+    outside = tmp_path / "external-dependencies"
+    outside.mkdir()
+    (outside / "keep.txt").write_text("external")
+    (leaf / "node_modules").symlink_to(outside, target_is_directory=True)
+    (leaf / ".venv").write_text("authored file")
+    assert _cleanup_component_dependencies(leaf, "service") == CleanupResult()
+    assert (outside / "keep.txt").read_text() == "external"
+    assert (leaf / ".venv").read_text() == "authored file"
+
+
+def test_cleanup_preserves_recorded_source_inside_a_cache_named_directory(tmp_path: Path) -> None:
+    import json
+    from scripts.generated_make_test_eval import CleanupResult, _cleanup_component_dependencies
+
+    component = _component(tmp_path, "leaf", kind="service")
+    cache = component / ".cache"
+    cache.mkdir()
+    (cache / "authored.txt").write_text("recorded source")
+    manifest = component / ".kickstart/scaffold.json"
+    data = json.loads(manifest.read_text())
+    data["ownership"] = {".cache/authored.txt": "seed"}
+    manifest.write_text(json.dumps(data))
+    assert _cleanup_component_dependencies(component, "service") == CleanupResult()
+    assert (cache / "authored.txt").read_text() == "recorded source"
+
+
+def test_optional_cleanup_failure_preserves_target_result_and_records_warning(tmp_path: Path, monkeypatch) -> None:
+    import errno
+    import shutil
+    from scripts.generated_make_test_eval import run_make_tests
+
+    component = _component(tmp_path, "leaf", kind="service")
+    (component / "node_modules").mkdir()
+    (component / ".cache").mkdir()
+    remove = shutil.rmtree
+
+    def busy_dependency(path, *args, **kwargs):
+        if path.name == "node_modules":
+            raise OSError(errno.ENOTEMPTY, "Directory not empty")
+        return remove(path, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "rmtree", busy_dependency)
+    result = run_make_tests(
+        tmp_path, timeout_seconds=5, workers=1, target="test", env=os.environ.copy(), clean_completed=True
+    )[0]
+    assert result.returncode == 0 and result.reason == "pass"
+    assert result.cleaned_artifacts == (".cache",)
+    assert result.cleanup_errors == (f"node_modules: OSError errno={errno.ENOTEMPTY}",)
+    assert (component / "node_modules").is_dir()
+    assert not (component / ".cache").exists()
