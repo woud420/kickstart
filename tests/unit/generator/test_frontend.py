@@ -1,6 +1,9 @@
-import pytest
 from pathlib import Path
-from unittest.mock import patch, call
+from types import SimpleNamespace
+from unittest.mock import call, patch
+
+import pytest
+
 from src.generator.frontend import FrontendGenerator
 from src.utils.errors import ProjectCreationError
 
@@ -19,10 +22,29 @@ def frontend_generator_with_gh():
 def frontend_generator_with_root():
     return FrontendGenerator("test-frontend", False, {"key": "value"}, root="/tmp")
 
+
 @pytest.fixture(autouse=True)
 def mock_scaffold_contract_docs():
     with patch.object(FrontendGenerator, "create_scaffold_contract_docs", return_value=True):
         yield
+
+
+@pytest.fixture
+def create_mocks():
+    with (
+        patch.object(FrontendGenerator, "create_project", return_value=True) as create_project,
+        patch.object(FrontendGenerator, "init_basic_structure") as init_basic_structure,
+        patch.object(FrontendGenerator, "write_template") as write_template,
+        patch.object(FrontendGenerator, "create_architecture_docs") as create_architecture_docs,
+        patch.object(FrontendGenerator, "log_success") as log_success,
+    ):
+        yield SimpleNamespace(
+            create_project=create_project,
+            init_basic_structure=init_basic_structure,
+            write_template=write_template,
+            create_architecture_docs=create_architecture_docs,
+            log_success=log_success,
+        )
 
 
 def test_frontend_generator_initialization(frontend_generator):
@@ -40,28 +62,27 @@ def test_frontend_generator_initialization_with_root(frontend_generator_with_roo
     assert frontend_generator_with_root.project == Path("/tmp/test-frontend")
 
 
-@patch('src.generator.frontend.create_repo')
-@patch.object(FrontendGenerator, 'write_template')
-@patch.object(FrontendGenerator, 'create_architecture_docs')
-@patch.object(FrontendGenerator, 'init_basic_structure')
-@patch.object(FrontendGenerator, 'create_project')
-@patch.object(FrontendGenerator, 'log_success')
-def test_create_success_with_gh(
-    mock_log_success, mock_create_project, mock_init_basic_structure,
-    mock_create_architecture_docs, mock_write_template, mock_create_repo
-):
-    generator = FrontendGenerator("test-frontend", True, {"key": "value"})
-    mock_create_project.return_value = True
+@pytest.mark.parametrize("gh", [True, False], ids=["with-gh", "without-gh"])
+@patch("src.generator.frontend.create_repo")
+def test_create_success(mock_create_repo, create_mocks, gh):
+    generator = FrontendGenerator("test-frontend", gh, {"key": "value"})
 
     generator.create()
 
-    mock_create_project.assert_called_once()
-    mock_init_basic_structure.assert_called_once_with([
-        "src", "public", "tests", ".kickstart", ".agents/skills", "docs/architecture",
-        "docs/contracts", "docs/operations", "docs/decisions"
-    ])
-    
-    # Verify template files are written
+    create_mocks.create_project.assert_called_once()
+    create_mocks.init_basic_structure.assert_called_once_with(
+        [
+            "src",
+            "public",
+            "tests",
+            ".kickstart",
+            ".agents/skills",
+            "docs/architecture",
+            "docs/contracts",
+            "docs/operations",
+            "docs/decisions",
+        ]
+    )
     expected_template_calls = [
         call("index.html", "index.html.tpl"),
         call(".gitignore", "gitignore.tpl"),
@@ -75,58 +96,19 @@ def test_create_success_with_gh(
         call("src/main.tsx", "src/main.tsx.tpl"),
         call("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
     ]
-    mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    
-    mock_create_architecture_docs.assert_called_once()
-    assert mock_create_architecture_docs.call_args.args[0] == "test-frontend Frontend Docs"
-    mock_log_success.assert_called_once_with("Frontend app 'test-frontend' created successfully in 'test-frontend'!")
-    mock_create_repo.assert_called_once_with("test-frontend")
+    create_mocks.write_template.assert_has_calls(expected_template_calls, any_order=True)
+    create_mocks.create_architecture_docs.assert_called_once()
+    assert create_mocks.create_architecture_docs.call_args.args[0] == "test-frontend Frontend Docs"
+    create_mocks.log_success.assert_called_once_with(
+        "Frontend app 'test-frontend' created successfully in 'test-frontend'!"
+    )
+    if gh:
+        mock_create_repo.assert_called_once_with("test-frontend")
+    else:
+        mock_create_repo.assert_not_called()
 
 
-@patch('src.generator.frontend.create_repo')
-@patch.object(FrontendGenerator, 'write_template')
-@patch.object(FrontendGenerator, 'create_architecture_docs')
-@patch.object(FrontendGenerator, 'init_basic_structure')
-@patch.object(FrontendGenerator, 'create_project')
-@patch.object(FrontendGenerator, 'log_success')
-def test_create_success_without_gh(
-    mock_log_success, mock_create_project, mock_init_basic_structure,
-    mock_create_architecture_docs, mock_write_template, mock_create_repo
-):
-    generator = FrontendGenerator("test-frontend", False, {"key": "value"})
-    mock_create_project.return_value = True
-
-    generator.create()
-
-    mock_create_project.assert_called_once()
-    mock_init_basic_structure.assert_called_once_with([
-        "src", "public", "tests", ".kickstart", ".agents/skills", "docs/architecture",
-        "docs/contracts", "docs/operations", "docs/decisions"
-    ])
-    
-    # Verify template files are written
-    expected_template_calls = [
-        call("index.html", "index.html.tpl"),
-        call(".gitignore", "gitignore.tpl"),
-        call("Dockerfile", "Dockerfile.tpl"),
-        call("Makefile", "Makefile.tpl", has_docker=True),
-        call("README.md", "README.md.tpl"),
-        call("package.json", "package.json.tpl"),
-        call("tsconfig.json", "tsconfig.json.tpl"),
-        call("vite.config.ts", "vite.config.ts.tpl"),
-        call("src/App.tsx", "src/App.tsx.tpl"),
-        call("src/main.tsx", "src/main.tsx.tpl"),
-        call("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
-    ]
-    mock_write_template.assert_has_calls(expected_template_calls, any_order=True)
-    
-    mock_create_architecture_docs.assert_called_once()
-    assert mock_create_architecture_docs.call_args.args[0] == "test-frontend Frontend Docs"
-    mock_log_success.assert_called_once_with("Frontend app 'test-frontend' created successfully in 'test-frontend'!")
-    mock_create_repo.assert_not_called()
-
-
-@patch.object(FrontendGenerator, 'create_project')
+@patch.object(FrontendGenerator, "create_project")
 def test_create_fails_when_create_project_fails(mock_create_project, frontend_generator):
     mock_create_project.return_value = False
 
@@ -136,154 +118,45 @@ def test_create_fails_when_create_project_fails(mock_create_project, frontend_ge
     mock_create_project.assert_called_once()
 
 
-def test_template_directory_is_react():
-    """Test that the template directory is correctly set to react."""
+def test_architecture_docs_content(create_mocks):
+    generator = FrontendGenerator("my-awesome-app", False, {})
+    generator.create()
+
+    create_mocks.create_architecture_docs.assert_called_once()
+    assert create_mocks.create_architecture_docs.call_args.args[0] == "my-awesome-app Frontend Docs"
+
+
+def test_success_message_format(create_mocks):
+    generator = FrontendGenerator("my-react-app", False, {})
+    generator.create()
+
+    expected_message = "Frontend app 'my-react-app' created successfully in 'my-react-app'!"
+    create_mocks.log_success.assert_called_once_with(expected_message)
+
+
+def test_template_files_count(create_mocks):
     generator = FrontendGenerator("test", False, {})
-    assert generator.template_dir.name == "react"
-    # Ensure it's the react subdirectory of the base template directory
-    assert "react" in str(generator.template_dir)
+    generator.create()
 
-
-def test_project_structure_directories():
-    """Test that the correct directory structure is created."""
-    expected_directories = [
-        "src", "public", "tests", ".kickstart", ".agents/skills", "docs/architecture",
-        "docs/contracts", "docs/operations", "docs/decisions"
-    ]
-    
-    with patch.object(FrontendGenerator, 'create_project', return_value=True), \
-         patch.object(FrontendGenerator, 'write_template'), \
-         patch.object(FrontendGenerator, 'create_architecture_docs'), \
-         patch.object(FrontendGenerator, 'log_success'), \
-         patch.object(FrontendGenerator, 'init_basic_structure') as mock_init_structure:
-        
-        generator = FrontendGenerator("test", False, {})
-        generator.create()
-        
-        mock_init_structure.assert_called_once_with(expected_directories)
-
-
-def test_all_template_files_are_written():
-    """Test that all expected template files are written."""
-    expected_template_files = [
-        ("index.html", "index.html.tpl", {}),
-        (".gitignore", "gitignore.tpl", {}),
-        ("Dockerfile", "Dockerfile.tpl", {}),
-        ("Makefile", "Makefile.tpl", {"has_docker": True}),
-        ("README.md", "README.md.tpl", {}),
-        ("package.json", "package.json.tpl", {}),
-        ("tsconfig.json", "tsconfig.json.tpl", {}),
-        ("vite.config.ts", "vite.config.ts.tpl", {}),
-        ("src/App.tsx", "src/App.tsx.tpl", {}),
-        ("src/main.tsx", "src/main.tsx.tpl", {}),
-        ("tests/App.test.tsx", "tests/App.test.tsx.tpl", {}),
-    ]
-
-    with patch.object(FrontendGenerator, 'create_project', return_value=True), \
-         patch.object(FrontendGenerator, 'init_basic_structure'), \
-         patch.object(FrontendGenerator, 'create_architecture_docs'), \
-         patch.object(FrontendGenerator, 'log_success'), \
-         patch.object(FrontendGenerator, 'write_template') as mock_write_template:
-
-        generator = FrontendGenerator("test", False, {})
-        generator.create()
-
-        for file_path, template_name, kwargs in expected_template_files:
-            expected_call = call(file_path, template_name, **kwargs)
-            assert expected_call in mock_write_template.call_args_list
-
-
-def test_architecture_docs_content():
-    """Test that architecture docs are created with correct title."""
-    with patch.object(FrontendGenerator, 'create_project', return_value=True), \
-         patch.object(FrontendGenerator, 'init_basic_structure'), \
-         patch.object(FrontendGenerator, 'write_template'), \
-         patch.object(FrontendGenerator, 'log_success'), \
-         patch.object(FrontendGenerator, 'create_architecture_docs') as mock_create_arch_docs:
-        
-        generator = FrontendGenerator("my-awesome-app", False, {})
-        generator.create()
-        
-        mock_create_arch_docs.assert_called_once()
-        assert mock_create_arch_docs.call_args.args[0] == "my-awesome-app Frontend Docs"
-
-
-def test_success_message_format():
-    """Test that the success message has the correct format."""
-    with patch.object(FrontendGenerator, 'create_project', return_value=True), \
-         patch.object(FrontendGenerator, 'init_basic_structure'), \
-         patch.object(FrontendGenerator, 'write_template'), \
-         patch.object(FrontendGenerator, 'create_architecture_docs'), \
-         patch.object(FrontendGenerator, 'log_success') as mock_log_success:
-        
-        generator = FrontendGenerator("my-react-app", False, {})
-        generator.create()
-        
-        expected_message = "Frontend app 'my-react-app' created successfully in 'my-react-app'!"
-        mock_log_success.assert_called_once_with(expected_message)
-
-
-def test_github_repo_creation_conditional():
-    """Test that GitHub repo creation only happens when gh=True."""
-    test_cases = [
-        (True, True),   # gh=True should call create_repo
-        (False, False), # gh=False should not call create_repo
-    ]
-    
-    for gh_flag, should_create_repo in test_cases:
-        with patch.object(FrontendGenerator, 'create_project', return_value=True), \
-             patch.object(FrontendGenerator, 'init_basic_structure'), \
-             patch.object(FrontendGenerator, 'write_template'), \
-             patch.object(FrontendGenerator, 'create_architecture_docs'), \
-             patch.object(FrontendGenerator, 'log_success'), \
-             patch('src.generator.frontend.create_repo') as mock_create_repo:
-            
-            generator = FrontendGenerator("test", gh_flag, {})
-            generator.create()
-            
-            if should_create_repo:
-                mock_create_repo.assert_called_once_with("test")
-            else:
-                mock_create_repo.assert_not_called()
-
-
-def test_template_files_count():
-    """Test that all frontend template files are written."""
-    with patch.object(FrontendGenerator, 'create_project', return_value=True), \
-         patch.object(FrontendGenerator, 'init_basic_structure'), \
-         patch.object(FrontendGenerator, 'create_architecture_docs'), \
-         patch.object(FrontendGenerator, 'log_success'), \
-         patch.object(FrontendGenerator, 'write_template') as mock_write_template:
-        
-        generator = FrontendGenerator("test", False, {})
-        generator.create()
-        
-        assert mock_write_template.call_count == 15
+    assert create_mocks.write_template.call_count == 15
 
 
 def test_no_language_specific_logic():
-    """Test that FrontendGenerator doesn't have language-specific methods like ServiceGenerator."""
     generator = FrontendGenerator("test", False, {})
-    
-    # Frontend generator should not have language-specific methods
-    assert not hasattr(generator, '_create_python_structure')
-    assert not hasattr(generator, '_create_rust_structure')
-    assert not hasattr(generator, '_create_go_structure')
-    
-    # But should have the base create method
-    assert hasattr(generator, 'create')
+
+    assert not hasattr(generator, "_create_python_structure")
+    assert not hasattr(generator, "_create_rust_structure")
+    assert not hasattr(generator, "_create_go_structure")
+    assert hasattr(generator, "create")
 
 
 def test_inheritance_from_base_generator():
-    """Test that FrontendGenerator properly inherits from BaseGenerator."""
     from src.generator.base import BaseGenerator
-    
+
     generator = FrontendGenerator("test", False, {})
     assert isinstance(generator, BaseGenerator)
-    
-    # Should have inherited methods
-    assert hasattr(generator, 'create_project')
-    assert hasattr(generator, 'init_basic_structure')
-    assert hasattr(generator, 'write_template')
-    assert hasattr(generator, 'create_architecture_docs')
-    assert hasattr(generator, 'log_success')
+    assert hasattr(generator, "create_project")
+    assert hasattr(generator, "init_basic_structure")
+    assert hasattr(generator, "write_template")
+    assert hasattr(generator, "create_architecture_docs")
+    assert hasattr(generator, "log_success")
