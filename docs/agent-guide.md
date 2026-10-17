@@ -76,7 +76,7 @@ System generation currently lives in `src/generator/monorepo.py` and `src/templa
 
 Implemented service extensions are intentionally narrow. As of this contract:
 
-- Python/FastAPI container services support `postgres`, `redis`, and `jwt`.
+- Python/FastAPI container services support `postgres`, `sqlite`, `redis`, and `jwt`. The [SQLite contract](contracts/sqlite-extension.md) defines file storage and explicit transactions.
 - Rust container services support `redis` and `jwt`.
 - TypeScript container services support `postgres` and `jwt`.
 
