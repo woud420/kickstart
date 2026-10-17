@@ -208,7 +208,7 @@ def verify_sha256(archive_path: Path, expected_hash: str) -> None:
 def _extract_archive_launcher(archive_path: Path, dest_root: Path) -> Path:
     """Extract a release tarball and return the launcher path inside the bundle."""
     with tarfile.open(archive_path, "r:gz") as tar:
-        tar.extractall(dest_root)
+        tar.extractall(dest_root, filter="data")
     bundle_dirs = [entry for entry in dest_root.iterdir() if entry.is_dir()]
     if len(bundle_dirs) != 1:
         names = sorted(entry.name for entry in dest_root.iterdir())

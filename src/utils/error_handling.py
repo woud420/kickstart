@@ -466,13 +466,14 @@ def ensure_directory_exists(directory: Path, create: bool = True) -> bool:
     Raises:
         DirectoryCreationError: If directory creation fails
     """
-    if directory.exists():
-        return True
-
-    if not create:
-        return False
-
     try:
+        if directory.is_dir():
+            return True
+        if not create:
+            return False
+        if directory.exists():
+            raise DirectoryCreationError(f"Path '{directory}' is not a directory")
+
         directory.mkdir(parents=True, exist_ok=True)
         logger.debug(f"Created directory: {directory}")
         return True

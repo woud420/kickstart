@@ -5,6 +5,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import replace
 from pathlib import Path
 
+from src.generator.create_flow import CreateStep, run_create_steps
 from src.generator.file_plan import ContentFile
 from src.generator.projections import (
     PROFILE_DEFAULT,
@@ -22,7 +23,7 @@ from src.utils.logger import success, warn
 from src.utils.template_registry import get_template_registry, TemplateRegistry
 from src.utils.types import GeneratorConfig, TemplateValue, TemplateVars
 from src.utils.error_handling import (
-    ErrorCollector, batch_operation_wrapper, handle_file_operations,
+    batch_operation_wrapper, handle_file_operations,
     handle_template_operations, safe_operation_context,
     ensure_directory_exists,
 )
@@ -386,56 +387,23 @@ class BaseGenerator:
                 "already exists or is not accessible."
             )
 
-        # Use error collector for standardized error tracking
-        error_collector = ErrorCollector("Project creation")
-
-        # Create project structure
-        if not self.init_basic_structure(directories):
-            error_collector.add_error("Failed to create directory structure")
-        else:
-            error_collector.increment_success()
-        error_collector.increment_total()
-
-        # Write template files
-        if not self.write_templates_from_plan(template_plan):
-            error_collector.add_error("Failed to write template files")
-        else:
-            error_collector.increment_success()
-        error_collector.increment_total()
-
-        # Create architecture docs
-        with safe_operation_context("Architecture documentation creation", log_errors=True):
-            if not self.create_architecture_docs(architecture_title, directories, scaffold_contract):
-                error_collector.add_error("Failed to create architecture documentation")
-            else:
-                error_collector.increment_success()
-        error_collector.increment_total()
-
-        # Create the generated scaffold contract
-        with safe_operation_context("Scaffold contract documentation creation", log_errors=True):
-            if not self.create_scaffold_contract_docs(scaffold_contract):
-                error_collector.add_error("Failed to create scaffold contract documentation")
-            else:
-                error_collector.increment_success()
-        error_collector.increment_total()
-
-        # Language-specific setup
-        if language_setup_fn:
-            with safe_operation_context("Language-specific setup", log_errors=True):
-                if not language_setup_fn():
-                    error_collector.add_error("Language-specific setup failed")
-                else:
-                    error_collector.increment_success()
-            error_collector.increment_total()
-
-        # Additional setup
-        if additional_setup_fn:
-            with safe_operation_context("Additional setup", log_errors=True):
-                if not additional_setup_fn():
-                    error_collector.add_error("Additional setup failed")
-                else:
-                    error_collector.increment_success()
-            error_collector.increment_total()
+        steps = [
+            CreateStep(lambda: self.init_basic_structure(directories), "Failed to create directory structure"),
+            CreateStep(lambda: self.write_templates_from_plan(template_plan), "Failed to write template files"),
+            CreateStep(
+                lambda: self.create_architecture_docs(architecture_title, directories, scaffold_contract),
+                "Failed to create architecture documentation",
+            ),
+            CreateStep(
+                lambda: self.create_scaffold_contract_docs(scaffold_contract),
+                "Failed to create scaffold contract documentation",
+            ),
+        ]
+        if language_setup_fn is not None:
+            steps.append(CreateStep(language_setup_fn, "Language-specific setup failed"))
+        if additional_setup_fn is not None:
+            steps.append(CreateStep(additional_setup_fn, "Additional setup failed"))
+        error_collector = run_create_steps(steps)
 
         # Fail before announcing success or creating a GitHub repo: a partial
         # scaffold must never produce a success banner or remote side effects.
