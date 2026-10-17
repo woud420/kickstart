@@ -4,6 +4,7 @@ import json
 from typing import Literal, NotRequired, Required, cast, get_args, get_origin, get_type_hints, is_typeddict
 
 from jsonschema import Draft202012Validator
+from src.generator.managed_artifacts import ALL_MANAGED_DOCS, OWNERSHIP_PATH_PATTERN, WORKFLOW_PATTERN
 from src.generator.manifest_types import JsonValue, ParsedManifest, ScaffoldManifestV4, SystemScaffoldManifest
 from src.utils.errors import ManifestShapeError
 
@@ -18,6 +19,8 @@ def _shape(annotation: type) -> ParsedManifest:
         return {"enum": list(get_args(annotation))}
     if origin is list:
         return {"type": "array", "items": _shape(get_args(annotation)[0])}
+    if origin is dict:
+        return {"type": "object", "additionalProperties": _shape(get_args(annotation)[1])}
     if is_typeddict(annotation):
         hints = get_type_hints(annotation, include_extras=True)
         return {
@@ -141,6 +144,7 @@ def manifest_v4_schema() -> ParsedManifest:
             _at("project.framework", {"enum": ["fastapi", "minimal"]}),
         )
     )
+    rules.append({"properties": {"ownership": _ownership_rules()}})
     schema.update(
         {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -150,9 +154,6 @@ def manifest_v4_schema() -> ParsedManifest:
         }
     )
     return schema
-
-
-_V4_VALIDATOR = Draft202012Validator(manifest_v4_schema())
 
 
 def validate_v4_manifest(manifest: ParsedManifest) -> None:
@@ -188,3 +189,25 @@ def validate_legacy_migration_source(manifest: ParsedManifest) -> None:
         error = errors[0]
         path = ".".join(map(str, error.absolute_path)) or "root"
         raise ManifestShapeError(f"manifest {path}: {error.message}")
+
+
+def _ownership_rules() -> ParsedManifest:
+    import re
+
+    patterns: ParsedManifest = {
+        "^" + re.escape(artifact.target) + "$": {"enum": ["seed", artifact.id]} for artifact in ALL_MANAGED_DOCS
+    }
+    for pattern, check in (
+        (r"^Makefile$", "make-check"),
+        (WORKFLOW_PATTERN, "workflow-presence"),
+        (r"^\.kickstart/scaffold\.json$", "manifest-shape"),
+    ):
+        patterns[pattern] = {"enum": ["seed", check]}
+    return {
+        "propertyNames": {"allOf": [{"pattern": OWNERSHIP_PATH_PATTERN}, {"not": {"pattern": r"[\r\n]"}}]},
+        "patternProperties": patterns,
+        "additionalProperties": {"const": "seed"},
+    }
+
+
+_V4_VALIDATOR = Draft202012Validator(manifest_v4_schema())

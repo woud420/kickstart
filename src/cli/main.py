@@ -24,6 +24,7 @@ from src.api import (
     create_system,
 )
 from src.cli.migrate import migrate
+from src.cli.ownership import ownership_plan
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.generator.adoption import AdoptionTargetError, inspect_repo
 from src.generator.backstage_export import (
@@ -228,14 +229,20 @@ def backstage(
 @app.command()
 def plan(
     path: Path = typer.Argument(Path("."), help="Repository to inspect"),
+    ownership: bool = typer.Option(False, "--ownership", help="Inspect only the persisted ownership index"),
     json_output: bool = typer.Option(False, "--json", help="Emit a machine-readable report"),
 ) -> None:
     """Show how managed docs differ from the standard's render (read-only).
 
     Compares each fenced managed doc against what the current standard would
-    render from `.kickstart/scaffold.json`. Exit codes: 0 = in sync, 1 = drift
+    render from `.kickstart/scaffold.json`. `--ownership` instead checks the
+    persisted regions and structural facts, excluding generated-once seeds.
+    Exit codes: 0 = in sync, 1 = drift
     or structural findings, 2 = usage error (no repo or no plannable manifest).
     """
+    if ownership:
+        ownership_plan(path, json_output)
+        return
     try:
         report = inspect_docs(path)
     except DocsPlanTargetError as error:

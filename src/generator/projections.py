@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from src.generator.layouts import render_architecture_readme
+from src.generator.managed_artifacts import ARCHITECTURE_ARTIFACT, MANAGED_DOCS
 from src.generator.markers import fence
 from src.generator.scaffold_contract import ScaffoldContract
 from src.utils.errors import MarkerError
@@ -43,8 +44,8 @@ PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER: ProjectionProfile = "typescript-cloudflare
 
 # Canonical identity of the architecture projection, shared with tooling that
 # must reference it without rendering it (its inputs are generation-time).
-ARCHITECTURE_README_ID = "architecture-readme"
-ARCHITECTURE_README_TARGET = "docs/architecture/README.md"
+ARCHITECTURE_README_ID = ARCHITECTURE_ARTIFACT.id
+ARCHITECTURE_README_TARGET = ARCHITECTURE_ARTIFACT.target
 
 
 @dataclass(frozen=True)
@@ -64,14 +65,12 @@ class DocsProjection:
 
 def scaffold_docs_projections(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> tuple[DocsProjection, ...]:
     """Render the managed docs set emitted with every scaffold contract."""
-    return (
-        _fenced_projection("agent-map", "AGENTS.md", agent_map_content(contract, profile)),
-        _fenced_projection("claude-pointer", "CLAUDE.md", claude_pointer_content()),
-        _fenced_projection("agents-skills-readme", ".agents/skills/README.md", agents_skills_readme_content()),
-        _fenced_projection("contracts-readme", "docs/contracts/README.md", contracts_content(contract, profile)),
-        _fenced_projection("operations-readme", "docs/operations/README.md", operations_content(contract, profile)),
-        _fenced_projection("decisions-readme", "docs/decisions/README.md", decisions_content()),
+    bodies = (
+        agent_map_content(contract, profile), claude_pointer_content(), agents_skills_readme_content(),
+        contracts_content(contract, profile), operations_content(contract, profile), decisions_content(),
     )
+    return tuple(_fenced_projection(artifact.id, artifact.target, body)
+                 for artifact, body in zip(MANAGED_DOCS, bodies, strict=True))
 
 
 def architecture_readme_projection(

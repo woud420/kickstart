@@ -8,6 +8,7 @@ import pytest
 
 from src.generator.adoption import inspect_repo
 from src.generator.docs_plan import inspect_docs
+from src.generator.ownership_check import inspect_ownership
 from src.generator.backstage_export import export_backstage
 from src.generator.scaffold_contract import ScaffoldContract
 from tests.integration.conftest import KickstartRunner
@@ -58,6 +59,9 @@ def test_generated_manifest_records_identity(
     manifest = json.loads((root / ".kickstart/scaffold.json").read_text())
     assert manifest["schema_version"] == "4.0"
     project = manifest["project"]
+    generated_paths = {str(p.relative_to(root)) for p in root.rglob("*") if p.is_file() or p.is_symlink()}
+    assert set(manifest["ownership"]) == generated_paths
+    assert inspect_ownership(root).in_sync
 
     assert project.get("language") == language
     assert project.get("framework") == framework
