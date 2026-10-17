@@ -185,13 +185,8 @@ def agents_skills_readme_content() -> str:
 
 def contracts_content(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> str:
     """Render ``docs/contracts/README.md`` for the contract's project kind."""
-    # Gate asymmetry is inherited from the pre-registry generator semantics:
-    # the Agent Map keys off the profile alone, while contracts/operations
-    # additionally require a worker-kind contract. ServiceGenerator only
-    # selects the worker profile for worker-kind contracts today, so the
-    # extra gate matters only if a future generator reuses the profile.
-    if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER and contract.project_kind == "worker":
-        return _worker_contracts_content()
+    if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER and contract.is_worker:
+        return _worker_contracts_content(contract)
     if contract.project_kind == "cli":
         cli_framework = contract.cli_framework or "language-native CLI framework"
         command_root = contract.command_root or "src/cli"
@@ -213,7 +208,7 @@ def contracts_content(contract: ScaffoldContract, profile: ProjectionProfile = P
 
 def operations_content(contract: ScaffoldContract, profile: ProjectionProfile = PROFILE_DEFAULT) -> str:
     """Render ``docs/operations/README.md`` for the contract's project kind."""
-    if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER and contract.project_kind == "worker":
+    if profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER and contract.is_worker:
         return _worker_operations_content()
     if contract.project_kind == "cli":
         return (
@@ -284,11 +279,11 @@ def _worker_agent_map_content(contract: ScaffoldContract) -> str:
     )
 
 
-def _worker_contracts_content() -> str:
+def _worker_contracts_content(contract: ScaffoldContract) -> str:
     return (
         "# Contracts\n\n"
         "## Scaffold identity\n"
-        "- Kind: `worker`\n"
+        f"- Kind: `{'service' if contract.schema_version == '4.0' else contract.project_kind}`\n"
         "- Execution model: `cloudflare-worker`\n"
         "- Runtime platform: `cloudflare-workers`\n"
         "- Artifact: `wrangler`\n"

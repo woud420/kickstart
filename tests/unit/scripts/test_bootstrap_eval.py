@@ -197,3 +197,12 @@ def test_capability_tests_rule_passes_without_extensions(tmp_path: Path) -> None
     (tmp_path / ".kickstart" / "scaffold.json").write_text('{"capabilities": {}}', encoding="utf-8")
 
     assert audit_capability_tests(tmp_path) == ()
+
+
+def test_schema_four_extension_audit_does_not_skip_flat_extensions(tmp_path: Path) -> None:
+    (tmp_path / ".kickstart").mkdir()
+    (tmp_path / ".kickstart/scaffold.json").write_text(
+        '{"schema_version":"4.0","extensions":{"auth":"jwt","cache":"redis"}}'
+    )
+    write(tmp_path / "tests/test_auth.py", "from auth import jwt\n")
+    assert "cache=redis" in audit_capability_tests(tmp_path)[0].detail

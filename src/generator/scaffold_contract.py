@@ -3,14 +3,28 @@
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
-from typing import Literal, NotRequired, TypedDict, cast
+from typing import cast
 
 from src import __version__
 from src.utils.errors import ManifestShapeError
-
-
-ProjectKind = Literal["service", "worker", "frontend", "library", "cli", "system"]
-RepoLayout = Literal["single-project", "monorepo"]
+from src.generator.manifest_types import (
+    JsonValue,
+    ManifestPayload,
+    ParsedManifest,
+    ProjectKind,
+    RepoLayout,
+    ScaffoldArtifactsManifest,
+    ScaffoldCapabilitiesManifest,
+    ScaffoldCompositionManifest,
+    ScaffoldLifecycleManifest,
+    ScaffoldManifest,
+    ScaffoldManifestV4,
+    ScaffoldProjectManifest,
+    ScaffoldProjectV4,
+    ScaffoldServiceExtensionsManifest,
+    SystemScaffoldManifest,
+)
+from src.generator.manifest_schema import validate_v4_manifest
 
 # Field meanings live in one place instead of being duplicated into every
 # generated repo; the manifest carries this pointer so agents can resolve the
@@ -23,12 +37,6 @@ MANIFEST_PATH = ".kickstart/scaffold.json"
 
 _PROJECT_KINDS: frozenset[str] = frozenset({"service", "worker", "frontend", "library", "cli", "system"})
 _REPO_LAYOUTS: frozenset[str] = frozenset({"single-project", "monorepo"})
-
-# Parsed-JSON shape for on-disk manifests: precise about what json.loads can
-# actually produce, unlike a loose catch-all annotation.
-JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
-ParsedManifest = dict[str, JsonValue]
-
 
 def load_parsed_manifest(manifest_file: "Path") -> ParsedManifest:
     """Read and parse an on-disk scaffold manifest, fail-closed.
@@ -75,93 +83,6 @@ def _string_items(value: "JsonValue | None", description: str) -> tuple[str, ...
             raise ManifestShapeError(f"manifest {description} is not a list of strings")
         items.append(item)
     return tuple(items)
-
-
-class ScaffoldProjectManifest(TypedDict):
-    name: str
-    kind: ProjectKind
-    repo_layout: RepoLayout
-    language: NotRequired[str]
-    framework: NotRequired[str]
-    architecture: NotRequired[str]
-    cli_framework: NotRequired[str]
-    command_root: NotRequired[str]
-    entrypoint: NotRequired[str]
-    operation_root: NotRequired[str]
-    src_root_files: NotRequired[list[str]]
-
-
-class ScaffoldExecutionManifest(TypedDict):
-    models: list[str]
-    platforms: list[str]
-
-
-class ScaffoldArtifactsManifest(TypedDict, total=False):
-    image: str
-    kubernetes: str
-    local: str
-    package: str
-    static_site: str
-    worker: str
-    iac: str
-    ci: str
-
-
-class ScaffoldProviderManifest(TypedDict):
-    targets: list[str]
-
-
-class ScaffoldServiceExtensionsManifest(TypedDict, total=False):
-    database: str
-    cache: str
-    auth: str
-
-
-class ScaffoldCapabilitiesManifest(TypedDict, total=False):
-    service_extensions: ScaffoldServiceExtensionsManifest
-
-
-class ScaffoldLifecycleManifest(TypedDict, total=False):
-    install: str
-    test: str
-    check: str
-    build: str
-    dev: str
-    deploy: str
-
-
-class ScaffoldCompositionManifest(TypedDict):
-    status: str
-    workspace_tooling: str
-    component_slots: list[str]
-    child_manifest_globs: list[str]
-    validation: str
-
-
-class ScaffoldDocsManifest(TypedDict):
-    agent_map: str
-    architecture: str
-    contracts: str
-    operations: str
-    decisions: str
-
-
-class ScaffoldManifest(TypedDict):
-    schema_version: str
-    generated_by: str
-    project: ScaffoldProjectManifest
-    execution: ScaffoldExecutionManifest
-    artifacts: ScaffoldArtifactsManifest
-    provider: ScaffoldProviderManifest
-    capabilities: ScaffoldCapabilitiesManifest
-    lifecycle: ScaffoldLifecycleManifest
-    knowledge_adapter: str
-    docs: ScaffoldDocsManifest
-    semantics: str
-
-
-class SystemScaffoldManifest(ScaffoldManifest):
-    composition: ScaffoldCompositionManifest
 
 
 @dataclass(frozen=True)
@@ -274,8 +195,9 @@ class ScaffoldContract:
     semantics_reference: str = SEMANTICS_REFERENCE
     language: str | None = None
     framework: str | None = None
+    recorded_composition: ScaffoldCompositionManifest | None = None
 
-    def manifest(self, project_name: str) -> ScaffoldManifest:
+    def manifest(self, project_name: str) -> ManifestPayload:
         """Return the JSON-serializable scaffold manifest."""
         project_manifest: ScaffoldProjectManifest = {
             "name": project_name,
@@ -324,7 +246,7 @@ class ScaffoldContract:
         if self.project_kind == "system":
             system_manifest = SystemScaffoldManifest(
                 **manifest,
-                composition={
+                composition=self.recorded_composition or {
                     "status": "experimental",
                     "workspace_tooling": self.workspace_tooling,
                     "component_slots": ["apps", "services", "libs", "tools"],
@@ -340,7 +262,26 @@ class ScaffoldContract:
                     ),
                 },
             )
-            return system_manifest
+            manifest = system_manifest
+        if self.schema_version == "4.0":
+            v4_project = cast(ScaffoldProjectV4, dict(project_manifest))
+            if self.is_worker:
+                v4_project["kind"] = "service"
+            v4: ScaffoldManifestV4 = {
+                "schema_version": "4.0",
+                "generated_by": self.generated_by,
+                "project": v4_project,
+                "execution": manifest["execution"],
+                "artifacts": manifest["artifacts"],
+                "provider": manifest["provider"],
+                "extensions": self.service_extensions.manifest(),
+                "lifecycle": manifest["lifecycle"],
+                "knowledge_adapter": self.knowledge_adapter,
+            }
+            if self.project_kind == "system":
+                v4["composition"] = system_manifest["composition"]
+            validate_v4_manifest(cast(ParsedManifest, v4))
+            return v4
         return manifest
 
     def _capabilities_manifest(self) -> ScaffoldCapabilitiesManifest:
@@ -366,7 +307,7 @@ class ScaffoldContract:
                 check="make check",
             )
 
-        if self.project_kind in {"service", "frontend"}:
+        if self.project_kind in {"service", "frontend"} and not self.is_worker:
             return ScaffoldLifecycle(
                 install="make install",
                 test="make test",
@@ -375,7 +316,7 @@ class ScaffoldContract:
                 dev="make dev",
             )
 
-        if self.project_kind == "worker":
+        if self.is_worker:
             return ScaffoldLifecycle(
                 install="make install",
                 test="make test",
@@ -394,12 +335,17 @@ class ScaffoldContract:
     def from_manifest(cls, manifest: ParsedManifest) -> "ScaffoldContract":
         """Rebuild the contract fields tooling consumes from a parsed manifest.
 
-        Inverse of ``manifest()`` for schema 3.x, written defensively because
+        Inverse of ``manifest()`` for supported schema 3.x and 4.0, written defensively because
         the input is an on-disk file: required keys and shapes raise
         ``ManifestShapeError`` instead of guessing. Generation-time inputs the
         manifest never recorded (docs projection profile, architecture title
         and directories) cannot be recovered here; consumers own that gap.
         """
+        schema_version = manifest.get("schema_version")
+        if not isinstance(schema_version, str) or schema_version not in {"3.0", "3.1", "3.2", "4.0"}:
+            raise ManifestShapeError(f"unsupported manifest schema_version: {schema_version!r}")
+        if schema_version == "4.0":
+            validate_v4_manifest(manifest)
         project = _require_mapping(manifest.get("project"), "project")
         execution = _require_mapping(manifest.get("execution"), "execution")
         kind = project.get("kind")
@@ -411,10 +357,15 @@ class ScaffoldContract:
 
         artifacts = _require_mapping(manifest.get("artifacts", {}), "artifacts")
         lifecycle = _require_mapping(manifest.get("lifecycle", {}), "lifecycle")
-        capabilities = _require_mapping(manifest.get("capabilities", {}), "capabilities")
-        extensions = _require_mapping(
-            capabilities.get("service_extensions", {}), "capabilities.service_extensions"
-        )
+        if schema_version == "4.0":
+            extensions = _require_mapping(manifest.get("extensions"), "extensions")
+        else:
+            if "extensions" in manifest:
+                raise ManifestShapeError("manifest extensions requires schema_version 4.0")
+            capabilities = _require_mapping(manifest.get("capabilities", {}), "capabilities")
+            extensions = _require_mapping(
+                capabilities.get("service_extensions", {}), "capabilities.service_extensions"
+            )
         provider = _require_mapping(manifest.get("provider", {}), "provider")
 
         workspace_tooling = "none"
@@ -427,14 +378,6 @@ class ScaffoldContract:
         knowledge_adapter = manifest.get("knowledge_adapter", "none")
         if not isinstance(knowledge_adapter, str):
             raise ManifestShapeError("manifest field 'knowledge_adapter' is not a string")
-        schema_version = manifest.get("schema_version")
-        if not isinstance(schema_version, str):
-            raise ManifestShapeError("manifest schema_version is missing or not a string")
-        if schema_version.split(".", 1)[0] != "3":
-            raise ManifestShapeError(
-                f"unsupported manifest schema_version '{schema_version}': this inverse understands 3.x only"
-            )
-
         framework = _optional_string(project, "framework")
         cli_framework = _optional_string(project, "cli_framework")
         if kind == "cli" and framework is not None and cli_framework is not None and framework != cli_framework:
@@ -486,6 +429,17 @@ class ScaffoldContract:
             semantics_reference=_optional_string(manifest, "semantics") or SEMANTICS_REFERENCE,
             language=_optional_string(project, "language"),
             framework=framework,
+            recorded_composition=(
+                cast(ScaffoldCompositionManifest, composition)
+                if schema_version == "4.0" and isinstance(composition, dict) else None
+            ),
+        )
+
+    @property
+    def is_worker(self) -> bool:
+        """Recognize both the legacy kind and the service execution profile."""
+        return self.project_kind == "worker" or (
+            self.project_kind == "service" and "cloudflare-worker" in self.execution_models
         )
 
     @property
@@ -499,7 +453,7 @@ class ScaffoldContract:
             "cli": "commands, flags, environment variables, config files, exit codes, and package metadata",
             "system": "workspace interfaces, contained projects, service boundaries, environment variables, commands, provider resources, and generated files",
         }
-        return subjects[self.project_kind]
+        return subjects["worker" if self.is_worker else self.project_kind]
 
     @property
     def operations_subjects(self) -> str:
@@ -512,4 +466,4 @@ class ScaffoldContract:
             "cli": "local development, tests, packaging, installation, and release notes",
             "system": "workspace composition, root scaffold checks, child project validation, infrastructure notes, and runbooks",
         }
-        return subjects[self.project_kind]
+        return subjects["worker" if self.is_worker else self.project_kind]

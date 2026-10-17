@@ -655,7 +655,7 @@ def _validate_kind_contract(
 
     kind = project.get("kind")
     if component.kind == "worker":
-        if kind != "worker":
+        if kind != ("service" if manifest.get("schema_version") == "4.0" else "worker"):
             issues.append(f"worker generated manifest kind {kind!r}")
         _expect_list_member(execution, "models", "cloudflare-worker", issues)
         _expect_list_member(execution, "platforms", "cloudflare-workers", issues)
