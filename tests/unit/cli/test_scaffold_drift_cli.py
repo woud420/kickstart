@@ -55,3 +55,24 @@ def test_json_with_brackets_and_long_paths_is_valid(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["drift", str(root / "api"), "--json"])
     assert result.exit_code == 0, result.output
     assert json.loads(result.output)["root"] == str(root / "api")
+
+
+def test_human_output_prints_managed_diff_without_user_prose(project: Path) -> None:
+    agents = project / "AGENTS.md"
+    agents.write_text(
+        agents.read_text().replace("orientation surface", "edited managed surface") + "\nPrivate outside-fence note\n"
+    )
+    result = CliRunner().invoke(app, ["drift", str(project)])
+    assert result.exit_code == 1, result.output
+    assert "edited managed surface" in result.output and "--- expected/AGENTS.md" in result.output
+    assert "Private outside-fence note" not in result.output
+
+
+def test_human_output_names_unavailable_ownership(project: Path) -> None:
+    path = project / ".kickstart/scaffold.json"
+    manifest = json.loads(path.read_text())
+    del manifest["ownership"]
+    path.write_text(json.dumps(manifest))
+    result = CliRunner().invoke(app, ["drift", str(project)])
+    assert result.exit_code == 1
+    assert "Ownership is unrecorded; drift coverage is unavailable" in result.output

@@ -135,6 +135,7 @@ def test_adoption_reuses_drift_and_does_not_hide_changed_owned_docs(project: Pat
         "jobs: {check: {}}\n---\njobs: {check: {}}\n",
         "? [complex, key]\n: value\njobs: {check: {}}\n",
         "jobs: {check: not-a-job-mapping}\n",
+        "jobs: {check: {}, custom: not-a-job-mapping}\n",
     ],
 )
 def test_workflow_structure_is_not_guessed_from_text_fragments(text: str) -> None:
@@ -189,3 +190,33 @@ def test_adoption_reports_invalid_makefile_encoding_as_a_gap(project: Path) -> N
     report = inspect_repo(project)
     assert not report.complete
     assert any("unreadable Makefile" in status.issue for status in report.artifacts)
+
+
+@pytest.mark.parametrize("change", ["remove", "outside-link"])
+def test_workflow_changes_between_reads_are_findings_not_escaped_reads(
+    project: Path, tmp_path: Path, monkeypatch, change: str
+) -> None:
+    workflow = project / ".github/workflows/ci.yml"
+    outside = tmp_path / "outside-workflow.yml"
+    outside.write_text("private external workflow sentinel\n")
+    read = Path.read_text
+    reads = 0
+
+    def changed_after_read(path, *args, **kwargs):
+        nonlocal reads
+        if path != workflow:
+            return read(path, *args, **kwargs)
+        reads += 1
+        if reads > 1:
+            assert change != "outside-link", "workflow followed a new outside-root link"
+            return read(path, *args, **kwargs)
+        text = read(path, *args, **kwargs)
+        workflow.unlink()
+        if change == "outside-link":
+            workflow.symlink_to(outside)
+        return text
+
+    monkeypatch.setattr(Path, "read_text", changed_after_read)
+    report = inspect_drift(project)
+    assert next(e for e in report.entries if e.target == ".github/workflows/ci.yml").status == "unreadable"
+    assert "private external workflow sentinel" not in report.to_json()
