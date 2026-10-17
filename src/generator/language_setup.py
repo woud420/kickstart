@@ -148,9 +148,13 @@ def go_service_content_templates() -> tuple[TemplateConfig, ...]:
     )
 
 
-def typescript_service_templates(*, include_postgres_database: bool = False) -> tuple[TemplateConfig, ...]:
+def typescript_service_templates(
+    *, include_postgres_database: bool = False, include_jwt_auth: bool = False
+) -> tuple[TemplateConfig, ...]:
     """Return template files for TypeScript services."""
     template_vars: TemplateVars = {"database": "postgres"} if include_postgres_database else {}
+    if include_jwt_auth:
+        template_vars = {**template_vars, "auth": "jwt"}
     templates: tuple[TemplateConfig, ...] = (
         TemplateConfig("src/main.ts", "typescript/src/main.ts.tpl", template_vars),
         TemplateConfig("src/config/env.ts", "typescript/src/config/env.ts.tpl", template_vars),
@@ -162,10 +166,22 @@ def typescript_service_templates(*, include_postgres_database: bool = False) -> 
             *templates,
             TemplateConfig("tests/database.test.ts", "typescript/tests/database.test.ts.tpl", template_vars),
         )
+    if include_jwt_auth:
+        templates = (
+            *templates,
+            TemplateConfig("src/handler/auth.ts", "typescript/extensions/auth/jwt.ts.tpl"),
+            TemplateConfig("tests/auth.test.ts", "typescript/extensions/auth/auth.test.ts.tpl"),
+            TemplateConfig("tests/auth-config.test.ts", "typescript/extensions/auth/auth-config.test.ts.tpl"),
+            TemplateConfig("README.md", "typescript/README.md.tpl", template_vars),
+        )
     return templates
 
 
-def typescript_service_content_files(*, include_postgres_database: bool = False) -> tuple[ContentFile, ...]:
+def typescript_service_content_files(
+    *, include_postgres_database: bool = False, include_jwt_auth: bool = False, service_name: str = "service"
+) -> tuple[ContentFile, ...]:
     """Return direct content files for TypeScript services."""
     env_content = TYPESCRIPT_POSTGRES_ENV_EXAMPLE_CONTENT if include_postgres_database else TYPESCRIPT_ENV_EXAMPLE_CONTENT
+    if include_jwt_auth:
+        env_content += f"JWT_SECRET=\nJWT_ALGORITHM=HS256\nJWT_ISSUER={service_name}\nJWT_ACCESS_TOKEN_SECONDS=1800\n"
     return (ContentFile(".env.example", env_content),)

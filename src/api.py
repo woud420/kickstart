@@ -31,7 +31,7 @@ def create_service(name: str, lang: str, gh: bool, config: GeneratorConfig, *, h
         root: Root directory
         database: Database extension (implemented: postgres for Python/FastAPI and TypeScript container services)
         cache: Cache extension (implemented: redis for Python/FastAPI and Rust container services)
-        auth: Authentication extension (implemented: jwt for Python/FastAPI and Rust container services)
+        auth: Authentication extension (implemented: jwt for Python/FastAPI, Rust, and TypeScript container services)
         framework: HTTP framework (None for FastAPI default, minimal for standard library)
         runtime: Service execution profile (container or cloudflare-workers)
     """

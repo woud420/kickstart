@@ -87,7 +87,7 @@ class ServiceGenerator(BaseGenerator):
             root: Root directory for project creation (optional)
             database: Database extension (implemented: postgres for Python/FastAPI and TypeScript container services)
             cache: Cache extension (implemented: redis for Python/FastAPI and Rust container services)
-            auth: Authentication extension (implemented: jwt for Python/FastAPI and Rust container services)
+            auth: Authentication extension (implemented: jwt for Python/FastAPI, Rust, and TypeScript container services)
             framework: HTTP framework (None for FastAPI default, minimal for standard library)
             runtime: Runtime target (container or cloudflare-workers)
             
@@ -466,11 +466,29 @@ class ServiceGenerator(BaseGenerator):
         a health route, and a small test harness.
         """
         include_postgres_database = self.database == "postgres"
-        self.write_template_configs(typescript_service_templates(include_postgres_database=include_postgres_database))
-        self.write_content_files(typescript_service_content_files(include_postgres_database=include_postgres_database))
+        include_jwt_auth = self.auth == "jwt"
+        self.write_template_configs(
+            typescript_service_templates(
+                include_postgres_database=include_postgres_database,
+                include_jwt_auth=include_jwt_auth,
+            )
+        )
+        self.write_content_files(
+            typescript_service_content_files(
+                include_postgres_database=include_postgres_database,
+                include_jwt_auth=include_jwt_auth,
+                service_name=self.name,
+            )
+        )
+        package_vars: dict[str, str] = {}
+        if include_jwt_auth:
+            package_vars["auth"] = "jwt"
+        if include_postgres_database:
+            package_vars["database"] = "postgres"
+        if package_vars:
+            self.write_template("package.json", "typescript/package.json.tpl", **package_vars)
         if include_postgres_database:
             self.write_template("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
-            self.write_template("package.json", "typescript/package.json.tpl", database="postgres")
             self.create_directories(["migrations"])
             self.write_template("migrations/001_initial.sql", "typescript/extensions/database/migrations.sql.tpl")
 

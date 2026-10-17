@@ -78,16 +78,19 @@ def test_typescript_services_reject_redis_until_templates_exist() -> None:
         )
 
 
-def test_typescript_services_reject_jwt_until_templates_exist() -> None:
-    with pytest.raises(ExtensionError, match="typescript/container/default"):
-        validate_service_extensions(
-            language="typescript",
-            runtime="container",
-            framework=None,
-            database=None,
-            cache=None,
-            auth="jwt",
-        )
+@pytest.mark.parametrize("database", [None, "postgres"])
+def test_typescript_container_accepts_jwt_auth_extension(database: str | None) -> None:
+    selection = validate_service_extensions(
+        language="typescript",
+        runtime="container",
+        framework=None,
+        database=database,
+        cache=None,
+        auth="jwt",
+    )
+
+    assert selection.auth == "jwt"
+    assert selection.database == database
 
 
 @pytest.mark.parametrize(

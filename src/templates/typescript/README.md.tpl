@@ -24,3 +24,33 @@ bun start
 ```
 
 The service listens on `PORT` and defaults to `8080`.
+{% if auth == "jwt" %}
+
+## JWT helper
+
+`src/handler/auth.ts` provides typed access-token signing and verification with
+[`jose`](https://github.com/panva/jose). Set `JWT_SECRET` to a random secret of at
+least 32 characters before calling `createJwtAuth()`; `.env.example` leaves it
+empty. For local development, copy `.env.example` to `.env` and set the secret
+there. Keep that file out of Git.
+
+`JWT_ALGORITHM` accepts only `HS256`. `JWT_ISSUER` defaults to `{{ service_name }}`,
+and `JWT_ACCESS_TOKEN_SECONDS` defaults to 1800 (30 minutes). Signing and
+verification use the same issuer, algorithm and maximum token age. Verification
+requires a non-blank subject, access-token type, issue time and expiry, and
+returns `null` for rejected tokens. Invalid configuration throws when the
+helper is created. Public health checks can run without a signing key.
+
+```typescript
+import { createJwtAuth } from "./handler/auth.js";
+
+const auth = createJwtAuth();
+const token = await auth.createAccessToken("user-123");
+const verified = await auth.verifyAccessToken(token);
+```
+
+Call the helper from your authentication flow and enforce its result in routes
+that require authentication. The generated health routes remain public. User
+accounts, login endpoints, refresh tokens and authorization policy belong to
+the application.
+{% endif %}

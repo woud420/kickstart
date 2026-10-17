@@ -149,8 +149,8 @@ def test_create_rejects_unsupported_typescript_service_cache_extension():
         generator.create()
 
 
-def test_create_rejects_unsupported_typescript_service_auth_extension():
-    generator = ServiceGenerator("test-service", "typescript", False, {}, auth="jwt")
+def test_create_rejects_unsupported_typescript_worker_auth_extension():
+    generator = ServiceGenerator("test-service", "typescript", False, {}, runtime="cloudflare-workers", auth="jwt")
 
     with pytest.raises(ExtensionError, match="auth extension 'jwt' is not supported"):
         generator.create()

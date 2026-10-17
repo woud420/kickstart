@@ -22,6 +22,9 @@
     "@hono/node-server": "^1.13.7",
     "@hono/zod-validator": "^0.4.2",
     "hono": "^4.6.13",
+{% if auth == "jwt" %}
+    "jose": "^6.2.12",
+{% endif %}
 {% if database == "postgres" %}
     "pg": "^8.13.1",
 {% endif %}

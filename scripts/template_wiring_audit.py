@@ -180,7 +180,7 @@ def _active_templates() -> set[str]:
                 )
             )
 
-    active.update(template.template for template in typescript_service_templates(include_postgres_database=True))
+    active.update(template.template for template in typescript_service_templates(include_postgres_database=True, include_jwt_auth=True))
 
     extension_manager = ExtensionManager()
     for extension_group in extension_manager._extensions.values():
