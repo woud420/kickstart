@@ -4,24 +4,6 @@ from dataclasses import dataclass
 from typing import TypedDict
 
 
-ResolvedCreateArgs = tuple[
-    str,
-    str,
-    str | None,
-    str,
-    bool,
-    bool,
-    str | None,
-    str | None,
-    str | None,
-    str | None,
-    str,
-    str,
-    str | None,
-    str | None,
-]
-
-
 @dataclass(frozen=True)
 class CreateCommandOptions:
     """Raw create command options before interactive prompts fill gaps."""
@@ -60,25 +42,6 @@ class CreateOptions:
     knowledge: str = "none"
     runtime: str | None = None
     workspace_tooling: str | None = None
-
-    def as_tuple(self) -> ResolvedCreateArgs:
-        """Return the legacy tuple shape used by older CLI helper callers."""
-        return (
-            self.project_type,
-            self.name,
-            self.root,
-            self.lang,
-            self.gh,
-            self.helm,
-            self.database,
-            self.cache,
-            self.auth,
-            self.framework,
-            self.cloud,
-            self.knowledge,
-            self.runtime,
-            self.workspace_tooling,
-        )
 
 
 class ServiceCreateKwargs(TypedDict, total=False):
