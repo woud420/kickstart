@@ -8,13 +8,20 @@ shape, so the broader drift work builds on it instead of forking it.
 
 ## Covered
 
-Exactly the registry-rendered markdown projections
-(`src/generator/projections.py`) inside their ownership fences: `AGENTS.md`
-and the `docs/{contracts,operations,decisions}` READMEs, re-rendered from
-`.kickstart/scaffold.json` via `ScaffoldContract.from_manifest` and compared
-byte-for-byte against the fenced region on disk. The architecture README is
-presence-checked only: its content needs generation-time inputs (title,
-directory list) a schema-3.0 manifest does not record.
+The content-comparison scope follows the registry-rendered markdown projections
+(`src/generator/projections.py`, with identities in `managed_artifacts.py`):
+
+- `AGENTS.md`
+- `CLAUDE.md`
+- `.agents/skills/README.md`
+- `docs/contracts/README.md`
+- `docs/operations/README.md`
+- `docs/decisions/README.md`
+
+Each is re-rendered from `.kickstart/scaffold.json` via
+`ScaffoldContract.from_manifest` and compared byte-for-byte only inside its named
+ownership fence. `docs/architecture/README.md` is a separate presence-only check:
+its title and directory-list render inputs are not recorded in the manifest.
 
 Statuses: `in-sync`, `presence-only` (both clean); `would-create`,
 `content-drift` (unified diff attached), `unfenced` (pre-fence scaffold or

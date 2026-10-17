@@ -6,11 +6,11 @@ kickstart generates a stable project map for humans and agents. The goal is not 
 
 The standard interface a generated (or adopted) repository exposes is the vendor-neutral, human-readable artifact set: `AGENTS.md`, the `docs/` skeleton, the Makefile verification targets, and the CI workflow. Humans and agents orient through those artifacts; nothing in the orientation path requires reading `.kickstart/`.
 
-`.kickstart/scaffold.json` is kickstart's machine-readable scaffold state: the record tooling consumes (`kickstart adopt --check` and `kickstart plan` today; reconciliation on the roadmap in `decisions/scaffold-metadata-architecture-review.md`) to verify and re-derive what kickstart generated. A repository that follows the docs standard without the manifest still exposes the standard interface — `adopt --check` reports it as **Level 1 conformant** (exit 0); the manifest is what makes it **Level 2 managed**, verifiable and reconcilable by kickstart ([adoption tiers](contracts/adoption-tiers.md)).
+`.kickstart/scaffold.json` is kickstart's machine-readable scaffold state: the record tooling consumes (`kickstart adopt --check`, `kickstart plan` and `kickstart drift` today; reconciliation on the roadmap in `decisions/scaffold-metadata-architecture-review.md`) to verify and re-derive what kickstart generated. A repository that follows the docs standard without the manifest still exposes the standard interface — `adopt --check` reports it as **Level 1 conformant** (exit 0); the manifest is what makes it **Level 2 managed**, verifiable and reconcilable by kickstart ([adoption tiers](contracts/adoption-tiers.md)).
 
 ## Managed Regions
 
-Generated managed docs (`AGENTS.md` and the `docs/` READMEs) are wrapped in ownership fences — `<!-- kickstart:begin <artifact-id> -->` / `<!-- kickstart:end <artifact-id> -->` comment markers, invisible in rendered markdown. kickstart only ever writes inside its own fences: the fenced block is whole-block replaced when the standard changes, so do not edit inside it; everything outside a fence is user-owned and never read or rewritten. `kickstart plan` verifies the fenced regions against the current standard, read-only ([scope contract](contracts/plan-drift-scope.md)). Rationale and the MDX caveat: [Docs Ownership Fences](decisions/docs-ownership-fences.md).
+Generated managed docs (`AGENTS.md` and the `docs/` READMEs) are wrapped in ownership fences — `<!-- kickstart:begin <artifact-id> -->` / `<!-- kickstart:end <artifact-id> -->` comment markers, invisible in rendered markdown. kickstart only ever writes inside its own fences: the fenced block is whole-block replaced when the standard changes, so do not edit inside it; everything outside a fence is user-owned and excluded from comparisons and replacement. `kickstart plan` verifies the fenced regions against the current standard, read-only ([scope contract](contracts/plan-drift-scope.md)). Rationale and the MDX caveat: [Docs Ownership Fences](decisions/docs-ownership-fences.md).
 
 ## Always Generated
 
@@ -28,7 +28,28 @@ Every project type gets:
 - `.kickstart/scaffold.json`: kickstart's machine-readable scaffold state (tooling input; not part of the orientation surface).
 - `.github/workflows/ci.yml`: per-language GitHub Actions workflow that runs `make check` (lint + typecheck + tests) on push and pull requests. The workflow is emitted for every service, CLI, library, and frontend; system scaffolds emit `build.yml`, `test.yml`, and `deploy.yml` at the same path instead.
 
-This list is the same baseline that `kickstart adopt --check` validates (`STANDARD_ARTIFACTS` in `src/generator/adoption.py`); a repo satisfying this document passes the check.
+This list describes generation guarantees. Adoption checks a smaller, tiered
+interface (`src/generator/adoption.py`), rather than requiring every generated
+output:
+
+- Level 1 requires `AGENTS.md`, `README.md`, a Makefile with a literal `check`
+  target, `.agents/skills/`, the four documented category directories, and a
+  workflow file under `.github/workflows/`. Directory checks do not validate
+  category README content or workflow execution.
+- A manifest claims Level 2, which additionally validates its shape and requires
+  the managed docs' ownership fences. This includes `CLAUDE.md` and the skills
+  and category README fences, even though they are not all Level 1 prerequisites.
+  Fence readiness alone does not compare their contents.
+- With recorded ownership, adoption also includes the shared
+  [scaffold drift report](contracts/scaffold-drift.md): current fenced content
+  and declared Makefile/CI structural facts. Recorded findings fail the check
+  independently of achieved conformance. Unrecorded ownership preserves the
+  legacy conformance result and explicitly reports unavailable drift coverage.
+
+Passing adoption proves those bounded checks at the claimed level. It does not
+prove that every generated seed remains present, that application behavior matches
+metadata, or that a CI job will execute. See [Adoption Tiers](contracts/adoption-tiers.md)
+for the JSON and exit-code contract.
 
 There is no separate root architecture document. `docs/architecture/` is the canonical architecture location.
 
