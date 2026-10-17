@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 import json
 from pathlib import Path
-import re
 
+from src.generator.artifact_checks import has_check_target, owned_target
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
 from src.generator.scaffold_contract import MANIFEST_PATH, ScaffoldContract, load_parsed_manifest
 from src.utils.errors import ManifestShapeError, OwnershipPlanTargetError
@@ -62,19 +62,11 @@ class OwnershipReport:
         )
 
 
-def _safe_target(root: Path, relative: str) -> Path | None:
-    path = root / relative
-    try:
-        return path if path.resolve(strict=path.is_symlink()).is_relative_to(root) else None
-    except (OSError, RuntimeError):
-        return None
-
-
 def inspect_ownership(root: Path) -> OwnershipReport:
     if not root.is_dir():
         raise OwnershipPlanTargetError(f"ownership plan target '{root}' is not an existing directory")
     resolved = root.resolve()
-    manifest_path = _safe_target(resolved, MANIFEST_PATH)
+    manifest_path = owned_target(resolved, MANIFEST_PATH)
     if manifest_path is None:
         raise OwnershipPlanTargetError("manifest target resolves outside the project or cannot be resolved")
     try:
@@ -84,7 +76,7 @@ def inspect_ownership(root: Path) -> OwnershipReport:
     if contract.ownership is None:
         return OwnershipReport(resolved, False)
     owned = tuple(record for record in contract.ownership if record.classification != "seed")
-    safe = {record.path: _safe_target(resolved, record.path) for record in owned}
+    safe = {record.path: owned_target(resolved, record.path) for record in owned}
     selected_ids = frozenset(
         record.artifact_id for record in owned if record.artifact_id is not None and safe[record.path] is not None
     )
@@ -130,9 +122,7 @@ def _structural_entry(path: Path, target: str, check: str) -> OwnershipEntry:
     except (OSError, UnicodeDecodeError) as error:
         return OwnershipEntry(target, "structural", check, "unreadable", str(error))
     if check == "make-check":
-        if not re.search(
-            r"^(?!\t)[ ]*(?:[^:\s#=$]+[ \t]+)*check(?:[ \t]+[^:\s#=$]+)*[ \t]*:(?!:*=)", text, re.MULTILINE
-        ):
+        if not has_check_target(text):
             return OwnershipEntry(
                 target,
                 "structural",

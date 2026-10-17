@@ -29,8 +29,8 @@ explicit Worker language is a target error, rather than an ambiguous fallback.
 ## Deferred — and to whom
 
 - Full managed-envelope drift (Makefile targets, CI workflows, artifact
-  files) and drift classes for co-owned files: the drift check built on
-  schema 4.0 (ENG-12 on ENG-159). `plan` is its docs-projection library
+  files) and drift classes for co-owned files: the schema-4
+  [scaffold drift command](scaffold-drift.md). `plan` is its docs-projection library
   sibling (`src/generator/docs_plan.py`, alongside `adoption.py`), not a fork.
 - Inserting fences or the manifest into pre-fence repos: the adopt write path
   (ENG-11). `plan` never writes.

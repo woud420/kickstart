@@ -23,21 +23,30 @@ Level 1 plus kickstart state that makes the repo verifiable and reconcilable:
   the docs projections), and
 - fence-managed docs: every managed projection target exists with its
   ownership fence (`kickstart plan` statuses `in-sync`, `presence-only`, or
-  `content-drift`; content drift is a plan concern, not an adoption gap).
+  `content-drift`; content drift does not change the achieved conformance level).
 
 The manifest is adoption payoff — it enables `kickstart plan` today and the
 roadmapped drift/reconcile — never a precondition for conformance. The write
 path that promotes Level 1 → Level 2 (insert fences, infer the manifest)
 belongs to `kickstart adopt`'s future apply mode.
 
+## Recorded drift
+
+A valid manifest also produces the shared [scaffold drift report](scaffold-drift.md).
+Recorded findings make `complete` false and exit 1 independently of the achieved
+conformance level. Without ownership, adoption preserves its conformance result
+and explicitly reports unavailable drift coverage. Use `kickstart drift` when CI
+requires a recorded scope. This check does not infer ownership or write files.
+
 ## Exit codes and JSON
 
-Exit 0 when the claimed level is fully satisfied; 1 when any gap exists at
+Exit 0 when the claimed level is fully satisfied and no recorded drift exists;
+1 when recorded drift or any gap exists at
 the claimed level (including a repo whose manifest claims managed but whose
 docs are pre-fence); 2 for usage errors. Anything occupying the manifest path
 — including a directory or broken symlink — counts as a managed claim.
 `--json` emits `{"root", "complete", "achieved_level", "claimed_level",
-"artifacts": [{"path", "present", "issue", "level"}]}` — Level 2 adds the
+"artifacts": [{"path", "present", "issue", "level"}], "drift"}` — Level 2 adds the
 manifest status and, when the manifest itself is healthy, one
 `managed docs fences` readiness entry naming any unmanaged targets (a broken
 manifest is reported as a single gap, not two). For structured per-target

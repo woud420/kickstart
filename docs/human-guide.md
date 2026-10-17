@@ -54,6 +54,13 @@ the manifest to be valid and the managed docs fence-wrapped. It never writes;
 satisfied, 1 gaps found, 2 usage error. Applying the standard automatically
 is planned. See [Adoption Tiers](contracts/adoption-tiers.md).
 
+`kickstart drift REPO [--json]` checks recorded managed docs, Makefile target
+presence and standard CI job identities. It reports missing, changed or stale
+artifacts without changing files. Generated-once seeds and user prose outside
+fences are excluded. Exit 1 also signals unavailable ownership coverage; older
+repos are not assigned ownership retroactively. `adopt --check` includes this
+report and fails on recorded drift. See [Scaffold Drift](contracts/scaffold-drift.md).
+
 `kickstart plan REPO` is the matching read-only drift check for managed docs:
 it re-renders them from the manifest and reports per-artifact status, with
 diffs shown only inside kickstart's owned fences — your content outside a

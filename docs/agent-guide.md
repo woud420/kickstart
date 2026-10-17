@@ -38,7 +38,7 @@ Outputs:
 - `.kickstart/scaffold.json`
 - optional GitHub repository creation
 
-Generated docs and `AGENTS.md` are the orientation interface for humans and agents. `.kickstart/scaffold.json` is kickstart's scaffold state, consumed by tooling (`adopt --check` today; drift reporting on the roadmap) — orientation never requires reading it.
+Generated docs and `AGENTS.md` are the orientation interface for humans and agents. `.kickstart/scaffold.json` is kickstart's scaffold state, consumed by tooling (`adopt --check` today; bounded drift reporting) — orientation never requires reading it.
 
 Do not infer unsupported options. Use existing registries and typed plans.
 
@@ -48,6 +48,12 @@ Level 1 conformant is the vendor-neutral interface without the manifest;
 Level 2 managed adds a valid manifest driving fence-managed docs. Tiers
 contract: `docs/contracts/adoption-tiers.md`. Generated projects verify
 themselves with `make check`; the success output names it.
+
+Scaffold drift: `kickstart drift REPO --json` inspects recorded non-seed ownership,
+reports scaffold/docs/CI/artifact classes and missing/changed/stale/unreadable
+findings. Exit 0 = recorded scope passes / 1 = findings or unavailable ownership /
+2 = usage error. `adopt --check` includes the same report, with recorded findings
+affecting its exit status. Contract: `docs/contracts/scaffold-drift.md`.
 
 Catalog export: `kickstart export backstage REPO` derives catalog-info.yaml
 from the manifest (derived fields fenced and refreshed; owner/lifecycle/type

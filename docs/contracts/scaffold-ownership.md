@@ -63,9 +63,11 @@ the report does not reconstruct an original generated base. Architecture content
 remains presence-only until its missing render inputs are captured.
 
 The default `kickstart plan` remains the existing managed-doc standard check.
-`adopt --check` remains the conformance interface. This ownership mode supplies a
-bounded metadata consumer for the prerequisite tracked by ENG-630; the general
-drift command remains ENG-12. Existing [fence boundaries](../decisions/docs-ownership-fences.md)
+`adopt --check` remains the conformance interface and includes the shared drift
+report when metadata is valid. This ownership mode supplies a bounded metadata
+consumer for the prerequisite tracked by ENG-630; the standalone
+[drift command](scaffold-drift.md) adds normalized finding classes and CI job-identity
+checks. Existing [fence boundaries](../decisions/docs-ownership-fences.md)
 and [docs-plan scope](plan-drift-scope.md) remain in force. Broader reconciliation,
 repair, three-way merge and the older proposal's go/no-go decisions remain outside
 this change; this contract does not mark that proposal accepted.
