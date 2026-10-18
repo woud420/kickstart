@@ -111,38 +111,21 @@ def inspect_ownership(root: Path) -> OwnershipReport:
 
 
 def _structural_entry(path: Path, target: str, check: str) -> OwnershipEntry:
+    def entry(status: str, detail: str) -> OwnershipEntry:
+        return OwnershipEntry(target, "structural", check, status, detail)
+
     if not path.is_file():
-        return OwnershipEntry(target, "structural", check, "would-create", "recorded structural artifact is missing")
+        return entry("would-create", "recorded structural artifact is missing")
     if check == "manifest-shape":
-        return OwnershipEntry(
-            target, "structural", check, "presence-only", "manifest shape validated; bytes are not compared"
-        )
+        return entry("presence-only", "manifest shape validated; bytes are not compared")
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as error:
-        return OwnershipEntry(target, "structural", check, "unreadable", str(error))
+        return entry("unreadable", str(error))
     if check == "make-check":
         if not has_check_target(text):
-            return OwnershipEntry(
-                target,
-                "structural",
-                check,
-                "structural-gap",
-                "no literal check target declaration; Makefile content is not compared",
-            )
-        return OwnershipEntry(
-            target,
-            "structural",
-            check,
-            "presence-only",
-            "literal check target declared; Makefile content is not compared",
-        )
+            return entry("structural-gap", "no literal check target declaration; Makefile content is not compared")
+        return entry("presence-only", "literal check target declared; Makefile content is not compared")
     if not text.strip():
-        return OwnershipEntry(target, "structural", check, "structural-gap", "recorded workflow file is empty")
-    return OwnershipEntry(
-        target,
-        "structural",
-        check,
-        "presence-only",
-        "workflow file present and readable; job graph and bytes are not compared",
-    )
+        return entry("structural-gap", "recorded workflow file is empty")
+    return entry("presence-only", "workflow file present and readable; job graph and bytes are not compared")

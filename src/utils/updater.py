@@ -219,6 +219,20 @@ def _extract_archive_launcher(archive_path: Path, dest_root: Path) -> Path:
     return launcher
 
 
+def _failed_upgrade(
+    target_version: str,
+    error_category: CliUpgradeErrorCategory,
+    checksum_status: CliUpgradeChecksumStatus | None = None,
+) -> UpgradeResult:
+    """Build a terminal failure, preserving a checksum status already reached."""
+    return UpgradeResult(
+        target_version=target_version,
+        outcome=CliUpgradeOutcome.FAILED,
+        error_category=error_category,
+        checksum_status=checksum_status if checksum_status is not None else CliUpgradeChecksumStatus.NOT_REACHED,
+    )
+
+
 def check_for_update() -> UpgradeResult:
     """Check for updates, install the newest release, and return a safe terminal result.
 
@@ -233,12 +247,7 @@ def check_for_update() -> UpgradeResult:
         info = fetch_release_info()
     except Exception as exc:
         print(f"[red]✖ Update failed: could not query the latest release: {exc}")
-        return UpgradeResult(
-            target_version=UNKNOWN_TARGET_VERSION,
-            outcome=CliUpgradeOutcome.FAILED,
-            error_category=CliUpgradeErrorCategory.RELEASE_LOOKUP,
-            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
-        )
+        return _failed_upgrade(UNKNOWN_TARGET_VERSION, CliUpgradeErrorCategory.RELEASE_LOOKUP)
 
     try:
         tag_name = info["tag_name"]
@@ -258,12 +267,7 @@ def check_for_update() -> UpgradeResult:
         metadata_is_valid = False
     if not metadata_is_valid:
         print("[red]✖ Update failed: latest release metadata is invalid.")
-        return UpgradeResult(
-            target_version=UNKNOWN_TARGET_VERSION,
-            outcome=CliUpgradeOutcome.FAILED,
-            error_category=CliUpgradeErrorCategory.INVALID_RELEASE_METADATA,
-            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
-        )
+        return _failed_upgrade(UNKNOWN_TARGET_VERSION, CliUpgradeErrorCategory.INVALID_RELEASE_METADATA)
 
     latest = tag_name.lstrip("v")
     target_version = normalize_target_version(tag_name)
@@ -283,12 +287,7 @@ def check_for_update() -> UpgradeResult:
         archive_name = expected_archive_name()
     except RuntimeError as exc:
         print(f"[red]✖ Update failed: {exc}")
-        return UpgradeResult(
-            target_version=target_version,
-            outcome=CliUpgradeOutcome.FAILED,
-            error_category=CliUpgradeErrorCategory.UNSUPPORTED_PLATFORM,
-            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
-        )
+        return _failed_upgrade(target_version, CliUpgradeErrorCategory.UNSUPPORTED_PLATFORM)
 
     archive_asset = find_asset(assets, archive_name)
     if archive_asset is None:
@@ -296,12 +295,7 @@ def check_for_update() -> UpgradeResult:
             f"[red]✖ Update failed: no asset named {archive_name} on release {tag_name}. "
             "Wait for the release to publish the matching binary archive."
         )
-        return UpgradeResult(
-            target_version=target_version,
-            outcome=CliUpgradeOutcome.FAILED,
-            error_category=CliUpgradeErrorCategory.ARCHIVE_MISSING,
-            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
-        )
+        return _failed_upgrade(target_version, CliUpgradeErrorCategory.ARCHIVE_MISSING)
 
     hash_asset = find_asset(assets, f"{archive_name}.sha256")
     launcher_dir, app_root = layout.launcher_dir, layout.app_root
@@ -324,12 +318,7 @@ def check_for_update() -> UpgradeResult:
             download_to(archive_asset["browser_download_url"], archive_path)
         except Exception as exc:
             print(f"[red]✖ Update failed: could not download {archive_name}: {exc}")
-            return UpgradeResult(
-                target_version=target_version,
-                outcome=CliUpgradeOutcome.FAILED,
-                error_category=CliUpgradeErrorCategory.DOWNLOAD,
-                checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
-            )
+            return _failed_upgrade(target_version, CliUpgradeErrorCategory.DOWNLOAD)
 
         if hash_asset is not None:
             try:
@@ -338,21 +327,15 @@ def check_for_update() -> UpgradeResult:
                 expected_hash = hash_response.text.strip().split()[0]
             except Exception as exc:
                 print(f"[red]✖ Update failed: could not verify checksum: {exc}")
-                return UpgradeResult(
-                    target_version=target_version,
-                    outcome=CliUpgradeOutcome.FAILED,
-                    error_category=CliUpgradeErrorCategory.CHECKSUM_FETCH,
-                    checksum_status=CliUpgradeChecksumStatus.FAILED,
+                return _failed_upgrade(
+                    target_version, CliUpgradeErrorCategory.CHECKSUM_FETCH, CliUpgradeChecksumStatus.FAILED
                 )
             try:
                 verify_sha256(archive_path, expected_hash)
             except Exception as exc:
                 print(f"[red]✖ Update failed: could not verify checksum: {exc}")
-                return UpgradeResult(
-                    target_version=target_version,
-                    outcome=CliUpgradeOutcome.FAILED,
-                    error_category=CliUpgradeErrorCategory.CHECKSUM_MISMATCH,
-                    checksum_status=CliUpgradeChecksumStatus.FAILED,
+                return _failed_upgrade(
+                    target_version, CliUpgradeErrorCategory.CHECKSUM_MISMATCH, CliUpgradeChecksumStatus.FAILED
                 )
             print(f"[green]🔒 Checksum verified ({expected_hash}).")
             checksum_status = CliUpgradeChecksumStatus.VERIFIED
@@ -366,12 +349,7 @@ def check_for_update() -> UpgradeResult:
             launcher = _extract_archive_launcher(archive_path, extract_root)
         except Exception as exc:
             print(f"[red]✖ Update failed: could not extract archive: {exc}")
-            return UpgradeResult(
-                target_version=target_version,
-                outcome=CliUpgradeOutcome.FAILED,
-                error_category=CliUpgradeErrorCategory.ARCHIVE_EXTRACTION,
-                checksum_status=checksum_status,
-            )
+            return _failed_upgrade(target_version, CliUpgradeErrorCategory.ARCHIVE_EXTRACTION, checksum_status)
 
         if app_root is not None and _onedir_bundle_root(launcher) is not None:
             handoff = Handoff(
@@ -394,12 +372,7 @@ def check_for_update() -> UpgradeResult:
             )
         except Exception as exc:
             print(f"[red]✖ Update failed: could not install the new app bundle: {exc}")
-            return UpgradeResult(
-                target_version=target_version,
-                outcome=CliUpgradeOutcome.FAILED,
-                error_category=CliUpgradeErrorCategory.INSTALLATION,
-                checksum_status=checksum_status,
-            )
+            return _failed_upgrade(target_version, CliUpgradeErrorCategory.INSTALLATION, checksum_status)
 
     print(f"[green]✔ Updated to {latest}.")
     print(f"  launcher: {result.destination}")
@@ -426,12 +399,7 @@ def _repair_managed_layout(layout: ManagedLayout, target_version: str, started_a
     except Exception as exc:
         shutil.rmtree(stage_dir, ignore_errors=True)
         print(f"[red]✖ Repair failed: could not stage the running payload: {exc}")
-        return UpgradeResult(
-            target_version=target_version,
-            outcome=CliUpgradeOutcome.FAILED,
-            error_category=CliUpgradeErrorCategory.INSTALLATION,
-            checksum_status=CliUpgradeChecksumStatus.NOT_REACHED,
-        )
+        return _failed_upgrade(target_version, CliUpgradeErrorCategory.INSTALLATION)
     handoff = Handoff(
         mode=HandoffMode.REPAIR,
         launcher_dir=layout.launcher_dir,
@@ -454,9 +422,4 @@ def _hand_off(handoff: Handoff, stage_dir: Path) -> UpgradeResult:
     except OSError as exc:
         print(f"[red]✖ Update failed: could not start the staged payload: {exc}")
         print("  If the temporary directory is mounted noexec, retry with TMPDIR pointing at an executable location.")
-        return UpgradeResult(
-            target_version=handoff.target_version,
-            outcome=CliUpgradeOutcome.FAILED,
-            error_category=CliUpgradeErrorCategory.INSTALLATION,
-            checksum_status=handoff.checksum_status,
-        )
+        return _failed_upgrade(handoff.target_version, CliUpgradeErrorCategory.INSTALLATION, handoff.checksum_status)

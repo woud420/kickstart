@@ -29,6 +29,12 @@ class ConfirmReader(Protocol):
         """Ask for a yes/no value."""
 
 
+def _optional_choice(prompt: PromptReader, label: str, choices: list[str], default: str = "none") -> str | None:
+    """Map the displayed default to the absence of an optional override."""
+    value = prompt.ask(label, choices=choices, default=default)
+    return None if value == default else value
+
+
 def prompt_for_missing_args(
     options: CreateCommandOptions,
     config: GeneratorConfig,
@@ -69,42 +75,14 @@ def prompt_for_missing_args(
             helm = confirm.ask("Use Helm scaffolding?", default=False)
 
     if project_type == "service" and interactive_mode:
-        if lang == "python":
-            if database is None:
-                database = prompt.ask("Database extension", choices=["none", "postgres"], default="none")
-                if database == "none":
-                    database = None
-
-            if cache is None:
-                cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
-                if cache == "none":
-                    cache = None
-
-            if auth is None:
-                auth = prompt.ask("Authentication extension", choices=["none", "jwt"], default="none")
-                if auth == "none":
-                    auth = None
-
-            if framework is None:
-                framework = prompt.ask("HTTP framework", choices=["fastapi", "minimal"], default="fastapi")
-                if framework == "fastapi":
-                    framework = None
-
-        if lang in ("typescript", "ts") and database is None:
-            database = prompt.ask("Database extension", choices=["none", "postgres"], default="none")
-            if database == "none":
-                database = None
-
-        if lang == "rust":
-            if cache is None:
-                cache = prompt.ask("Cache extension", choices=["none", "redis"], default="none")
-                if cache == "none":
-                    cache = None
-
-            if auth is None:
-                auth = prompt.ask("Authentication extension", choices=["none", "jwt"], default="none")
-                if auth == "none":
-                    auth = None
+        if lang in ("python", "typescript", "ts") and database is None:
+            database = _optional_choice(prompt, "Database extension", ["none", "postgres"])
+        if lang in ("python", "rust") and cache is None:
+            cache = _optional_choice(prompt, "Cache extension", ["none", "redis"])
+        if lang in ("python", "rust") and auth is None:
+            auth = _optional_choice(prompt, "Authentication extension", ["none", "jwt"])
+        if lang == "python" and framework is None:
+            framework = _optional_choice(prompt, "HTTP framework", ["fastapi", "minimal"], default="fastapi")
 
     if project_type is None or name is None:
         raise MissingCreateArgumentsError(

@@ -180,14 +180,10 @@ class TemplateRegistry:
         self._templates[template.name] = template
         
         if template.language:
-            if template.language not in self._language_templates:
-                self._language_templates[template.language] = {}
-            self._language_templates[template.language][template.name] = template
+            self._language_templates.setdefault(template.language, {})[template.name] = template
         
         if template.project_type:
-            if template.project_type not in self._project_templates:
-                self._project_templates[template.project_type] = {}
-            self._project_templates[template.project_type][template.name] = template
+            self._project_templates.setdefault(template.project_type, {})[template.name] = template
     
     def get_template(self, name: str, language: str | None = None) -> TemplateInfo | None:
         """Get template information by name.
@@ -217,7 +213,7 @@ class TemplateRegistry:
             Dictionary of template name to template info
         """
         templates: dict[str, TemplateInfo] = {}
-        
+
         # Add language-specific templates
         if language in self._language_templates:
             templates.update(self._language_templates[language])

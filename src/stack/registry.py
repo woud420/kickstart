@@ -16,6 +16,14 @@ from src.utils.errors import LanguageNotSupportedError
 from src.utils.types import TemplatePathConfig
 
 
+def _required_profile[P: Profile](profiles: Mapping[str, P], normalized: str, value: str, label: str) -> P:
+    profile = profiles.get(normalized)
+    if profile is None:
+        supported = ", ".join(sorted(profiles))
+        raise ValueError(f"Unsupported {label} '{value}'. Use one of: {supported}")
+    return profile
+
+
 class StackProfileRegistry:
     """Source of truth for stack support, aliases, and compatibility."""
 
@@ -121,41 +129,12 @@ class StackProfileRegistry:
         normalized_runtime = self.normalize_system_runtime(runtime)
         normalized_workspace_tooling = self.normalize_workspace_tooling(workspace_tooling)
 
-        cloud_profile = self.clouds.get(normalized_cloud)
-        if cloud_profile is None:
-            raise ValueError(
-                "Unsupported provider target '{cloud}'. Use one of: {supported}".format(
-                    cloud=cloud,
-                    supported=", ".join(sorted(self.clouds)),
-                )
-            )
-
-        knowledge_profile = self.knowledge.get(normalized_knowledge)
-        if knowledge_profile is None:
-            raise ValueError(
-                "Unsupported knowledge scaffold '{knowledge}'. Use one of: {supported}".format(
-                    knowledge=knowledge,
-                    supported=", ".join(sorted(self.knowledge)),
-                )
-            )
-
-        workspace_profile = self.workspace_tooling.get(normalized_workspace_tooling)
-        if workspace_profile is None:
-            raise ValueError(
-                "Unsupported system workspace tooling '{workspace_tooling}'. Use one of: {supported}".format(
-                    workspace_tooling=workspace_tooling,
-                    supported=", ".join(sorted(self.workspace_tooling)),
-                )
-            )
-
-        runtime_profile = self.system_runtimes.get(normalized_runtime)
-        if runtime_profile is None:
-            raise ValueError(
-                "Unsupported system runtime profile '{runtime}'. Use one of: {supported}".format(
-                    runtime=runtime,
-                    supported=", ".join(sorted(self.system_runtimes)),
-                )
-            )
+        cloud_profile = _required_profile(self.clouds, normalized_cloud, cloud, "provider target")
+        knowledge_profile = _required_profile(self.knowledge, normalized_knowledge, knowledge, "knowledge scaffold")
+        workspace_profile = _required_profile(
+            self.workspace_tooling, normalized_workspace_tooling, workspace_tooling, "system workspace tooling"
+        )
+        runtime_profile = _required_profile(self.system_runtimes, normalized_runtime, runtime, "system runtime profile")
 
         artifact_tool, artifact_label = self._system_artifacts(runtime_profile, helm=helm)
         return SystemSelection(
@@ -208,9 +187,6 @@ class StackProfileRegistry:
         if runtime_profile.uses_kubernetes:
             return ("helm", "Helm") if helm else ("kustomize", "Kustomize")
         return "wrangler", "Wrangler"
-
-    def _monorepo_artifacts(self, runtime_profile: RuntimeProfile, *, helm: bool) -> tuple[str, str]:
-        return self._system_artifacts(runtime_profile, helm=helm)
 
     def _normalize(self, value: str, profiles: Mapping[str, Profile]) -> str:
         candidate = value.strip().lower()
