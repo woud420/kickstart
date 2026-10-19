@@ -1,12 +1,13 @@
 import { commandExamples } from "../site/content";
+import { exampleTree, formatCommand, renderOutputTreeHtml } from "../site/format";
 
 const examples = Object.fromEntries(
   commandExamples.map((example) => [
     example.key,
     {
       command: example.command,
-      components: example.components,
-      output: example.output.map((file) => `./${file}`).join("\n"),
+      display: formatCommand(example.command),
+      outputHtml: renderOutputTreeHtml(exampleTree(example)),
       summary: example.summary,
       title: example.title,
     },
@@ -15,64 +16,104 @@ const examples = Object.fromEntries(
 
 export const siteScript = `
 const examples = ${JSON.stringify(examples)};
-const buttons = Array.from(document.querySelectorAll(".pick"));
+const tabs = Array.from(document.querySelectorAll(".pick"));
+const panel = document.querySelector("#example-panel");
 const command = document.querySelector("#command");
 const title = document.querySelector("#command-title");
 const outputTree = document.querySelector("#output-tree");
 const summary = document.querySelector("#example-summary");
-const componentMap = document.querySelector("#component-map");
-const copy = document.querySelector(".copy");
+const componentMaps = Array.from(document.querySelectorAll("#component-map [data-example]"));
+const copyStatus = document.querySelector("#copy-status");
 
-function renderComponents(components) {
-  componentMap.replaceChildren();
-  components.forEach((component) => {
-    const node = document.createElement("article");
-    const heading = document.createElement("h3");
-    const body = document.createElement("p");
-    node.className = "component-node";
-    heading.textContent = component.label;
-    body.textContent = component.detail;
-    node.append(heading, body);
-    componentMap.append(node);
-  });
-}
-
-function selectExample(key) {
+function selectExample(key, focusTab = false) {
   const example = examples[key];
-  const activeButton = buttons.find((button) => button.getAttribute("data-command") === key);
-  if (!example || !activeButton) {
-    return;
+  const activeTab = tabs.find((tab) => tab.getAttribute("data-command") === key);
+  if (!example || !activeTab) {
+    return false;
   }
 
-  buttons.forEach((button) => {
-    button.classList.remove("active");
-    button.setAttribute("aria-selected", "false");
+  tabs.forEach((tab) => {
+    const isActive = tab === activeTab;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+    tab.tabIndex = isActive ? 0 : -1;
   });
-  activeButton.classList.add("active");
-  activeButton.setAttribute("aria-selected", "true");
+  panel.setAttribute("aria-labelledby", activeTab.id);
   title.textContent = example.title;
-  command.textContent = example.command;
-  outputTree.textContent = example.output;
-  outputTree.scrollTop = 0;
+  command.textContent = example.display;
+  command.setAttribute("data-copy", example.command);
+  // outputHtml is escaped server-side from content.ts; it only adds spans.
+  outputTree.innerHTML = example.outputHtml;
   summary.textContent = example.summary;
-  renderComponents(example.components);
+  componentMaps.forEach((map) => {
+    map.classList.toggle("is-active", map.getAttribute("data-example") === key);
+  });
+  if (focusTab) {
+    activeTab.focus();
+  }
+  return true;
 }
 
-buttons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const key = button.getAttribute("data-command");
-    selectExample(key);
+function activate(tab, focusTab) {
+  const key = tab.getAttribute("data-command");
+  if (selectExample(key, focusTab)) {
     window.history.replaceState(null, "", "#" + key);
+  }
+}
+
+tabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => activate(tab, false));
+  tab.addEventListener("keydown", (event) => {
+    const last = tabs.length - 1;
+    const targets = {
+      ArrowRight: index === last ? 0 : index + 1,
+      ArrowLeft: index === 0 ? last : index - 1,
+      Home: 0,
+      End: last,
+    };
+    const target = targets[event.key];
+    if (target === undefined) {
+      return;
+    }
+    event.preventDefault();
+    activate(tabs[target], true);
   });
 });
 
 selectExample(window.location.hash.slice(1));
 
-copy.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(command.textContent);
-  copy.textContent = "copied";
-  window.setTimeout(() => {
-    copy.textContent = "copy";
-  }, 1200);
+const resetTimers = new WeakMap();
+
+async function copyFrom(button) {
+  const source = document.getElementById(button.getAttribute("data-copy-target"));
+  if (!source) {
+    return;
+  }
+
+  const text = source.getAttribute("data-copy") ?? source.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = "copied";
+    button.setAttribute("data-state", "copied");
+    copyStatus.textContent = "Copied to clipboard.";
+  } catch {
+    window.getSelection()?.selectAllChildren(source);
+    button.textContent = "selected";
+    button.setAttribute("data-state", "selected");
+    copyStatus.textContent = "The browser blocked the clipboard. The command is selected so you can copy it.";
+  }
+
+  window.clearTimeout(resetTimers.get(button));
+  resetTimers.set(
+    button,
+    window.setTimeout(() => {
+      button.textContent = "copy";
+      button.removeAttribute("data-state");
+    }, 1600),
+  );
+}
+
+document.querySelectorAll("[data-copy-target]").forEach((button) => {
+  button.addEventListener("click", () => copyFrom(button));
 });
 `;

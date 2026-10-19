@@ -11,6 +11,7 @@ export interface CommandExample {
 export interface GeneratedComponent {
   label: string;
   detail: string;
+  agent?: boolean;
 }
 
 export interface PositioningPoint {
@@ -37,6 +38,14 @@ export const defaultProjectMeta: ProjectMeta = {
   supportedFrom: "0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
   releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.5",
+};
+
+// Every example writes the same agent-facing files; the map names them so
+// the "for agents" claim has a node of its own.
+const agentContract: GeneratedComponent = {
+  label: "Agent contract",
+  detail: "AGENTS.md, CLAUDE.md, and .kickstart/scaffold.json describe layout, commands, and boundaries.",
+  agent: true,
 };
 
 export const commandExamples: CommandExample[] = [
@@ -91,6 +100,7 @@ export const commandExamples: CommandExample[] = [
         label: "Container boundary",
         detail: "Dockerfile builds the app; services are explicit.",
       },
+      agentContract,
     ],
   },
   {
@@ -129,6 +139,7 @@ export const commandExamples: CommandExample[] = [
         label: "Verification",
         detail: "Vitest and TypeScript scripts.",
       },
+      agentContract,
     ],
   },
   {
@@ -183,6 +194,7 @@ export const commandExamples: CommandExample[] = [
         label: "CI contract",
         detail: "Workflows define build/test/deploy.",
       },
+      agentContract,
     ],
   },
   {
@@ -219,6 +231,7 @@ export const commandExamples: CommandExample[] = [
         label: "Review notes",
         detail: "docs/ explains structure, contracts, and operations.",
       },
+      agentContract,
     ],
   },
 ];
@@ -257,13 +270,13 @@ export const releaseNotes: ReleaseNote[] = [
   {
     version: "0.4.5",
     title: "Staged self-upgrades and legacy layout repair",
-    body: "Managed installs are never replaced from inside their own running payload: kickstart upgrade activates every payload through a staged process handoff, repairs the nested layout older updaters left behind, and refuses self-destructive reinstalls. Import cycles are gone from kickstart and from generated Python services.",
+    body: "Managed installs are never replaced from inside their own running payload: `kickstart upgrade` activates every payload through a staged process handoff, repairs the nested layout older updaters left behind, and refuses self-destructive reinstalls. Import cycles are gone from kickstart and from generated Python services.",
     highlights: [
-      "kickstart upgrade stages the payload outside the app root, hands off to it to replace <app_root>/current with rollback, then hands off to the activated launcher, which cleans up and reports the single result.",
-      "A payload nested under <app_root>/current/.kickstart by a pre-v0.4.4 updater is repaired even when no newer release exists; the public launcher path is preserved and the same-version repair reports the repaired telemetry outcome.",
-      "kickstart install --force refuses to run from a payload nested inside its own destination instead of deleting itself, and points at kickstart upgrade.",
-      "Upgrading from v0.4.4 still runs the old in-process updater: the swap completes, the old process may exit non-zero, and a second kickstart upgrade verifies or repairs the layout.",
-      "Generated Python services import the in-memory repository from model.repository, and src.model.dto and src.stack no longer re-export submodule names.",
+      "`kickstart upgrade` stages the payload outside the app root, hands off to it to replace `<app_root>/current` with rollback, then hands off to the activated launcher, which cleans up and reports the single result.",
+      "A payload nested under `<app_root>/current/.kickstart` by a pre-v0.4.4 updater is repaired even when no newer release exists; the public launcher path is preserved and the same-version repair reports the repaired telemetry outcome.",
+      "`kickstart install --force` refuses to run from a payload nested inside its own destination instead of deleting itself, and points at `kickstart upgrade`.",
+      "Upgrading from v0.4.4 still runs the old in-process updater: the swap completes, the old process may exit non-zero, and a second `kickstart upgrade` verifies or repairs the layout.",
+      "Generated Python services import the in-memory repository from `model.repository`, and `src.model.dto` and `src.stack` no longer re-export submodule names.",
     ],
   },
   {
@@ -271,10 +284,10 @@ export const releaseNotes: ReleaseNote[] = [
     title: "Managed docs, catalog export, and reliable self-upgrades",
     body: "Adds read-only repository inspection and deterministic catalog export, introduces data-minimized usage feedback with clear opt-outs, and makes installed upgrades converge safely on one managed layout.",
     highlights: [
-      "Generated documentation now uses typed projections and ownership fences; kickstart plan reports managed-doc drift without modifying user-owned content, and adopt --check distinguishes conformant from managed repos.",
-      "kickstart export backstage creates and refreshes deterministic, fenced catalog-info.yaml while preserving human-owned fields.",
+      "Generated documentation now uses typed projections and ownership fences; `kickstart plan` reports managed-doc drift without modifying user-owned content, and `adopt --check` distinguishes conformant from managed repos.",
+      "`kickstart export backstage` creates and refreshes deterministic, fenced `catalog-info.yaml` while preserving human-owned fields.",
       "Eligible release commands use default-on pseudonymous usage feedback through a closed, data-minimized contract; persistent and environment-level opt-outs always win.",
-      "kickstart upgrade repairs older nested payloads, preserves one stable launcher and app root across repeated upgrades, and stages bundle replacement with rollback.",
+      "`kickstart upgrade` repairs older nested payloads, preserves one stable launcher and app root across repeated upgrades, and stages bundle replacement with rollback.",
       "Release and evaluation automation now detects stranded versions and verifies deployed website parity before reporting success.",
     ],
   },
@@ -284,10 +297,10 @@ export const releaseNotes: ReleaseNote[] = [
     body: "A repo-quality release: the web sandbox bootstraps itself, the eval suite runs from one tiered entrypoint with a regression guard on generated weight, and CI now publishes coverage and status badges.",
     highlights: [
       "A SessionStart hook bootstraps the Claude Code on the web sandbox (Python 3.13 + Bun) so checks work immediately.",
-      "scripts/run_evals.py --tier smoke|pr|full runs the whole eval suite from one entrypoint with one summary table.",
+      "`scripts/run_evals.py --tier smoke|pr|full` runs the whole eval suite from one entrypoint with one summary table.",
       "Scaffold-weight regression baselines fail any template change that bloats generated output or drops files.",
       "Test coverage is measured (88.1%) and published to Codecov; the README leads with CI, release, and coverage badges.",
-      "Docs and the kickstart skill standardized scratch paths on /tmp for Linux portability.",
+      "Docs and the kickstart skill standardized scratch paths on `/tmp` for Linux portability.",
     ],
   },
   {
@@ -295,9 +308,9 @@ export const releaseNotes: ReleaseNote[] = [
     title: "Trustworthy releases, leaner manifests, adopt preview",
     body: "Installed binaries report the release they came from, the release pipeline runs green end to end, and generated metadata got cheaper for agents to read.",
     highlights: [
-      "kickstart version reports the released version, gated by a pyproject/runtime version-sync check.",
+      "`kickstart version` reports the released version, gated by a pyproject/runtime version-sync check.",
       "Trustworthy CLI: validated project names, non-zero exit codes on every failure, no silent option swallowing.",
-      "kickstart adopt --check inspects existing repos against the scaffold standard (read-only, --json for agents).",
+      "`kickstart adopt --check` inspects existing repos against the scaffold standard (read-only, `--json` for agents).",
       "Generated projects ship real tests (health route, JWT, client behavior) and a human-oriented architecture map, enforced by eval gates in CI and a weekly live-toolchain run.",
     ],
   },
@@ -307,7 +320,7 @@ export const releaseNotes: ReleaseNote[] = [
     body: "Generated projects behave the way their scaffold contract says across languages, and binaries install with one command.",
     highlights: [
       "Every generated Makefile exposes the same canonical verbs across Python, Rust, Go, TypeScript, and C++.",
-      "Python service containers install runtime dependencies, expose their port, and bind to 0.0.0.0.",
+      "Python service containers install runtime dependencies, expose their port, and bind to `0.0.0.0`.",
       "Generated CI consumes pinned toolchain versions from a single source of truth.",
       "One-line install script with SHA-256 verification; binary matrix focused on py3.14 for Linux x64/arm64 and macOS arm64.",
     ],
@@ -322,4 +335,18 @@ export const releaseNotes: ReleaseNote[] = [
       "Typed specs, layout plans, stack registry, template plans, and agent-readable scaffold docs.",
     ],
   },
+];
+
+// Mirrors the README "Install" section; website/tests/content.test.ts fails
+// when these drift from it.
+export const installCommand =
+  "curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh | bash";
+
+export const installPlatforms = "Linux x64/arm64 · macOS arm64";
+
+export const installNotes: string[] = [
+  "Verifies the release archive's SHA-256 checksum, puts the launcher at `~/.local/bin/kickstart`, and offers to add it to your `PATH`.",
+  "Other platforms, including Intel macOS: `pipx install git+https://github.com/woud420/kickstart`. The PyPI name `kickstart` belongs to an unrelated project.",
+  "Release builds send pseudonymous usage telemetry by default; `kickstart telemetry disable` opts out.",
+  "Update in place with `kickstart upgrade`.",
 ];
