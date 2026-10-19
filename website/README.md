@@ -38,13 +38,16 @@ resources, so ephemeral runner state cannot orphan infrastructure. Setting the
 optional `ALCHEMY_PASSWORD` and `ALCHEMY_STATE_TOKEN` repository secrets makes
 `alchemy.run.ts` use the persistent Cloudflare state store instead.
 
-Production deploys bind the Worker to `kickstart-cli.org` through Alchemy. The
-release workflow reads `CLOUDFLARE_ACCOUNT_ID` from repository variables and
+Production deploys bind the Worker to `kickstart-cli.org` and
+`www.kickstart-cli.org` through Alchemy; the Worker answers `www` with a 308
+redirect to the apex, keeping path and query. The release workflow reads `CLOUDFLARE_ACCOUNT_ID` from repository variables and
 `CLOUDFLARE_WEBSITE_API_TOKEN` from repository secrets, then exposes them to
 Alchemy as the Cloudflare environment variables it expects.
 
 The Cloudflare token needs `Workers Scripts: Write` on the website's Cloudflare
 account. It also needs a domain-scoped policy for `kickstart-cli.org` with
-`Zone: Read` so Alchemy can infer the zone for the custom domain binding.
+`Zone: Read` so Alchemy can infer the zone for the custom domain bindings. The
+`www.kickstart-cli.org` custom domain lives in the same zone, so those zone
+permissions cover it too; no extra token scope is needed.
 `Workers Routes: Edit` is only needed if the website switches from a Worker
 custom domain to route-pattern deployment.

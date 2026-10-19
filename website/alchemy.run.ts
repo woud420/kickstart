@@ -43,9 +43,14 @@ const app = await alchemy("kickstart-site", {
 });
 
 const workerName = workerNameForStage(config.serviceName, app.stage);
+// www is bound to the same Worker so Cloudflare creates its DNS record;
+// the Worker answers it with a permanent redirect to the apex.
 const workerDomains =
   app.stage === "prod" && config.domain !== ""
-    ? [{ domainName: config.domain, adopt: true }]
+    ? [
+        { domainName: config.domain, adopt: true },
+        { domainName: `www.${config.domain}`, adopt: true },
+      ]
     : undefined;
 
 if (app.stage === "prod" && config.domain !== "") {
@@ -97,7 +102,7 @@ export const worker = await Worker("website", {
 
 console.log(`Configured ${workerName} for v${config.version}`);
 if (workerDomains !== undefined) {
-  console.log(`Configured custom domain ${config.domain}`);
+  console.log(`Configured custom domains ${workerDomains.map((domain) => domain.domainName).join(", ")}`);
 }
 
 await app.finalize();

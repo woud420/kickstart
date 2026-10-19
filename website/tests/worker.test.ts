@@ -51,6 +51,34 @@ describe("kickstart website worker", () => {
     );
   });
 
+  it("redirects www to the apex over HTTPS, keeping path and query", async () => {
+    const request = new Request("https://www.kickstart-cli.org/generate?kind=service") as Parameters<
+      typeof worker.fetch
+    >[0];
+
+    const response = await worker.fetch(request, defaultEnv);
+
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(
+      "https://kickstart-cli.org/generate?kind=service",
+    );
+    expect(response.headers.get("strict-transport-security")).toBeNull();
+  });
+
+  it("redirects HTTP www straight to the HTTPS apex in one hop", async () => {
+    const request = new Request("http://WWW.kickstart-cli.org/examples?v=1") as Parameters<
+      typeof worker.fetch
+    >[0];
+
+    const response = await worker.fetch(request, defaultEnv);
+
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(
+      "https://kickstart-cli.org/examples?v=1",
+    );
+    expect(response.headers.get("strict-transport-security")).toBeNull();
+  });
+
   it("adds HSTS on the production hostname", async () => {
     const request = new Request("https://kickstart-cli.org/") as Parameters<typeof worker.fetch>[0];
 
