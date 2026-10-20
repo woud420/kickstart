@@ -40,7 +40,8 @@ optional `ALCHEMY_PASSWORD` and `ALCHEMY_STATE_TOKEN` repository secrets makes
 
 Production deploys bind the Worker to `kickstart-cli.org` and
 `www.kickstart-cli.org` through Alchemy; the Worker answers `www` with a 308
-redirect to the apex, keeping path and query. The release workflow reads `CLOUDFLARE_ACCOUNT_ID` from repository variables and
+redirect to the apex, keeping path and query. The release workflow reads
+`CLOUDFLARE_ACCOUNT_ID` from repository variables and
 `CLOUDFLARE_WEBSITE_API_TOKEN` from repository secrets, then exposes them to
 Alchemy as the Cloudflare environment variables it expects.
 
@@ -51,3 +52,16 @@ account. It also needs a domain-scoped policy for `kickstart-cli.org` with
 permissions cover it too; no extra token scope is needed.
 `Workers Routes: Edit` is only needed if the website switches from a Worker
 custom domain to route-pattern deployment.
+
+Zone security settings (SSL strict, Always Use HTTPS, Automatic HTTPS
+Rewrites, Bot Fight Mode, AI bot blocking) are declared in `alchemy.run.ts`
+but are not applied by release deploys, because they need much broader
+rights than the release token should hold. Alchemy's `Zone` resource
+creates-or-adopts the zone, which needs account-wide `Zone: Edit`, plus
+`Zone Settings: Edit` and `Bot Management: Edit` on `kickstart-cli.org`. To
+apply or change them, deploy once from a trusted machine with a token that
+has those rights:
+
+```bash
+KICKSTART_MANAGE_ZONE=1 CLOUDFLARE_API_TOKEN=<operator token> bun run deploy:release
+```

@@ -53,7 +53,15 @@ const workerDomains =
       ]
     : undefined;
 
-if (app.stage === "prod" && config.domain !== "") {
+// Zone hardening is opt-in, not part of every release deploy. Alchemy's
+// Zone resource always POSTs /zones under ephemeral CI state, which needs
+// account-wide `Zone: Edit` plus `Zone Settings: Edit` and
+// `Bot Management: Edit`. The release token is scoped to Workers and
+// `Zone: Read` and must stay that way, so CI skips this. Apply it with an
+// operator token and KICKSTART_MANAGE_ZONE=1 (see README.md).
+const manageZone = process.env.KICKSTART_MANAGE_ZONE === "1";
+
+if (app.stage === "prod" && config.domain !== "" && manageZone) {
   await Zone("zone-security", {
     name: config.domain,
     type: "full",
@@ -103,6 +111,11 @@ export const worker = await Worker("website", {
 console.log(`Configured ${workerName} for v${config.version}`);
 if (workerDomains !== undefined) {
   console.log(`Configured custom domains ${workerDomains.map((domain) => domain.domainName).join(", ")}`);
+  console.log(
+    manageZone
+      ? `Applied zone security settings to ${config.domain}`
+      : "Left zone security settings unchanged (set KICKSTART_MANAGE_ZONE=1 to apply them)",
+  );
 }
 
 await app.finalize();
