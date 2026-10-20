@@ -17,7 +17,11 @@ source truthfully.
 - Copy and data: `website/src/site/content.ts` — `defaultProjectMeta`
   (version metadata), `releaseNotes` (the changelog), `commandExamples`
   (the showcased scaffolds), positioning points.
-- HTML rendering: `website/src/site/html.ts`.
+- HTML rendering: `website/src/site/html.ts`; example presentation (the
+  `tree`-style generated shape and one-flag-per-line commands) lives in
+  `website/src/site/format.ts`.
+- Install copy (`installCommand`, `installNotes`) in `content.ts` mirrors the
+  README "Install" section; `website/tests/content.test.ts` fails if they drift.
 - Deploy-time metadata: injected from `pyproject.toml` by
   `website/scripts/render-release-config.ts`; local dev fallbacks live in
   `website/wrangler.toml`.

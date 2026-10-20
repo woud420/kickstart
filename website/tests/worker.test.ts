@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import worker from "../src/index";
-import { defaultProjectMeta } from "../src/site/content";
+import { commandExamples, defaultProjectMeta, installCommand, releaseNotes } from "../src/site/content";
 
 const defaultEnv = {
   SERVICE_NAME: "kickstart-site",
@@ -187,11 +187,12 @@ describe("kickstart website worker", () => {
     expect(response.headers.get("content-type")).toContain("application/javascript");
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(script).toContain("navigator.clipboard");
-    expect(script).toContain('"output":"./Dockerfile\\n./Makefile');
-    expect(script).not.toContain('"output":"./Dockerfile\\\\n./Makefile');
+    expect(script).toContain('"outputHtml":"api/\\n├── Dockerfile\\n├── Makefile');
+    expect(script).not.toContain('"outputHtml":"api/\\\\n├── Dockerfile');
+    expect(script).toContain('├── <span class=\\"agent-path\\">AGENTS.md</span>');
     expect(script).toContain("kickstart create system platform --cloud aws --runtime kubernetes --knowledge none");
-    expect(script).toContain("docs/agents/recommended-agents.md");
-    expect(script).not.toContain("docs/agents/recommended.md");
+    expect(script).toContain('└── docs/ <span class=\\"tree-count\\">(5 files)</span>');
+    expect(script).not.toContain("agents/recommended.md");
     expect(script).toContain("tools/");
     expect(script).not.toContain("config/tsconfig/base.json");
     expect(script).not.toContain("tsconfig.base.json");
@@ -215,9 +216,54 @@ describe("kickstart website worker", () => {
     const html = await response.text();
 
     expect(response.status).toBe(200);
+    expect(html).toContain('├── src/ <span class="tree-count">(7 files)</span>');
     expect(html).toContain("src/clients/cache.py");
     expect(html).toContain("Redis client");
     expect(html).toContain("services are explicit");
     expect(html).toContain("component map");
+  });
+
+  it("marks the agent contract in the tree and the component map", async () => {
+    const request = new Request("https://example.test/") as Parameters<typeof worker.fetch>[0];
+
+    const html = await (await worker.fetch(request, defaultEnv)).text();
+
+    expect(html).toContain('├── <span class="agent-path">.kickstart/scaffold.json</span>');
+    expect(html).toContain('├── <span class="agent-path">CLAUDE.md</span>');
+    expect(html).toContain('<li class="component-node is-agent">');
+    expect(html).toContain("agent contract");
+  });
+
+  it("leads with a copyable install command", async () => {
+    const request = new Request("https://example.test/") as Parameters<typeof worker.fetch>[0];
+
+    const html = await (await worker.fetch(request, defaultEnv)).text();
+
+    expect(html).toContain(`<code id="install-command" data-copy="${installCommand}">`);
+    expect(html).toContain('data-copy-target="install-command"');
+    expect(html).toContain('id="install"');
+  });
+
+  it("wires the example tabs to one labelled tab panel", async () => {
+    const request = new Request("https://example.test/") as Parameters<typeof worker.fetch>[0];
+
+    const html = await (await worker.fetch(request, defaultEnv)).text();
+
+    expect(html.match(/role="tab"/g)).toHaveLength(commandExamples.length);
+    expect(html.match(/aria-controls="example-panel"/g)).toHaveLength(commandExamples.length);
+    expect(html).toContain('id="example-panel" role="tabpanel" aria-labelledby="tab-service"');
+    expect(html.match(/tabindex="0"/g)).toHaveLength(1);
+    expect(html.match(/<ul class="component-flow[^"]*" data-example=/g)).toHaveLength(commandExamples.length);
+    expect(html.match(/component-flow is-active/g)).toHaveLength(1);
+  });
+
+  it("opens only the newest release note", async () => {
+    const request = new Request("https://example.test/") as Parameters<typeof worker.fetch>[0];
+
+    const html = await (await worker.fetch(request, defaultEnv)).text();
+
+    expect(html.match(/<details class="release-note"/g)).toHaveLength(releaseNotes.length);
+    expect(html.match(/<details class="release-note" open>/g)).toHaveLength(1);
+    expect(html.indexOf("<details class=\"release-note\" open>")).toBeLessThan(html.indexOf(`v${releaseNotes[1]?.version}`));
   });
 });

@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { versionFromPyproject } from "../scripts/render-release-config";
-import { defaultProjectMeta, releaseNotes } from "../src/site/content";
+import { defaultProjectMeta, installCommand, installNotes, releaseNotes } from "../src/site/content";
 
 describe("release notes content", () => {
   it("carries a changelog entry for the current package version", () => {
@@ -28,6 +30,25 @@ describe("release notes content", () => {
       expect(entry.title).not.toBe("");
       expect(entry.body).not.toBe("");
       expect(entry.highlights.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("install content", () => {
+  const readme = readFileSync("../README.md", "utf8");
+
+  it("advertises the README one-line installer", () => {
+    expect(readme).toContain(installCommand);
+  });
+
+  it("only quotes commands the README documents", () => {
+    const commands = installNotes
+      .flatMap((note) => note.split("`").filter((_, index) => index % 2 === 1))
+      .filter((span) => /^(kickstart|pipx) /.test(span));
+
+    expect(commands.length).toBeGreaterThan(0);
+    for (const command of commands) {
+      expect(readme).toContain(command);
     }
   });
 });
