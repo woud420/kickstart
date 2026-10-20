@@ -1,5 +1,7 @@
 from pathlib import Path
 import re
+import runpy
+import sys
 
 import pytest
 
@@ -44,3 +46,27 @@ def test_release_body_links_the_tag_and_keeps_install_short() -> None:
 def test_release_body_rejects_non_release_tags() -> None:
     with pytest.raises(ValueError, match="not a stable release tag"):
         release_body(CHANGELOG, "v0.5.0-rc.1", "woud420/kickstart")
+
+
+@pytest.mark.parametrize("custom_changelog", [False, True], ids=["default-changelog", "explicit-changelog"])
+def test_cli_writes_release_notes_and_creates_output_directories(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    custom_changelog: bool,
+) -> None:
+    changelog = "## v1.2.3 - 2026-01-01\n\nRelease café summary.\nSecond line.\n\n### Fixed\n\n- x\n"
+    changelog_path = tmp_path / ("release-changelog.md" if custom_changelog else "CHANGELOG.md")
+    changelog_path.write_text(changelog, encoding="utf-8")
+    output = tmp_path / "artifacts" / "nested" / "release-body.md"
+    script = REPO_ROOT / "ci" / "release_notes.py"
+    args = [str(script), "--tag", "v1.2.3", "--repository", "example/project", "--output", str(output)]
+    if custom_changelog:
+        args.extend(["--changelog", str(changelog_path)])
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", args)
+
+    runpy.run_path(str(script), run_name="__main__")
+
+    assert output.read_text(encoding="utf-8") == release_body(changelog, "v1.2.3", "example/project")
+    assert capsys.readouterr().out == f"Wrote {output} for v1.2.3\n"
