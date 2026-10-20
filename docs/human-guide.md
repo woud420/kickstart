@@ -68,6 +68,17 @@ fence is never compared or touched. `kickstart export backstage REPO` derives
 a `catalog-info.yaml` the same way (derived fields fenced and refreshed;
 owner and lifecycle are yours after the first emit).
 
+`kickstart export external-io REPO --input declaration.json` exports a declared
+external I/O map after checking its cited files and line ranges; add
+`--format markdown` for a readable copy. It needs no manifest. See
+[External I/O Export](contracts/external-io-export.md).
+
+`kickstart migrate REPO` prints a read-only plan to move a schema 3.x manifest
+to 4.0, which fresh generation emits; `--apply` writes it. See
+[Manifest Migration](contracts/manifest-migration.md).
+`kickstart plan REPO --ownership` shows the recorded ownership envelope; see
+[Scaffold Ownership](contracts/scaffold-ownership.md).
+
 ## Library And CLI Options
 
 Python and Rust are the supported library targets. Python, Rust, and TypeScript are the supported CLI targets.
@@ -87,6 +98,9 @@ CLI scaffolds use the same agent-facing architecture across languages, with fram
 Rust CLIs keep only `src/main.rs` at the source root. Python includes `src/__init__.py` and `src/main.py`. TypeScript follows oclif and keeps `src/base-command.ts` as the only direct source-root adapter. Other languages fail loudly until they have complete package setup, source files, and validation commands.
 
 ## System Options
+
+`system` is the aggregate project type. `mono` and `monorepo` still work as
+legacy aliases, but docs and examples use `system`.
 
 Provider target:
 

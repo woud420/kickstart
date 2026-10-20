@@ -30,6 +30,8 @@ describe("release notes content", () => {
       expect(entry.title).not.toBe("");
       expect(entry.body).not.toBe("");
       expect(entry.highlights.length).toBeGreaterThan(0);
+      // Curated highlights, not a changelog: details belong in CHANGELOG.md.
+      expect(entry.highlights.length).toBeLessThanOrEqual(3);
     }
   });
 });

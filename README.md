@@ -6,229 +6,66 @@
 [![codecov](https://codecov.io/gh/woud420/kickstart/branch/master/graph/badge.svg)](https://codecov.io/gh/woud420/kickstart)
 [![GitHub release](https://img.shields.io/github/v/release/woud420/kickstart)](https://github.com/woud420/kickstart/releases/latest)
 
-kickstart is a scaffolding tool for generating project structure, services, workers, frontends, libraries, CLIs, and systems.
+kickstart generates starter repos for services, frontends, libraries, CLIs and
+multi-project systems. Each one comes with its layout, typed language defaults,
+Docker, Kubernetes or Cloudflare files, standard `make` targets, docs, and an
+`AGENTS.md` that coding agents can follow.
 
-The goal is to eliminate the repeated setup work that humans and agents otherwise redo at the start of every project: directories, templates, Docker/Kubernetes/Cloudflare files, typed language defaults, basic docs, and standard commands.
-
-It is intentionally not a product architect. Use it to create a deterministic starting repo, then add the domain model, APIs, security choices, and tests that belong to the product.
-
-Release history lives in [CHANGELOG.md](CHANGELOG.md) and on [kickstart-cli.org](https://kickstart-cli.org).
+It is not a product architect. It gives you a deterministic starting repo; the
+domain model, APIs and tests are yours to add.
 
 ## Install
-
-One-line install of the latest release. Drops a launcher in `~/.local/bin/kickstart` and the binary payload in `~/.local/share/kickstart` (Linux x64/arm64 and macOS arm64; other platforms install from source, below):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh | bash
 ```
 
-The script downloads the matching binary archive for your platform from a GitHub release, verifies its SHA-256 checksum, extracts it under the binary directory, and offers to append a managed `PATH` block to your shell rc file. Knobs:
+This installs a SHA-256-verified binary to `~/.local/bin/kickstart` on Linux
+(x64, arm64) and macOS (arm64). Elsewhere, use
+`pipx install git+https://github.com/woud420/kickstart`; the PyPI package named
+`kickstart` is an unrelated project. Update with `kickstart upgrade`.
+
+Release builds send pseudonymous usage telemetry by default.
+`kickstart telemetry disable` turns it off. The
+[install runbook](docs/operations/install-binaries.md) covers custom paths and
+uninstalling, and the [telemetry contract](docs/contracts/telemetry.md) lists
+exactly what is sent.
+
+## Quick start
 
 ```bash
-# Install into /usr/local without touching shell rc files. Picks /usr/local/share/kickstart
-# for the binary payload automatically.
-curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh \
-  | KICKSTART_INSTALL_DIR=/usr/local/bin bash -s -- --no-path-update
-
-# Pin a specific release tag (replace v<TAG> with one from the Releases page).
-curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh \
-  | KICKSTART_VERSION=v<TAG> bash
+kickstart create service api --lang python --database postgres --auth jwt
+kickstart create service edge --lang typescript --runtime cloudflare-workers
+kickstart create cli ops-tool --lang rust
+kickstart create system platform --cloud aws --runtime kubernetes
+kickstart adopt path/to/repo --check   # check an existing repo against the standard
 ```
 
-Already pulled the binary archive from the Releases page? Extract it and use kickstart's own installer to lay out the launcher and configure `PATH`:
+## What it generates
 
-```bash
-tar -xzf kickstart-macos-arm64-py3.14.tar.gz
-./kickstart-macos-arm64-py3.14/kickstart install --update-path
-# Drops a symlink at ~/.local/bin/kickstart pointing at ~/.local/share/kickstart/current/kickstart
-# and edits ~/.zshrc, ~/.bash_profile, or ~/.config/fish/config.fish.
+- `service`: Python, TypeScript, Rust, C++ or Go backend. TypeScript and Rust can also target Cloudflare Workers.
+- `frontend`: React, TypeScript, Vite and Bun app.
+- `lib`: Python or Rust library.
+- `cli`: Python, Rust or TypeScript CLI.
+- `system`: language-neutral repo for apps, services, libs, tools and infrastructure.
 
-./kickstart-macos-arm64-py3.14/kickstart install --target /usr/local/bin --app-dir /usr/local/share/kickstart
-./kickstart-macos-arm64-py3.14/kickstart install --check                    # just report install/PATH status
-./kickstart-macos-arm64-py3.14/kickstart install --force                    # overwrite an existing install
-./kickstart-macos-arm64-py3.14/kickstart install --shell bash               # override $SHELL detection
-./kickstart-macos-arm64-py3.14/kickstart uninstall --clean-path             # remove launcher + binary payload, restore rc file
-```
+Every project also gets `AGENTS.md`, `CLAUDE.md`, `docs/` and
+`.kickstart/scaffold.json`.
 
-Refresh in place against the newest release once installed:
+## Docs
 
-```bash
-kickstart upgrade
-```
-
-On platforms without a binary archive (for example Intel macOS), install from source or from the wheel attached to each GitHub Release. Do **not** `pip install kickstart` — that PyPI name belongs to an unrelated, abandoned 2011 project:
-
-```bash
-pipx install git+https://github.com/woud420/kickstart          # from source
-pip install ./kickstart-<version>-py3-none-any.whl             # wheel from the Releases page
-```
-
-### Telemetry
-
-Release wheels and binary archives enable pseudonymous telemetry by default for eligible CLI commands. The first eligible event creates a random UUIDv4 in the user configuration directory; it remains stable across CLI upgrades. Events use closed, data-minimized property sets and never include project names, paths, command arguments, generated content, or arbitrary error text.
-
-Run `kickstart telemetry disable` to persist an opt-out. `kickstart telemetry status` is read-only and does not create an ID or send an event. To prevent an installer-invoked event before that preference exists, set `KICKSTART_TELEMETRY_DISABLED=1` or `DO_NOT_TRACK=1` for the install process; the binary installation runbook includes exact examples.
-
-A direct Git source install has no embedded capture configuration; delivery from one requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment. A token never overrides an opt-out. See the [telemetry contract](docs/contracts/telemetry.md) and [binary installation runbook](docs/operations/install-binaries.md) for the exact event allowlist and controls.
-
-## Get Started
-
-```bash
-poetry install
-make run
-```
-
-Create a service:
-
-```bash
-poetry run kickstart create service my-api --lang python
-```
-
-Create a Cloudflare Worker:
-
-```bash
-poetry run kickstart create service edge-api --lang typescript --runtime cloudflare-workers
-```
-
-Create a system root:
-
-```bash
-poetry run kickstart create system product-stack
-```
-
-Create a CLI:
-
-```bash
-poetry run kickstart create cli ops-tool --lang rust
-```
-
-Add Bun + Turbo workspace tooling when you want a TypeScript workspace at the system root:
-
-```bash
-poetry run kickstart create system product-stack --workspace-tooling bun-turbo
-```
-
-Check an existing repo against the scaffold standard (read-only; exit 0 = claimed level satisfied, 1 = gaps, 2 = usage error). Repos without a manifest are judged at Level 1 (conformant, vendor-neutral); a manifest claims Level 2 (managed):
-
-```bash
-poetry run kickstart adopt path/to/repo --check          # human report with achieved/claimed level
-poetry run kickstart adopt path/to/repo --check --json   # machine-readable, for agents and CI
-```
-
-Check the recorded scaffold envelope, including managed docs, Makefile targets and CI job identities (read-only):
-
-```bash
-poetry run kickstart drift path/to/repo
-poetry run kickstart drift path/to/repo --json
-```
-
-Exit 0 means the recorded scope passes, 1 means findings or unavailable ownership
-coverage, and 2 means a usage error. `adopt --check` includes the same drift report;
-recorded findings also make adoption fail. Legacy conformance checks still pass
-without ownership, with drift coverage explicitly unavailable. See the
-[drift contract](docs/contracts/scaffold-drift.md).
-
-Show how a repo's managed docs differ from what the current standard would render (read-only; exit 0 = in sync, 1 = findings, 2 = usage error):
-
-```bash
-poetry run kickstart plan path/to/repo                   # human report with diffs inside owned fences
-poetry run kickstart plan path/to/repo --json            # machine-readable, for agents and CI
-```
-
-Derive a Backstage catalog entry from the scaffold manifest (derived fields fenced and refreshed on re-export; owner/lifecycle stay user-owned after the first emit):
-
-```bash
-poetry run kickstart export backstage path/to/repo
-```
-
-
-Export a declared partial external I/O map after checking its source locations
-(read-only; no scaffold manifest is required):
-
-```bash
-poetry run kickstart export external-io path/to/repo --input declaration.json
-poetry run kickstart export external-io path/to/repo --input declaration.json --format markdown
-```
-
-The declaration supplies observations and explicit unknowns. The command checks
-JSON shape and citation files/ranges; source semantics remain caller-supplied.
-See the [external I/O contract](docs/contracts/external-io-export.md).
-
-## What It Generates
-
-- `service`: Python, TypeScript, Rust, C++, or Go backend service structure.
-- `frontend`: React, TypeScript, Vite, and Bun frontend app.
-- `lib`: Python or Rust library project.
-- `cli`: Python, Rust, or TypeScript CLI project with modular command/client/model/operation boundaries and framework-native command adapters.
-- `system`: language-neutral composition repo containing apps, services, libs, tools, infrastructure, docs, and agent metadata.
-
-## Major Choices
-
-- Preferred stack: Rust, TypeScript, Python, SQL, and C++.
-- Go is supported as a tolerated service target; Python and Rust are the first-class library targets, and Python, Rust, and TypeScript are first-class CLI targets.
-- CLI command adapters default to clap for Rust, Typer for Python, and oclif for TypeScript.
-- Rust is the preferred CLI delivery target for single-binary distribution and performance; Python and TypeScript still use their own professional CLI conventions instead of copying Rust's file layout.
-- Service execution models: containers by default, Cloudflare Workers when requested.
-- Implemented service extensions are intentionally narrow: Python/FastAPI container services support Postgres, Redis, and JWT; Rust container services support Redis and JWT; TypeScript container services support Postgres and JWT.
-- Python/FastAPI container services additionally support `--database sqlite`. The [SQLite contract](docs/contracts/sqlite-extension.md) describes file storage, explicit migrations and the generated operations guide; Rust and TypeScript support follows separately.
-- System provider targets: `multi`, `aws`, `gcp`, `cloudflare`, or `none`.
-- System platform profiles: `kubernetes`, `cloudflare-workers`, or `hybrid`.
-- System workspace tooling defaults to `none`; use `--workspace-tooling bun-turbo` for root `package.json`, Turbo, Bun, and shared TypeScript config.
-- Dockerfiles are image artifacts; Helm and Kustomize are Kubernetes artifact styles; Wrangler is the Cloudflare Worker artifact path.
-- Generated docs and `.kickstart/scaffold.json` are always created for agents and humans.
-- Knowledge adapters default to `none`; use `--knowledge obsidian`, `--knowledge backstage`, or `--knowledge both` only for external metadata.
-- `system` is the primary aggregate project type. Legacy `mono` and `monorepo` aliases remain for compatibility, but new docs and examples should use `system`.
-- `cloudflare-workers` is the canonical runtime name. Singular Worker spellings are accepted as aliases.
-- Cloudflare Containers are not implemented yet; they are reserved for a future scaffold.
-
-## Common Commands
-
-```bash
-poetry run kickstart create service my-api --lang python --database postgres --cache redis --auth jwt
-poetry run kickstart create service api-rs --lang rust --cache redis --auth jwt
-poetry run kickstart create service api-ts --lang typescript --database postgres --auth jwt
-poetry run kickstart create service local-api --lang python --database sqlite
-poetry run kickstart create service edge-rs --lang rust --runtime cloudflare-workers
-poetry run kickstart create frontend web
-poetry run kickstart create lib core-lib --lang python
-poetry run kickstart create cli ops-tool-py --lang python
-poetry run kickstart create cli ops-tool --lang rust
-poetry run kickstart create cli ops-tool-ts --lang typescript
-poetry run kickstart create system platform --cloud aws --runtime kubernetes --knowledge none
-poetry run kickstart create system web-platform --workspace-tooling bun-turbo
-```
-
-## More Docs
-
-- [Human Guide](docs/human-guide.md): options, project types, and how to build on top.
-- [Agent Guide](docs/agent-guide.md): compact, LLM-oriented generation contract.
-- [Agent Map](AGENTS.md): repo-local map for agents modifying kickstart itself.
-- [Scaffold Contract](docs/scaffold-contract.md): always-generated docs, metadata, and option vocabulary.
-- [CLI Framework Research](docs/decisions/cli-framework-research.md): decision record for clap, Typer, and oclif defaults.
-- [Local Evals](docs/operations/evals.md): scaffold matrix and generated-project validation commands.
-- [Contributing](docs/contributing.md): how humans should change the repo.
-- [Agent Contributing](docs/agent-contributing.md): how agents should safely modify the repo.
+- [Human guide](docs/human-guide.md): every option, and the inspection commands
+  (`adopt`, `drift`, `plan`, `export`, `migrate`).
+- [Agent guide](docs/agent-guide.md): the compact generation contract for agents.
+- [Scaffold contract](docs/scaffold-contract.md): what every project always gets.
+- [Changelog](CHANGELOG.md), also on [kickstart-cli.org](https://kickstart-cli.org).
 
 ## Development
 
 ```bash
+poetry install
 make check
-make package
-make binary
 ```
 
-kickstart supports Python `>=3.12,<3.15`. CI tests Python 3.12, 3.13, and 3.14 on Linux and macOS. Release builds attach Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz`) for `linux-x64`, `linux-arm64`, and `macos-arm64`; other platforms use the source/wheel install path in [Install](#install).
-
-Current local eval evidence is tracked in [Local Evals](docs/operations/evals.md). Reports are generated under `/tmp` or another scratch path and are not committed.
-
-
-Scaffold metadata readers support schemas 3.0, 3.1, 3.2 and 4.0. Fresh generation
-emits 4.0. `kickstart migrate <repo>` produces a read-only legacy migration plan;
-`--apply` explicitly writes the resolved manifest. See the
-[migration contract](docs/contracts/manifest-migration.md). The
-[schema-4 format contract](docs/contracts/scaffold-schema-4.md) documents the
-flattened extensions and Cloudflare Worker service profile.
-
-Inspect the persisted scaffold envelope with `kickstart plan <repo> --ownership`;
-[the ownership contract](docs/contracts/scaffold-ownership.md) explains seed
-exclusions, fence comparisons and the structural checks on co-owned artifacts.
+Supports Python 3.12 to 3.14. [AGENTS.md](AGENTS.md) maps the repo, and
+[contributing](docs/contributing.md) covers how to change it.

@@ -27,7 +27,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 - Release policy: `docs/release-policy.md`, enforced by `ci/release_policy.py`
 - Agent skills: `.agents/skills/` (`.claude/skills` is a symlink to it)
 - Agent daemons: `.agents/daemons/`
-- Claude Code specifics (skill discovery, hooks): `CLAUDE.md`
+- Claude Code wiring: the Claude Code section below (`CLAUDE.md` only imports this file)
 
 ## Current Model
 
@@ -70,6 +70,8 @@ Follow `docs/release-policy.md` (see the `cut-release` skill):
 
 - Bump `pyproject.toml` and `src/__init__.py:__version__` together; `make release-check TAG=vX.Y.Z` fails when they disagree.
 - Add the release entry to `CHANGELOG.md` and `website/src/site/content.ts`; website tests fail when the current version has no release note.
+- Open each `CHANGELOG.md` version section with a one-paragraph summary. `ci/release_notes.py` puts it at the top of the GitHub Release page, and the release job fails without it.
+- Keep website release notes to a title, one sentence, and at most three plain-language highlights; the details belong in `CHANGELOG.md`.
 - Release tags are stable semver only (`vX.Y.Z`), tagged on `master` after merge.
 
 ## Skills
@@ -82,4 +84,11 @@ Reusable agent workflows live in `.agents/skills/`, one directory per skill with
 - `backstage-catalog`: derive `catalog-info.yaml` from `.kickstart/scaffold.json` for Backstage registration.
 - `website-update`: update kickstart-cli.org content against the tests that enforce it.
 
-Keep skills agent-neutral and add new ones under `.agents/skills/`. Per-vendor discovery wiring stays thin and lives with the vendor (Claude Code: see `CLAUDE.md`).
+Keep skills agent-neutral and add new ones under `.agents/skills/`.
+
+## Claude Code
+
+`CLAUDE.md` only imports this file. The Claude-specific wiring:
+
+- Skills are discovered through the `.claude/skills` symlink to `.agents/skills/`. Edit skills there, never under `.claude/`. Where symlinks are unsupported (Windows without Developer Mode, `core.symlinks=false`, ZIP exports) the link is a plain file, so read `.agents/skills/` directly.
+- Hooks live in `.claude/hooks/` and are registered in `.claude/settings.json`, for example `session-start.sh`, which installs Python and website dependencies in the web sandbox. Hooks have no cross-vendor standard, so they stay under `.claude/`.

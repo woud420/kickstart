@@ -201,6 +201,11 @@ jobs:
           mkdir -p artifacts/scripts
           install -m 0755 scripts/install.sh artifacts/scripts/install.sh
 
+      # The release page leads with the version's CHANGELOG summary and a short
+      # install note; GitHub appends the generated list of merged PRs.
+      - name: Render release notes
+        run: python3 ci/release_notes.py --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" --output artifacts/release-body.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -218,41 +223,7 @@ jobs:
             artifacts/python-package/*.tar.gz
             artifacts/binaries/kickstart-*
             artifacts/scripts/install.sh
-          body: |
-            ## Installation
-
-            One-line install (latest stable release, into `~/.local/bin`):
-
-            ```bash
-            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/master/scripts/install.sh | bash
-            ```
-
-            The script downloads the matching binary archive, verifies its SHA-256, installs the binary payload under a stable directory, and exposes `kickstart` on `PATH`.
-
-            ### From source or wheel (platforms without a binary archive)
-
-            Do **not** `pip install kickstart` — that PyPI name belongs to an unrelated, abandoned 2011 project. Install from source, or from the wheel attached to this release:
-
-            ```bash
-            pipx install git+https://github.com/${{ github.repository }}
-            pip install ./kickstart-*-py3-none-any.whl
-            ```
-
-            Release wheels and binary archives enable pseudonymous telemetry by default for eligible CLI commands. The first eligible event creates a random UUIDv4 that remains stable across upgrades. Events use closed, data-minimized property sets. Run `kickstart telemetry disable` to persist an opt-out; `kickstart telemetry status` is read-only and does not create an ID or send an event.
-
-            To prevent an installer-invoked event before a persisted preference exists, set `KICKSTART_TELEMETRY_DISABLED=1` or `DO_NOT_TRACK=1` for that process. A direct Git source install has no embedded capture configuration; delivery from one requires `POSTHOG_PUBLIC_CUSTOMER_API_TOKEN` in the process environment, and a token never overrides an opt-out.
-
-            ### Manual binary install
-
-            Binary archives are attached for `linux-x64`, `linux-arm64`, and `macos-arm64` (Python 3.14). Pick the asset for your platform, extract it, and run `kickstart install` to place the binary payload in a user-writable directory and configure `PATH`:
-
-            ```bash
-            curl -L -o kickstart-linux-x64-py3.14.tar.gz "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/kickstart-linux-x64-py3.14.tar.gz"
-            tar -xzf kickstart-linux-x64-py3.14.tar.gz
-            ./kickstart-linux-x64-py3.14/kickstart install --update-path
-            ```
-
-            Pass `--target /usr/local/bin` to choose a different launcher directory, `--app-dir /usr/local/share/kickstart` to choose the binary payload directory, and `--shell bash|zsh|fish` to override shell detection. Check the matching `.sha256` file before installing when you want integrity verification.
+          body_path: artifacts/release-body.md
 
   website:
     name: Deploy Website

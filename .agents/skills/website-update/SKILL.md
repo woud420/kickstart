@@ -59,8 +59,9 @@ them:
 
 - Never list a file in `commandExamples[].output` that the generator does
   not emit; regenerate and check rather than guessing.
-- Release notes are curated highlights, not commit dumps; keep entries to
-  three or four load-bearing bullets.
+- Release notes are curated highlights, not commit dumps: a title, one
+  sentence, and at most three plain-language bullets (test-enforced). The
+  details live in `CHANGELOG.md`.
 - Version metadata moves together: `defaultProjectMeta`, `releaseNotes`,
   `website/wrangler.toml` dev vars, and `render-release-config.ts` defaults.
 

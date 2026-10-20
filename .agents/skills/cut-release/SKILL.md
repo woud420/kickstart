@@ -26,6 +26,9 @@ authorizes its described publication steps; do not ask again for that same scope
 2. Add the release entry to `CHANGELOG.md` and to `releaseNotes` in
    `website/src/site/content.ts`, and bump `defaultProjectMeta.latestVersion`
    there. Website tests fail when the current version has no release note.
+   Open the `CHANGELOG.md` section with a one-paragraph summary; it becomes
+   the top of the GitHub Release page (`ci/release_notes.py`). Keep the
+   website entry to at most three highlights.
 3. Regenerate the committed golden fixture (procedure in
    `docs/contributing.md`). The version bump changes the `semantics` URL
    inside the fixture's `.kickstart/scaffold.json`, so `make check` fails

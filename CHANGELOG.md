@@ -127,6 +127,9 @@ but the development and release machinery around kickstart got materially better
 
 ## v0.4.2 - 2026-06-12
 
+Installed binaries report the release they came from, the release pipeline
+runs green end to end, and generated metadata got cheaper for agents to read.
+
 ### Fixed
 
 - `kickstart version` reports the installed release again. The 0.4.1
@@ -214,6 +217,9 @@ but the development and release machinery around kickstart got materially better
   than half (~295 tokens saved per agent read, per repo).
 
 ## v0.4.1 - 2026-06-04
+
+Generated projects behave the way their scaffold contract says across
+languages, and binaries install with one command.
 
 ### Changed
 
