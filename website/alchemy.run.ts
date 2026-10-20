@@ -1,29 +1,12 @@
-import alchemy from "alchemy";
-import type { Scope } from "alchemy";
-import { Worker, Zone } from "alchemy/cloudflare";
-import { CloudflareStateStore } from "alchemy/state";
+import * as Alchemy from "alchemy";
+import * as Cloudflare from "alchemy/Cloudflare";
+import { Stack } from "alchemy/Stack";
+import { localState } from "alchemy/State";
+import * as Effect from "effect/Effect";
 
 import { resolveReleaseConfig } from "./scripts/render-release-config";
 
-const config = resolveReleaseConfig(Bun.argv.slice(2), process.env);
-
-function alchemyStateStore() {
-  const hasPassword = Boolean(process.env.ALCHEMY_PASSWORD);
-  const hasStateToken = Boolean(process.env.ALCHEMY_STATE_TOKEN);
-
-  if (hasPassword !== hasStateToken) {
-    throw new Error(
-      "Persistent state is half-configured: set both ALCHEMY_PASSWORD and ALCHEMY_STATE_TOKEN " +
-        "(or neither, to deploy with ephemeral state). Refusing to silently fall back.",
-    );
-  }
-
-  if (!hasPassword) {
-    return undefined;
-  }
-
-  return (scope: Scope) => new CloudflareStateStore(scope);
-}
+const config = resolveReleaseConfig(process.argv.slice(2), process.env);
 
 function workerNameForStage(serviceName: string, stage: string): string {
   if (stage === "prod") {
@@ -38,84 +21,62 @@ function workerNameForStage(serviceName: string, stage: string): string {
   return `${serviceName}-${suffix || "dev"}`;
 }
 
-const app = await alchemy("kickstart-site", {
-  stateStore: alchemyStateStore(),
-});
-
-const workerName = workerNameForStage(config.serviceName, app.stage);
-// www is bound to the same Worker so Cloudflare creates its DNS record;
-// the Worker answers it with a permanent redirect to the apex.
-const workerDomains =
-  app.stage === "prod" && config.domain !== ""
-    ? [
-        { domainName: config.domain, adopt: true },
-        { domainName: `www.${config.domain}`, adopt: true },
-      ]
-    : undefined;
-
-// Zone hardening is opt-in, not part of every release deploy. Alchemy's
-// Zone resource always POSTs /zones under ephemeral CI state, which needs
-// account-wide `Zone: Edit` plus `Zone Settings: Edit` and
-// `Bot Management: Edit`. The release token is scoped to Workers and
-// `Zone: Read` and must stay that way, so CI skips this. Apply it with an
-// operator token and KICKSTART_MANAGE_ZONE=1 (see README.md).
-const manageZone = process.env.KICKSTART_MANAGE_ZONE === "1";
-
-if (app.stage === "prod" && config.domain !== "" && manageZone) {
-  await Zone("zone-security", {
-    name: config.domain,
-    type: "full",
-    settings: {
-      ssl: "strict",
-      alwaysUseHttps: "on",
-      automaticHttpsRewrites: "on",
-    },
-    botManagement: {
-      fightMode: true,
-      aiBotsProtection: "block",
-      crawlerProtection: "enabled",
-    },
-  });
-}
-
 // Deploying a site whose hero and release-notes links point at a
 // nonexistent GitHub release publishes 404s (exactly the stranded-v0.4.3
 // failure mode). Make "the release URL resolves" a deploy precondition
-// instead of a timing coincidence.
-if (app.stage === "prod") {
-  const releaseCheck = await fetch(config.releaseUrl, { method: "HEAD", redirect: "follow" });
-  if (!releaseCheck.ok) {
-    throw new Error(
-      `release URL does not resolve (HTTP ${releaseCheck.status}): ${config.releaseUrl} — ` +
-        "publish the release (tag + release workflow) before deploying the website.",
-    );
-  }
-}
-
-export const worker = await Worker("website", {
-  name: workerName,
-  entrypoint: "./src/index.ts",
-  compatibilityDate: "2026-05-02",
-  adopt: true,
-  url: true,
-  domains: workerDomains,
-  bindings: {
-    SERVICE_NAME: config.serviceName,
-    PROJECT_VERSION: config.version,
-    SUPPORTED_FROM_VERSION: config.supportedFrom,
-    REPOSITORY_URL: config.repositoryUrl,
-    RELEASE_URL: config.releaseUrl,
-  },
-});
-
-console.log(`Configured ${workerName} for v${config.version}`);
-if (workerDomains !== undefined) {
-  console.log(`Configured custom domains ${workerDomains.map((domain) => domain.domainName).join(", ")}`);
-  console.log(
-    manageZone
-      ? `Applied zone security settings to ${config.domain}`
-      : "Left zone security settings unchanged (set KICKSTART_MANAGE_ZONE=1 to apply them)",
+// instead of a timing coincidence. A Stack may only fail with config errors,
+// so a missing release aborts the deploy as a defect.
+const releaseUrlResolves = (releaseUrl: string) =>
+  Effect.tryPromise(() => fetch(releaseUrl, { method: "HEAD", redirect: "follow" })).pipe(
+    Effect.flatMap((response) =>
+      response.ok
+        ? Effect.void
+        : Effect.fail(
+            new Error(
+              `release URL does not resolve (HTTP ${response.status}): ${releaseUrl} — ` +
+                "publish the release (tag + release workflow) before deploying the website.",
+            ),
+          ),
+    ),
+    Effect.orDie,
   );
-}
 
-await app.finalize();
+export default Alchemy.Stack(
+  "kickstart-site",
+  {
+    providers: Cloudflare.providers(),
+    // CI runners start empty, so state is a local file and every release
+    // deploy adopts the existing Worker and custom domains by name
+    // (`alchemy deploy --adopt`).
+    state: localState(),
+  },
+  Effect.gen(function* () {
+    const { stage } = yield* Stack;
+    const isProd = stage === "prod";
+
+    if (isProd) {
+      yield* releaseUrlResolves(config.releaseUrl);
+    }
+
+    const worker = yield* Cloudflare.Worker("website", {
+      name: workerNameForStage(config.serviceName, stage),
+      main: "./src/index.ts",
+      compatibility: { date: "2026-05-02" },
+      // www is bound to the same Worker so Cloudflare creates its DNS record;
+      // the Worker answers it with a permanent redirect to the apex.
+      domain:
+        isProd && config.domain !== ""
+          ? { name: config.domain, aliases: [`www.${config.domain}`] }
+          : undefined,
+      env: {
+        SERVICE_NAME: config.serviceName,
+        PROJECT_VERSION: config.version,
+        SUPPORTED_FROM_VERSION: config.supportedFrom,
+        REPOSITORY_URL: config.repositoryUrl,
+        RELEASE_URL: config.releaseUrl,
+      },
+    });
+
+    return { version: config.version, url: worker.url, urls: worker.urls };
+  }),
+);

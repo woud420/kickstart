@@ -206,7 +206,7 @@ h1 {
   margin-bottom: 18px;
   border: 1px solid var(--rule);
   border-radius: var(--radius);
-  background: var(--faint);
+  background: var(--paper);
 }
 
 .install-head {
@@ -216,11 +216,15 @@ h1 {
   gap: 12px;
   padding: 6px 6px 6px 14px;
   border-bottom: 1px solid var(--rule);
+  /* Same treatment as the active example tab: the two places a visitor acts
+     carry the accent tint, and the command sits on paper below it. */
+  background: var(--accent-tint);
   font-family: var(--font-mono);
   font-size: 12px;
 }
 
 .install-label {
+  color: var(--accent);
   font-weight: 600;
 }
 
