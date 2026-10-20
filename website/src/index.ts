@@ -12,6 +12,7 @@ interface Env {
 }
 
 const PUBLIC_HOSTNAME = "kickstart-cli.org";
+const WWW_HOSTNAME = `www.${PUBLIC_HOSTNAME}`;
 const HSTS_HEADER_VALUE = "max-age=15552000";
 const SECURITY_TXT = `Contact: mailto:jim@polarcoordinates.org
 Expires: 2027-06-26T00:00:00Z
@@ -51,9 +52,21 @@ function isPublicHostname(hostname: string): boolean {
   return hostname.toLowerCase() === PUBLIC_HOSTNAME;
 }
 
+function isWwwHostname(hostname: string): boolean {
+  return hostname.toLowerCase() === WWW_HOSTNAME;
+}
+
 function httpsRedirect(url: URL): Response {
   const redirectUrl = new URL(url);
   redirectUrl.protocol = "https:";
+  return Response.redirect(redirectUrl.toString(), 308);
+}
+
+function apexRedirect(url: URL): Response {
+  const redirectUrl = new URL(url);
+  redirectUrl.protocol = "https:";
+  redirectUrl.hostname = PUBLIC_HOSTNAME;
+  redirectUrl.port = "";
   return Response.redirect(redirectUrl.toString(), 308);
 }
 
@@ -101,6 +114,11 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const service = env.SERVICE_NAME ?? "kickstart-site";
+
+    // Before the HTTPS redirect so http://www reaches the HTTPS apex in one hop.
+    if (isWwwHostname(url.hostname)) {
+      return apexRedirect(url);
+    }
 
     if (url.protocol === "http:" && isPublicHostname(url.hostname)) {
       return httpsRedirect(url);
