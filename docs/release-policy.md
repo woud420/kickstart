@@ -56,4 +56,4 @@ Caveat: a merged-but-untagged version bump blocks same-version retags. `release-
 
 The website deploys for every stable release tag, including patch tags such as `v0.4.1`. Local commits and branch pushes do not update the public release metadata.
 
-The deploy job runs with `ALCHEMY_CI_STATE_STORE_CHECK=false`: the Worker and its custom domain use `adopt: true`, so each deploy converges on the same named resources and ephemeral CI state cannot orphan infrastructure. Configure the optional `ALCHEMY_PASSWORD` and `ALCHEMY_STATE_TOKEN` repository secrets to upgrade deploys to the persistent Cloudflare state store.
+The deploy job runs `alchemy deploy --stage prod --adopt --yes` with Alchemy v2's local state store: each deploy adopts the existing Worker and custom domains by name, so ephemeral CI state cannot orphan infrastructure. See `website/README.md` for the token scopes the deploy needs.

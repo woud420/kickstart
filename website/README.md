@@ -32,11 +32,14 @@ GitHub Actions requires the `CLOUDFLARE_WEBSITE_API_TOKEN` repository secret
 and the `CLOUDFLARE_ACCOUNT_ID` repository variable before it will deploy the
 website. Local deploys use your default Alchemy stage unless you pass `--stage`.
 
-CI deploys run with `ALCHEMY_CI_STATE_STORE_CHECK=false` because the Worker and
-its custom domain use `adopt: true` — every deploy converges on the same named
-resources, so ephemeral runner state cannot orphan infrastructure. Setting the
-optional `ALCHEMY_PASSWORD` and `ALCHEMY_STATE_TOKEN` repository secrets makes
-`alchemy.run.ts` use the persistent Cloudflare state store instead.
+`alchemy.run.ts` is an Alchemy v2 stack (`alchemy@2.0.0-beta.83`, Effect 4),
+pinned exactly because v2 is still in beta. It keeps state in a local file
+(`.alchemy/`). CI runners start empty, so `bun run deploy:release` runs
+`alchemy deploy --stage prod --adopt --yes`: every deploy adopts the existing
+Worker and custom domains by name, so ephemeral state cannot orphan
+infrastructure. Alchemy's remote `Cloudflare.state()` store would need a
+bootstrapped state-store Worker and `Secrets Store: Write` on the token, so it
+is not used.
 
 Production deploys bind the Worker to `kickstart-cli.org` and
 `www.kickstart-cli.org` through Alchemy; the Worker answers `www` with a 308
@@ -51,3 +54,10 @@ account. It also needs a domain-scoped policy for `kickstart-cli.org` with
 permissions cover it too; no extra token scope is needed.
 `Workers Routes: Edit` is only needed if the website switches from a Worker
 custom domain to route-pattern deployment.
+
+Zone hardening is managed in the Cloudflare dashboard, not by Alchemy. That
+covers strict SSL, Always Use HTTPS, automatic HTTPS rewrites, Bot Fight Mode,
+AI bot blocking and crawler protection on `kickstart-cli.org`. The v1 stack
+asserted these settings on every deploy, which needs `Zone: Edit`,
+`Zone Settings: Edit` and `Bot Management: Edit` on the release token.
+Without those scopes that step stops the deploy before the Worker is updated.
