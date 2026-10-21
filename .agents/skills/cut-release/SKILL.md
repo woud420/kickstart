@@ -58,9 +58,9 @@ authorizes its described publication steps; do not ask again for that same scope
 
 6. Watch the release workflow: verify (incl. the website version-sync
    gate) → package → binary (linux-x64, linux-arm64, macos-arm64 at
-   py3.14) → GitHub Release → website deploy (which asserts the deployed
-   `/healthz` version equals the tag). All jobs must be green, including
-   Deploy Website.
+   py3.14) → GitHub Release → website deploy. All jobs must be green,
+   including Deploy Website. Check the live website and `/healthz` version
+   manually; Cloudflare Bot Fight Mode can challenge probes from CI runners.
 7. Confirm the release is not stranded before reporting done:
    `git ls-remote --tags origin` lists `vX.Y.Z`, the GitHub Release for
    the tag exists, and https://kickstart-cli.org shows the new version.
