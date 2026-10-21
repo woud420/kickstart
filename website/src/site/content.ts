@@ -34,10 +34,10 @@ export interface ReleaseNote {
 }
 
 export const defaultProjectMeta: ProjectMeta = {
-  latestVersion: "0.4.5",
+  latestVersion: "0.4.6",
   supportedFrom: "0.4.0",
   repositoryUrl: "https://github.com/woud420/kickstart",
-  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.5",
+  releaseUrl: "https://github.com/woud420/kickstart/releases/tag/v0.4.6",
 };
 
 // Every example writes the same agent-facing files; the map names them so
@@ -267,6 +267,16 @@ export const isNotPoints: PositioningPoint[] = [
 ];
 
 export const releaseNotes: ReleaseNote[] = [
+  {
+    version: "0.4.6",
+    title: "Scaffold migration, ownership checks, and external I/O export",
+    body: "Scaffolds record their provenance and ownership, older manifests can migrate to schema 4.0, and repository inspection covers more of the generated contract.",
+    highlights: [
+      "New manifests use schema 4.0; `kickstart migrate` upgrades older manifests without inventing missing metadata.",
+      "`kickstart drift` checks recorded ownership, and `kickstart export external-io` validates declared I/O maps and source citations.",
+      "Python services support SQLite, and TypeScript container services include JWT helpers and tests.",
+    ],
+  },
   {
     version: "0.4.5",
     title: "Staged self-upgrades and legacy layout repair",
