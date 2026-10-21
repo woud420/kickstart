@@ -14,9 +14,10 @@ def test_tier_steps_rejects_unknown_tier() -> None:
         tier_steps("nope")
 
 
-def test_pr_tier_runs_real_sqlite_bootstrap_case() -> None:
+@pytest.mark.parametrize("case", ["python-service-sqlite", "frontend"])
+def test_pr_tier_runs_regression_bootstrap_cases(case: str) -> None:
     step = tier_steps("pr")[0]
-    assert "python-service-sqlite" in step.args
+    assert case in step.args
 
 
 def test_pr_tier_gates_weight_baselines() -> None:

@@ -11,6 +11,44 @@ if a merged version ever sits untagged.
 
 Release mechanics live in [docs/release-policy.md](docs/release-policy.md).
 
+## v0.4.6 - 2026-10-20
+
+Scaffolds now record their provenance and ownership in schema 4.0 manifests,
+with explicit migration from older schemas and read-only drift checks. This
+release also adds declared external I/O exports, SQLite for Python services,
+JWT helpers for TypeScript services, and refreshed website and release pages.
+
+### Added
+
+- Schema 4.0 manifests record generator provenance, project language and framework,
+  service execution profiles, and per-file ownership. `kickstart migrate` plans or
+  applies migrations from schemas 3.0, 3.1, and 3.2 without inventing metadata.
+- `kickstart plan --ownership` inspects the recorded ownership envelope, and
+  `kickstart drift` checks managed files, Makefile targets, and CI job structure.
+  `adopt --check` includes recorded drift findings.
+- `kickstart export external-io` exports a declared partial I/O map after checking
+  its shape and source citations; unknowns remain explicit and source semantics
+  remain caller-supplied.
+- Python/FastAPI container services support SQLite, and TypeScript container
+  services include JWT authentication helpers and infrastructure-free tests.
+
+### Changed
+
+- CLI failure handling and source boundaries are clearer, with broader
+  adversarial test coverage and less duplicated source and test policy.
+- Generated-project evaluation serializes targets that share a Bun workspace;
+  the bootstrap matrix also covers Go services and the frontend scaffold.
+- The website leads with installation and the agent contract, redirects `www`
+  to the apex domain, and deploys through Alchemy v2 with narrower token scopes.
+- READMEs and release pages lead with concise summaries and link to detailed
+  documentation. Release publishing renders its body from the changelog summary.
+
+### Fixed
+
+- Generated frontend configuration uses Vite's own plugin types, keeping Vitest's
+  test options in its command. Fresh installs typecheck even when Vitest resolves
+  a different Vite version; PR evals now check the frontend scaffold as well.
+
 ## v0.4.5 - 2026-09-02
 
 Self-upgrade reliability release. Managed installs are no longer replaced from

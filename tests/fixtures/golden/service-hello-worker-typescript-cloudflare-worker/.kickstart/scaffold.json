@@ -11,7 +11,7 @@
     ]
   },
   "extensions": {},
-  "generated_by": "kickstart@0.4.5",
+  "generated_by": "kickstart@0.4.6",
   "knowledge_adapter": "none",
   "lifecycle": {
     "check": "make check",
