@@ -114,6 +114,7 @@ jobs:
           mkdir -p tap/Formula
           cp formula/kickstart.rb tap/Formula/kickstart.rb
           cd tap
+          git push --dry-run origin HEAD:main
           if git diff --quiet -- Formula/kickstart.rb && git ls-files --error-unmatch Formula/kickstart.rb >/dev/null 2>&1; then
             echo 'Tap already contains this formula.'
             exit 0
