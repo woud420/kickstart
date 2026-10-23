@@ -13,6 +13,7 @@ import {
   releaseNotes,
 } from "./content";
 import { escapeHtml, exampleTree, formatCommand, renderOutputTreeHtml } from "./format";
+import { renderCopyButton, renderPageHead, renderPageScripts, renderSiteHeader } from "./shell";
 
 const firstExample = commandExamples[0] ?? {
   key: "worker",
@@ -28,10 +29,6 @@ const firstExample = commandExamples[0] ?? {
     },
   ],
 };
-
-// Inline SVG favicon so /favicon.ico never falls through to the HTML shell.
-const FAVICON =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23292c2e'/%3E%3Cpath d='M9 7h4v18H9zM23 7h-4v18h4z' fill='%23f5f7f9'/%3E%3Crect x='14.5' y='19' width='3' height='6' fill='%23b9bc8f'/%3E%3C/svg%3E";
 
 function lineCount(text: string): number {
   return text.split("\n").length;
@@ -170,7 +167,7 @@ function renderInstall(id: string): string {
   return `<div class="install" role="group" aria-labelledby="${id}-label">
             <div class="install-head">
               <span class="install-label" id="${id}-label">Install</span>
-              <button class="copy" type="button" data-copy-target="${id}">copy</button>
+              ${renderCopyButton(id, "Copy install command")}
             </div>
             <pre><code id="${id}" data-copy="${escapeHtml(installCommand)}">${renderBreakableCommand(installCommand)}</code></pre>
             <p class="install-platforms">${escapeHtml(installPlatforms)} · verifies SHA-256</p>
@@ -185,40 +182,13 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
   return `<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>kickstart · starter repos for humans and agents</title>
-    <meta
-      name="description"
-      content="kickstart is a scaffold contract for humans and agents."
-    />
-    <meta name="theme-color" content="#f5f7f9" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#161719" media="(prefers-color-scheme: dark)" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="kickstart · starter repos for humans and agents" />
-    <meta property="og:description" content="kickstart is a scaffold contract for humans and agents." />
-    <link rel="icon" href="${FAVICON}" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Geist+Mono:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="/assets/site.css?v=${version}" />
+    ${renderPageHead(meta, {
+      title: "kickstart · starter repos for humans and agents",
+      description: "kickstart is a scaffold contract for humans and agents.",
+    })}
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to content</a>
-    <header class="shell topbar">
-      <div>
-        <a class="brand" href="/" aria-label="kickstart home">kickstart</a><span class="brand-version">v${version}</span>
-      </div>
-      <nav aria-label="Main navigation">
-        <a class="bracketed" href="#examples">examples</a>
-        <a class="bracketed" href="#positioning">scope</a>
-        <a class="bracketed" href="#release">releases</a>
-        <a class="bracketed" href="${repositoryUrl}">github</a>
-      </nav>
-    </header>
+    ${renderSiteHeader(meta)}
 
     <main id="main">
       <section class="hero shell" aria-labelledby="hero-title">
@@ -247,7 +217,7 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
               <div class="terminal">
                 <div class="copy-row">
                   <span id="command-title">${escapeHtml(firstExample.title)}</span>
-                  <button class="copy" type="button" data-copy-target="command">copy</button>
+                  ${renderCopyButton("command", "Copy example command")}
                 </div>
                 <pre><code id="command" style="--command-lines: ${commandLines}" data-copy="${escapeHtml(firstExample.command)}">${escapeHtml(formatCommand(firstExample.command))}</code></pre>
                 <div class="terminal-rule"></div>
@@ -314,8 +284,7 @@ ${renderReleaseNotes(meta)}
       <a class="bracketed" href="/healthz">healthz</a>
     </footer>
 
-    <p id="copy-status" class="visually-hidden" role="status" aria-live="polite"></p>
-    <script src="/assets/site.js?v=${version}" type="module"></script>
+    ${renderPageScripts(meta, true)}
   </body>
 </html>`;
 }

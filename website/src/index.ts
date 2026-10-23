@@ -1,5 +1,9 @@
 import { siteScript } from "./assets/site-script";
+import { copyScript } from "./assets/copy-script";
 import { siteStyles } from "./assets/site-styles";
+import { docsStyles } from "./assets/docs-styles";
+import { findDocPage } from "./docs/content";
+import { renderDocHtml, renderDocNotFound } from "./docs/html";
 import { defaultProjectMeta, type ProjectMeta } from "./site/content";
 import { renderSiteHtml } from "./site/html";
 
@@ -147,6 +151,35 @@ export default {
         assetResponse(siteScript, "application/javascript; charset=utf-8"),
         url,
       );
+    }
+
+    if (url.pathname === "/assets/docs.css") {
+      return withSecurityHeaders(assetResponse(docsStyles, "text/css; charset=utf-8"), url);
+    }
+
+    if (url.pathname === "/assets/copy.js") {
+      return withSecurityHeaders(assetResponse(copyScript, "application/javascript; charset=utf-8"), url);
+    }
+
+    if (url.pathname === "/docs" || url.pathname === "/docs/") {
+      const destination = new URL(url);
+      destination.pathname = "/docs/get-started";
+      return withSecurityHeaders(Response.redirect(destination.toString(), 308), url);
+    }
+
+    if (url.pathname.startsWith("/docs/")) {
+      const slug = url.pathname.slice("/docs/".length).replace(/\/$/, "");
+      const page = findDocPage(slug);
+      if (page && url.pathname.endsWith("/")) {
+        const destination = new URL(url);
+        destination.pathname = `/docs/${slug}`;
+        return withSecurityHeaders(Response.redirect(destination.toString(), 308), url);
+      }
+      const meta = resolveProjectMeta(env);
+      return withSecurityHeaders(new Response(page ? renderDocHtml(page, meta) : renderDocNotFound(meta), {
+        status: page ? 200 : 404,
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+      }), url);
     }
 
     return withSecurityHeaders(htmlResponse(resolveProjectMeta(env)), url);
