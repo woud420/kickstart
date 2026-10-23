@@ -185,6 +185,7 @@ export function renderSiteHtml(meta: ProjectMeta = defaultProjectMeta): string {
     ${renderPageHead(meta, {
       title: "kickstart · starter repos for humans and agents",
       description: "kickstart is a scaffold contract for humans and agents.",
+      links: [{ rel: "describedby", href: "https://kickstart-cli.org/llms.txt" }],
     })}
   </head>
   <body>
