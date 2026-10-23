@@ -48,6 +48,11 @@ The release workflow builds the Python package and Python 3.14 binary archives (
 
 ## Same-Version Updates
 
+The release also updates the custom Homebrew tap after publication and native
+package lifecycle checks. Configure the dedicated tap credential and follow
+[Homebrew distribution](operations/homebrew.md) for validation, recovery, and
+same-version checksum refreshes.
+
 For documentation, website copy, tests, or non-behavior fixes that should stay on the current version, do not create a new version number.
 
 Retag the current release line after the fix is merged. The release workflow updates the existing GitHub Release for that tag, overwrites GitHub Release assets, and refreshes generated release notes.

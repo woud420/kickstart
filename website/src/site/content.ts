@@ -347,8 +347,9 @@ export const installCommand =
 export const installPlatforms = "Linux x64/arm64 · macOS arm64";
 
 export const installNotes: string[] = [
+  "Homebrew on the same platforms: `brew install woud420/tap/kickstart`. Update with `brew upgrade woud420/tap/kickstart`; remove with `brew uninstall woud420/tap/kickstart`.",
   "Verifies the release archive's SHA-256 checksum, puts the launcher at `~/.local/bin/kickstart`, and offers to add it to your `PATH`.",
   "Other platforms, including Intel macOS: `pipx install git+https://github.com/woud420/kickstart`. The PyPI name `kickstart` belongs to an unrelated project.",
   "Release builds send pseudonymous usage telemetry by default; `kickstart telemetry disable` opts out.",
-  "Update in place with `kickstart upgrade`.",
+  "Update standalone installations with `kickstart upgrade`.",
 ];

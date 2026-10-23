@@ -1,5 +1,7 @@
 # Install Binaries
 
+For package-manager installation and updates, see [Homebrew distribution](homebrew.md).
+
 Release tags publish a prebuilt kickstart binary as a `.tar.gz` archive for:
 
 - `linux-x64`
