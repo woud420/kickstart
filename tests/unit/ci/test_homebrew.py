@@ -1,10 +1,14 @@
 from pathlib import Path
 import hashlib
+import runpy
 import subprocess
+import sys
 
 import pytest
 
 from ci.homebrew import PLATFORMS, render_formula
+
+SCRIPT = Path(__file__).resolve().parents[3] / "ci" / "homebrew.py"
 
 
 @pytest.fixture
@@ -61,3 +65,36 @@ def test_homebrew_launcher_refuses_self_management_before_running_payload(
     result = subprocess.run(["sh", str(script), *separator, command, "--force"], capture_output=True, text=True)
     assert result.returncode == 1
     assert "Homebrew manages" in result.stderr
+
+
+def test_cli_creates_a_formula_in_a_new_output_directory(
+    archives: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = archives / "tap" / "Formula" / "kickstart.rb"
+    monkeypatch.setattr(
+        sys, "argv", [str(SCRIPT), "--tag", "v1.2.3", "--artifacts", str(archives), "--output", str(output)]
+    )
+
+    runpy.run_path(str(SCRIPT), run_name="__main__")
+
+    formula = output.read_text()
+    for platform in PLATFORMS:
+        assert f"/releases/download/v1.2.3/kickstart-{platform}-py3.14.tar.gz" in formula
+    assert capsys.readouterr().out == f"Wrote {output} for v1.2.3\n"
+
+
+@pytest.mark.parametrize("invalid_tag", [False, True])
+def test_cli_preserves_an_existing_formula_when_release_verification_fails(
+    archives: Path, monkeypatch: pytest.MonkeyPatch, invalid_tag: bool
+) -> None:
+    output = archives / "kickstart.rb"
+    output.write_text("previous formula\n")
+    tag = "v1.2.3-rc.1" if invalid_tag else "v1.2.3"
+    if not invalid_tag:
+        (archives / "kickstart-linux-x64-py3.14.tar.gz").write_bytes(b"corrupt")
+    monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--tag", tag, "--artifacts", str(archives), "--output", str(output)])
+
+    with pytest.raises(ValueError):
+        runpy.run_path(str(SCRIPT), run_name="__main__")
+
+    assert output.read_text() == "previous formula\n"
