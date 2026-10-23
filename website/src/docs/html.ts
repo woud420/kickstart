@@ -2,6 +2,7 @@ import { defaultProjectMeta, type ProjectMeta } from "../site/content";
 import { escapeHtml, formatCommand } from "../site/format";
 import { docGroups, docPath, documentationPages, type DocBlock, type DocPage } from "./content";
 import { renderCopyButton, renderPageHead, renderPageScripts, renderSiteHeader } from "../site/shell";
+import { docsOrigin, markdownPath } from "./markdown";
 
 function inline(text: string): string {
   return text.split("`").map((part, index) => index % 2 ? `<code>${escapeHtml(part)}</code>` : escapeHtml(part)).join("");
@@ -12,7 +13,7 @@ function navigation(current?: DocPage): string {
     <div class="docs-nav-group"><p class="docs-nav-label">${group}</p>
       ${documentationPages.filter((page) => page.group === group).map((page) =>
         `<a href="${docPath(page)}"${page === current ? ' aria-current="page"' : ""}>${page.slug === "get-started" ? "Get started" : escapeHtml(page.title)}</a>`).join("")}
-    </div>`).join("")}</nav>`;
+    </div>`).join("")}<div class="docs-nav-group docs-agent-links"><p class="docs-nav-label">For agents</p><a href="/llms.txt">llms.txt</a><a href="/llms-full.txt">llms-full.txt</a></div></nav>`;
 }
 
 function blockHtml(block: DocBlock, id: string): string {
@@ -42,7 +43,13 @@ function pageFrame(title: string, summary: string, body: string, meta: ProjectMe
     title: `${title} · kickstart docs`,
     description: summary,
     styles: ["/assets/docs.css"],
-    links: page ? [{ rel: "canonical", href: `https://kickstart-cli.org${docPath(page)}` }] : [],
+    links: [
+      { rel: "describedby", href: `${docsOrigin}/llms.txt` },
+      ...(page ? [
+        { rel: "canonical", href: `${docsOrigin}${docPath(page)}` },
+        { rel: "alternate", type: "text/markdown", href: `${docsOrigin}${markdownPath(page)}` },
+      ] : []),
+    ],
     noindex: !page,
   })}
 </head>
@@ -63,7 +70,7 @@ export function renderDocHtml(page: DocPage, meta: ProjectMeta = defaultProjectM
   const index = documentationPages.indexOf(page);
   const previous = documentationPages[index - 1];
   const next = documentationPages[index + 1];
-  const body = `<header class="docs-heading"><p class="docs-eyebrow">Documentation <span>/</span> ${page.group}</p><h1>${escapeHtml(page.title)}</h1><p class="docs-lead">${escapeHtml(page.summary)}</p></header>
+  const body = `<header class="docs-heading"><p class="docs-eyebrow">Documentation <span>/</span> ${page.group}</p><h1>${escapeHtml(page.title)}</h1><p class="docs-lead">${escapeHtml(page.summary)}</p><a class="docs-format" href="${markdownPath(page)}">Read as Markdown ↗</a></header>
     ${page.sections.map((section, index) => `<section id="${section.id}" class="docs-section" aria-labelledby="heading-${section.id}"><h2 id="heading-${section.id}"><a href="#${section.id}">${escapeHtml(section.title)}</a></h2>${section.blocks.map((block, blockIndex) => blockHtml(block, `code-${index}-${blockIndex}`)).join("\n")}</section>`).join("\n")}
     <footer class="docs-footer"><p>Source notes</p><ul>${page.sources.map((source) => `<li><a href="${escapeHtml(meta.repositoryUrl)}/blob/master/${escapeHtml(source)}">${escapeHtml(source)}</a></li>`).join("")}</ul></footer>
     <nav class="docs-pager" aria-label="Previous and next pages">${previous ? `<a href="${docPath(previous)}"><span>← Previous</span>${escapeHtml(previous.slug === "get-started" ? "Get started" : previous.title)}</a>` : "<span></span>"}${next ? `<a href="${docPath(next)}"><span>Next →</span>${escapeHtml(next.title)}</a>` : ""}</nav>`;

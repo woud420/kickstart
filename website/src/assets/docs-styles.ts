@@ -10,6 +10,10 @@ export const docsStyles = `
 .docs-nav a:hover { color: var(--accent); background: var(--faint); text-decoration: none; }
 .docs-nav a[aria-current="page"] { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); font-weight: 700; }
 .docs-source-link { display: inline-block; margin-top: 8px; color: var(--muted); font-family: var(--font-mono); font-size: 11px; text-decoration: none; }
+.docs-agent-links { padding-top: 20px; border-top: 1px solid var(--rule); }
+.docs-agent-links a { font-family: var(--font-mono); font-size: 12px; }
+.docs-format { display: inline-block; margin-top: 16px; color: var(--muted); font-family: var(--font-mono); font-size: 10px; text-decoration: none; }
+.docs-format:hover { color: var(--accent); }
 .docs-menu { display: none; }
 .docs-article { min-width: 0; padding-bottom: 64px; outline: none; }
 .docs-heading { margin-bottom: 40px; padding-bottom: 30px; border-bottom: 1px solid var(--rule); }

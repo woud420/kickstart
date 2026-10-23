@@ -4,6 +4,7 @@ import { siteStyles } from "./assets/site-styles";
 import { docsStyles } from "./assets/docs-styles";
 import { findDocPage } from "./docs/content";
 import { renderDocHtml, renderDocNotFound } from "./docs/html";
+import { docsOrigin, renderDocMarkdown, renderLlmsFull, renderLlmsIndex } from "./docs/markdown";
 import { defaultProjectMeta, type ProjectMeta } from "./site/content";
 import { renderSiteHtml } from "./site/html";
 
@@ -48,6 +49,17 @@ function securityTextResponse(): Response {
     headers: {
       "cache-control": "public, max-age=3600",
       "content-type": "text/plain; charset=utf-8",
+    },
+  });
+}
+
+function documentationText(body: string, status = 200): Response {
+  return new Response(body, {
+    status,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+      "link": `<${docsOrigin}/llms.txt>; rel="describedby"`,
     },
   });
 }
@@ -161,6 +173,12 @@ export default {
       return withSecurityHeaders(assetResponse(copyScript, "application/javascript; charset=utf-8"), url);
     }
 
+    if (url.pathname === "/llms.txt" || url.pathname === "/llms-full.txt") {
+      const meta = resolveProjectMeta(env);
+      const body = url.pathname === "/llms.txt" ? renderLlmsIndex(meta) : renderLlmsFull(meta);
+      return withSecurityHeaders(documentationText(body), url);
+    }
+
     if (url.pathname === "/docs" || url.pathname === "/docs/") {
       const destination = new URL(url);
       destination.pathname = "/docs/get-started";
@@ -169,13 +187,19 @@ export default {
 
     if (url.pathname.startsWith("/docs/")) {
       const slug = url.pathname.slice("/docs/".length).replace(/\/$/, "");
-      const page = findDocPage(slug);
+      const isMarkdown = slug.endsWith(".md");
+      const page = findDocPage(isMarkdown ? slug.slice(0, -3) : slug);
       if (page && url.pathname.endsWith("/")) {
         const destination = new URL(url);
         destination.pathname = `/docs/${slug}`;
         return withSecurityHeaders(Response.redirect(destination.toString(), 308), url);
       }
       const meta = resolveProjectMeta(env);
+      if (isMarkdown) {
+        return withSecurityHeaders(documentationText(
+          page ? renderDocMarkdown(page, meta) : "Documentation page not found.\n", page ? 200 : 404,
+        ), url);
+      }
       return withSecurityHeaders(new Response(page ? renderDocHtml(page, meta) : renderDocNotFound(meta), {
         status: page ? 200 : 404,
         headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },

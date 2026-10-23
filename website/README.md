@@ -35,6 +35,14 @@ the paper/red palette, head metadata, favicon, header, and copy controls. Shared
 copy behavior lives in `src/assets/copy-script.ts`; docs load that small asset
 without the landing page's example-tab payload.
 
+The same registry also produces `/llms.txt` (a concise Markdown index),
+`/llms-full.txt` (all nine public pages), and `/docs/<slug>.md` (one clean page).
+`src/docs/markdown.ts` renders those on demand, so there are no generated text
+copies to refresh or commit. The inclusion list is exactly the public page
+registry, not every repository document. HTML declares Markdown alternates and
+the llms.txt discovery link. Text responses use UTF-8 `text/plain`, absolute
+canonical URLs, and release metadata from the same Worker configuration as HTML.
+
 ## Deploy
 
 The release workflow runs `bun run deploy:release`
