@@ -16,6 +16,19 @@ domain model, APIs and tests are yours to add.
 
 ## Install
 
+With Homebrew on macOS arm64 or Linux x64/arm64:
+
+```bash
+brew install woud420/tap/kickstart
+```
+
+Use `brew upgrade woud420/tap/kickstart` to update and
+`brew uninstall woud420/tap/kickstart` to remove it. See the
+[Homebrew runbook](docs/operations/homebrew.md) for platform requirements and
+migrating an existing installation.
+
+Or use the standalone installer:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/install.sh | bash
 ```
@@ -23,7 +36,8 @@ curl -fsSL https://raw.githubusercontent.com/woud420/kickstart/master/scripts/in
 This installs a SHA-256-verified binary to `~/.local/bin/kickstart` on Linux
 (x64, arm64) and macOS (arm64). Elsewhere, use
 `pipx install git+https://github.com/woud420/kickstart`; the PyPI package named
-`kickstart` is an unrelated project. Update with `kickstart upgrade`.
+`kickstart` is an unrelated project. Update standalone installations with
+`kickstart upgrade`.
 
 Release builds send pseudonymous usage telemetry by default.
 `kickstart telemetry disable` turns it off. The

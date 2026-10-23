@@ -46,7 +46,7 @@ describe("install content", () => {
   it("only quotes commands the README documents", () => {
     const commands = installNotes
       .flatMap((note) => note.split("`").filter((_, index) => index % 2 === 1))
-      .filter((span) => /^(kickstart|pipx) /.test(span));
+      .filter((span) => /^(kickstart|pipx|brew) /.test(span));
 
     expect(commands.length).toBeGreaterThan(0);
     for (const command of commands) {

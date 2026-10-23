@@ -225,6 +225,15 @@ jobs:
             artifacts/scripts/install.sh
           body_path: artifacts/release-body.md
 
+  homebrew:
+    name: Update Homebrew Tap
+    needs: release
+    uses: ./.github/workflows/homebrew.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
   website:
     name: Deploy Website
     runs-on: ubuntu-latest
