@@ -1,37 +1,26 @@
+import { siteTheme } from "../site/theme";
+
 export const siteStyles = `
-/* Mist and olive: cool paper, charcoal ink, olive reserved for interaction. */
 :root {
   color-scheme: light;
-  --ink: #292c2e;
-  --paper: #f5f7f9;
-  --muted: #67696c;
-  --rule: #dde0e2;
-  --faint: #eef0f3;
-  --grid: #e4e6e9;
-  --code: #ebedf0;
-  --accent: #676944;
-  --accent-tint: #e9ebdd;
-  --font-body: "Atkinson Hyperlegible", "Avenir Next", Avenir, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+  --ink: ${siteTheme.ink};
+  --paper: ${siteTheme.paper};
+  --muted: ${siteTheme.muted};
+  --rule: ${siteTheme.rule};
+  --faint: ${siteTheme.faint};
+  --grid: ${siteTheme.rule};
+  --code: ${siteTheme.code};
+  --code-ink: ${siteTheme.codeInk};
+  --code-muted: ${siteTheme.codeMuted};
+  --accent: ${siteTheme.accent};
+  --accent-tint: ${siteTheme.accentTint};
+  --font-body: ${siteTheme.fontBody};
+  --font-display: ${siteTheme.fontDisplay};
+  --font-mono: ${siteTheme.fontMono};
   --radius: 6px;
   --radius-small: 4px;
   --shell: min(1080px, calc(100% - 36px));
   --section-space: clamp(56px, 7vw, 88px);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --ink: #e3e5e7;
-    --paper: #161719;
-    --muted: #a3a5a7;
-    --rule: #313335;
-    --faint: #1a1c1d;
-    --grid: #242527;
-    --code: #1d1e20;
-    --accent: #93966f;
-    --accent-tint: #292a1c;
-  }
 }
 
 * {
@@ -178,11 +167,11 @@ nav a:hover,
 
 h1 {
   margin-bottom: 18px;
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: clamp(48px, 5.4vw, 76px);
-  font-weight: 600;
+  font-weight: 680;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .tagline {
@@ -260,7 +249,7 @@ h1 {
 }
 
 #command::before {
-  color: var(--accent);
+  color: var(--code-muted);
 }
 
 .link-row {
@@ -317,12 +306,15 @@ h1 {
   background: var(--accent);
 }
 
-.terminal .copy {
+.terminal .copy,
+.docs-code .copy {
   border-color: var(--rule);
   background: var(--paper);
+  color: var(--ink);
 }
 
-.terminal .copy:hover {
+.terminal .copy:hover,
+.docs-code .copy:hover {
   border-color: var(--muted);
 }
 
@@ -397,7 +389,7 @@ h1 {
 .terminal {
   padding: 20px;
   background: var(--code);
-  color: var(--ink);
+  color: var(--code-ink);
 }
 
 .copy-row {
@@ -406,7 +398,7 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
-  color: var(--muted);
+  color: var(--code-muted);
   font-family: var(--font-mono);
   font-size: 13px;
 }
@@ -454,6 +446,23 @@ h1 {
 
 .tree-count {
   color: var(--muted);
+}
+
+.terminal .agent-path {
+  color: var(--code-ink);
+}
+
+.terminal .agent-legend {
+  color: var(--code-ink);
+}
+
+.terminal .agent-legend::before {
+  background: var(--accent);
+}
+
+.terminal .tree-label,
+.terminal .tree-count {
+  color: var(--code-muted);
 }
 
 .terminal pre {
@@ -640,7 +649,7 @@ h2 {
   box-decoration-break: clone;
   padding: 0.08em 0.3em;
   border-radius: 3px;
-  background: var(--code);
+  background: var(--faint);
   color: var(--ink);
   font-family: var(--font-mono);
   font-size: 0.84em;
