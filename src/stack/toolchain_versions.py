@@ -16,7 +16,7 @@ from typing import Final
 
 from src.utils.types import TemplateValue
 
-BUN_VERSION: Final[str] = "1.3.0"
+BUN_VERSION: Final[str] = "1.4.4"
 PYTHON_DOCKER_TAG: Final[str] = "3.12-slim-bookworm"
 PYTHON_MATRIX: Final[tuple[str, ...]] = ("3.12", "3.13", "3.14")
 POETRY_VERSION: Final[str] = "1.8.4"

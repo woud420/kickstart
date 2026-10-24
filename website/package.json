@@ -2,9 +2,9 @@
   "name": "kickstart-website",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.3.5",
+  "packageManager": "bun@1.4.4",
   "engines": {
-    "bun": ">=1.3.0 <2"
+    "bun": ">=1.4.4 <2"
   },
   "scripts": {
     "check": "bun run typecheck && bun run test",

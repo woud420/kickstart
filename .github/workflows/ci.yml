@@ -111,7 +111,7 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.5"
+          bun-version: "1.4.4"
 
       - name: Test Python service generation
         run: |
@@ -209,7 +209,7 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.5"
+          bun-version: "1.4.4"
 
       - name: Install website dependencies
         run: bun install --frozen-lockfile
