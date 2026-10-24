@@ -42,7 +42,13 @@ The tag push uses a PAT because tags pushed with the default `GITHUB_TOKEN` do n
 
 6. Verify the release actually shipped before calling it done: `git ls-remote --tags origin` shows the new tag, the release workflow ran green end to end (including Deploy Website), and kickstart-cli.org shows the new version. The weekly `Scheduled Evals` workflow also runs a release-drift check that fails whenever `pyproject.toml` names a version with no matching tag or GitHub Release.
 
-Check the public website and its `/healthz` version manually after deployment. The release workflow does not probe the public domain because Cloudflare Bot Fight Mode can challenge automated requests from GitHub-hosted runners even when deployment succeeds.
+Release CI verifies the served Worker version through an authenticated, short-lived
+`workers.dev/healthz` probe. The provider hostname serves no HTML or assets, and
+the credential expires after 15 minutes. See [website deployment verification](../website/README.md#deployment-verification).
+Check the public website and its `/healthz` version manually after deployment:
+the Worker probe does not establish custom-domain DNS, TLS or bot-policy behavior.
+The release workflow does not probe the public domain because Cloudflare Bot Fight
+Mode can challenge GitHub-hosted runners even when deployment succeeds.
 
 The release workflow builds the Python package and Python 3.14 binary archives (`kickstart-<platform>-py3.14.tar.gz` for `linux-x64`, `linux-arm64`, and `macos-arm64`), publishes or updates the GitHub Release, and deploys the website with metadata for that tag.
 
