@@ -48,7 +48,7 @@ export const documentationPages: readonly DocPage[] = [
         p("Run the installer on Linux x64 or arm64, or macOS Apple Silicon. It downloads a release binary, verifies its SHA-256 checksum, and offers to add it to your PATH."),
         code(installCommand),
         code("kickstart --version", "Verify the installation"),
-        p("On another platform, use a Python 3.12–3.14 source installation. The installation guide covers that path, custom directories, and updates."),
+        p("Homebrew works on the same platforms: brew install woud420/tap/kickstart. On another platform, use a Python 3.12–3.14 source installation. The installation guide covers both paths, custom directories, and updates."),
       ] },
       { id: "create", title: "Create your first project", blocks: [
         p("You need Git, Bun, and make for this walkthrough. It creates a TypeScript Cloudflare Worker that you can develop locally without a Cloudflare account."),
@@ -75,9 +75,15 @@ export const documentationPages: readonly DocPage[] = [
     slug: "installation",
     title: "Installation",
     group: "Get started",
-    summary: "Install a verified release binary, choose another installation path, and keep kickstart up to date.",
-    sources: ["README.md", "docs/operations/install-binaries.md", "docs/contracts/telemetry.md"],
+    summary: "Install with Homebrew or a verified release binary, choose another installation path, and keep kickstart up to date.",
+    sources: ["README.md", "docs/operations/homebrew.md", "docs/operations/install-binaries.md", "docs/contracts/telemetry.md"],
     sections: [
+      { id: "homebrew", title: "Homebrew", blocks: [
+        code("brew install woud420/tap/kickstart"),
+        p("The formula installs a pinned, checksum-verified release binary on Apple Silicon with macOS 15 or newer, and on x64 or arm64 Linux with glibc 2.39 or newer. Other platforms use the source installation below."),
+        code("brew upgrade woud420/tap/kickstart\nbrew uninstall woud420/tap/kickstart", "Update or remove"),
+        note("Homebrew owns this installation", "Use brew to update or remove it. The Homebrew launcher refuses kickstart install, upgrade, and uninstall and points you back to brew."),
+      ] },
       { id: "release-binary", title: "Release binary", blocks: [
         code(installCommand),
         table(["Platform", "Binary"], [["Linux x64", "linux-x64"], ["Linux arm64", "linux-arm64"], ["macOS Apple Silicon", "macos-arm64"]]),
@@ -100,8 +106,14 @@ export const documentationPages: readonly DocPage[] = [
         p("The install runbook has manual downloads, checksums, all installer options, and uninstall instructions."),
       ] },
       { id: "updates", title: "Update or remove kickstart", blocks: [
+        p("These commands manage installations made with the installer script. For a Homebrew installation, use brew upgrade and brew uninstall instead."),
         code("kickstart upgrade", "Update"),
         p("An upgrade may print a separate managed-layout repair command. Follow the printed instructions rather than trying to move a running binary payload yourself. Use kickstart uninstall --help to review removal options."),
+      ] },
+      { id: "switch-to-homebrew", title: "Switch to Homebrew", blocks: [
+        p("An earlier ~/.local/bin/kickstart can shadow the Homebrew launcher on PATH. Remove the standalone installation first, then install with Homebrew and check which launcher your shell runs."),
+        code("kickstart uninstall --clean-path\nbrew install woud420/tap/kickstart\ncommand -v kickstart\nkickstart version"),
+        p("Homebrew uninstall keeps your telemetry preference and generated repositories."),
       ] },
       { id: "telemetry", title: "Choose your telemetry preference", blocks: [
         p("Release builds enable pseudonymous usage telemetry by default. Turn it off persistently, or use a process-level opt-out before the installer runs."),
@@ -249,9 +261,9 @@ export const documentationPages: readonly DocPage[] = [
           ["migrate PATH", "Preview a manifest migration; --apply writes it"],
           ["export backstage PATH", "Write or refresh catalog-info.yaml"],
           ["export external-io PATH --input FILE", "Validate a declaration and print JSON; --format markdown prints Markdown"],
-          ["install", "Manage the launcher and optional PATH setup"],
-          ["upgrade", "Update the installation"],
-          ["uninstall", "Remove the installation; inspect --help before using"],
+          ["install", "Manage the launcher and optional PATH setup; standalone installations only"],
+          ["upgrade", "Update a standalone installation; use brew upgrade for Homebrew"],
+          ["uninstall", "Remove a standalone installation; use brew uninstall for Homebrew"],
           ["telemetry status / enable / disable / reset-id", "Inspect or change local telemetry preferences"],
           ["version / --version", "Show the installed version"],
         ]),
@@ -308,11 +320,14 @@ export const documentationPages: readonly DocPage[] = [
     title: "Troubleshooting",
     group: "Reference",
     summary: "Start with the failing command, the installed version, and the actual generated project.",
-    sources: ["README.md", "docs/operations/install-binaries.md", "docs/human-guide.md"],
+    sources: ["README.md", "docs/operations/homebrew.md", "docs/operations/install-binaries.md", "docs/human-guide.md"],
     sections: [
       { id: "command-not-found", title: "kickstart: command not found", blocks: [
-        p("The default launcher is ~/.local/bin/kickstart. Open a new terminal after accepting the installer's PATH update. If it still fails, check that the launcher exists and your shell PATH includes its directory."),
-        code("~/.local/bin/kickstart --version"),
+        p("The installer script's default launcher is ~/.local/bin/kickstart. Open a new terminal after accepting the installer's PATH update. If it still fails, check that the launcher exists and your shell PATH includes its directory. Homebrew links its launcher into the Homebrew prefix instead."),
+        code("command -v kickstart\n~/.local/bin/kickstart --version"),
+      ] },
+      { id: "homebrew-refuses", title: "Homebrew manages this installation", blocks: [
+        p("The Homebrew launcher refuses kickstart install, upgrade, and uninstall. Use brew upgrade woud420/tap/kickstart or brew uninstall woud420/tap/kickstart. If kickstart upgrade runs instead of refusing after a Homebrew install, an older ~/.local/bin/kickstart is earlier on PATH; command -v kickstart shows which one runs."),
       ] },
       { id: "wrong-package", title: "The command does not match these docs", blocks: [
         code("kickstart --version\nkickstart --help"),
