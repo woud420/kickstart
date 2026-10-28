@@ -83,7 +83,7 @@ def test_successful_flow_preserves_step_order(flow):
         "write_content",
         "log_success",
     ):
-        getattr(generator, name).side_effect = lambda *args, step=name: calls.append(step) or True
+        getattr(generator, name).side_effect = lambda *args, step=name, **kwargs: calls.append(step) or True
     for name in ("language_setup_fn", "additional_setup_fn", "github_create_fn"):
         options[name].side_effect = lambda step=name: calls.append(step) or True
 

@@ -9,6 +9,7 @@ from src.generator.projections import (
     operations_content,
 )
 from src.generator.service import ServiceGenerator
+from src.stack.types import TemplateConfig
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
 from src.utils.errors import ProjectCreationError, ExtensionError, LanguageNotSupportedError
 
@@ -112,8 +113,9 @@ def test_create_success_python_with_helm_and_gh(
     
     mock_create_architecture_docs.assert_called_once()
     assert mock_create_architecture_docs.call_args.args[0] == "test-service Architecture Notes"
-    mock_write_content.assert_any_call(".env.example", "EXAMPLE_ENV_VAR=value\n")
-    assert [c.args[0] for c in mock_write_content.call_args_list] == [".env.example", ".kickstart/scaffold.json"]
+    # Language setup owns .env.example; only the manifest's ownership rewrite remains here.
+    assert [c.args[0] for c in mock_write_content.call_args_list] == [".kickstart/scaffold.json"]
+    assert mock_write_content.call_args.kwargs == {"replace": True}
     mock_create_python_structure.assert_called_once()
     mock_create_helm_chart.assert_called_once()
     mock_log_success.assert_called_once_with("Python service 'test-service' created successfully in 'test-service'!")
@@ -210,16 +212,18 @@ def test_create_raises_when_language_template_missing(mock_create_project, tmp_p
 def test_create_python_structure(mock_write_content, mock_write_template, mock_create_directories, service_generator):
     service_generator._create_python_structure()
     
-    # Verify all __init__.py files are created for Python packages
+    # Empty __init__.py markers for packages the core plan doesn't render
     expected_python_packages = [
-        "src", "src/model", "src/api", "src/routes", "src/handler", "src/clients", "src/config",
+        "src", "src/handler", "src/clients",
         "tests", "tests/unit", "tests/unit/model", "tests/unit/api", "tests/unit/routes",
         "tests/integration", "tests/integration/api", "tests/integration/clients",
         "tests/fixtures"
     ]
-    
+
     expected_init_calls = [call(f"{package}/__init__.py", "") for package in expected_python_packages]
     mock_write_content.assert_has_calls(expected_init_calls, any_order=True)
+    for package in ("src/model", "src/api", "src/routes", "src/config"):
+        assert call(f"{package}/__init__.py", "") not in mock_write_content.call_args_list
     
     # Verify key template files are written
     expected_template_calls = [
@@ -235,11 +239,16 @@ def test_create_python_structure(mock_write_content, mock_write_template, mock_c
         call("src/routes/health.py", "python/core/routes/health.py.tpl"),
         call("src/config/__init__.py", "python/core/config/__init__.py.tpl"),
         call("src/config/settings.py", "python/core/config/settings.py.tpl"),
-        call("requirements.txt", "python/core/requirements.txt.tpl"),
     ]
-    
+
     for expected_call in expected_template_calls:
         mock_write_template.assert_any_call(*expected_call.args)
+
+    # requirements.txt is rendered in memory and written once
+    assert "requirements.txt" not in [c.args[0] for c in mock_write_template.call_args_list]
+    requirements_writes = [c for c in mock_write_content.call_args_list if c.args[0] == "requirements.txt"]
+    assert len(requirements_writes) == 1
+    assert "fastapi" in requirements_writes[0].args[1]
     
     # Verify directories are created
     mock_create_directories.assert_called_with(["migrations"])
@@ -285,7 +294,9 @@ def test_create_rust_structure(mock_write_content, mock_write_template, service_
     expected_main_call = call("src/main.rs", expected_main_content)
     
     mock_write_content.assert_has_calls(expected_mod_calls + [expected_main_call], any_order=True)
-    mock_write_template.assert_called_once_with("Cargo.toml", "rust/Cargo.toml.tpl")
+    mock_write_content.assert_any_call(".env.example", "EXAMPLE_ENV_VAR=value\n")
+    # Cargo.toml renders once, from the stack profile
+    mock_write_template.assert_not_called()
 
 
 @patch.object(ServiceGenerator, 'write_template')
@@ -300,7 +311,7 @@ def test_create_rust_structure_with_redis_cache(mock_write_content, mock_write_t
         "EXAMPLE_ENV_VAR=value\nREDIS_URL=redis://127.0.0.1:6379/0\n",
     )
     mock_write_template.assert_any_call("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
-    mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", cache="redis")
+    assert generator._profile_extension_vars() == {"Cargo.toml": {"cache": "redis"}}
 
 
 @patch.object(ServiceGenerator, 'write_template')
@@ -315,7 +326,7 @@ def test_create_rust_structure_with_jwt_auth(mock_write_content, mock_write_temp
         "EXAMPLE_ENV_VAR=value\nJWT_SECRET=change-me-change-me\nJWT_ISSUER=test-service\n",
     )
     mock_write_template.assert_any_call("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
-    mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", auth="jwt")
+    assert generator._profile_extension_vars() == {"Cargo.toml": {"auth": "jwt"}}
 
 
 @patch.object(ServiceGenerator, 'write_template')
@@ -335,17 +346,23 @@ def test_create_rust_structure_with_redis_and_jwt(mock_write_content, mock_write
     )
     mock_write_template.assert_any_call("src/clients/cache.rs", "rust/extensions/cache/redis.rs.tpl")
     mock_write_template.assert_any_call("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
-    mock_write_template.assert_any_call("Cargo.toml", "rust/Cargo.toml.tpl", cache="redis", auth="jwt")
+    assert generator._profile_extension_vars() == {"Cargo.toml": {"cache": "redis", "auth": "jwt"}}
 
 
 @patch.object(ServiceGenerator, 'write_content')
 @patch.object(ServiceGenerator, 'write_template')
-def test_create_rust_structure_writes_cargo_toml(mock_write_template, mock_write_content, service_generator):
-    generator = ServiceGenerator("test-service", "rust", False, {})
+def test_rust_cargo_toml_renders_once_from_profile(mock_write_template, mock_write_content, service_generator):
+    generator = ServiceGenerator("test-service", "rust", False, {}, cache="redis")
     generator._create_rust_structure()
-    
-    mock_write_template.assert_called_once_with("Cargo.toml", "rust/Cargo.toml.tpl")
-    assert mock_write_content.call_count > 0
+
+    assert "Cargo.toml" not in [c.args[0] for c in mock_write_template.call_args_list]
+    profile = generator._with_extension_vars(
+        (TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl"), TemplateConfig("README.md", "rust/README.md.tpl"))
+    )
+    assert profile == (
+        TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl", {"cache": "redis"}),
+        TemplateConfig("README.md", "rust/README.md.tpl"),
+    )
 
 
 @patch.object(ServiceGenerator, 'write_template')
@@ -363,7 +380,9 @@ def test_create_cpp_structure(mock_write_content, mock_write_template, service_g
     ]
 
     mock_write_content.assert_has_calls(expected_calls, any_order=True)
-    mock_write_template.assert_called_once_with("CMakeLists.txt", "cpp/CMakeLists.txt.tpl")
+    mock_write_content.assert_any_call(".env.example", "EXAMPLE_ENV_VAR=value\n")
+    # CMakeLists.txt renders once, from the stack profile
+    mock_write_template.assert_not_called()
 
 
 @patch.object(ServiceGenerator, 'write_template')
@@ -397,17 +416,18 @@ func main() {
     ]
     
     mock_write_content.assert_has_calls(expected_calls, any_order=True)
-    mock_write_template.assert_called_once_with("go.mod", "go/go.mod.tpl")
+    mock_write_content.assert_any_call(".env.example", "EXAMPLE_ENV_VAR=value\n")
 
 
 @patch.object(ServiceGenerator, 'write_content')
 @patch.object(ServiceGenerator, 'write_template')
-def test_create_go_structure_writes_go_mod(mock_write_template, mock_write_content, service_generator):
+def test_go_mod_renders_once_from_profile(mock_write_template, mock_write_content, service_generator):
     generator = ServiceGenerator("test-service", "go", False, {})
     generator._create_go_structure()
-    
-    mock_write_template.assert_called_once_with("go.mod", "go/go.mod.tpl")
-    assert mock_write_content.call_count > 0
+
+    # go.mod comes from the stack profile; language setup must not render it again
+    assert "go.mod" not in [c.args[0] for c in mock_write_template.call_args_list]
+    assert generator._profile_extension_vars() == {}
 
 
 @patch('src.generator.service.success')
@@ -563,7 +583,8 @@ def test_create_typescript_structure_with_postgres_database(
     generator._create_typescript_structure()
 
     mock_write_template.assert_any_call("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
-    mock_write_template.assert_any_call("package.json", "typescript/package.json.tpl", database="postgres")
+    assert "package.json" not in [c.args[0] for c in mock_write_template.call_args_list]
+    assert generator._profile_extension_vars() == {"package.json": {"database": "postgres"}}
     mock_write_template.assert_any_call(
         "migrations/001_initial.sql",
         "typescript/extensions/database/migrations.sql.tpl",
