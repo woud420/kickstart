@@ -42,6 +42,11 @@ Support is intentionally narrow:
 
 Other language/runtime/framework combinations fail loudly until their templates are implemented.
 
+For Python, selecting Postgres and JWT supplies independent helpers, not a
+database-backed authentication flow. The example user routes remain in-memory.
+See the [Python Postgres/JWT contract](contracts/python-postgres-jwt.md) for
+migration ownership, connection setup, and the persistence boundary.
+
 ## Adopting Existing Repos
 
 `kickstart adopt REPO --check` reports an existing repo against the standard
