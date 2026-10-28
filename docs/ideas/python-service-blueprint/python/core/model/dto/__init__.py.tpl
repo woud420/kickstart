@@ -1,0 +1,1 @@
+{% extends "python/base/dto_init.py.tpl" %}

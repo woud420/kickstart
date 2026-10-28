@@ -1,0 +1,1 @@
+{% extends "python/base/health_fastapi.py.tpl" %}
