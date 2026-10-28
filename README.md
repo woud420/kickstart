@@ -55,6 +55,11 @@ kickstart create system platform --cloud aws --runtime kubernetes
 kickstart adopt path/to/repo --check   # check an existing repo against the standard
 ```
 
+For Python, Postgres and JWT add independent database and token/password helpers.
+The example `/users` routes still use in-memory storage; signup, login, credential
+persistence, and route protection are application work. See the
+[Python Postgres/JWT contract](docs/contracts/python-postgres-jwt.md).
+
 ## What it generates
 
 - `service`: Python, TypeScript, Rust, C++ or Go backend. TypeScript and Rust can also target Cloudflare Workers.

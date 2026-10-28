@@ -93,6 +93,41 @@ jobs:
           poetry run kickstart --help
           poetry run kickstart version
 
+  python-postgres-contract:
+    name: Python Postgres contract
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kickstart_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python + Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+      - name: Install generated project dependencies in isolation
+        run: |
+          poetry run kickstart create service postgres-contract --lang python --database postgres --auth jwt --root "$RUNNER_TEMP"
+          python -m venv "$RUNNER_TEMP/generated-env"
+          "$RUNNER_TEMP/generated-env/bin/python" -m pip install -r "$RUNNER_TEMP/postgres-contract/requirements.txt"
+      - name: Exercise generated code and migrations on Postgres
+        env:
+          KICKSTART_TEST_POSTGRES_DSN: postgresql://postgres:postgres@localhost:5432/kickstart_test
+          KICKSTART_GENERATED_PYTHON: ${{ runner.temp }}/generated-env/bin/python
+        run: poetry run pytest tests/integration/test_python_postgres.py -v
+
   integration-test:
     name: Integration Test - Generate Projects
     runs-on: ubuntu-latest
