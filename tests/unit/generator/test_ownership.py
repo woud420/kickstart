@@ -236,13 +236,13 @@ def test_ownership_finalize_failure_prevents_success_or_github(tmp_path: Path, m
     write = generator.write_content
     metadata_writes = 0
 
-    def fail_final_metadata(target, content):
+    def fail_final_metadata(target, content, **kwargs):
         nonlocal metadata_writes
         if target == ".kickstart/scaffold.json":
             metadata_writes += 1
             if metadata_writes == 2:
                 return False
-        return write(target, content)
+        return write(target, content, **kwargs)
 
     github = Mock()
     monkeypatch.setattr(generator, "write_content", fail_final_metadata)

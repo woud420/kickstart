@@ -86,6 +86,9 @@ class BaseGenerator:
         self._templates_root = self.template_dir
         self.template_registry = get_template_registry(self.template_dir)
         self._generated_paths: set[str] = set()
+        # Targets whose write failed. Setup code often ignores write results,
+        # so the create flow checks this list after every step.
+        self._failed_writes: list[str] = []
 
     def create_project(self) -> bool:
         """Check if the project directory exists.
@@ -117,6 +120,7 @@ class BaseGenerator:
                 ensure_directory_exists(self.project / directory)
                 return True
             except Exception:
+                self._failed_writes.append(f"{Path(directory).as_posix()}/")
                 return False
 
         # Use batch operation wrapper for standardized error collection
@@ -129,7 +133,6 @@ class BaseGenerator:
 
         return not collector.has_errors()
 
-    @handle_template_operations(default_return=False, log_errors=True)
     def write_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
         """Write a template file to the project.
 
@@ -141,6 +144,17 @@ class BaseGenerator:
         Returns:
             True if file was written successfully, False otherwise
         """
+        if not self._claim_target(target, replace=False):
+            return False
+        return self._record_write(target, self._render_template(target, template_path, **vars))
+
+    def replace_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
+        """Like ``write_template``, but may overwrite a file this generator already wrote."""
+        return self._record_write(target, self._render_template(target, template_path, **vars))
+
+    @handle_template_operations(default_return=False, log_errors=True)
+    def _render_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
+        """Render a template to the target; the decorator turns errors into False."""
         resolved_template_path: Path | str
         if isinstance(template_path, str) and not Path(template_path).is_absolute():
             if template_path.startswith("_shared/"):
@@ -165,17 +179,24 @@ class BaseGenerator:
         logger.debug(f"Successfully wrote template {template_path} to {target}")
         return True
 
-    @handle_file_operations(default_return=False, log_errors=True)
-    def write_content(self, target: str, content: str) -> bool:
+    def write_content(self, target: str, content: str, *, replace: bool = False) -> bool:
         """Write direct content to a file in the project.
 
         Args:
             target: Target file path relative to project root
             content: Content to write to the file
+            replace: Allow overwriting a file this generator already wrote
 
         Returns:
             True if file was written successfully, False otherwise
         """
+        if not self._claim_target(target, replace):
+            return False
+        return self._record_write(target, self._write_content_file(target, content))
+
+    @handle_file_operations(default_return=False, log_errors=True)
+    def _write_content_file(self, target: str, content: str) -> bool:
+        """Write content to the target; the decorator turns OS errors into False."""
         write_file(
             self.project / target,
             content,
@@ -185,6 +206,36 @@ class BaseGenerator:
         self._generated_paths.add(Path(target).as_posix())
         logger.debug(f"Successfully wrote content to {target}")
         return True
+
+    def _claim_target(self, target: str, replace: bool) -> bool:
+        """Refuse a second write to a path unless the caller opts in with ``replace``.
+
+        Each generated file should be rendered once from fully resolved inputs,
+        so an unplanned rewrite is recorded as a failed write.
+        """
+        path = Path(target).as_posix()
+        if replace or path not in self._generated_paths:
+            return True
+        warn(f"Refusing to write '{path}' twice; render it once from its final inputs.")
+        self._failed_writes.append(f"{path} (already written)")
+        return False
+
+    def _record_write(self, target: str, written: bool) -> bool:
+        """Remember a failed write so the create flow can fail its step."""
+        if not written:
+            self._failed_writes.append(Path(target).as_posix())
+        return written
+
+    def _fail_on_dropped_writes(self, operation: Callable[[], bool]) -> Callable[[], bool]:
+        """Fail a create step that dropped a write, even if it returned True."""
+        def checked() -> bool:
+            already_failed = len(self._failed_writes)
+            succeeded = operation()
+            dropped = self._failed_writes[already_failed:]
+            if dropped:
+                raise ProjectCreationError(f"could not write {', '.join(dropped)}")
+            return succeeded
+        return checked
 
     def write_content_files(self, files: Sequence[ContentFile]) -> bool:
         """Write multiple direct content files from a typed file plan."""
@@ -216,18 +267,22 @@ class BaseGenerator:
         """
         success = True
         for template in templates:
-            template_vars: dict[str, TemplateValue] = {
-                "service_name": self.name,
-                "package_name": self._package_name(),
-                **toolchain_vars(),
-            }
-            template_vars.update(template.vars)
-            base_dir = self._templates_root if template.template.startswith("_shared/") else self.template_dir
-            source = (base_dir / template.template).read_text(encoding="utf-8")
-            content = get_template_engine().render_string(source, template_vars)
+            content = self.render_template_text(template.template, **template.vars)
             if self.write_content(template.target, content) is False:
                 success = False
         return success
+
+    def render_template_text(self, template_path: str, **vars: TemplateValue) -> str:
+        """Render a template to a string with the same variables ``write_template`` uses."""
+        template_vars: dict[str, TemplateValue] = {
+            "service_name": self.name,
+            "package_name": self._package_name(),
+            **toolchain_vars(),
+        }
+        template_vars.update(vars)
+        base_dir = self._templates_root if template_path.startswith("_shared/") else self.template_dir
+        source = (base_dir / template_path).read_text(encoding="utf-8")
+        return get_template_engine().render_string(source, template_vars)
 
     def _package_name(self) -> str:
         """Return a package-manager-safe name derived from the project name."""
@@ -403,7 +458,9 @@ class BaseGenerator:
             steps.append(CreateStep(language_setup_fn, "Language-specific setup failed"))
         if additional_setup_fn is not None:
             steps.append(CreateStep(additional_setup_fn, "Additional setup failed"))
-        error_collector = run_create_steps(steps)
+        error_collector = run_create_steps(
+            [CreateStep(self._fail_on_dropped_writes(step.operation), step.failure_message) for step in steps]
+        )
 
         # Fail before announcing success or creating a GitHub repo: a partial
         # scaffold must never produce a success banner or remote side effects.
@@ -417,7 +474,8 @@ class BaseGenerator:
         if scaffold_contract.schema_version == "4.0":
             ownership = plan_generated_ownership(self._generated_paths)
             final_contract = replace(scaffold_contract, ownership=ownership)
-            if not self.write_content(MANIFEST_PATH, final_contract.manifest_json(self.name)):
+            # Deliberate rewrite: ownership can only be planned once every other file exists.
+            if not self.write_content(MANIFEST_PATH, final_contract.manifest_json(self.name), replace=True):
                 raise ProjectCreationError("Failed to persist scaffold ownership metadata")
 
         # Success message and GitHub integration
