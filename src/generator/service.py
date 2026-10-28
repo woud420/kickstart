@@ -388,13 +388,9 @@ class ServiceGenerator(BaseGenerator):
             migration_content=self._read_template_text("python/core/migrations/001_initial.sql.tpl"),
             framework=self.framework,
             include_sqlite_database=self.database == "sqlite",
+            include_postgres_database=self.database == "postgres",
         ):
-            # FIXME: with --database postgres this replaces the postgres extension's
-            # migration with the core one. Kept so generated output stays unchanged.
-            replaces_extension_migration = (
-                content_file.target == "migrations/001_initial.sql" and self.database == "postgres"
-            )
-            self.write_content(content_file.target, content_file.content, replace=replaces_extension_migration)
+            self.write_content(content_file.target, content_file.content)
 
         self.create_directories(["migrations"])
 
