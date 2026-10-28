@@ -86,6 +86,9 @@ class BaseGenerator:
         self._templates_root = self.template_dir
         self.template_registry = get_template_registry(self.template_dir)
         self._generated_paths: set[str] = set()
+        # Targets whose write failed. Setup code often ignores write results,
+        # so the create flow checks this list after every step.
+        self._failed_writes: list[str] = []
 
     def create_project(self) -> bool:
         """Check if the project directory exists.
@@ -117,6 +120,7 @@ class BaseGenerator:
                 ensure_directory_exists(self.project / directory)
                 return True
             except Exception:
+                self._failed_writes.append(f"{Path(directory).as_posix()}/")
                 return False
 
         # Use batch operation wrapper for standardized error collection
@@ -129,7 +133,6 @@ class BaseGenerator:
 
         return not collector.has_errors()
 
-    @handle_template_operations(default_return=False, log_errors=True)
     def write_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
         """Write a template file to the project.
 
@@ -141,6 +144,11 @@ class BaseGenerator:
         Returns:
             True if file was written successfully, False otherwise
         """
+        return self._record_write(target, self._render_template(target, template_path, **vars))
+
+    @handle_template_operations(default_return=False, log_errors=True)
+    def _render_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
+        """Render a template to the target; the decorator turns errors into False."""
         resolved_template_path: Path | str
         if isinstance(template_path, str) and not Path(template_path).is_absolute():
             if template_path.startswith("_shared/"):
@@ -165,7 +173,6 @@ class BaseGenerator:
         logger.debug(f"Successfully wrote template {template_path} to {target}")
         return True
 
-    @handle_file_operations(default_return=False, log_errors=True)
     def write_content(self, target: str, content: str) -> bool:
         """Write direct content to a file in the project.
 
@@ -176,6 +183,11 @@ class BaseGenerator:
         Returns:
             True if file was written successfully, False otherwise
         """
+        return self._record_write(target, self._write_content_file(target, content))
+
+    @handle_file_operations(default_return=False, log_errors=True)
+    def _write_content_file(self, target: str, content: str) -> bool:
+        """Write content to the target; the decorator turns OS errors into False."""
         write_file(
             self.project / target,
             content,
@@ -185,6 +197,23 @@ class BaseGenerator:
         self._generated_paths.add(Path(target).as_posix())
         logger.debug(f"Successfully wrote content to {target}")
         return True
+
+    def _record_write(self, target: str, written: bool) -> bool:
+        """Remember a failed write so the create flow can fail its step."""
+        if not written:
+            self._failed_writes.append(Path(target).as_posix())
+        return written
+
+    def _fail_on_dropped_writes(self, operation: Callable[[], bool]) -> Callable[[], bool]:
+        """Fail a create step that dropped a write, even if it returned True."""
+        def checked() -> bool:
+            already_failed = len(self._failed_writes)
+            succeeded = operation()
+            dropped = self._failed_writes[already_failed:]
+            if dropped:
+                raise ProjectCreationError(f"could not write {', '.join(dropped)}")
+            return succeeded
+        return checked
 
     def write_content_files(self, files: Sequence[ContentFile]) -> bool:
         """Write multiple direct content files from a typed file plan."""
@@ -403,7 +432,9 @@ class BaseGenerator:
             steps.append(CreateStep(language_setup_fn, "Language-specific setup failed"))
         if additional_setup_fn is not None:
             steps.append(CreateStep(additional_setup_fn, "Additional setup failed"))
-        error_collector = run_create_steps(steps)
+        error_collector = run_create_steps(
+            [CreateStep(self._fail_on_dropped_writes(step.operation), step.failure_message) for step in steps]
+        )
 
         # Fail before announcing success or creating a GitHub repo: a partial
         # scaffold must never produce a success banner or remote side effects.
