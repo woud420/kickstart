@@ -1,1 +1,0 @@
-{% extends "python/base/user_entities_init.py.tpl" %}

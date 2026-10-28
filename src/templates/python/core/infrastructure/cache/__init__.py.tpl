@@ -1,1 +1,0 @@
-{% extends "python/base/cache_init.py.tpl" %}

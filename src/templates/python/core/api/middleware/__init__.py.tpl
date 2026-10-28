@@ -1,1 +1,0 @@
-{% extends "python/base/middleware_init.py.tpl" %}

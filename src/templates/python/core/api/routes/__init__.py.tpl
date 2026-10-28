@@ -1,1 +1,0 @@
-{% extends "python/base/routes_init.py.tpl" %}
