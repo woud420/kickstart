@@ -17,10 +17,9 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
         *language_ci_workflow(language),
     )
     language_specific = {
-        "python": (
-            TemplateConfig("requirements.txt", "python/requirements.txt.tpl"),
-            TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl", {"has_async": True}),
-        ),
+        # requirements.txt depends on the framework and extensions, so the
+        # service generator renders it once from python/core or python/extensions.
+        "python": (TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl", {"has_async": True}),),
         "rust": (
             TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl"),
             TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),

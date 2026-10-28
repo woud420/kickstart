@@ -36,6 +36,10 @@ class ExtensionWriter(Protocol):
         """Write a template file to target path."""
         ...
 
+    def replace_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
+        """Write a template file, replacing one already written."""
+        ...
+
     def create_directories(self, directories: Sequence[str]) -> bool:
         """Create directories."""
         ...
@@ -65,8 +69,10 @@ class Extension:
         Returns:
             List of requirements to be added
         """
+        # Extensions layer over the core scaffold, so they may replace core files
+        # (for example the SQLite settings, .gitignore and .env.example).
         for template in self.config.templates:
-            writer.write_template(template.target, template.template, **template.vars)
+            writer.replace_template(template.target, template.template, **template.vars)
 
         if self.config.directories:
             writer.create_directories(self.config.directories)

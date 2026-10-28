@@ -83,7 +83,7 @@ def test_successful_flow_preserves_step_order(flow):
         "write_content",
         "log_success",
     ):
-        getattr(generator, name).side_effect = lambda *args, step=name: calls.append(step) or True
+        getattr(generator, name).side_effect = lambda *args, step=name, **kwargs: calls.append(step) or True
     for name in ("language_setup_fn", "additional_setup_fn", "github_create_fn"):
         options[name].side_effect = lambda step=name: calls.append(step) or True
 
@@ -121,3 +121,14 @@ def test_missing_optional_steps_remain_optional(flow):
     options.update(language_setup_fn=None, additional_setup_fn=None, github_create_fn=None)
     assert generator.execute_create_flow(**options) is True
     generator.log_success.assert_called_once_with("Created")
+
+
+def test_step_that_drops_a_write_fails_even_when_it_returns_true(flow):
+    generator, options = flow
+    options["language_setup_fn"].side_effect = lambda: generator._record_write("Cargo.toml", False) or True
+
+    with pytest.raises(ProjectCreationError, match="Language-specific setup failed: could not write Cargo.toml"):
+        generator.execute_create_flow(**options)
+
+    generator.log_success.assert_not_called()
+    options["github_create_fn"].assert_not_called()
