@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 import logging
 from src.generator.base import BaseGenerator
@@ -28,12 +29,14 @@ from src.generator.scaffold_contract import (
 from src.generator.service_capabilities import ServiceExtensionSelection, validate_service_extensions
 from src.generator.specs import ServiceSpec
 from src.generator.template_plan import TemplatePlan
-from src.utils.types import GeneratorConfig
-from src.utils.types import TemplatePathConfig
+from src.utils.types import GeneratorConfig, TemplatePathConfig, TemplateValue, TemplateVars
 from src.utils.error_handling import safe_operation_context
 from src.utils.errors import LanguageNotSupportedError
 
 logger = logging.getLogger(__name__)
+
+# .env.example for languages whose setup adds no service-specific variables.
+DEFAULT_ENV_EXAMPLE = "EXAMPLE_ENV_VAR=value\n"
 
 
 class ServiceGenerator(BaseGenerator):
@@ -152,7 +155,7 @@ class ServiceGenerator(BaseGenerator):
 
         directories = service_directories()
 
-        template_plan = TemplatePlan.from_templates(profile.templates)
+        template_plan = TemplatePlan.from_templates(self._with_extension_vars(profile.templates))
 
         # Configuration for the common create flow
         architecture_title: str = f"{self.name} Architecture Notes"
@@ -186,6 +189,38 @@ class ServiceGenerator(BaseGenerator):
             additional_setup_fn=self._setup_helm_if_requested,
             github_create_fn=github_create_fn if self.gh else None
         )
+
+    def _with_extension_vars(self, templates: tuple[TemplateConfig, ...]) -> tuple[TemplateConfig, ...]:
+        """Resolve extension variables into the profile templates before they render."""
+        overrides = self._profile_extension_vars()
+        return tuple(
+            replace(template, vars={**template.vars, **overrides[template.target]})
+            if template.target in overrides
+            else template
+            for template in templates
+        )
+
+    def _profile_extension_vars(self) -> dict[str, TemplateVars]:
+        """Return extension variables for profile templates whose output depends on them."""
+        overrides: dict[str, TemplateVars] = {}
+        if self.lang == "rust":
+            cargo_vars: dict[str, TemplateValue] = {}
+            if self.cache == "redis":
+                cargo_vars["cache"] = "redis"
+            if self.auth == "jwt":
+                cargo_vars["auth"] = "jwt"
+            overrides["Cargo.toml"] = cargo_vars
+        elif self.lang == "typescript":
+            package_vars: dict[str, TemplateValue] = {}
+            if self.auth == "jwt":
+                package_vars["auth"] = "jwt"
+            if self.database == "postgres":
+                package_vars["database"] = "postgres"
+            overrides["package.json"] = package_vars
+            if self.auth == "jwt":
+                readme_vars: TemplateVars = {"database": "postgres"} if self.database == "postgres" else {}
+                overrides["README.md"] = {**readme_vars, "auth": "jwt"}
+        return overrides
 
     def _validate_extension_selection(self) -> ServiceExtensionSelection:
         """Validate database, cache, and auth extensions for this service."""
@@ -283,9 +318,6 @@ class ServiceGenerator(BaseGenerator):
             True if setup was successful, False otherwise
         """
         with safe_operation_context("Service-specific setup", log_errors=True):
-            # Write direct content
-            self.write_content(".env.example", "EXAMPLE_ENV_VAR=value\n")
-
             # Language-specific files and structure
             if self.lang == "python":
                 self._create_python_structure()
@@ -325,34 +357,59 @@ class ServiceGenerator(BaseGenerator):
         - Clean architecture with proper separation of concerns
         - Type hints and proper error handling
         """
-        self.write_content_files(python_init_content_files(python_package_directories()))
+        core_plan = python_service_core_template_plan(self.framework)
+        requirements = next(template for template in core_plan.templates if template.target == "requirements.txt")
+        core_targets = {template.target for template in core_plan.templates}
 
-        self.write_templates_from_plan(python_service_core_template_plan(self.framework))
-        
-        # Add extensions based on flags (only for FastAPI framework)
-        if self.framework != "minimal":
-            self._add_python_extensions()
-        
+        # Empty package markers only where the core plan doesn't render the module.
         self.write_content_files(
-            python_service_content_files(
-                env_content=self._read_template_text("python/core/env.example.tpl"),
-                migration_content=self._read_template_text("python/core/migrations/001_initial.sql.tpl"),
-                framework=self.framework,
-                include_sqlite_database=self.database == "sqlite",
+            [
+                init_file
+                for init_file in python_init_content_files(python_package_directories())
+                if init_file.target not in core_targets
+            ]
+        )
+        self.write_templates_from_plan(
+            TemplatePlan(
+                tuple(template for template in core_plan.templates if template is not requirements),
+                core_plan.base_vars,
             )
         )
-        
+
+        # Add extensions based on flags (only for FastAPI framework)
+        extension_requirements = self._add_python_extensions() if self.framework != "minimal" else []
+        requirements_text = self.render_template_text(requirements.template, **requirements.vars)
+        if extension_requirements:
+            requirements_text += "\n\n# Extension requirements\n" + "\n".join(extension_requirements) + "\n"
+        self.write_content("requirements.txt", requirements_text)
+
+        for content_file in python_service_content_files(
+            env_content=self._read_template_text("python/core/env.example.tpl"),
+            migration_content=self._read_template_text("python/core/migrations/001_initial.sql.tpl"),
+            framework=self.framework,
+            include_sqlite_database=self.database == "sqlite",
+        ):
+            # FIXME: with --database postgres this replaces the postgres extension's
+            # migration with the core one. Kept so generated output stays unchanged.
+            replaces_extension_migration = (
+                content_file.target == "migrations/001_initial.sql" and self.database == "postgres"
+            )
+            self.write_content(content_file.target, content_file.content, replace=replaces_extension_migration)
+
         self.create_directories(["migrations"])
 
     def _read_template_text(self, template_path: str) -> str:
         """Read source text from a scaffold template."""
         return (self.template_dir / template_path).read_text(encoding="utf-8")
 
-    def _add_python_extensions(self) -> None:
+    def _add_python_extensions(self) -> list[str]:
         """Add extension functionality based on flags.
 
         This method uses ExtensionManager to add database, cache, and authentication
         extensions based on the flags provided during initialization.
+
+        Returns:
+            Extension requirement lines for requirements.txt
         """
         # Apply extensions using the extension manager
         extensions_added, all_extension_requirements = self.extension_manager.apply_extensions(
@@ -361,20 +418,6 @@ class ServiceGenerator(BaseGenerator):
             cache=self.cache,
             auth=self.auth
         )
-
-        # Update requirements.txt with extensions
-        if all_extension_requirements:
-            extension_requirements = "\n\n# Extension requirements\n" + "\n".join(all_extension_requirements) + "\n"
-
-            # Read core requirements and append extensions
-            try:
-                with open(self.project / "requirements.txt", "r") as f:
-                    current_requirements = f.read()
-                enhanced_requirements = current_requirements + extension_requirements
-                self.write_content("requirements.txt", enhanced_requirements)
-            except FileNotFoundError:
-                # If core requirements don't exist, create with extensions only
-                self.write_content("requirements.txt", "\n".join(all_extension_requirements))
 
         # Extension tests live in packages the base layout does not create.
         test_packages = []
@@ -387,8 +430,8 @@ class ServiceGenerator(BaseGenerator):
 
         # Log what was added
         if extensions_added:
-            from src.utils.logger import success
             success(f"Extensions added: {', '.join(extensions_added)}")
+        return all_extension_requirements
 
     def _create_rust_structure(self) -> None:
         """Create Rust-specific project structure.
@@ -412,20 +455,12 @@ class ServiceGenerator(BaseGenerator):
         if include_jwt_auth:
             self.write_template("src/handler/auth.rs", "rust/extensions/auth/jwt.rs.tpl")
 
-        if include_redis_cache or include_jwt_auth:
-            env_content = "EXAMPLE_ENV_VAR=value\n"
-            if include_redis_cache:
-                env_content += "REDIS_URL=redis://127.0.0.1:6379/0\n"
-            if include_jwt_auth:
-                env_content += f"JWT_SECRET=change-me-change-me\nJWT_ISSUER={self.name}\n"
-            self.write_content(".env.example", env_content)
-
-        cargo_vars: dict[str, str] = {}
+        env_content = DEFAULT_ENV_EXAMPLE
         if include_redis_cache:
-            cargo_vars["cache"] = "redis"
+            env_content += "REDIS_URL=redis://127.0.0.1:6379/0\n"
         if include_jwt_auth:
-            cargo_vars["auth"] = "jwt"
-        self.write_template("Cargo.toml", "rust/Cargo.toml.tpl", **cargo_vars)
+            env_content += f"JWT_SECRET=change-me-change-me\nJWT_ISSUER={self.name}\n"
+        self.write_content(".env.example", env_content)
 
     def _create_cpp_structure(self) -> None:
         """Create C++-specific project structure.
@@ -433,8 +468,8 @@ class ServiceGenerator(BaseGenerator):
         Sets up a C++ service with CMake, a small executable, and header files
         that match the generated source layout.
         """
+        self.write_content(".env.example", DEFAULT_ENV_EXAMPLE)
         self.write_content_files(cpp_service_content_files())
-        self.write_template("CMakeLists.txt", "cpp/CMakeLists.txt.tpl")
 
     def _create_go_structure(self) -> None:
         """Create Go-specific project structure.
@@ -445,9 +480,9 @@ class ServiceGenerator(BaseGenerator):
         - .gitkeep files for empty directories
         - Standard Go project layout
         """
+        self.write_content(".env.example", DEFAULT_ENV_EXAMPLE)
         self.write_content_files(go_service_content_files())
         self.write_template_content_files(go_service_content_templates())
-        self.write_template("go.mod", "go/go.mod.tpl")
 
     def _create_typescript_structure(self) -> None:
         """Create TypeScript-specific service structure.
@@ -470,13 +505,6 @@ class ServiceGenerator(BaseGenerator):
                 service_name=self.name,
             )
         )
-        package_vars: dict[str, str] = {}
-        if include_jwt_auth:
-            package_vars["auth"] = "jwt"
-        if include_postgres_database:
-            package_vars["database"] = "postgres"
-        if package_vars:
-            self.write_template("package.json", "typescript/package.json.tpl", **package_vars)
         if include_postgres_database:
             self.write_template("src/clients/database.ts", "typescript/src/clients/database.ts.tpl")
             self.create_directories(["migrations"])

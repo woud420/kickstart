@@ -175,7 +175,6 @@ def typescript_service_templates(
             TemplateConfig("src/handler/auth.ts", "typescript/extensions/auth/jwt.ts.tpl"),
             TemplateConfig("tests/auth.test.ts", "typescript/extensions/auth/auth.test.ts.tpl"),
             TemplateConfig("tests/auth-config.test.ts", "typescript/extensions/auth/auth-config.test.ts.tpl"),
-            TemplateConfig("README.md", "typescript/README.md.tpl", template_vars),
         )
     return templates
 
