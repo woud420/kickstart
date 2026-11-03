@@ -49,35 +49,7 @@ class TemplateFamilySummary:
     total: int
 
 
-KNOWN_BLUEPRINT_SETS = (
-    BlueprintTemplateSet(
-        name="shared-reference",
-        files=(
-            "_shared/base_gitignore.tpl",
-            "_shared/lang_config.py",
-            "_shared/project_structure.md",
-            "_shared/service_readme.tpl",
-        ),
-    ),
-    BlueprintTemplateSet(
-        name="python-rich-service-reference",
-        prefixes=(
-            "python/base/",
-            "python/core/api/",
-            "python/core/infrastructure/",
-            "python/core/model/dto/",
-            "python/core/model/entities/",
-            "python/core/services/",
-            "python/core/validators/",
-            "python/dao/",
-            "python/repository/",
-        ),
-        files=(
-            "python/core/__init__.py.tpl",
-            "python/core/model/schemas.py.tpl",
-        ),
-    ),
-)
+KNOWN_BLUEPRINT_SETS: tuple[BlueprintTemplateSet, ...] = ()
 
 
 def main() -> None:
@@ -89,7 +61,7 @@ def main() -> None:
     files = _template_files()
     active = _active_templates()
     active.update(_referenced_templates(active))
-    blueprints = {path for path in files if _is_known_blueprint(path)}
+    blueprints = {path for path in files - active if _is_known_blueprint(path)}
     unknown = sorted(files - active - blueprints)
 
     print(f"template files: {len(files)}")
