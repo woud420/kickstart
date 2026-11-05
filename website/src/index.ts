@@ -9,6 +9,8 @@ interface Env {
   SUPPORTED_FROM_VERSION?: string;
   REPOSITORY_URL?: string;
   RELEASE_URL?: string;
+  DEPLOY_PROBE_SHA256?: string;
+  DEPLOY_PROBE_EXPIRES_AT?: string;
 }
 
 const PUBLIC_HOSTNAME = "kickstart-cli.org";
@@ -110,10 +112,30 @@ function htmlResponse(meta: ProjectMeta): Response {
   });
 }
 
+async function authorizedDeployProbe(request: Request, url: URL, env: Env): Promise<boolean> {
+  const expires = Number(env.DEPLOY_PROBE_EXPIRES_AT);
+  const authorization = request.headers.get("authorization") ?? "";
+  if (request.method !== "GET" || url.pathname !== "/healthz" ||
+      url.protocol !== "https:" || !Number.isFinite(expires) || expires <= Date.now() ||
+      !/^[a-f0-9]{64}$/.test(env.DEPLOY_PROBE_SHA256 ?? "") ||
+      !/^Bearer [a-f0-9]{64}$/.test(authorization)) {
+    return false;
+  }
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(authorization.slice(7)));
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return hex === env.DEPLOY_PROBE_SHA256;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const service = env.SERVICE_NAME ?? "kickstart-site";
+
+    // The provider hostname must not become a public mirror around zone bot protection.
+    if (url.hostname.replace(/\.$/, "").endsWith(".workers.dev") &&
+        !await authorizedDeployProbe(request, url, env)) {
+      return new Response("Not found", { status: 404, headers: { "cache-control": "no-store" } });
+    }
 
     // Before the HTTPS redirect so http://www reaches the HTTPS apex in one hop.
     if (isWwwHostname(url.hostname)) {
@@ -132,7 +154,9 @@ export default {
       // Version in the health payload makes deployed-vs-source drift
       // observable: the release pipeline asserts this equals the tag.
       const version = stripVersionPrefix(env.PROJECT_VERSION ?? defaultProjectMeta.latestVersion);
-      return withSecurityHeaders(jsonResponse({ status: "ok", service, version }), url);
+      return withSecurityHeaders(jsonResponse({ status: "ok", service, version }, {
+        headers: { "cache-control": "no-store" },
+      }), url);
     }
 
     if (url.pathname === "/assets/site.css") {
