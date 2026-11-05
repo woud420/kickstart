@@ -281,7 +281,6 @@ ${renderReleaseNotes(meta)}
     </main>
 
     <footer class="shell">
-      <span>Served by a kickstart Cloudflare Worker.</span>
       <a class="bracketed" href="/healthz">healthz</a>
     </footer>
 
