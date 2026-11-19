@@ -28,12 +28,13 @@
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@oclif/test": "^4.0.0",
+    "@typescript/native": "npm:typescript@{{ typescript_version }}",
     "@types/bun": "^1.3.0",
     "@types/node": "^22.13.1",
     "eslint": "^9.18.0",
     "prettier": "^3.4.2",
     "tsx": "^4.20.0",
-    "typescript": "^5.7.3",
+    "typescript": "npm:@typescript/typescript6@{{ typescript_compat_version }}",
     "typescript-eslint": "^8.20.0",
     "vitest": "^3.0.0"
   },

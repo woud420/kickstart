@@ -191,6 +191,7 @@ def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig,
         ),
         "rust": (
             TemplateConfig("Cargo.toml", f"{base}/Cargo.toml.tpl"),
+            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
             TemplateConfig("package.json", f"{base}/package.json.tpl"),
             TemplateConfig("src/lib.rs", f"{base}/src/lib.rs.tpl"),
             TemplateConfig("tests/README.md", f"{base}/tests/README.md.tpl"),
