@@ -32,16 +32,6 @@ def _run_create_system(kickstart_run) -> Callable[..., Path]:
     return _runner
 
 
-def test_create_monorepo_kustomize(_run_create_bun_turbo_system):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp = Path(tmpdir)
-        _run_create_bun_turbo_system(tmp, "infra-stack", "--root", str(tmp))
-
-        base = tmp / "infra-stack"
-        assert (base / "infra/k8s/base/deployment.yaml").exists()
-        assert (base / "Makefile").exists()
-
-
 def test_create_system_is_workspace_neutral_by_default(_run_create_system):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)

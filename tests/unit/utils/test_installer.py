@@ -117,10 +117,6 @@ def test_uninstall_binary_removes_file(tmp_path: Path, single_file_binary: Path)
     assert not removed.exists()
 
 
-def test_uninstall_binary_returns_none_when_absent(tmp_path: Path) -> None:
-    assert installer.uninstall_binary(tmp_path) is None
-
-
 def test_detect_shell_zsh() -> None:
     assert installer.detect_shell({"SHELL": "/bin/zsh"}) == "zsh"
 

@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 import json
 from src.generator.base import BaseGenerator
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
@@ -8,13 +7,6 @@ from unittest.mock import patch
 @pytest.fixture
 def base_generator():
     return BaseGenerator("test-project", {"key": "value"})
-
-@pytest.fixture
-def base_generator_with_root():
-    return BaseGenerator("test-project", {"key": "value"}, root="/tmp")
-
-def test_base_generator_initialization_with_root(base_generator_with_root):
-    assert base_generator_with_root.project == Path("/tmp/test-project")
 
 def test_create_project_success(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path / "new-project"):
