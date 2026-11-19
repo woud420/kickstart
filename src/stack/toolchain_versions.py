@@ -18,8 +18,6 @@ from src.utils.types import TemplateValue
 
 BUN_VERSION: Final[str] = "1.4.4"
 TYPESCRIPT_VERSION: Final[str] = "7.0.2"
-# typescript-eslint uses the classic compiler API. The compatibility package
-# exposes tsc6, leaving tsc available for the native compiler.
 TYPESCRIPT_COMPAT_VERSION: Final[str] = "6.0.2"
 PYTHON_DOCKER_TAG: Final[str] = "3.12-slim-bookworm"
 PYTHON_MATRIX: Final[tuple[str, ...]] = ("3.12", "3.13", "3.14")
