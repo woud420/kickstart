@@ -17,11 +17,13 @@ from typing import Final
 from src.utils.types import TemplateValue
 
 BUN_VERSION: Final[str] = "1.4.4"
+TYPESCRIPT_VERSION: Final[str] = "7.0.2"
+TYPESCRIPT_COMPAT_VERSION: Final[str] = "6.0.2"
 PYTHON_DOCKER_TAG: Final[str] = "3.12-slim-bookworm"
 PYTHON_MATRIX: Final[tuple[str, ...]] = ("3.12", "3.13", "3.14")
 POETRY_VERSION: Final[str] = "1.8.4"
-RUST_TOOLCHAIN: Final[str] = "1.88"
-RUST_DOCKER_TAG: Final[str] = "1.88-bookworm"
+RUST_TOOLCHAIN: Final[str] = "1.100.0"
+RUST_DOCKER_TAG: Final[str] = f"{RUST_TOOLCHAIN}-bookworm"
 GO_VERSION: Final[str] = "1.26"
 # Must provide at least GO_VERSION: generated go.mod requires >= GO_VERSION
 # and the builder runs with GOTOOLCHAIN defaulting to local, so a builder
@@ -37,6 +39,8 @@ def toolchain_vars() -> dict[str, TemplateValue]:
     """
     return {
         "bun_version": BUN_VERSION,
+        "typescript_version": TYPESCRIPT_VERSION,
+        "typescript_compat_version": TYPESCRIPT_COMPAT_VERSION,
         "python_docker_tag": PYTHON_DOCKER_TAG,
         "python_matrix": list(PYTHON_MATRIX),
         "poetry_version": POETRY_VERSION,

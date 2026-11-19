@@ -28,6 +28,6 @@
     "@types/bun": "^1.3.0",
     "prettier": "^3.0.0",
     "turbo": "^2.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "{{ typescript_version }}"
   }
 }
