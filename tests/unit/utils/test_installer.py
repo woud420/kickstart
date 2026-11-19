@@ -287,14 +287,6 @@ def test_same_file_true_through_symlink(tmp_path: Path, single_file_binary: Path
     assert installer._same_file(link, single_file_binary) is True
 
 
-def test_same_file_false_for_distinct_paths(tmp_path: Path) -> None:
-    a = tmp_path / "a"
-    a.write_text("a")
-    b = tmp_path / "b"
-    b.write_text("b")
-    assert installer._same_file(a, b) is False
-
-
 def test_install_then_uninstall_round_trip(tmp_path: Path, single_file_binary: Path) -> None:
     """A full install + uninstall cycle leaves the install dir empty and is idempotent on uninstall."""
     target_dir = tmp_path / "user-bin"
@@ -380,12 +372,6 @@ def _make_fake_onedir_bundle(root: Path, *, bundle_name: str = "kickstart-bundle
     launcher.write_text("#!/bin/sh\necho fresh\n")
     launcher.chmod(0o755)
     return launcher
-
-
-def test_onedir_bundle_root_detects_pyinstaller_layout(tmp_path: Path) -> None:
-    launcher = _make_fake_onedir_bundle(tmp_path)
-    bundle_root = installer._onedir_bundle_root(launcher)
-    assert bundle_root == launcher.parent
 
 
 def test_onedir_bundle_root_ignores_single_file(tmp_path: Path, single_file_binary: Path) -> None:

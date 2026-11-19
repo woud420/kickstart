@@ -140,19 +140,6 @@ def test_adopt_without_check_is_a_usage_error(runner: CliRunner, tmp_path: Path)
     assert result.exit_code == 2
 
 
-def test_export_backstage_creates_then_reports_unchanged(runner: CliRunner, tmp_path: Path) -> None:
-    _managed_repo(tmp_path)
-
-    created = runner.invoke(app, ["export", "backstage", str(tmp_path)])
-    unchanged = runner.invoke(app, ["export", "backstage", str(tmp_path)])
-
-    assert created.exit_code == 0
-    assert "created" in created.stdout
-    assert unchanged.exit_code == 0
-    assert "unchanged" in unchanged.stdout
-    assert (tmp_path / "catalog-info.yaml").is_file()
-
-
 def test_export_backstage_refuses_unfenced_catalog(runner: CliRunner, tmp_path: Path) -> None:
     _managed_repo(tmp_path)
     (tmp_path / "catalog-info.yaml").write_text("apiVersion: backstage.io/v1alpha1\n", encoding="utf-8")

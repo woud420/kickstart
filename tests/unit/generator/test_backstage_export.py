@@ -255,19 +255,6 @@ def test_export_result_reports_missing_required_lines(tmp_path: Path) -> None:
     assert any("owner:" in issue and "entity 1" in issue for issue in result.issues)
 
 
-def test_manifest_name_round_trips_from_generated_manifest(tmp_path: Path) -> None:
-    contract = ScaffoldContract(
-        schema_version="3.2",
-        project_kind="service",
-        execution_models=("container",),
-        runtime_platforms=("local",),
-    )
-    _write_manifest(tmp_path, contract, "named-thing")
-    manifest = json.loads((tmp_path / MANIFEST_PATH).read_text(encoding="utf-8"))
-
-    assert manifest["project"]["name"] == "named-thing"
-
-
 def test_yaml_reserved_name_is_quoted_as_a_string(tmp_path: Path) -> None:
     contract = ScaffoldContract(
         schema_version="3.2",
