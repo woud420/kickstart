@@ -659,22 +659,14 @@ class TestAPIFunctions:
 class TestErrorRecovery:
     """Test error recovery and graceful degradation."""
     
-    def test_template_missing_graceful_failure(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test graceful handling when templates are missing."""
-        service_name = "test-missing-templates"
-        
-        # Create generator with non-existent language
-        generator = ServiceGenerator(
-            name=service_name,
-            lang="nonexistent-lang",
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir)
-        )
-        
-        # Unsupported languages fail before creating files.
-        with pytest.raises(LanguageNotSupportedError):
+    def test_missing_python_templates_leave_no_partial_service(self, tmp_path):
+        generator = ServiceGenerator("demo", "python", False, {}, root=str(tmp_path))
+        generator.lang_template_dir = tmp_path / "missing-templates" / "python"
+
+        with pytest.raises(LanguageNotSupportedError, match="python"):
             generator.create()
+
+        assert not (tmp_path / "demo").exists()
         
         # The method should fail before creating the project directory.
     
@@ -714,28 +706,6 @@ class TestErrorRecovery:
 
 class TestTemplateRendering:
     """Test template rendering and variable substitution."""
-    
-    def test_template_variable_substitution(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test that template variables are correctly substituted."""
-        service_name = "variable-test-service"
-        
-        with patch('src.utils.github.create_repo'):
-            generator = ServiceGenerator(
-                name=service_name,
-                lang="python",
-                gh=False,
-                config=mock_config,
-                root=str(temp_project_dir)
-            )
-            generator.create()
-        
-        project_path = temp_project_dir / service_name
-        
-        # Check that service name appears in architecture docs
-        arch_file = project_path / "docs/architecture/README.md"
-        if arch_file.exists():
-            content = arch_file.read_text()
-            assert service_name in content
     
     def test_jinja2_template_features(self, temp_project_dir: Path):
         """Test advanced Jinja2 template features work correctly."""

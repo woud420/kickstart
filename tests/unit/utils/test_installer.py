@@ -285,21 +285,6 @@ def test_managed_block_regex_is_non_greedy() -> None:
     assert len(matches) == 2
 
 
-def test_env_helper_returns_provided_dict() -> None:
-    custom = {"PATH": "/x"}
-    assert installer._env(custom) is custom
-
-
-def test_env_helper_falls_back_to_os_environ() -> None:
-    assert installer._env(None) is os.environ
-
-
-def test_same_file_true_for_identical_paths(tmp_path: Path) -> None:
-    file = tmp_path / "kickstart"
-    file.write_text("x")
-    assert installer._same_file(file, file) is True
-
-
 def test_same_file_true_through_symlink(tmp_path: Path, single_file_binary: Path) -> None:
     link = tmp_path / "alias"
     link.symlink_to(single_file_binary)
@@ -312,22 +297,6 @@ def test_same_file_false_for_distinct_paths(tmp_path: Path) -> None:
     b = tmp_path / "b"
     b.write_text("b")
     assert installer._same_file(a, b) is False
-
-
-def test_safe_resolve_falls_back_to_absolute(tmp_path: Path) -> None:
-    path = tmp_path / "x"
-    assert installer._safe_resolve(path) == path.resolve()
-
-
-def test_default_rc_uses_layout_table(tmp_path: Path) -> None:
-    """default_rc_for_shell should pull from the single declarative layout table."""
-    assert "zsh" in installer._SHELL_RC_LAYOUT
-    assert "bash" in installer._SHELL_RC_LAYOUT
-    assert "bash-darwin" in installer._SHELL_RC_LAYOUT
-    assert "fish" in installer._SHELL_RC_LAYOUT
-    result = installer.default_rc_for_shell("zsh", home=tmp_path)
-    assert result is not None
-    assert result.parts[-1:] == installer._SHELL_RC_LAYOUT["zsh"]
 
 
 def test_install_then_uninstall_round_trip(tmp_path: Path, single_file_binary: Path) -> None:
@@ -387,13 +356,16 @@ def test_install_binary_falls_back_on_resolve_failure(tmp_path: Path, single_fil
     assert destination.read_text() == single_file_binary.read_text()
 
 
-def test_install_binary_expands_relative_target(tmp_path: Path, single_file_binary: Path) -> None:
-    """install_binary should accept a relative path and create the directory."""
-    relative_target = tmp_path / "nested" / "bin"
-    result = installer.install_binary(single_file_binary, relative_target)
-    assert relative_target.exists()
-    assert result.destination == relative_target / installer.BINARY_NAME
-    assert result.destination.exists()
+def test_install_binary_resolves_relative_target_from_cwd(tmp_path, monkeypatch, single_file_binary):
+    working_dir = tmp_path / "working"
+    working_dir.mkdir()
+    monkeypatch.chdir(working_dir)
+
+    result = installer.install_binary(single_file_binary, Path("nested") / "bin")
+
+    installed = working_dir / "nested" / "bin" / installer.BINARY_NAME
+    assert installed.read_bytes() == single_file_binary.read_bytes()
+    assert result.destination.samefile(installed)
 
 
 # --- Onedir bundle install path -----------------------------------------

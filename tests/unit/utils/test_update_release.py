@@ -52,11 +52,14 @@ def test_host_platform_tag_rejects_unknown_arch(monkeypatch):
         updater.host_platform_tag()
 
 
-def test_host_python_minor_format():
-    minor = updater.host_python_minor()
-    assert minor.count(".") == 1
-    major, minor_part = minor.split(".")
-    assert major.isdigit() and minor_part.isdigit()
+@pytest.mark.parametrize("minor", [13, 14])
+def test_default_release_asset_matches_running_python(monkeypatch, minor):
+    from types import SimpleNamespace
+
+    version = SimpleNamespace(major=3, minor=minor)
+    monkeypatch.setattr(updater.sys, "version_info", version)
+
+    assert updater.expected_archive_name("linux-x64") == f"kickstart-linux-x64-py3.{minor}.tar.gz"
 
 
 def test_expected_archive_name_default(monkeypatch):

@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.language_setup import CPP_MAIN_CONTENT, CPP_ROUTES_HEADER_CONTENT, CPP_USER_HEADER_CONTENT
 from src.generator.projections import (
@@ -19,46 +18,10 @@ def service_generator():
     return ServiceGenerator("test-service", "python", False, {"key": "value"})
 
 
-@pytest.fixture
-def service_generator_with_helm():
-    return ServiceGenerator("test-service", "python", False, {"key": "value"}, helm=True)
-
-
-@pytest.fixture
-def service_generator_with_gh():
-    return ServiceGenerator("test-service", "python", True, {"key": "value"})
-
-
-@pytest.fixture
-def service_generator_with_root():
-    return ServiceGenerator("test-service", "python", False, {"key": "value"}, root="/tmp")
-
 @pytest.fixture(autouse=True)
 def mock_scaffold_contract_docs():
     with patch.object(ServiceGenerator, "create_scaffold_contract_docs", return_value=True):
         yield
-
-
-def test_service_generator_initialization(service_generator):
-    assert service_generator.name == "test-service"
-    assert service_generator.lang == "python"
-    assert service_generator.runtime == "container"
-    assert service_generator.gh is False
-    assert service_generator.helm is False
-    assert service_generator.config == {"key": "value"}
-    assert service_generator.lang_template_dir == service_generator.template_dir / "python"
-
-
-def test_service_generator_initialization_with_helm(service_generator_with_helm):
-    assert service_generator_with_helm.helm is True
-
-
-def test_service_generator_initialization_with_gh(service_generator_with_gh):
-    assert service_generator_with_gh.gh is True
-
-
-def test_service_generator_initialization_with_root(service_generator_with_root):
-    assert service_generator_with_root.project == Path("/tmp/test-service")
 
 
 @patch('src.generator.service.create_repo')

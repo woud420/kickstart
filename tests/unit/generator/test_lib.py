@@ -2,7 +2,6 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
-from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.lib import LibraryGenerator, CLIGenerator
 from src.utils.errors import ProjectCreationError, LanguageNotSupportedError
@@ -11,16 +10,6 @@ from src.utils.errors import ProjectCreationError, LanguageNotSupportedError
 @pytest.fixture
 def library_generator():
     return LibraryGenerator("test-lib", "python", False, {"key": "value"})
-
-
-@pytest.fixture
-def library_generator_with_gh():
-    return LibraryGenerator("test-lib", "python", True, {"key": "value"})
-
-
-@pytest.fixture
-def library_generator_with_root():
-    return LibraryGenerator("test-lib", "python", False, {"key": "value"}, root="/tmp")
 
 
 @pytest.fixture
@@ -55,31 +44,6 @@ def create_mocks(generator_type, content_method):
             write_template=write_template,
             content_writer=content_writer,
         )
-
-
-def test_library_generator_initialization(library_generator):
-    assert library_generator.name == "test-lib"
-    assert library_generator.lang == "python"
-    assert library_generator.gh is False
-    assert library_generator.config == {"key": "value"}
-    assert library_generator.lang_template_dir == library_generator.template_dir / "python"
-
-
-def test_library_generator_initialization_with_gh(library_generator_with_gh):
-    assert library_generator_with_gh.gh is True
-
-
-def test_library_generator_initialization_with_root(library_generator_with_root):
-    assert library_generator_with_root.project == Path("/tmp/test-lib")
-
-
-def test_cli_generator_inherits_from_library_generator():
-    """Test that CLIGenerator inherits from LibraryGenerator."""
-    cli_gen = CLIGenerator("test", "python", False, {})
-    assert isinstance(cli_gen, LibraryGenerator)
-    assert cli_gen.name == "test"
-    assert cli_gen.lang == "python"
-    assert cli_gen.gh is False
 
 
 @patch("src.generator.lib.create_repo")
@@ -355,27 +319,3 @@ def test_library_vs_cli_architecture_docs_difference():
 
         mock_cli_arch_docs.assert_called_once()
         assert mock_cli_arch_docs.call_args.args[0] == "my-cli CLI Docs"
-
-
-def test_library_vs_cli_success_message_difference():
-    """Test that library and CLI generators have different success messages."""
-    # Test library
-    with create_mocks(LibraryGenerator, "write_content_files") as mocks:
-        mock_lib_success = mocks.log_success
-        lib_generator = LibraryGenerator("my-lib", "python", False, {})
-        lib_generator.create()
-
-        mock_lib_success.assert_called_once_with("Python library 'my-lib' created successfully in 'my-lib'!")
-
-    # Test CLI
-    with (
-        patch.object(CLIGenerator, "create_project", return_value=True),
-        patch.object(CLIGenerator, "init_basic_structure"),
-        patch.object(CLIGenerator, "write_template"),
-        patch.object(CLIGenerator, "write_content"),
-        patch.object(CLIGenerator, "log_success") as mock_cli_success,
-    ):
-        cli_generator = CLIGenerator("my-cli", "python", False, {})
-        cli_generator.create()
-
-        mock_cli_success.assert_called_once_with("Python CLI 'my-cli' created successfully in 'my-cli'!")

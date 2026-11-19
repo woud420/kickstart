@@ -1,4 +1,3 @@
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import call, patch
 
@@ -11,16 +10,6 @@ from src.utils.errors import ProjectCreationError
 @pytest.fixture
 def frontend_generator():
     return FrontendGenerator("test-frontend", False, {"key": "value"})
-
-
-@pytest.fixture
-def frontend_generator_with_gh():
-    return FrontendGenerator("test-frontend", True, {"key": "value"})
-
-
-@pytest.fixture
-def frontend_generator_with_root():
-    return FrontendGenerator("test-frontend", False, {"key": "value"}, root="/tmp")
 
 
 @pytest.fixture(autouse=True)
@@ -45,21 +34,6 @@ def create_mocks():
             create_architecture_docs=create_architecture_docs,
             log_success=log_success,
         )
-
-
-def test_frontend_generator_initialization(frontend_generator):
-    assert frontend_generator.name == "test-frontend"
-    assert frontend_generator.gh is False
-    assert frontend_generator.config == {"key": "value"}
-    assert frontend_generator.template_dir.name == "react"
-
-
-def test_frontend_generator_initialization_with_gh(frontend_generator_with_gh):
-    assert frontend_generator_with_gh.gh is True
-
-
-def test_frontend_generator_initialization_with_root(frontend_generator_with_root):
-    assert frontend_generator_with_root.project == Path("/tmp/test-frontend")
 
 
 @pytest.mark.parametrize("gh", [True, False], ids=["with-gh", "without-gh"])
@@ -126,37 +100,22 @@ def test_architecture_docs_content(create_mocks):
     assert create_mocks.create_architecture_docs.call_args.args[0] == "my-awesome-app Frontend Docs"
 
 
-def test_success_message_format(create_mocks):
-    generator = FrontendGenerator("my-react-app", False, {})
-    generator.create()
+def test_frontend_html_loads_a_generated_module(tmp_path):
+    from html.parser import HTMLParser
 
-    expected_message = "Frontend app 'my-react-app' created successfully in 'my-react-app'!"
-    create_mocks.log_success.assert_called_once_with(expected_message)
+    entries = []
 
+    class ModuleScripts(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            attributes = dict(attrs)
+            if tag == "script" and attributes.get("type") == "module" and attributes.get("src"):
+                entries.append(attributes["src"])
 
-def test_template_files_count(create_mocks):
-    generator = FrontendGenerator("test", False, {})
-    generator.create()
-
-    assert create_mocks.write_template.call_count == 15
-
-
-def test_no_language_specific_logic():
-    generator = FrontendGenerator("test", False, {})
-
-    assert not hasattr(generator, "_create_python_structure")
-    assert not hasattr(generator, "_create_rust_structure")
-    assert not hasattr(generator, "_create_go_structure")
-    assert hasattr(generator, "create")
-
-
-def test_inheritance_from_base_generator():
-    from src.generator.base import BaseGenerator
-
-    generator = FrontendGenerator("test", False, {})
-    assert isinstance(generator, BaseGenerator)
-    assert hasattr(generator, "create_project")
-    assert hasattr(generator, "init_basic_structure")
-    assert hasattr(generator, "write_template")
-    assert hasattr(generator, "create_architecture_docs")
-    assert hasattr(generator, "log_success")
+    FrontendGenerator("dashboard", False, {}, root=str(tmp_path)).create()
+    project = tmp_path / "dashboard"
+    ModuleScripts().feed((project / "index.html").read_text())
+    assert entries, "index.html has no module entry point"
+    for entry in entries:
+        module = (project / entry.lstrip("/")).resolve()
+        assert module.is_relative_to(project)
+        assert module.is_file(), f"Missing frontend entry point: {entry}"

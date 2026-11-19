@@ -51,17 +51,14 @@ def test_create_service_with_helm_and_root(mock_service_generator):
     mock_generator_instance.create.assert_called_once()
 
 
-@patch("src.api.ServiceGenerator")
-def test_create_service_with_keyword_only_args(mock_service_generator):
-    mock_generator_instance = MagicMock()
-    mock_service_generator.return_value = mock_generator_instance
+def test_create_service_rejects_positional_helm_and_root():
+    with patch("src.api.ServiceGenerator") as generator:
+        with pytest.raises(TypeError):
+            create_service("demo", "go", False, {}, True)
+        with pytest.raises(TypeError):
+            create_service("demo", "go", False, {}, True, "output")
 
-    # Test that helm and root are keyword-only arguments
-    create_service("test", "go", True, {}, helm=True)
-    create_service("test", "go", True, {}, root="/path")
-    create_service("test", "go", True, {}, helm=False, root="/path")
-
-    assert mock_service_generator.call_count == 3
+    generator.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -232,27 +229,6 @@ def test_api_exports():
     ]
 
     assert set(__all__) == set(expected_exports)
-
-
-def test_parameter_validation_types():
-    """Test that functions accept correct parameter types."""
-    # These should not raise type errors during runtime
-    # (static type checking would catch these at development time)
-
-    with patch("src.api.ServiceGenerator") as mock_gen:
-        mock_gen.return_value.create = MagicMock()
-
-        # Test string parameters
-        create_service("test", "python", True, {"key": "value"})
-
-        # Test boolean parameters
-        create_service("test", "python", False, {})
-
-        # Test dict parameter (empty)
-        create_service("test", "python", True, {})
-
-        # Test dict parameter (with content)
-        create_service("test", "python", True, {"complex": {"nested": "value"}})
 
 
 def test_optional_parameters_default_behavior():

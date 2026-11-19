@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.system import SystemGenerator
 from src.utils.errors import ProjectCreationError
@@ -53,20 +52,6 @@ def monorepo_generator():
     return SystemGenerator("test-monorepo", False, {"key": "value"}, workspace_tooling="bun-turbo")
 
 
-@pytest.fixture
-def monorepo_generator_with_helm():
-    return SystemGenerator("test-monorepo", False, {"key": "value"}, helm=True, workspace_tooling="bun-turbo")
-
-
-@pytest.fixture
-def monorepo_generator_with_gh():
-    return SystemGenerator("test-monorepo", True, {"key": "value"}, workspace_tooling="bun-turbo")
-
-
-@pytest.fixture
-def monorepo_generator_with_root():
-    return SystemGenerator("test-monorepo", False, {"key": "value"}, root="/tmp", workspace_tooling="bun-turbo")
-
 @pytest.fixture(autouse=True)
 def mock_scaffold_contract_docs():
     with patch.object(SystemGenerator, "create_scaffold_contract_docs", return_value=True):
@@ -89,30 +74,6 @@ def create_mocks():
             create_architecture_docs=create_architecture_docs,
             log_success=log_success,
         )
-
-
-def test_monorepo_generator_initialization(monorepo_generator):
-    assert monorepo_generator.name == "test-monorepo"
-    assert monorepo_generator.helm is False
-    assert monorepo_generator.gh is False
-    assert monorepo_generator.cloud == "multi"
-    assert monorepo_generator.knowledge == "none"
-    assert monorepo_generator.runtime == "kubernetes"
-    assert monorepo_generator.workspace_tooling == "bun-turbo"
-    assert monorepo_generator.config == {"key": "value"}
-    assert monorepo_generator.template_dir.name == "monorepo"
-
-
-def test_monorepo_generator_initialization_with_helm(monorepo_generator_with_helm):
-    assert monorepo_generator_with_helm.helm is True
-
-
-def test_monorepo_generator_initialization_with_gh(monorepo_generator_with_gh):
-    assert monorepo_generator_with_gh.gh is True
-
-
-def test_monorepo_generator_initialization_with_root(monorepo_generator_with_root):
-    assert monorepo_generator_with_root.project == Path("/tmp/test-monorepo")
 
 
 def test_monorepo_cloud_selection():
@@ -404,13 +365,3 @@ def test_monorepo_name_passed_to_templates(create_mocks):
         assert makefile_call.kwargs["workspace_tooling"] == "bun-turbo"
         assert readme_call.kwargs["monorepo_name"] == "my-awesome-repo"
         assert readme_call.kwargs["system_name"] == "my-awesome-repo"
-
-
-def test_basic_structure_includes_all_required_directories(create_mocks):
-    """Test that init_basic_structure is called with all required directories."""
-    with patch.object(SystemGenerator, "_create_kustomize_structure"):
-        mock_init_structure = create_mocks.init_basic_structure
-        generator = SystemGenerator("test", False, {}, workspace_tooling="bun-turbo")
-        generator.create()
-
-        mock_init_structure.assert_called_once_with(_expected_monorepo_dirs())

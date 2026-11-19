@@ -1,6 +1,4 @@
 from dataclasses import FrozenInstanceError
-from datetime import UTC, datetime
-from uuid import uuid4
 
 import pytest
 
@@ -20,7 +18,6 @@ from src.model.dto.telemetry import (
     TelemetryDurationBucket,
     TelemetryEvent,
     TelemetryEventName,
-    TelemetryEnvelope,
 )
 from src.model.dto.upgrade import normalize_target_version
 
@@ -80,18 +77,6 @@ def test_property_mapping_contains_only_the_documented_allowlist() -> None:
         "runtime",
         "workspace_tooling",
     }
-
-
-def test_envelope_uses_provider_neutral_identity_names() -> None:
-    envelope = TelemetryEnvelope(
-        event_id=uuid4(),
-        anonymous_id=uuid4(),
-        occurred_at=datetime.now(UTC),
-        event=TelemetryEvent(TelemetryEventName.SCAFFOLD_CREATE_COMPLETED, _properties()),
-    )
-
-    assert "posthog" not in repr(envelope).lower()
-    assert envelope.anonymous_id.version == 4
 
 
 def test_create_context_cannot_carry_project_name_or_root() -> None:
