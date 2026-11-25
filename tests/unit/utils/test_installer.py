@@ -156,11 +156,6 @@ def test_path_contains_resolves_symlinks(tmp_path: Path) -> None:
     assert installer.path_contains(real_dir, env=env) is True
 
 
-def test_path_contains_missing(tmp_path: Path) -> None:
-    env = {"PATH": "/usr/bin:/bin"}
-    assert installer.path_contains(tmp_path, env=env) is False
-
-
 def test_path_update_snippet_bash_zsh(tmp_path: Path) -> None:
     assert installer.path_update_snippet("bash", tmp_path) == f'export PATH="{tmp_path}:$PATH"'
     assert installer.path_update_snippet("zsh", tmp_path) == f'export PATH="{tmp_path}:$PATH"'

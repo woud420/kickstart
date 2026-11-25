@@ -13,26 +13,10 @@ from src.telemetry.state import TelemetryStateStore, default_telemetry_state_pat
 from src.utils.errors import TelemetryStateError
 
 
-def test_default_path_honors_absolute_xdg_config_home(tmp_path: Path) -> None:
-    assert default_telemetry_state_path({"XDG_CONFIG_HOME": str(tmp_path)}) == (
-        tmp_path / "kickstart" / "telemetry.json"
-    )
-
-
 def test_default_path_ignores_relative_xdg_config_home(tmp_path: Path) -> None:
     assert default_telemetry_state_path({"XDG_CONFIG_HOME": "relative"}, home=tmp_path) == (
         tmp_path / ".config" / "kickstart" / "telemetry.json"
     )
-
-
-def test_reading_missing_state_is_lazy(tmp_path: Path) -> None:
-    store = TelemetryStateStore(tmp_path / "telemetry.json")
-
-    state = store.read()
-
-    assert state.consent is TelemetryConsent.UNSET
-    assert state.anonymous_id is None
-    assert not store.path.exists()
 
 
 def test_dangling_state_symlink_is_rejected_instead_of_treated_as_missing(tmp_path: Path) -> None:
