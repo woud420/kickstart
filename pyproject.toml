@@ -28,7 +28,7 @@ packages = [{include = "src"}]
 include = ["src/templates/**/*"]
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.20.2"
+mypy = "^2.4.1"
 types-toml = "^0.10.8.20260518"
 types-requests = "^2.33.0.20260408"
 pytest = "^9.0.3"
