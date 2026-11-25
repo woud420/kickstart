@@ -5,6 +5,7 @@ import typer
 from rich import print
 from rich.markup import escape
 
+from src.cli.failures import exit_with_error
 from src.generator.ownership_check import inspect_ownership
 from src.utils.errors import OwnershipPlanTargetError
 
@@ -13,8 +14,7 @@ def ownership_plan(path: Path, json_output: bool) -> None:
     try:
         report = inspect_ownership(path)
     except OwnershipPlanTargetError as error:
-        print(f"[red]{escape(str(error))}[/]")
-        raise typer.Exit(code=2) from error
+        exit_with_error(error, code=2)
     if json_output:
         typer.echo(report.to_json(), nl=False)
     else:
