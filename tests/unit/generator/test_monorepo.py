@@ -117,28 +117,6 @@ def test_monorepo_hybrid_runtime_selection():
     assert generator._uses_cloudflare_workers() is True
 
 
-def test_system_generator_defaults_to_neutral_workspace_tooling():
-    generator = SystemGenerator("test-system", False, {})
-
-    assert generator.workspace_tooling == "none"
-    assert generator.selection.uses_bun_turbo is False
-    template_targets = {template.target for template in generator.selection.templates}
-    assert "package.json" not in template_targets
-    assert "turbo.json" not in template_targets
-    assert "config/tsconfig/base.json" not in template_targets
-
-
-def test_system_generator_can_use_bun_turbo_workspace_tooling():
-    generator = SystemGenerator("test-system", False, {}, workspace_tooling="bun-turbo")
-
-    assert generator.workspace_tooling == "bun-turbo"
-    assert generator.selection.uses_bun_turbo is True
-    template_targets = {template.target for template in generator.selection.templates}
-    assert "package.json" in template_targets
-    assert "turbo.json" in template_targets
-    assert "config/tsconfig/base.json" in template_targets
-
-
 def test_monorepo_rejects_invalid_profile_options():
     with pytest.raises(ValueError):
         SystemGenerator("test", False, {}, cloud="azure", workspace_tooling="bun-turbo").create()

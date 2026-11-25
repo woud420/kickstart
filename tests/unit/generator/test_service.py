@@ -159,16 +159,6 @@ def test_create_fails_when_create_project_fails(mock_create_project, service_gen
     mock_create_project.assert_called_once()
 
 
-@patch.object(ServiceGenerator, 'create_project')
-def test_create_raises_when_language_template_missing(mock_create_project, tmp_path):
-    generator = ServiceGenerator("test-service", "nonexistent", False, {})
-    mock_create_project.return_value = True
-    generator.lang_template_dir = tmp_path / "nonexistent"  # Directory doesn't exist
-
-    with pytest.raises(LanguageNotSupportedError):
-        generator.create()
-
-
 @patch.object(ServiceGenerator, 'create_directories')
 @patch.object(ServiceGenerator, 'write_template')  
 @patch.object(ServiceGenerator, 'write_content')

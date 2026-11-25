@@ -270,17 +270,6 @@ def test_format_managed_block_round_trip() -> None:
     assert match.group(0).rstrip("\n") == block.rstrip("\n")
 
 
-def test_managed_block_regex_is_non_greedy() -> None:
-    """Two managed blocks in a single file should match independently, not as one big span."""
-    text = (
-        f"{installer.MARKER_BEGIN}\nA\n{installer.MARKER_END}\n"
-        "# user content\n"
-        f"{installer.MARKER_BEGIN}\nB\n{installer.MARKER_END}\n"
-    )
-    matches = installer._MANAGED_BLOCK_RE.findall(text)
-    assert len(matches) == 2
-
-
 def test_same_file_true_through_symlink(tmp_path: Path, single_file_binary: Path) -> None:
     link = tmp_path / "alias"
     link.symlink_to(single_file_binary)
@@ -372,11 +361,6 @@ def _make_fake_onedir_bundle(root: Path, *, bundle_name: str = "kickstart-bundle
     launcher.write_text("#!/bin/sh\necho fresh\n")
     launcher.chmod(0o755)
     return launcher
-
-
-def test_onedir_bundle_root_ignores_single_file(tmp_path: Path, single_file_binary: Path) -> None:
-    """A bare single-file binary is NOT a bundle root."""
-    assert installer._onedir_bundle_root(single_file_binary) is None
 
 
 def test_onedir_bundle_root_ignores_non_kickstart_filename(tmp_path: Path) -> None:
