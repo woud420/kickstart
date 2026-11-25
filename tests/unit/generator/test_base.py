@@ -105,3 +105,20 @@ def test_write_template_renders_project_toolchain_and_caller_values(tmp_path):
     assert generator.write_template("out/summary.txt", "summary.tpl", label="custom")
     output = tmp_path / "demo_app" / "out" / "summary.txt"
     assert output.read_text() == f"demo_app|demo-app|{BUN_VERSION}|custom"
+
+
+def test_write_template_renders_absolute_filename(tmp_path):
+    generator = BaseGenerator("demo", {}, root=str(tmp_path))
+    template = tmp_path / "greeting.tpl"
+    template.write_text("Hello {{ service_name }}")
+
+    assert generator.write_template("greeting.txt", str(template))
+    assert (generator.project / "greeting.txt").read_text() == "Hello demo"
+
+
+def test_write_template_rejects_missing_absolute_filename(tmp_path):
+    generator = BaseGenerator("demo", {}, root=str(tmp_path))
+    missing = tmp_path / "missing.tpl"
+
+    assert generator.write_template("greeting.txt", str(missing)) is False
+    assert not (generator.project / "greeting.txt").exists()
