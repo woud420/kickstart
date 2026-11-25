@@ -22,7 +22,7 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
         "python": (TemplateConfig("pyproject.toml", "python/pyproject.toml.tpl", {"has_async": True}),),
         "rust": (
             TemplateConfig("Cargo.toml", "rust/Cargo.toml.tpl"),
-            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+            rust_toolchain_template(),
         ),
         "go": (TemplateConfig("go.mod", "go/go.mod.tpl"),),
         "typescript": (
@@ -185,6 +185,11 @@ def typescript_lint_format_templates(
     )
 
 
+def rust_toolchain_template() -> TemplateConfig:
+    """Return the rust-toolchain.toml template every Rust scaffold ships."""
+    return TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl")
+
+
 def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig, ...]:
     base = f"cloudflare-workers/{language}"
     common = (
@@ -205,7 +210,7 @@ def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig,
         ),
         "rust": (
             TemplateConfig("Cargo.toml", f"{base}/Cargo.toml.tpl"),
-            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+            rust_toolchain_template(),
             TemplateConfig("package.json", f"{base}/package.json.tpl"),
             TemplateConfig("src/lib.rs", f"{base}/src/lib.rs.tpl"),
             TemplateConfig("tests/README.md", f"{base}/tests/README.md.tpl"),

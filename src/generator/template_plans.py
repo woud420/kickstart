@@ -3,6 +3,7 @@
 from src.generator.template_plan import TemplatePlan
 from src.stack.templates import (
     language_ci_workflow,
+    rust_toolchain_template,
     typescript_lint_format_templates,
     typescript_tooling_templates,
 )
@@ -49,7 +50,7 @@ def cli_template_plan(language: str) -> TemplatePlan:
         ),
         "rust": (
             TemplateConfig("Cargo.toml", "rust/Cargo.cli.toml.tpl"),
-            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+            rust_toolchain_template(),
         ),
         "typescript": (
             TemplateConfig("package.json", "cli/typescript/package.json.tpl"),

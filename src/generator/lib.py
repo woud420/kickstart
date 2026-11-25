@@ -10,6 +10,7 @@ from src.generator.specs import CliSpec, LibrarySpec
 from src.generator.template_plan import TemplatePlan
 from src.generator.template_plans import cli_template_plan, library_template_plan
 from src.stack.profile import stack_registry
+from src.stack.templates import rust_toolchain_template
 from src.stack.types import TemplateConfig
 from src.utils.errors import LanguageNotSupportedError
 from src.utils.github import create_repo
@@ -47,7 +48,7 @@ LIBRARY_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {
     "rust": PackageSetupPlan(
         templates=(
             TemplateConfig("Cargo.toml", "rust/Cargo.lib.toml.tpl"),
-            TemplateConfig("rust-toolchain.toml", "rust/rust-toolchain.toml.tpl"),
+            rust_toolchain_template(),
         ),
         content_files=(ContentFile("src/lib.rs", RUST_LIBRARY_CONTENT),),
     ),
