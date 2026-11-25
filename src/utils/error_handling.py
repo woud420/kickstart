@@ -111,11 +111,35 @@ def handle_file_operations(
     return decorator
 
 
+def _warn_and_default_on(
+    operation: str,
+    caught: type[Exception],
+    default_return: R,
+    log_errors: bool,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Build a decorator that turns `caught` into a user warning plus `default_return`."""
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            try:
+                return func(*args, **kwargs)
+            except caught as e:
+                if log_errors:
+                    logger.error(f"{operation} operation failed in {func.__name__}: {e}", exc_info=True)
+                # Always use warn for user-facing feedback
+                warn(f"{operation} operation failed: {e}")
+                return default_return
+        return wrapper
+    return decorator
+
+
 def handle_template_operations(
     default_return: R,
     log_errors: bool = True
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator for standardizing template operation error handling.
+
+    Catches any `Exception`, warns the user, and returns `default_return`.
 
     Args:
         default_return: Value to return on error
@@ -124,19 +148,7 @@ def handle_template_operations(
     Returns:
         Decorated function
     """
-    def decorator(func: Callable[P, R]) -> Callable[P, R]:
-        @functools.wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                if log_errors:
-                    logger.error(f"Template operation failed in {func.__name__}: {e}", exc_info=True)
-                # Always use warn for user-facing feedback
-                warn(f"Template operation failed: {e}")
-                return default_return
-        return wrapper
-    return decorator
+    return _warn_and_default_on("Template", Exception, default_return, log_errors)
 
 
 def handle_directory_operations(
@@ -145,6 +157,8 @@ def handle_directory_operations(
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator for standardizing directory operation error handling.
 
+    Catches `OSError` only, warns the user, and returns `default_return`.
+
     Args:
         default_return: Value to return on error
         log_errors: Whether to log errors
@@ -152,18 +166,7 @@ def handle_directory_operations(
     Returns:
         Decorated function
     """
-    def decorator(func: Callable[P, R]) -> Callable[P, R]:
-        @functools.wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            try:
-                return func(*args, **kwargs)
-            except OSError as e:
-                if log_errors:
-                    logger.error(f"Directory operation failed in {func.__name__}: {e}", exc_info=True)
-                warn(f"Directory operation failed: {e}")
-                return default_return
-        return wrapper
-    return decorator
+    return _warn_and_default_on("Directory", OSError, default_return, log_errors)
 
 
 def handle_http_operations(
