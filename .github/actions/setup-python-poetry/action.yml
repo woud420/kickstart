@@ -30,7 +30,7 @@ runs:
   using: composite
   steps:
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ inputs.python-version }}
 
@@ -43,7 +43,7 @@ runs:
 
     - name: Load cached venv
       if: ${{ inputs.cache-venv == 'true' }}
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .venv
         key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('**/poetry.lock') }}

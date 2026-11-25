@@ -34,8 +34,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Verify published release and generate formulae
@@ -49,7 +49,7 @@ jobs:
           python3 ci/homebrew.py --tag "$TAG" --repository "$GITHUB_REPOSITORY" --artifacts archives --output formula/kickstart.rb
           gh release download v0.4.5 --repo "$GITHUB_REPOSITORY" --pattern 'kickstart-*-py3.14.tar.gz*' --dir previous
           python3 ci/homebrew.py --tag v0.4.5 --repository "$GITHUB_REPOSITORY" --artifacts previous --output formula/previous.rb
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: homebrew-formula
           path: formula/*.rb
@@ -63,9 +63,9 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: Homebrew/actions/setup-homebrew@1f8e202ffddf94def7f42f6fa3a482e821489f9c
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: Homebrew/actions/setup-homebrew@61b401267256bb9c047d6d1481b176d5772a0ba7
+      - uses: actions/download-artifact@v8
         with:
           name: homebrew-formula
           path: formula
@@ -86,12 +86,12 @@ jobs:
             echo '::error::Configure HOMEBREW_TAP_TOKEN with Contents read/write on woud420/homebrew-tap; rerun this workflow for the published tag.'
             exit 1
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: woud420/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: homebrew-formula
           path: formula
