@@ -225,33 +225,3 @@ class SystemGenerator(BaseGenerator):
                 "kustomize/overlay-kustomization.yaml",
                 **{**template_vars, "environment": env},
             )
-class MonorepoGenerator(SystemGenerator):
-    """Legacy monorepo generator.
-
-    The legacy monorepo entry point keeps the historical Bun + Turbo workspace
-    default. The canonical system entry point is neutral by default.
-    """
-
-    def __init__(
-        self,
-        name: str,
-        gh: bool,
-        config: GeneratorConfig,
-        helm: bool = False,
-        root: str | None = None,
-        cloud: str = "multi",
-        knowledge: str = "none",
-        runtime: str = "kubernetes",
-        workspace_tooling: str = "bun-turbo",
-    ) -> None:
-        super().__init__(
-            name,
-            gh,
-            config,
-            helm=helm,
-            root=root,
-            cloud=cloud,
-            knowledge=knowledge,
-            runtime=runtime,
-            workspace_tooling=workspace_tooling,
-        )

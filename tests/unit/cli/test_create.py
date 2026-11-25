@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+import pytest
 
 from src.cli.main import app
 
@@ -56,30 +57,34 @@ def test_create_cli_with_args(mock_load_config, mock_create_cli, runner, mock_co
     mock_create_cli.assert_called_once_with("test-cli", "rust", False, mock_config, root="/tmp")
 
 
-@patch("src.cli.create.create_monorepo")
+@pytest.mark.parametrize("alias", ["mono", "monorepo"])
+@patch("src.cli.create.create_system")
 @patch("src.cli.create.load_config")
-def test_create_monorepo_with_args(mock_load_config, mock_create_monorepo, runner, mock_config):
-    """Test creating a monorepo with command line arguments."""
+def test_removed_monorepo_aliases_point_to_system(mock_load_config, mock_create_system, alias, runner, mock_config):
+    """The removed mono/monorepo types fail with the replacement command."""
     mock_load_config.return_value = mock_config
 
-    result = runner.invoke(app, ["create", "mono", "test-mono", "--helm", "--gh", "--root", "/tmp"])
+    result = runner.invoke(app, ["create", alias, "test-mono", "--root", "/tmp"])
 
-    assert result.exit_code == 0
-    mock_create_monorepo.assert_called_once_with("test-mono", True, mock_config, helm=True, root="/tmp")
+    assert result.exit_code == 1
+    output = " ".join(result.stdout.split())
+    assert f"Type '{alias}' was removed" in output
+    assert "kickstart create system test-mono --workspace-tooling bun-turbo" in output
+    mock_create_system.assert_not_called()
 
 
-@patch("src.cli.create.create_monorepo")
+@patch("src.cli.create.create_system")
 @patch("src.cli.create.load_config")
-def test_create_monorepo_with_cloud_and_knowledge(mock_load_config, mock_create_monorepo, runner, mock_config):
-    """Test creating a monorepo with workflow profile options."""
+def test_create_system_with_cloud_and_knowledge(mock_load_config, mock_create_system, runner, mock_config):
+    """Test creating a system with workflow profile options."""
     mock_load_config.return_value = mock_config
 
     result = runner.invoke(
         app,
         [
             "create",
-            "mono",
-            "test-mono",
+            "system",
+            "test-system",
             "--root",
             "/tmp",
             "--cloud",
@@ -90,8 +95,8 @@ def test_create_monorepo_with_cloud_and_knowledge(mock_load_config, mock_create_
     )
 
     assert result.exit_code == 0
-    mock_create_monorepo.assert_called_once_with(
-        "test-mono",
+    mock_create_system.assert_called_once_with(
+        "test-system",
         False,
         mock_config,
         helm=False,
@@ -130,39 +135,6 @@ def test_create_service_with_runtime(mock_load_config, mock_create_service, runn
         mock_config,
         helm=False,
         root="/tmp",
-        runtime="cloudflare-workers",
-    )
-
-
-@patch("src.cli.create.create_monorepo")
-@patch("src.cli.create.load_config")
-def test_create_monorepo_with_runtime(mock_load_config, mock_create_monorepo, runner, mock_config):
-    """Test creating a system monorepo with an explicit platform profile."""
-    mock_load_config.return_value = mock_config
-
-    result = runner.invoke(
-        app,
-        [
-            "create",
-            "mono",
-            "edge-stack",
-            "--cloud",
-            "cloudflare",
-            "--runtime",
-            "cloudflare-workers",
-            "--root",
-            "/tmp",
-        ],
-    )
-
-    assert result.exit_code == 0
-    mock_create_monorepo.assert_called_once_with(
-        "edge-stack",
-        False,
-        mock_config,
-        helm=False,
-        root="/tmp",
-        cloud="cloudflare",
         runtime="cloudflare-workers",
     )
 

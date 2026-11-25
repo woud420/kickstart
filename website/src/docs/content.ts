@@ -139,7 +139,7 @@ export const documentationPages: readonly DocPage[] = [
           ["system", "A repo that groups apps, services, libraries, and infrastructure", "Language-neutral root"],
         ]),
         code("kickstart create service api --lang python\nkickstart create frontend web\nkickstart create lib core --lang rust\nkickstart create cli ops-tool --lang typescript\nkickstart create system platform --cloud aws --runtime kubernetes", "One example per type"),
-        p("Use system for aggregate repos. mono and monorepo remain legacy aliases. Use lowercase names made of letters, digits, dashes, or underscores."),
+        p("Use system for aggregate repos. The mono and monorepo aliases were removed; add --workspace-tooling bun-turbo for their old Bun + Turbo default. Use lowercase names made of letters, digits, dashes, or underscores."),
       ] },
       { id: "runtimes", title: "Choose the service runtime", blocks: [
         p("Container services are the default. Cloudflare Workers are supported for TypeScript and Rust; select cloudflare-workers explicitly. Workers use Wrangler and are not Docker containers."),

@@ -255,7 +255,7 @@ def test_service_framework_is_normalized_without_exposing_raw_values(framework: 
     assert framework not in mapping.values()
 
 
-def test_legacy_monorepo_event_uses_system_defaults() -> None:
+def test_removed_monorepo_alias_reports_unknown_project_type() -> None:
     context = ScaffoldCreateContext(
         project_type="monorepo",
         language="private-language-value",
@@ -282,15 +282,8 @@ def test_legacy_monorepo_event_uses_system_defaults() -> None:
         architecture="amd64",
     ).properties
 
-    assert properties.project_type == "system"
-    assert properties.language == "none"
-    assert properties.runtime == "kubernetes"
-    assert properties.cloud == "gcp"
-    assert properties.knowledge == "both"
-    assert properties.workspace_tooling == "bun-turbo"
-    assert properties.framework == "none"
-    assert properties.database == "none"
-    assert properties.duration_bucket is TelemetryDurationBucket.FIVE_TO_THIRTY_SECONDS
+    assert properties.project_type == "unknown"
+    assert properties.workspace_tooling == "none"
 
 
 def test_canonical_system_defaults_to_vendor_neutral_workspace() -> None:

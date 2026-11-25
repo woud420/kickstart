@@ -38,7 +38,6 @@ from src.utils.errors import (
 
 
 _PROJECT_TYPES = {"service", "frontend", "lib", "cli", "system"}
-_LEGACY_SYSTEM_PROJECT_TYPES = {"mono", "monorepo"}
 _FRAMEWORKS = {"fastapi", "minimal"}
 _DATABASES = {"none", "postgres"}
 _CACHES = {"none", "redis"}
@@ -95,11 +94,7 @@ def build_scaffold_create_event(
             cache=_extension(context.cache, project_type, _CACHES),
             auth=_extension(context.auth, project_type, _AUTH),
             knowledge=_knowledge(context.knowledge, project_type),
-            workspace_tooling=_workspace_tooling(
-                context.workspace_tooling,
-                context.project_type,
-                project_type,
-            ),
+            workspace_tooling=_workspace_tooling(context.workspace_tooling, project_type),
             helm=context.helm,
             github_requested=context.github_requested,
             interactive=context.interactive,
@@ -262,8 +257,6 @@ def classify_scaffold_create_exception(
 
 def _project_type(value: str | None) -> str:
     candidate = "" if value is None else value.strip().lower()
-    if candidate in _LEGACY_SYSTEM_PROJECT_TYPES:
-        return "system"
     return candidate if candidate in _PROJECT_TYPES else "unknown"
 
 
@@ -316,12 +309,10 @@ def _knowledge(value: str, project_type: str) -> str:
     return normalized if normalized in stack_registry.knowledge else "unknown"
 
 
-def _workspace_tooling(value: str | None, raw_project_type: str | None, project_type: str) -> str:
+def _workspace_tooling(value: str | None, project_type: str) -> str:
     if project_type != "system":
         return "none"
-    raw_type = "" if raw_project_type is None else raw_project_type.strip().lower()
-    default = "bun-turbo" if raw_type in _LEGACY_SYSTEM_PROJECT_TYPES else "none"
-    normalized = stack_registry.normalize_workspace_tooling(value or default)
+    normalized = stack_registry.normalize_workspace_tooling(value or "none")
     return normalized if normalized in stack_registry.workspace_tooling else "unknown"
 
 

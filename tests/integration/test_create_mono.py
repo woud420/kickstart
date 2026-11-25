@@ -7,13 +7,13 @@ import pytest
 
 
 @pytest.fixture
-def _run_create_mono(kickstart_run) -> Callable[..., Path]:
-    """Return a helper that runs `kickstart create mono <args>` and returns the generated project root."""
+def _run_create_bun_turbo_system(kickstart_run) -> Callable[..., Path]:
+    """Return a helper that runs `kickstart create system <args> --workspace-tooling bun-turbo`."""
 
     def _runner(tmp: Path, *args: str) -> Path:
         project_name = args[0]
         root = Path(args[args.index("--root") + 1]) if "--root" in args else tmp
-        kickstart_run("create", "mono", *args, cwd=tmp, check=True)
+        kickstart_run("create", "system", *args, "--workspace-tooling", "bun-turbo", cwd=tmp, check=True)
         return root / project_name
 
     return _runner
@@ -32,10 +32,10 @@ def _run_create_system(kickstart_run) -> Callable[..., Path]:
     return _runner
 
 
-def test_create_monorepo_kustomize(_run_create_mono):
+def test_create_monorepo_kustomize(_run_create_bun_turbo_system):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        _run_create_mono(tmp, "infra-stack", "--root", str(tmp))
+        _run_create_bun_turbo_system(tmp, "infra-stack", "--root", str(tmp))
 
         base = tmp / "infra-stack"
         assert (base / "infra/k8s/base/deployment.yaml").exists()
@@ -83,7 +83,7 @@ def test_create_system_can_emit_bun_turbo_workspace_tooling(_run_create_system):
         assert (base / "config/tsconfig/base.json").exists()
 
 
-def test_create_monorepo_kustomize_with_root(_run_create_mono):
+def test_create_monorepo_kustomize_with_root(_run_create_bun_turbo_system):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
 
@@ -91,17 +91,17 @@ def test_create_monorepo_kustomize_with_root(_run_create_mono):
         custom_root = tmp / "custom-root"
         custom_root.mkdir()
 
-        _run_create_mono(tmp, "infra-stack", "--root", str(custom_root))
+        _run_create_bun_turbo_system(tmp, "infra-stack", "--root", str(custom_root))
 
         base = custom_root / "infra-stack"
         assert (base / "infra/k8s/base/deployment.yaml").exists()
         assert (base / "Makefile").exists()
 
 
-def test_create_aws_kubernetes_docs_match_selected_profile(_run_create_mono):
+def test_create_aws_kubernetes_docs_match_selected_profile(_run_create_bun_turbo_system):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        base = _run_create_mono(
+        base = _run_create_bun_turbo_system(
             tmp,
             "aws-stack",
             "--root",
@@ -146,10 +146,10 @@ def test_create_aws_kubernetes_docs_match_selected_profile(_run_create_mono):
         assert "make k8s-render ENV=${{ inputs.environment }}" in deploy_workflow
 
 
-def test_create_cloudflare_workers_docs_match_runtime_profile(_run_create_mono):
+def test_create_cloudflare_workers_docs_match_runtime_profile(_run_create_bun_turbo_system):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        base = _run_create_mono(
+        base = _run_create_bun_turbo_system(
             tmp,
             "edge-stack",
             "--root",

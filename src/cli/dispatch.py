@@ -10,9 +10,10 @@ from src.utils.types import GeneratorConfig
 
 
 SYSTEM_PROJECT_TYPES = {"system"}
-LEGACY_MONOREPO_PROJECT_TYPES = {"mono", "monorepo"}
-HELM_PROJECT_TYPES = SYSTEM_PROJECT_TYPES | LEGACY_MONOREPO_PROJECT_TYPES | {"service"}
-KNOWN_PROJECT_TYPES = {"service", "frontend", "lib", "cli"} | SYSTEM_PROJECT_TYPES | LEGACY_MONOREPO_PROJECT_TYPES
+HELM_PROJECT_TYPES = SYSTEM_PROJECT_TYPES | {"service"}
+KNOWN_PROJECT_TYPES = {"service", "frontend", "lib", "cli"} | SYSTEM_PROJECT_TYPES
+# Removed system aliases; they get a pointer to the replacement command.
+REMOVED_SYSTEM_ALIASES = {"mono", "monorepo"}
 
 
 class ServiceCreator(Protocol):
@@ -63,9 +64,6 @@ class SystemCreator(Protocol):
         """Create a system."""
 
 
-MonorepoCreator = SystemCreator
-
-
 @dataclass(frozen=True)
 class ProjectCreators:
     """Creation functions used by CLI dispatch."""
@@ -75,13 +73,12 @@ class ProjectCreators:
     lib: LibraryCreator
     cli: CliCreator
     system: SystemCreator
-    monorepo: SystemCreator
 
 
 def _reject_inapplicable_options(options: CreateOptions) -> None:
     """Refuse options that the selected project type would silently drop."""
     project_type = options.project_type
-    system_like = project_type in SYSTEM_PROJECT_TYPES | LEGACY_MONOREPO_PROJECT_TYPES
+    system_like = project_type in SYSTEM_PROJECT_TYPES
 
     if options.helm and project_type not in HELM_PROJECT_TYPES:
         raise UnsupportedOptionError(
@@ -121,6 +118,11 @@ def _reject_inapplicable_options(options: CreateOptions) -> None:
 
 def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, creators: ProjectCreators) -> None:
     """Dispatch resolved create options to the appropriate project creator."""
+    if options.project_type in REMOVED_SYSTEM_ALIASES:
+        raise UnsupportedProjectTypeError(
+            f"Type '{options.project_type}' was removed. "
+            f"Use: kickstart create system {options.name} --workspace-tooling bun-turbo"
+        )
     if options.project_type not in KNOWN_PROJECT_TYPES:
         raise UnsupportedProjectTypeError(
             f"Type '{options.project_type}' not supported. "
@@ -157,15 +159,11 @@ def dispatch_project_creation(options: CreateOptions, config: GeneratorConfig, c
         creators.cli(options.name, options.lang, options.gh, config, root=options.root)
         return
 
-    if options.project_type in SYSTEM_PROJECT_TYPES:
-        creators.system(options.name, options.gh, config, **_system_kwargs(options))
-        return
-
-    creators.monorepo(options.name, options.gh, config, **_system_kwargs(options))
+    creators.system(options.name, options.gh, config, **_system_kwargs(options))
 
 
 def _system_kwargs(options: CreateOptions) -> SystemCreateKwargs:
-    """Return keyword args common to system-like project creation."""
+    """Return keyword args for system project creation."""
     system_kwargs: SystemCreateKwargs = {"helm": options.helm, "root": options.root}
     if options.cloud != "multi":
         system_kwargs["cloud"] = options.cloud

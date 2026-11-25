@@ -25,7 +25,7 @@ Use `create frontend NAME --root ...` for frontends and `create lib NAME --lang 
 
 ## Rules
 
-- Use `system` for aggregate repos; `mono` and `monorepo` are legacy aliases.
+- Use `system` for aggregate repos; the `mono` and `monorepo` aliases were removed.
 - Use `--gh` only when the user explicitly asks to create a GitHub repository.
 - Keep generated output separate from unrelated worktrees unless given a destination.
 - Do not commit generated projects unless the user explicitly asks.

@@ -71,7 +71,7 @@ def prompt_for_missing_args(
         default_language = cast(str, config.get("default_language", "python"))
         lang = prompt.ask("Language", default=default_language)
         gh = confirm.ask("Create GitHub repo?", default=False)
-        if project_type in ["mono", "monorepo", "system", "service"]:
+        if project_type in ["system", "service"]:
             helm = confirm.ask("Use Helm scaffolding?", default=False)
 
     if project_type == "service" and interactive_mode:

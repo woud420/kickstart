@@ -65,6 +65,3 @@ class SystemCreateKwargs(TypedDict, total=False):
     knowledge: str
     runtime: str
     workspace_tooling: str
-
-
-MonorepoCreateKwargs = SystemCreateKwargs

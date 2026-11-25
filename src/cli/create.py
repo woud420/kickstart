@@ -11,7 +11,7 @@ from rich.markup import escape
 from rich.prompt import Confirm, Prompt
 
 from src import __version__
-from src.api import create_cli, create_frontend, create_lib, create_monorepo, create_service, create_system
+from src.api import create_cli, create_frontend, create_lib, create_service, create_system
 from src.cli.dispatch import ProjectCreators, dispatch_project_creation
 from src.cli.options import CreateCommandOptions, CreateOptions
 from src.cli.prompts import ConfirmReader, PromptReader, prompt_for_missing_args
@@ -40,7 +40,6 @@ def _creators() -> ProjectCreators:
         lib=create_lib,
         cli=create_cli,
         system=create_system,
-        monorepo=create_monorepo,
     )
 
 

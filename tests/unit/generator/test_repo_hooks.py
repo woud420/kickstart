@@ -3,7 +3,7 @@ from unittest.mock import patch
 from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibraryGenerator, CLIGenerator
-from src.generator.monorepo import MonorepoGenerator
+from src.generator.system import SystemGenerator
 
 
 @patch('src.generator.service.create_repo')
@@ -35,7 +35,7 @@ def test_cli_generator_calls_create_repo(mock_repo, tmp_path):
 
 
 @patch('src.generator.monorepo.create_repo')
-def test_monorepo_generator_calls_create_repo(mock_repo, tmp_path):
-    gen = MonorepoGenerator('mono', True, {}, root=tmp_path)
+def test_system_generator_calls_create_repo(mock_repo, tmp_path):
+    gen = SystemGenerator('platform', True, {}, root=tmp_path)
     gen.create()
-    mock_repo.assert_called_once_with('mono')
+    mock_repo.assert_called_once_with('platform')

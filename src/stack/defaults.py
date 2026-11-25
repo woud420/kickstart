@@ -115,8 +115,6 @@ system_runtimes: dict[str, RuntimeProfile] = {
     ),
 }
 
-monorepo_runtimes = system_runtimes
-
 clouds: dict[str, CloudProfile] = {
     "aws": CloudProfile(id="aws", display_name="AWS", providers=("aws",)),
     "gcp": CloudProfile(id="gcp", display_name="GCP", providers=("gcp",), aliases=("google",)),
