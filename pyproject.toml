@@ -36,7 +36,7 @@ ruff = "^0.15.12"
 pyinstaller = "^6.20.0"
 pytest-cov = "^7.0"
 types-jsonschema = "^4.26.0.20261006"
-types-PyYAML = ">=6,<7"
+types-PyYAML = ">=6.0.12.20261122,<7"
 
 [tool.coverage.run]
 source = ["src", "ci"]
