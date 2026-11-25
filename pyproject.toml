@@ -30,7 +30,7 @@ include = ["src/templates/**/*"]
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.20.2"
 types-toml = "^0.10.8.20260408"
-types-requests = "^2.33.0.20260408"
+types-requests = "^2.33.0.20261030"
 pytest = "^9.0.3"
 ruff = "^0.15.12"
 pyinstaller = "^6.20.0"
