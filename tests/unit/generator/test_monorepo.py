@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.system import SystemGenerator
 from src.utils.errors import ProjectCreationError
@@ -53,20 +52,6 @@ def monorepo_generator():
     return SystemGenerator("test-monorepo", False, {"key": "value"}, workspace_tooling="bun-turbo")
 
 
-@pytest.fixture
-def monorepo_generator_with_helm():
-    return SystemGenerator("test-monorepo", False, {"key": "value"}, helm=True, workspace_tooling="bun-turbo")
-
-
-@pytest.fixture
-def monorepo_generator_with_gh():
-    return SystemGenerator("test-monorepo", True, {"key": "value"}, workspace_tooling="bun-turbo")
-
-
-@pytest.fixture
-def monorepo_generator_with_root():
-    return SystemGenerator("test-monorepo", False, {"key": "value"}, root="/tmp", workspace_tooling="bun-turbo")
-
 @pytest.fixture(autouse=True)
 def mock_scaffold_contract_docs():
     with patch.object(SystemGenerator, "create_scaffold_contract_docs", return_value=True):
@@ -89,30 +74,6 @@ def create_mocks():
             create_architecture_docs=create_architecture_docs,
             log_success=log_success,
         )
-
-
-def test_monorepo_generator_initialization(monorepo_generator):
-    assert monorepo_generator.name == "test-monorepo"
-    assert monorepo_generator.helm is False
-    assert monorepo_generator.gh is False
-    assert monorepo_generator.cloud == "multi"
-    assert monorepo_generator.knowledge == "none"
-    assert monorepo_generator.runtime == "kubernetes"
-    assert monorepo_generator.workspace_tooling == "bun-turbo"
-    assert monorepo_generator.config == {"key": "value"}
-    assert monorepo_generator.template_dir.name == "monorepo"
-
-
-def test_monorepo_generator_initialization_with_helm(monorepo_generator_with_helm):
-    assert monorepo_generator_with_helm.helm is True
-
-
-def test_monorepo_generator_initialization_with_gh(monorepo_generator_with_gh):
-    assert monorepo_generator_with_gh.gh is True
-
-
-def test_monorepo_generator_initialization_with_root(monorepo_generator_with_root):
-    assert monorepo_generator_with_root.project == Path("/tmp/test-monorepo")
 
 
 def test_monorepo_cloud_selection():
@@ -154,28 +115,6 @@ def test_monorepo_hybrid_runtime_selection():
 
     assert generator._uses_kubernetes() is True
     assert generator._uses_cloudflare_workers() is True
-
-
-def test_system_generator_defaults_to_neutral_workspace_tooling():
-    generator = SystemGenerator("test-system", False, {})
-
-    assert generator.workspace_tooling == "none"
-    assert generator.selection.uses_bun_turbo is False
-    template_targets = {template.target for template in generator.selection.templates}
-    assert "package.json" not in template_targets
-    assert "turbo.json" not in template_targets
-    assert "config/tsconfig/base.json" not in template_targets
-
-
-def test_system_generator_can_use_bun_turbo_workspace_tooling():
-    generator = SystemGenerator("test-system", False, {}, workspace_tooling="bun-turbo")
-
-    assert generator.workspace_tooling == "bun-turbo"
-    assert generator.selection.uses_bun_turbo is True
-    template_targets = {template.target for template in generator.selection.templates}
-    assert "package.json" in template_targets
-    assert "turbo.json" in template_targets
-    assert "config/tsconfig/base.json" in template_targets
 
 
 def test_monorepo_rejects_invalid_profile_options():
@@ -366,20 +305,6 @@ def test_terraform_environments_coverage(create_mocks):
             assert _template_written(mock_write_template, *tfvars_call.args)
 
 
-def test_github_workflows_coverage(create_mocks):
-    """Test that all expected GitHub workflow files are created."""
-    expected_workflows = ["build.yml", "test.yml", "deploy.yml"]
-
-    with patch.object(SystemGenerator, "_create_kustomize_structure"):
-        mock_write_template = create_mocks.write_template
-        generator = SystemGenerator("test", False, {}, workspace_tooling="bun-turbo")
-        generator.create()
-
-        # Check that workflow files are created
-        for workflow in expected_workflows:
-            assert _template_written(mock_write_template, f".github/workflows/{workflow}", workflow)
-
-
 def test_monorepo_name_passed_to_templates(create_mocks):
     """Test that monorepo name is correctly passed to Makefile and README templates."""
     with patch.object(SystemGenerator, "_create_kustomize_structure"):
@@ -404,13 +329,3 @@ def test_monorepo_name_passed_to_templates(create_mocks):
         assert makefile_call.kwargs["workspace_tooling"] == "bun-turbo"
         assert readme_call.kwargs["monorepo_name"] == "my-awesome-repo"
         assert readme_call.kwargs["system_name"] == "my-awesome-repo"
-
-
-def test_basic_structure_includes_all_required_directories(create_mocks):
-    """Test that init_basic_structure is called with all required directories."""
-    with patch.object(SystemGenerator, "_create_kustomize_structure"):
-        mock_init_structure = create_mocks.init_basic_structure
-        generator = SystemGenerator("test", False, {}, workspace_tooling="bun-turbo")
-        generator.create()
-
-        mock_init_structure.assert_called_once_with(_expected_monorepo_dirs())

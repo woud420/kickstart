@@ -155,17 +155,12 @@ class BaseGenerator:
     @handle_template_operations(default_return=False, log_errors=True)
     def _render_template(self, target: str, template_path: str, **vars: TemplateValue) -> bool:
         """Render a template to the target; the decorator turns errors into False."""
-        resolved_template_path: Path | str
-        if isinstance(template_path, str) and not Path(template_path).is_absolute():
-            if template_path.startswith("_shared/"):
-                resolved_template_path = self._templates_root / template_path
-            else:
-                resolved_template_path = self.template_dir / template_path
-        else:
-            resolved_template_path = template_path
+        resolved_template_path = Path(template_path)
+        if isinstance(template_path, str) and not resolved_template_path.is_absolute():
+            template_root = self._templates_root if template_path.startswith("_shared/") else self.template_dir
+            resolved_template_path = template_root / resolved_template_path
 
-        # Check if template exists
-        if isinstance(resolved_template_path, Path) and not resolved_template_path.exists():
+        if not resolved_template_path.exists():
             raise TemplateError(f"Template file not found: {template_path}")
 
         template_vars = {

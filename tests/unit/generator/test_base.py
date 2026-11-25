@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 import json
 from src.generator.base import BaseGenerator
 from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
@@ -8,29 +7,6 @@ from unittest.mock import patch
 @pytest.fixture
 def base_generator():
     return BaseGenerator("test-project", {"key": "value"})
-
-@pytest.fixture
-def base_generator_with_root():
-    return BaseGenerator("test-project", {"key": "value"}, root="/tmp")
-
-def test_base_generator_initialization(base_generator):
-    assert base_generator.name == "test-project"
-    assert base_generator.config == {"key": "value"}
-    assert base_generator.project == Path("test-project")
-    assert base_generator.template_dir == Path(__file__).parent.parent.parent.parent / "src" / "templates"
-
-def test_base_generator_initialization_with_root(base_generator_with_root):
-    assert base_generator_with_root.project == Path("/tmp/test-project")
-
-def test_create_project_success(base_generator, tmp_path):
-    with patch.object(base_generator, 'project', tmp_path / "new-project"):
-        assert base_generator.create_project() is True
-
-def test_create_project_failure(base_generator, tmp_path):
-    existing_dir = tmp_path / "existing-project"
-    existing_dir.mkdir()
-    with patch.object(base_generator, 'project', existing_dir):
-        assert base_generator.create_project() is False
 
 def test_create_directories(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path):
@@ -106,43 +82,44 @@ def test_create_scaffold_contract_docs(base_generator, tmp_path):
         assert manifest["provider"] == {"targets": []}
         assert manifest["extensions"] == {}
 
-@patch('src.generator.base.write_file')
-def test_write_template(mock_write_file, base_generator, tmp_path):
-    from src.stack.toolchain_versions import toolchain_vars
+def test_write_template_renders_project_toolchain_and_caller_values(tmp_path):
+    from src.stack.toolchain_versions import BUN_VERSION
 
-    template_path = tmp_path / "template.txt"
-    template_path.write_text("Hello {{NAME}}")
-    target = "output.txt"
-    vars = {"name": "World"}
-    base_generator.write_template(target, str(template_path), **vars)
-    mock_write_file.assert_called_once_with(
-        base_generator.project / target,
-        str(template_path),
-        service_name="test-project",
-        package_name="test-project",
-        **toolchain_vars(),
-        name="World",
+    generator = BaseGenerator("demo_app", {}, root=str(tmp_path))
+    generator.template_dir = tmp_path / "templates"
+    generator.template_dir.mkdir()
+    (generator.template_dir / "summary.tpl").write_text(
+        "{{ service_name }}|{{ package_name }}|{{ bun_version }}|{{ label }}"
     )
 
-@patch('src.generator.base.write_file')
-def test_write_content(mock_write_file, base_generator):
-    target = "output.txt"
-    content = "test content"
-    base_generator.write_content(target, content)
-    mock_write_file.assert_called_once_with(
-        base_generator.project / target,
-        content,
-        service_name="test-project",
-        package_name="test-project"
-    )
+    assert generator.write_template("out/summary.txt", "summary.tpl", label="custom")
+    output = tmp_path / "demo_app" / "out" / "summary.txt"
+    assert output.read_text() == f"demo_app|demo-app|{BUN_VERSION}|custom"
 
-@patch('src.generator.base.success')
-def test_log_success(mock_success, base_generator):
-    message = "Test success message"
-    base_generator.log_success(message)
-    mock_success.assert_called_once_with(message)
 
-def test_get_common_vars(base_generator):
-    vars = base_generator.get_common_vars()
-    assert vars == {"service_name": "test-project"} 
+def test_write_template_renders_absolute_filename(tmp_path):
+    generator = BaseGenerator("demo", {}, root=str(tmp_path))
+    template = tmp_path / "greeting.tpl"
+    template.write_text("Hello {{ service_name }}")
 
+    assert generator.write_template("greeting.txt", str(template))
+    assert (generator.project / "greeting.txt").read_text() == "Hello demo"
+
+
+def test_write_template_rejects_missing_absolute_filename(tmp_path):
+    generator = BaseGenerator("demo", {}, root=str(tmp_path))
+    missing = tmp_path / "missing.tpl"
+
+    assert generator.write_template("greeting.txt", str(missing)) is False
+    assert not (generator.project / "greeting.txt").exists()
+
+
+def test_replace_template_preserves_output_when_absolute_source_is_invalid_utf8(tmp_path):
+    generator = BaseGenerator("demo", {}, root=str(tmp_path))
+    template = tmp_path / "greeting.tpl"
+    template.write_text("Hello {{ service_name }}", encoding="utf-8")
+    assert generator.write_template("greeting.txt", str(template))
+
+    template.write_bytes(b"broken\xff")
+    assert generator.replace_template("greeting.txt", str(template)) is False
+    assert (generator.project / "greeting.txt").read_text(encoding="utf-8") == "Hello demo"

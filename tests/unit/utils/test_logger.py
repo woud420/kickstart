@@ -1,26 +1,12 @@
-from unittest.mock import patch
-from src.utils.logger import info, success, warn, error
+import pytest
 
-@patch('src.utils.logger.print')
-def test_info_logging(mock_print):
-    message = "Test info message"
-    info(message)
-    mock_print.assert_called_once_with(f"[cyan]➤ {message}")
+from src.utils.logger import error, info, success, warn
 
-@patch('src.utils.logger.print')
-def test_success_logging(mock_print):
-    message = "Test success message"
-    success(message)
-    mock_print.assert_called_once_with(f"[green]✔ {message}")
 
-@patch('src.utils.logger.print')
-def test_warn_logging(mock_print):
-    message = "Test warning message"
-    warn(message)
-    mock_print.assert_called_once_with(f"[yellow]⚠ {message}")
+@pytest.mark.parametrize("emit", [info, success, warn, error])
+def test_log_output_preserves_literal_message(emit, capsys):
+    message = "Output directory: build/[red]preview[/red]"
 
-@patch('src.utils.logger.print')
-def test_error_logging(mock_print):
-    message = "Test error message"
-    error(message)
-    mock_print.assert_called_once_with(f"[red]✖ {message}") 
+    emit(message)
+
+    assert message in capsys.readouterr().out

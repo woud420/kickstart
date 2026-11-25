@@ -1,7 +1,10 @@
+import subprocess
+import sys
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from src.cli.app import app
-from src.main import main
 
 runner = CliRunner()
 
@@ -27,9 +30,15 @@ def test_version_flag_succeeds() -> None:
     assert "{{ package_name }} 0.1.0" in result.output
 
 
-def test_main_forwards_to_typer(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["{{ package_name }}", "check"])
-    try:
-        main()
-    except SystemExit as error:
-        assert error.code == 0
+def test_module_entry_point_dispatches_check() -> None:
+    project = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, "-m", "src.main", "check"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "ok: local"

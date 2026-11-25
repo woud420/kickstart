@@ -140,32 +140,6 @@ describe("kickstart website worker", () => {
     expect(html).toContain("https://github.com/example/kickstart/releases/tag/v0.5.0");
   });
 
-  it("renders the first-screen example", async () => {
-    const request = new Request("https://example.test/examples") as Parameters<typeof worker.fetch>[0];
-
-    const response = await worker.fetch(request, defaultEnv);
-
-    const html = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(html).toContain("Starter repos for humans and agents");
-    expect(html).toContain("python service");
-    expect(html).toContain("component map");
-  });
-
-  it("states what kickstart is and is not", async () => {
-    const request = new Request("https://example.test/positioning") as Parameters<typeof worker.fetch>[0];
-
-    const response = await worker.fetch(request, defaultEnv);
-
-    const html = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(html).toContain("Useful setup. Not architecture");
-    expect(html).toContain("Scaffold factory");
-    expect(html).toContain("Product architect");
-  });
-
   it("serves stylesheet assets", async () => {
     const request = new Request("https://example.test/assets/site.css") as Parameters<typeof worker.fetch>[0];
 

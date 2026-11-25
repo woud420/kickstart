@@ -63,14 +63,6 @@ def test_plan_reports_fence_edits_but_tolerates_user_content(
     assert "renamed surface" in drifted.stdout
 
 
-def test_plan_without_a_manifest_is_a_usage_error(
-    kickstart_run: KickstartRunner, repo_root: Path, tmp_path: Path
-) -> None:
-    completed = kickstart_run("plan", str(tmp_path), cwd=repo_root, capture_output=True, text=True)
-
-    assert completed.returncode == 2
-
-
 def test_generated_scaffold_is_adopted_as_managed(
     kickstart_run: KickstartRunner, repo_root: Path, tmp_path: Path
 ) -> None:

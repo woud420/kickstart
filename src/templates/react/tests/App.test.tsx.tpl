@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { expect, it } from "vitest";
+import { App } from "../src/App";
 
-describe("App", () => {
-  it("keeps the generated app name available", () => {
-    expect("{{ service_name }}").toBeTruthy();
-  });
+it("renders the project name in the application heading", () => {
+  const html = renderToStaticMarkup(<App />);
+  expect(html).toContain("<h1>{{ service_name }}</h1>");
+  expect(html).not.toContain("{".repeat(2));
 });

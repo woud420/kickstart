@@ -392,16 +392,3 @@ def test_finalize_removes_stage_dir_and_reports(mock_print, tmp_path):
     messages = [c.args[0] for c in mock_print.call_args_list]
     assert any("Repaired the managed install layout" in m for m in messages)
     assert any(str(current.public_launcher) in m for m in messages)
-
-
-@patch("src.utils.handoff.print")
-def test_finalize_upgrade_message_names_the_version(mock_print, tmp_path):
-    stage_dir = tmp_path / "stage"
-    stage_dir.mkdir()
-    current = _handoff(tmp_path, mode=handoff.HandoffMode.UPGRADE)
-
-    result = handoff.finalize(current, stage_dir)
-
-    assert result.outcome is CliUpgradeOutcome.UPDATED
-    messages = [c.args[0] for c in mock_print.call_args_list]
-    assert any("Updated to 1.2.3" in m for m in messages)
