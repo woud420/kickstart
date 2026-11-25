@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 import json
+from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
+
+import pytest
 import requests
 from src.utils import updater
 
@@ -103,80 +106,45 @@ def test_upgrade_unsupported_platform_is_categorized(mock_print):
     assert result.target_version == "1.1.0"
 
 
+_ARCHIVE = "kickstart-linux-x64-py3.14.tar.gz"
+# Upgrade stages in pipeline order. The checksum fetch only runs when the release publishes one.
+_UPGRADE_STAGES = ("download_to", "requests.get", "_extract_archive_launcher", "install_binary")
+
+
+@pytest.mark.parametrize(
+    ("failing_stage", "error", "with_sha", "error_category", "checksum_status"),
+    [
+        pytest.param("download_to", requests.ConnectionError("private detail"), False, "download", "not_reached", id="download"),
+        pytest.param(
+            "requests.get", requests.ConnectionError("private detail"), True, "checksum_fetch", "failed", id="checksum-fetch"
+        ),
+        pytest.param(
+            "_extract_archive_launcher", RuntimeError("private detail"), False, "archive_extraction", "not_published",
+            id="extraction",
+        ),
+        pytest.param("install_binary", OSError("private detail"), False, "installation", "not_published", id="install"),
+    ],
+)
 @patch("src.utils.updater.__version__", "1.0.0")
 @patch("src.utils.updater.print")
-def test_upgrade_download_failure_is_categorized(mock_print, tmp_path):
-    archive_name = "kickstart-linux-x64-py3.14.tar.gz"
-    payload = release_payload("v1.1.0", archive_name, with_sha=False)
+def test_upgrade_stage_failure_is_categorized(
+    mock_print, tmp_path, failing_stage, error, with_sha, error_category, checksum_status
+):
+    """A failing upgrade stage is categorized; earlier stages succeed and later ones never run."""
+    success = {"_extract_archive_launcher": {"return_value": tmp_path / "kickstart"}}
+    payload = release_payload("v1.1.0", _ARCHIVE, with_sha=with_sha)
 
-    with (
-        patch("src.utils.updater.fetch_release_info", return_value=payload),
-        patch("src.utils.updater.expected_archive_name", return_value=archive_name),
-        patch("src.utils.updater.resolve_current_install_layout", return_value=(tmp_path, None)),
-        patch("src.utils.updater.download_to", side_effect=requests.ConnectionError("private detail")),
-    ):
+    with ExitStack() as stack:
+        stack.enter_context(patch("src.utils.updater.fetch_release_info", return_value=payload))
+        stack.enter_context(patch("src.utils.updater.expected_archive_name", return_value=_ARCHIVE))
+        stack.enter_context(patch("src.utils.updater.resolve_current_install_layout", return_value=(tmp_path, None)))
+        for stage in _UPGRADE_STAGES[: _UPGRADE_STAGES.index(failing_stage)]:
+            stack.enter_context(patch(f"src.utils.updater.{stage}", **success.get(stage, {})))
+        stack.enter_context(patch(f"src.utils.updater.{failing_stage}", side_effect=error))
         result = updater.check_for_update()
 
-    assert result.error_category.value == "download"
-    assert result.checksum_status.value == "not_reached"
-
-
-@patch("src.utils.updater.__version__", "1.0.0")
-@patch("src.utils.updater.print")
-def test_upgrade_checksum_fetch_failure_is_categorized(mock_print, tmp_path):
-    archive_name = "kickstart-linux-x64-py3.14.tar.gz"
-    payload = release_payload("v1.1.0", archive_name)
-
-    with (
-        patch("src.utils.updater.fetch_release_info", return_value=payload),
-        patch("src.utils.updater.expected_archive_name", return_value=archive_name),
-        patch("src.utils.updater.resolve_current_install_layout", return_value=(tmp_path, None)),
-        patch("src.utils.updater.download_to"),
-        patch("src.utils.updater.requests.get", side_effect=requests.ConnectionError("private detail")),
-    ):
-        result = updater.check_for_update()
-
-    assert result.error_category.value == "checksum_fetch"
-    assert result.checksum_status.value == "failed"
-
-
-@patch("src.utils.updater.__version__", "1.0.0")
-@patch("src.utils.updater.print")
-def test_upgrade_extraction_failure_preserves_missing_checksum_status(mock_print, tmp_path):
-    archive_name = "kickstart-linux-x64-py3.14.tar.gz"
-    payload = release_payload("v1.1.0", archive_name, with_sha=False)
-
-    with (
-        patch("src.utils.updater.fetch_release_info", return_value=payload),
-        patch("src.utils.updater.expected_archive_name", return_value=archive_name),
-        patch("src.utils.updater.resolve_current_install_layout", return_value=(tmp_path, None)),
-        patch("src.utils.updater.download_to"),
-        patch("src.utils.updater._extract_archive_launcher", side_effect=RuntimeError("private detail")),
-    ):
-        result = updater.check_for_update()
-
-    assert result.error_category.value == "archive_extraction"
-    assert result.checksum_status.value == "not_published"
-
-
-@patch("src.utils.updater.__version__", "1.0.0")
-@patch("src.utils.updater.print")
-def test_upgrade_install_failure_is_categorized(mock_print, tmp_path):
-    archive_name = "kickstart-linux-x64-py3.14.tar.gz"
-    payload = release_payload("v1.1.0", archive_name, with_sha=False)
-
-    with (
-        patch("src.utils.updater.fetch_release_info", return_value=payload),
-        patch("src.utils.updater.expected_archive_name", return_value=archive_name),
-        patch("src.utils.updater.resolve_current_install_layout", return_value=(tmp_path, None)),
-        patch("src.utils.updater.download_to"),
-        patch("src.utils.updater._extract_archive_launcher", return_value=tmp_path / "kickstart"),
-        patch("src.utils.updater.install_binary", side_effect=OSError("private detail")),
-    ):
-        result = updater.check_for_update()
-
-    assert result.error_category.value == "installation"
-    assert result.checksum_status.value == "not_published"
+    assert result.error_category.value == error_category
+    assert result.checksum_status.value == checksum_status
 
 
 @patch("src.utils.updater.__version__", "1.0.0")
