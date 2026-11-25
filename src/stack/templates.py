@@ -28,11 +28,7 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
         "typescript": (
             TemplateConfig("package.json", "typescript/package.json.tpl"),
             TemplateConfig("tsconfig.json", "typescript/tsconfig.json.tpl"),
-            TemplateConfig("tsconfig.build.json", "typescript/tsconfig.build.json.tpl"),
-            TemplateConfig("bunfig.toml", "typescript/bunfig.toml.tpl"),
-            TemplateConfig("eslint.config.mjs", "_shared/typescript/eslint.config.mjs.tpl"),
-            TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
-            TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
+            *typescript_tooling_templates(),
         ),
         "cpp": (TemplateConfig("CMakeLists.txt", "cpp/CMakeLists.txt.tpl"),),
     }
@@ -169,6 +165,26 @@ def language_ci_workflow(language: str) -> tuple[TemplateConfig, ...]:
     )
 
 
+def typescript_tooling_templates() -> tuple[TemplateConfig, ...]:
+    """Return the build, Bun, lint and format templates shared by TypeScript services and CLIs."""
+    return (
+        TemplateConfig("tsconfig.build.json", "typescript/tsconfig.build.json.tpl"),
+        TemplateConfig("bunfig.toml", "typescript/bunfig.toml.tpl"),
+        *typescript_lint_format_templates(),
+    )
+
+
+def typescript_lint_format_templates(
+    eslint_template: str = "_shared/typescript/eslint.config.mjs.tpl",
+) -> tuple[TemplateConfig, ...]:
+    """Return the ESLint and Prettier templates every TypeScript scaffold ships."""
+    return (
+        TemplateConfig("eslint.config.mjs", eslint_template),
+        TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
+        TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
+    )
+
+
 def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig, ...]:
     base = f"cloudflare-workers/{language}"
     common = (
@@ -185,9 +201,7 @@ def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig,
             TemplateConfig("tsconfig.json", f"{base}/tsconfig.json.tpl"),
             TemplateConfig("src/index.ts", f"{base}/src/index.ts.tpl"),
             TemplateConfig("tests/worker.test.ts", f"{base}/tests/worker.test.ts.tpl"),
-            TemplateConfig("eslint.config.mjs", "_shared/typescript/eslint.config.mjs.tpl"),
-            TemplateConfig(".prettierrc.json", "_shared/typescript/prettierrc.json.tpl"),
-            TemplateConfig(".prettierignore", "_shared/typescript/prettierignore.tpl"),
+            *typescript_lint_format_templates(),
         ),
         "rust": (
             TemplateConfig("Cargo.toml", f"{base}/Cargo.toml.tpl"),
