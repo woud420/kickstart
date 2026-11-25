@@ -103,10 +103,13 @@ def _active_templates() -> set[str]:
 
     for cloud in stack_registry.clouds:
         for knowledge in stack_registry.knowledge:
-            for runtime in stack_registry.monorepo_runtimes:
+            for runtime in stack_registry.system_runtimes:
                 for helm in (False, True):
                     try:
-                        system_selection = stack_registry.monorepo_selection(cloud, knowledge, runtime, helm=helm)
+                        # bun-turbo renders the superset of system root templates.
+                        system_selection = stack_registry.system_selection(
+                            cloud, knowledge, runtime, "bun-turbo", helm=helm
+                        )
                     except Exception:
                         continue
                     active.update(f"monorepo/{template.template}" for template in system_selection.templates)

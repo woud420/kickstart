@@ -118,9 +118,6 @@ def system_templates(
     return tuple(templates)
 
 
-monorepo_templates = system_templates
-
-
 def kustomize_template_configs() -> tuple[TemplateConfig, ...]:
     """Return Kubernetes Kustomize template mappings."""
     return (

@@ -32,7 +32,7 @@ Purpose: kickstart generates deterministic starter repos for humans and coding a
 ## Current Model
 
 - Primary project types: `service`, `frontend`, `lib`, `cli`, and `system`.
-- `system` is the primary aggregate repo. `mono` and `monorepo` are legacy aliases.
+- `system` is the aggregate repo type. The legacy `mono` and `monorepo` aliases were removed.
 - Service runtimes are `container` and `cloudflare-workers`.
 - Manifest readers accept 3.0, 3.1, 3.2 and 4.0; fresh generation emits 4.0 after the tested explicit `migrate` path. Schema 4.0 represents Workers as service execution profiles.
 - Cloudflare Workers are not Docker containers. Cloudflare Containers are reserved for future support.

@@ -309,7 +309,8 @@ def _desired_component_count(index: int, scale: ProjectScale, max_components_per
 def _nested_system_component(index: int) -> ComponentPlan:
     """Return a second-level system component inside a generated system."""
     cloud, runtime, helm, knowledge = SYSTEM_ARCHETYPES[(index + 3) % len(SYSTEM_ARCHETYPES)]
-    args = ["create", "mono", "subsystem", "--cloud", cloud, "--runtime", runtime, "--knowledge", knowledge]
+    args = ["create", "system", "subsystem", "--workspace-tooling", "bun-turbo"]
+    args += ["--cloud", cloud, "--runtime", runtime, "--knowledge", knowledge]
     if helm:
         args.append("--helm")
     return ComponentPlan(
@@ -378,7 +379,8 @@ def _system_components(
     include_gap: bool = False,
 ) -> tuple[ComponentPlan, ...]:
     cloud, runtime, helm, knowledge = SYSTEM_ARCHETYPES[index % len(SYSTEM_ARCHETYPES)]
-    args = ["create", "mono", "system", "--cloud", cloud, "--runtime", runtime, "--knowledge", knowledge]
+    args = ["create", "system", "system", "--workspace-tooling", "bun-turbo"]
+    args += ["--cloud", cloud, "--runtime", runtime, "--knowledge", knowledge]
     if helm:
         args.append("--helm")
 

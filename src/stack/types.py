@@ -141,7 +141,4 @@ class SystemSelection:
         return [template.as_dict(base_vars) for template in self.templates]
 
 
-MonorepoSelection = SystemSelection
-
-
 Profile = LanguageProfile | RuntimeProfile | CloudProfile | KnowledgeProfile | ArtifactToolProfile | WorkspaceToolingProfile

@@ -54,7 +54,7 @@ export function renderLlmsIndex(meta: ProjectMeta = defaultProjectMeta): string 
     "# kickstart",
     "> kickstart generates deterministic starter repos for humans and coding agents: services, frontends, libraries, CLIs, and systems.",
     `Documentation version: v${meta.latestVersion}. Start with the guides below; they link to clean Markdown.`,
-    "Use system for aggregate repos; mono and monorepo are legacy aliases. Cloudflare Workers are not Docker containers. --knowledge controls external metadata, not baseline project docs. Inspect AGENTS.md and .kickstart/scaffold.json before extending generated code. Add --gh only when GitHub repository creation is requested.",
+    "Use system for aggregate repos; the mono and monorepo aliases were removed. Cloudflare Workers are not Docker containers. --knowledge controls external metadata, not baseline project docs. Inspect AGENTS.md and .kickstart/scaffold.json before extending generated code. Add --gh only when GitHub repository creation is requested.",
     ...docGroups.map((group) => `## ${group}\n\n${documentationPages.filter((page) => page.group === group)
       .map((page) => `- [${page.title}](${docsOrigin}${markdownPath(page)}): ${page.summary}`).join("\n")}`),
     `## Full documentation\n\n- [Complete documentation](${docsOrigin}/llms-full.txt): All public pages above in one text response, including commands, constraints, and source notes.`,

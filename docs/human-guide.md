@@ -104,8 +104,9 @@ Rust CLIs keep only `src/main.rs` at the source root. Python includes `src/__ini
 
 ## System Options
 
-`system` is the aggregate project type. `mono` and `monorepo` still work as
-legacy aliases, but docs and examples use `system`.
+`system` is the aggregate project type. The old `mono` and `monorepo` aliases
+were removed; `kickstart create system <name> --workspace-tooling bun-turbo`
+reproduces their Bun + Turbo default.
 
 Provider target:
 

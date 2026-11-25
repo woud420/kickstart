@@ -5,7 +5,6 @@ from typing import Mapping
 from src.stack import defaults
 from src.stack import templates
 from src.stack.types import (
-    MonorepoSelection,
     Profile,
     RuntimeProfile,
     ServiceSelection,
@@ -32,7 +31,6 @@ class StackProfileRegistry:
         self.languages = dict(defaults.languages)
         self.service_runtimes = dict(defaults.service_runtimes)
         self.system_runtimes = dict(defaults.system_runtimes)
-        self.monorepo_runtimes = self.system_runtimes
         self.clouds = dict(defaults.clouds)
         self.knowledge = dict(defaults.knowledge)
         self.artifact_tools = dict(defaults.artifact_tools)
@@ -49,10 +47,6 @@ class StackProfileRegistry:
     def normalize_system_runtime(self, runtime: str) -> str:
         """Normalize system runtime aliases, preserving unknown values for validation."""
         return self._normalize(runtime, self.system_runtimes)
-
-    def normalize_monorepo_runtime(self, runtime: str) -> str:
-        """Normalize legacy monorepo runtime aliases."""
-        return self.normalize_system_runtime(runtime)
 
     def normalize_cloud(self, cloud: str) -> str:
         """Normalize cloud aliases, preserving unknown values for validation."""
@@ -160,18 +154,6 @@ class StackProfileRegistry:
             ),
             smoke_commands=runtime_profile.smoke_commands,
         )
-
-    def monorepo_selection(
-        self,
-        cloud: str = "multi",
-        knowledge: str = "none",
-        runtime: str = "kubernetes",
-        workspace_tooling: str = "bun-turbo",
-        *,
-        helm: bool = False,
-    ) -> MonorepoSelection:
-        """Validate and describe a legacy monorepo scaffold selection."""
-        return self.system_selection(cloud, knowledge, runtime, workspace_tooling, helm=helm)
 
     def kustomize_template_configs(self) -> tuple[TemplateConfig, ...]:
         """Return Kubernetes Kustomize template mappings."""

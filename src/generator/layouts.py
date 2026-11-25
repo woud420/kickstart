@@ -99,9 +99,6 @@ def system_directories(selection: SystemSelection) -> list[str]:
     return directories
 
 
-monorepo_directories = system_directories
-
-
 def frontend_directories() -> list[str]:
     """Return the base directory layout for frontend projects."""
     return ["src", "public", "tests", *scaffold_contract_directories()]

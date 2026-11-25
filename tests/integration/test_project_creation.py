@@ -13,11 +13,11 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from src.api import create_service, create_frontend, create_lib, create_cli, create_system, create_monorepo
+from src.api import create_service, create_frontend, create_lib, create_cli, create_system
 from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibGenerator
-from src.generator.monorepo import MonorepoGenerator
+from src.generator.system import SystemGenerator
 from src.utils.errors import ProjectCreationError, LanguageNotSupportedError
 from src.utils.types import GeneratorConfig
 
@@ -421,9 +421,14 @@ class TestProjectStructure:
         [
             (FrontendGenerator, "test-react-app", {}, ("src", "public", "tests")),
             (LibGenerator, "test-python-lib", {"lang": "python"}, ("src", "tests")),
-            (MonorepoGenerator, "test-monorepo", {"helm": True}, ("services", "libs", "frontend", "infra")),
+            (
+                SystemGenerator,
+                "test-system",
+                {"helm": True, "workspace_tooling": "bun-turbo"},
+                ("services", "libs", "frontend", "infra"),
+            ),
         ],
-        ids=["react-frontend", "python-library", "helm-monorepo"],
+        ids=["react-frontend", "python-library", "helm-system"],
     )
     def test_generator_directories(
         self,
@@ -561,20 +566,20 @@ class TestAPIFunctions:
         assert manifest["project"]["operation_root"] == "src/operations"
         assert manifest["project"]["src_root_files"] == ["base-command.ts"]
     
-    def test_create_monorepo_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test the create_monorepo API function."""
-        mono_name = "api-test-monorepo"
+    def test_create_system_api_renders_kustomize(self, temp_project_dir: Path, mock_config: GeneratorConfig):
+        """Test that create_system renders Kustomize by default."""
+        system_name = "api-test-kustomize-system"
         
         with patch('src.utils.github.create_repo'):
-            create_monorepo(
-                name=mono_name,
+            create_system(
+                name=system_name,
                 gh=False,
                 config=mock_config,
                 helm=False,
                 root=str(temp_project_dir)
             )
         
-        project_path = temp_project_dir / mono_name
+        project_path = temp_project_dir / system_name
         assert project_path.exists()
         assert (project_path / "services").exists()
         assert (project_path / "infra/k8s/base/deployment.yaml").exists()
@@ -600,13 +605,13 @@ class TestAPIFunctions:
         assert not (project_path / "package.json").exists()
         assert manifest["composition"]["workspace_tooling"] == "none"
 
-    def test_create_monorepo_api_with_cloudflare(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test that Cloudflare monorepos render Cloudflare Terraform only."""
-        mono_name = "api-test-cloudflare-monorepo"
+    def test_create_system_api_with_cloudflare(self, temp_project_dir: Path, mock_config: GeneratorConfig):
+        """Test that Cloudflare systems render Cloudflare Terraform only."""
+        system_name = "api-test-cloudflare-system"
 
         with patch('src.utils.github.create_repo'):
-            create_monorepo(
-                name=mono_name,
+            create_system(
+                name=system_name,
                 gh=False,
                 config=mock_config,
                 helm=False,
@@ -615,7 +620,7 @@ class TestAPIFunctions:
                 knowledge="none",
             )
 
-        project_path = temp_project_dir / mono_name
+        project_path = temp_project_dir / system_name
         main_tf = (project_path / "infra/terraform/env/dev/main.tf").read_text()
         variables_tf = (project_path / "infra/terraform/env/dev/variables.tf").read_text()
         tfvars = (project_path / "infra/terraform/env/dev/terraform.tfvars.example").read_text()
@@ -627,14 +632,14 @@ class TestAPIFunctions:
         assert "aws_region" not in variables_tf
         assert "gcp_project_id" not in variables_tf
 
-    def test_create_monorepo_api_with_cloudflare_workers_runtime(
+    def test_create_system_api_with_cloudflare_workers_runtime(
         self, temp_project_dir: Path, mock_config: GeneratorConfig
     ):
         """Test that Cloudflare Workers runtime renders Worker runtime docs."""
-        mono_name = "api-test-worker-runtime-monorepo"
+        system_name = "api-test-worker-runtime-system"
 
-        create_monorepo(
-            name=mono_name,
+        create_system(
+            name=system_name,
             gh=False,
             config=mock_config,
             helm=False,
@@ -644,7 +649,7 @@ class TestAPIFunctions:
             knowledge="none",
         )
 
-        project_path = temp_project_dir / mono_name
+        project_path = temp_project_dir / system_name
 
         assert (project_path / "infra/cloudflare/workers/README.md").exists()
         assert (project_path / "infra/cloudflare/workers/wrangler.example.toml").exists()

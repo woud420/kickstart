@@ -101,9 +101,6 @@ class SystemSpec:
         )
 
 
-MonorepoSpec = SystemSpec
-
-
 @dataclass(frozen=True)
 class FrontendSpec:
     """Constructor data for frontend scaffolds."""

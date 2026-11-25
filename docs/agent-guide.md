@@ -101,7 +101,7 @@ CLI scaffolds are modular by default for Python, Rust, and TypeScript. They expo
 - GitHub creation: off
 - Helm: off
 
-Use `system` for aggregate repos. `mono` and `monorepo` are legacy aliases only. Use `cloudflare-workers` as the canonical Worker runtime spelling.
+Use `system` for aggregate repos; the `mono` and `monorepo` aliases were removed (add `--workspace-tooling bun-turbo` for their old Bun + Turbo default). Use `cloudflare-workers` as the canonical Worker runtime spelling.
 
 Generated docs are baseline output. The `--knowledge` option only controls external metadata such as Obsidian or Backstage files.
 

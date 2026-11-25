@@ -3,7 +3,6 @@ from types import SimpleNamespace
 import pytest
 from pathlib import Path
 from unittest.mock import patch, call
-from src.generator.monorepo import MonorepoGenerator
 from src.generator.system import SystemGenerator
 from src.utils.errors import ProjectCreationError
 
@@ -51,37 +50,37 @@ def _expected_monorepo_dirs():
 
 @pytest.fixture
 def monorepo_generator():
-    return MonorepoGenerator("test-monorepo", False, {"key": "value"})
+    return SystemGenerator("test-monorepo", False, {"key": "value"}, workspace_tooling="bun-turbo")
 
 
 @pytest.fixture
 def monorepo_generator_with_helm():
-    return MonorepoGenerator("test-monorepo", False, {"key": "value"}, helm=True)
+    return SystemGenerator("test-monorepo", False, {"key": "value"}, helm=True, workspace_tooling="bun-turbo")
 
 
 @pytest.fixture
 def monorepo_generator_with_gh():
-    return MonorepoGenerator("test-monorepo", True, {"key": "value"})
+    return SystemGenerator("test-monorepo", True, {"key": "value"}, workspace_tooling="bun-turbo")
 
 
 @pytest.fixture
 def monorepo_generator_with_root():
-    return MonorepoGenerator("test-monorepo", False, {"key": "value"}, root="/tmp")
+    return SystemGenerator("test-monorepo", False, {"key": "value"}, root="/tmp", workspace_tooling="bun-turbo")
 
 @pytest.fixture(autouse=True)
 def mock_scaffold_contract_docs():
-    with patch.object(MonorepoGenerator, "create_scaffold_contract_docs", return_value=True):
+    with patch.object(SystemGenerator, "create_scaffold_contract_docs", return_value=True):
         yield
 
 
 @pytest.fixture
 def create_mocks():
     with (
-        patch.object(MonorepoGenerator, "create_project", return_value=True) as create_project,
-        patch.object(MonorepoGenerator, "init_basic_structure") as init_basic_structure,
-        patch.object(MonorepoGenerator, "write_template") as write_template,
-        patch.object(MonorepoGenerator, "create_architecture_docs") as create_architecture_docs,
-        patch.object(MonorepoGenerator, "log_success") as log_success,
+        patch.object(SystemGenerator, "create_project", return_value=True) as create_project,
+        patch.object(SystemGenerator, "init_basic_structure") as init_basic_structure,
+        patch.object(SystemGenerator, "write_template") as write_template,
+        patch.object(SystemGenerator, "create_architecture_docs") as create_architecture_docs,
+        patch.object(SystemGenerator, "log_success") as log_success,
     ):
         yield SimpleNamespace(
             create_project=create_project,
@@ -117,7 +116,7 @@ def test_monorepo_generator_initialization_with_root(monorepo_generator_with_roo
 
 
 def test_monorepo_cloud_selection():
-    generator = MonorepoGenerator("test", False, {}, cloud="gcp", knowledge="obsidian")
+    generator = SystemGenerator("test", False, {}, cloud="gcp", knowledge="obsidian", workspace_tooling="bun-turbo")
 
     assert generator._clouds() == ["gcp"]
     assert generator._include_obsidian() is True
@@ -125,7 +124,7 @@ def test_monorepo_cloud_selection():
 
 
 def test_monorepo_multi_cloud_includes_cloudflare():
-    generator = MonorepoGenerator("test", False, {}, cloud="multi")
+    generator = SystemGenerator("test", False, {}, cloud="multi", workspace_tooling="bun-turbo")
 
     assert generator._clouds() == ["aws", "gcp", "cloudflare"]
     assert generator._template_vars()["include_cloudflare"] is True
@@ -134,7 +133,7 @@ def test_monorepo_multi_cloud_includes_cloudflare():
 
 
 def test_monorepo_cloudflare_only_selection():
-    generator = MonorepoGenerator("test", False, {}, cloud="cloudflare")
+    generator = SystemGenerator("test", False, {}, cloud="cloudflare", workspace_tooling="bun-turbo")
 
     assert generator._clouds() == ["cloudflare"]
     assert generator._template_vars()["include_aws"] is False
@@ -143,7 +142,7 @@ def test_monorepo_cloudflare_only_selection():
 
 
 def test_monorepo_cloudflare_workers_runtime_selection():
-    generator = MonorepoGenerator("test", False, {}, cloud="cloudflare", runtime="cloudflare-workers")
+    generator = SystemGenerator("test", False, {}, cloud="cloudflare", runtime="cloudflare-workers", workspace_tooling="bun-turbo")
 
     assert generator._uses_kubernetes() is False
     assert generator._uses_cloudflare_workers() is True
@@ -151,7 +150,7 @@ def test_monorepo_cloudflare_workers_runtime_selection():
 
 
 def test_monorepo_hybrid_runtime_selection():
-    generator = MonorepoGenerator("test", False, {}, runtime="hybrid")
+    generator = SystemGenerator("test", False, {}, runtime="hybrid", workspace_tooling="bun-turbo")
 
     assert generator._uses_kubernetes() is True
     assert generator._uses_cloudflare_workers() is True
@@ -181,17 +180,17 @@ def test_system_generator_can_use_bun_turbo_workspace_tooling():
 
 def test_monorepo_rejects_invalid_profile_options():
     with pytest.raises(ValueError):
-        MonorepoGenerator("test", False, {}, cloud="azure").create()
+        SystemGenerator("test", False, {}, cloud="azure", workspace_tooling="bun-turbo").create()
 
     with pytest.raises(ValueError):
-        MonorepoGenerator("test", False, {}, knowledge="wiki").create()
+        SystemGenerator("test", False, {}, knowledge="wiki", workspace_tooling="bun-turbo").create()
 
     with pytest.raises(ValueError):
-        MonorepoGenerator("test", False, {}, runtime="lambda").create()
+        SystemGenerator("test", False, {}, runtime="lambda", workspace_tooling="bun-turbo").create()
 
 
 @patch("src.generator.monorepo.create_repo")
-@patch.object(MonorepoGenerator, "_create_kustomize_structure")
+@patch.object(SystemGenerator, "_create_kustomize_structure")
 def test_create_success_with_kustomize_and_gh(mock_create_kustomize_structure, mock_create_repo, create_mocks):
     mock_log_success = create_mocks.log_success
     mock_create_project = create_mocks.create_project
@@ -199,7 +198,7 @@ def test_create_success_with_kustomize_and_gh(mock_create_kustomize_structure, m
     mock_create_architecture_docs = create_mocks.create_architecture_docs
     mock_write_template = create_mocks.write_template
 
-    generator = MonorepoGenerator("test-monorepo", True, {"key": "value"})
+    generator = SystemGenerator("test-monorepo", True, {"key": "value"}, workspace_tooling="bun-turbo")
 
     generator.create()
 
@@ -241,11 +240,11 @@ def test_create_success_with_kustomize_and_gh(mock_create_kustomize_structure, m
 
 
 @patch("src.generator.monorepo.create_repo")
-@patch.object(MonorepoGenerator, "_create_helm_structure")
+@patch.object(SystemGenerator, "_create_helm_structure")
 def test_create_success_with_helm(mock_create_helm_structure, mock_create_repo, create_mocks):
     mock_log_success = create_mocks.log_success
 
-    generator = MonorepoGenerator("test-monorepo", False, {"key": "value"}, helm=True)
+    generator = SystemGenerator("test-monorepo", False, {"key": "value"}, helm=True, workspace_tooling="bun-turbo")
 
     generator.create()
 
@@ -256,13 +255,13 @@ def test_create_success_with_helm(mock_create_helm_structure, mock_create_repo, 
     mock_create_repo.assert_not_called()
 
 
-@patch.object(MonorepoGenerator, "_create_kustomize_structure")
+@patch.object(SystemGenerator, "_create_kustomize_structure")
 def test_create_success_with_cloudflare_workers_runtime(mock_create_kustomize_structure, create_mocks):
     mock_log_success = create_mocks.log_success
     mock_init_basic_structure = create_mocks.init_basic_structure
     mock_write_template = create_mocks.write_template
 
-    generator = MonorepoGenerator("edge-stack", False, {}, cloud="cloudflare", runtime="cloudflare-workers")
+    generator = SystemGenerator("edge-stack", False, {}, cloud="cloudflare", runtime="cloudflare-workers", workspace_tooling="bun-turbo")
 
     generator.create()
 
@@ -280,7 +279,7 @@ def test_create_success_with_cloudflare_workers_runtime(mock_create_kustomize_st
     )
 
 
-@patch.object(MonorepoGenerator, 'create_project')
+@patch.object(SystemGenerator, 'create_project')
 def test_create_fails_when_create_project_fails(mock_create_project, monorepo_generator):
     mock_create_project.return_value = False
 
@@ -290,8 +289,8 @@ def test_create_fails_when_create_project_fails(mock_create_project, monorepo_ge
     mock_create_project.assert_called_once()
 
 
-@patch.object(MonorepoGenerator, 'write_template')
-@patch.object(MonorepoGenerator, 'create_directories')
+@patch.object(SystemGenerator, 'write_template')
+@patch.object(SystemGenerator, 'create_directories')
 def test_create_helm_structure(mock_create_directories, mock_write_template, monorepo_generator):
     monorepo_generator._create_helm_structure()
     
@@ -310,8 +309,8 @@ def test_create_helm_structure(mock_create_directories, mock_write_template, mon
         assert _template_written(mock_write_template, *expected_call.args)
 
 
-@patch.object(MonorepoGenerator, 'write_template')
-@patch.object(MonorepoGenerator, 'create_directories')
+@patch.object(SystemGenerator, 'write_template')
+@patch.object(SystemGenerator, 'create_directories')
 def test_create_kustomize_structure(mock_create_directories, mock_write_template, monorepo_generator):
     monorepo_generator._create_kustomize_structure()
     
@@ -342,9 +341,9 @@ def test_terraform_environments_coverage(create_mocks):
     """Test that all expected environments are covered in terraform file generation."""
     expected_envs = ["dev", "staging", "prod"]
 
-    with patch.object(MonorepoGenerator, "_create_kustomize_structure"):
+    with patch.object(SystemGenerator, "_create_kustomize_structure"):
         mock_write_template = create_mocks.write_template
-        generator = MonorepoGenerator("test", False, {})
+        generator = SystemGenerator("test", False, {}, workspace_tooling="bun-turbo")
         generator.create()
 
         # Check that terraform files are created for each environment
@@ -371,9 +370,9 @@ def test_github_workflows_coverage(create_mocks):
     """Test that all expected GitHub workflow files are created."""
     expected_workflows = ["build.yml", "test.yml", "deploy.yml"]
 
-    with patch.object(MonorepoGenerator, "_create_kustomize_structure"):
+    with patch.object(SystemGenerator, "_create_kustomize_structure"):
         mock_write_template = create_mocks.write_template
-        generator = MonorepoGenerator("test", False, {})
+        generator = SystemGenerator("test", False, {}, workspace_tooling="bun-turbo")
         generator.create()
 
         # Check that workflow files are created
@@ -383,9 +382,9 @@ def test_github_workflows_coverage(create_mocks):
 
 def test_monorepo_name_passed_to_templates(create_mocks):
     """Test that monorepo name is correctly passed to Makefile and README templates."""
-    with patch.object(MonorepoGenerator, "_create_kustomize_structure"):
+    with patch.object(SystemGenerator, "_create_kustomize_structure"):
         mock_write_template = create_mocks.write_template
-        generator = MonorepoGenerator("my-awesome-repo", False, {})
+        generator = SystemGenerator("my-awesome-repo", False, {}, workspace_tooling="bun-turbo")
         generator.create()
 
         # Check that monorepo name is passed to templates
@@ -409,9 +408,9 @@ def test_monorepo_name_passed_to_templates(create_mocks):
 
 def test_basic_structure_includes_all_required_directories(create_mocks):
     """Test that init_basic_structure is called with all required directories."""
-    with patch.object(MonorepoGenerator, "_create_kustomize_structure"):
+    with patch.object(SystemGenerator, "_create_kustomize_structure"):
         mock_init_structure = create_mocks.init_basic_structure
-        generator = MonorepoGenerator("test", False, {})
+        generator = SystemGenerator("test", False, {}, workspace_tooling="bun-turbo")
         generator.create()
 
         mock_init_structure.assert_called_once_with(_expected_monorepo_dirs())

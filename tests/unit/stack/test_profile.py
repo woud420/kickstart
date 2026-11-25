@@ -8,7 +8,6 @@ def test_language_and_runtime_aliases_normalize_to_canonical_ids():
     assert stack_registry.normalize_language("ts") == "typescript"
     assert stack_registry.normalize_language("c++") == "cpp"
     assert stack_registry.normalize_service_runtime("cf-worker") == "cloudflare-workers"
-    assert stack_registry.normalize_monorepo_runtime("k8s") == "kubernetes"
     assert stack_registry.normalize_system_runtime("k8s") == "kubernetes"
     assert stack_registry.normalize_cloud("cf") == "cloudflare"
     assert stack_registry.normalize_workspace_tooling("turbo") == "bun-turbo"
@@ -40,11 +39,12 @@ def test_cloudflare_worker_service_selection_rejects_helm():
         stack_registry.service_selection("typescript", "cloudflare-workers", helm=True)
 
 
-def test_monorepo_selection_resolves_cloud_knowledge_runtime_and_templates():
-    selection = stack_registry.monorepo_selection(
+def test_system_selection_resolves_cloud_knowledge_runtime_and_templates():
+    selection = stack_registry.system_selection(
         cloud="multi",
         knowledge="both",
         runtime="cloudflare-workers",
+        workspace_tooling="bun-turbo",
     )
 
     assert selection.clouds == ("aws", "gcp", "cloudflare")
@@ -91,8 +91,8 @@ def test_system_selection_can_emit_bun_turbo_workspace_tooling():
     assert ("config/tsconfig/base.json", "tsconfig_base.json.tpl") in template_pairs
 
 
-def test_hybrid_monorepo_selection_reports_both_artifact_tools():
-    selection = stack_registry.monorepo_selection(runtime="hybrid")
+def test_hybrid_system_selection_reports_both_artifact_tools():
+    selection = stack_registry.system_selection(runtime="hybrid")
 
     assert selection.uses_kubernetes is True
     assert selection.uses_cloudflare_workers is True

@@ -3,7 +3,6 @@
 from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibraryGenerator, CLIGenerator
-from src.generator.monorepo import MonorepoGenerator
 from src.generator.system import SystemGenerator
 from src.utils.types import GeneratorConfig
 
@@ -13,7 +12,6 @@ __all__ = [
     "create_lib",
     "create_cli",
     "create_system",
-    "create_monorepo",
 ]
 
 
@@ -83,33 +81,6 @@ def create_system(
 ) -> None:
     """Create a system scaffold."""
     generator = SystemGenerator(
-        name,
-        gh,
-        config,
-        helm=helm,
-        root=root,
-        cloud=cloud,
-        knowledge=knowledge,
-        runtime=runtime,
-        workspace_tooling=workspace_tooling,
-    )
-    generator.create()
-
-
-def create_monorepo(
-    name: str,
-    gh: bool,
-    config: GeneratorConfig,
-    *,
-    helm: bool = False,
-    root: str | None = None,
-    cloud: str = "multi",
-    knowledge: str = "none",
-    runtime: str = "kubernetes",
-    workspace_tooling: str = "bun-turbo",
-) -> None:
-    """Create a system monorepo through the legacy API name."""
-    generator = MonorepoGenerator(
         name,
         gh,
         config,

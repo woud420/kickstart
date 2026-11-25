@@ -1,5 +1,5 @@
 """Canonical system generator exports."""
 
-from src.generator.monorepo import MonorepoGenerator, SystemGenerator
+from src.generator.monorepo import SystemGenerator
 
-__all__ = ["MonorepoGenerator", "SystemGenerator"]
+__all__ = ["SystemGenerator"]
