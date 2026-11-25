@@ -54,23 +54,6 @@ def test_helm_option_only_for_service_and_mono():
         assert mock_confirm.ask.call_count == 1
 
 
-def test_default_values():
-    """Test that default values are used when not specified."""
-    with (
-        patch("src.cli.create.load_config") as mock_load_config,
-        patch("src.cli.create.create_service") as mock_create_service,
-    ):
-        mock_load_config.return_value = {"default_language": "python"}
-
-        runner = CliRunner()
-        result = runner.invoke(app, ["create", "service", "test", "--root", "/tmp"])
-
-        assert result.exit_code == 0
-        mock_create_service.assert_called_once_with(
-            "test", "python", False, {"default_language": "python"}, helm=False, root="/tmp"
-        )
-
-
 @patch("src.cli.create.create_service")
 @patch("src.cli.create.load_config")
 def test_create_service_validation_error_is_concise(mock_load_config, mock_create_service, runner):

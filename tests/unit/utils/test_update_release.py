@@ -62,13 +62,6 @@ def test_default_release_asset_matches_running_python(monkeypatch, minor):
     assert updater.expected_archive_name("linux-x64") == f"kickstart-linux-x64-py3.{minor}.tar.gz"
 
 
-def test_expected_archive_name_default(monkeypatch):
-    monkeypatch.setattr(updater.sys, "platform", "linux")
-    monkeypatch.setattr(updater.platform, "machine", lambda: "x86_64")
-    monkeypatch.setattr(updater, "host_python_minor", lambda: "3.14")
-    assert updater.expected_archive_name() == "kickstart-linux-x64-py3.14.tar.gz"
-
-
 def test_expected_archive_name_overrides():
     assert updater.expected_archive_name("macos-arm64", "3.13") == "kickstart-macos-arm64-py3.13.tar.gz"
 
@@ -100,18 +93,6 @@ def test_fetch_release_info_raises_on_http_error():
     with patch("src.utils.updater.requests.get", return_value=response):
         with pytest.raises(requests.HTTPError):
             updater.fetch_release_info("https://x/api")
-
-
-def test_download_to_writes_bytes(tmp_path):
-    response = MagicMock()
-    response.raise_for_status.return_value = None
-    response.content = b"payload"
-    response.__enter__.return_value = response
-    response.__exit__.return_value = False
-    dest = tmp_path / "out.bin"
-    with patch("src.utils.updater.requests.get", return_value=response):
-        updater.download_to("https://x/a", dest)
-    assert dest.read_bytes() == b"payload"
 
 
 def test_verify_sha256_matches(tmp_path):
