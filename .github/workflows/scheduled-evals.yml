@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python + Poetry
         uses: ./.github/actions/setup-python-poetry
@@ -44,7 +44,7 @@ jobs:
           echo "version=${GO_TOOLCHAIN_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ steps.go-toolchain.outputs.version }}
           cache: false
@@ -57,7 +57,7 @@ jobs:
 
       - name: Upload eval reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eval-reports-full
           path: /tmp/kickstart-run-evals-*.md
@@ -75,7 +75,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Verify the current version is tagged and released
         env:

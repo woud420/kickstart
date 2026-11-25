@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python + Poetry
         uses: ./.github/actions/setup-python-poetry
@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python + Poetry
         uses: ./.github/actions/setup-python-poetry
@@ -53,14 +53,14 @@ jobs:
         run: make coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
       - name: Archive coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-xml
           path: coverage.xml
@@ -77,7 +77,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python + Poetry
         uses: ./.github/actions/setup-python-poetry
@@ -111,7 +111,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python + Poetry
         uses: ./.github/actions/setup-python-poetry
         with:
@@ -135,7 +135,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python + Poetry
         uses: ./.github/actions/setup-python-poetry
@@ -195,7 +195,7 @@ jobs:
       # One entrypoint so CI and local runs agree (docs/operations/evals.md); the full
       # matrix runs weekly in Scheduled Evals via `--tier full`.
       - name: Restore bootstrap eval dependency cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/kickstart-eval-cache
           key: bootstrap-eval-${{ runner.os }}-${{ hashFiles('src/stack/toolchain_versions.py', 'src/templates/python/**') }}
@@ -207,7 +207,7 @@ jobs:
 
       - name: Upload eval reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eval-reports-pr
           path: /tmp/kickstart-run-evals-*.md
@@ -239,7 +239,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -278,7 +278,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python + Poetry
         uses: ./.github/actions/setup-python-poetry
@@ -317,7 +317,7 @@ jobs:
         run: python3 scripts/embed_posthog_token.py --clear
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kickstart-${{ matrix.platform }}-py${{ env.PYTHON_VERSION }}
           path: |
