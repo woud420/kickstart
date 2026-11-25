@@ -7,6 +7,7 @@ from rich import print
 from rich.markup import escape
 
 from src.cli.drift import print_drift
+from src.cli.failures import exit_with_error
 from src.cli.ownership import ownership_plan
 from src.generator.adoption import AdoptionTargetError, inspect_repo
 from src.generator.docs_plan import DocsPlanTargetError, inspect_docs
@@ -32,8 +33,7 @@ def plan(
     try:
         report = inspect_docs(path)
     except DocsPlanTargetError as error:
-        print(f"[red]{escape(str(error))}[/]")
-        raise typer.Exit(code=2) from error
+        exit_with_error(error, code=2)
 
     if json_output:
         # Machine-readable output must bypass rich: console printing wraps
@@ -70,8 +70,7 @@ def adopt(
     try:
         report = inspect_repo(path)
     except (AdoptionTargetError, DriftTargetError) as error:
-        print(f"[red]{escape(str(error))}[/]")
-        raise typer.Exit(code=2) from error
+        exit_with_error(error, code=2)
 
     if json_output:
         # Machine-readable output must bypass rich: console printing wraps

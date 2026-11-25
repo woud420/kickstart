@@ -191,7 +191,8 @@ def test_export_backstage_warns_on_missing_required_lines(runner: CliRunner, tmp
 def test_adopt_reports_literal_invalid_path(
     tmp_path: Path, name: str, columns: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("src.cli.inspection.print", Console(width=columns).print)
+    # The adopt usage error is printed by the shared CLI failure exit.
+    monkeypatch.setattr("src.cli.failures.print", Console(width=columns).print)
     result = CliRunner().invoke(app, ["adopt", str(tmp_path / name), "--check"])
 
     assert result.exit_code == 2

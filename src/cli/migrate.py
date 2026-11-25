@@ -5,6 +5,7 @@ import typer
 from rich import print
 from rich.markup import escape
 
+from src.cli.failures import exit_with_error
 from src.generator.manifest_migration import apply_migration, plan_migration
 from src.utils.errors import ManifestMigrationError
 
@@ -24,8 +25,7 @@ def migrate(
         plan = plan_migration(path, language=language, framework=framework)
         action = apply_migration(plan, expected_sha256=expected_sha256) if apply and plan.ready else "planned"
     except ManifestMigrationError as error:
-        print(f"[red]{escape(str(error))}[/]")
-        raise typer.Exit(code=2) from error
+        exit_with_error(error, code=2)
     if json_output:
         typer.echo(plan.to_json(action), nl=False)
     else:

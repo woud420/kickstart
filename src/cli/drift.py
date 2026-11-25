@@ -6,6 +6,7 @@ from rich import print
 from rich.markup import escape
 import typer
 
+from src.cli.failures import exit_with_error
 from src.generator.drift import DriftReport, inspect_drift
 from src.utils.errors import DriftTargetError
 
@@ -32,8 +33,7 @@ def drift(
     try:
         report = inspect_drift(path)
     except DriftTargetError as error:
-        print(f"[red]{escape(str(error))}[/]")
-        raise typer.Exit(code=2) from error
+        exit_with_error(error, code=2)
     if json_output:
         typer.echo(report.to_json(), nl=False)
     else:

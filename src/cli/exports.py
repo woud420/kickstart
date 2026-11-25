@@ -7,6 +7,7 @@ import typer
 from rich import print
 from rich.markup import escape
 
+from src.cli.failures import exit_with_error
 from src.generator.backstage_export import BackstageExportError, BackstageExportUsageError, export_backstage
 from src.generator.external_io_contract import ExternalIOContractError
 from src.generator.external_io_evidence import verify_external_io_sources
@@ -31,11 +32,9 @@ def backstage(
     try:
         result = export_backstage(path)
     except BackstageExportUsageError as error:
-        print(f"[red]{escape(str(error))}[/]")
-        raise typer.Exit(code=2) from error
+        exit_with_error(error, code=2)
     except BackstageExportError as error:
-        print(f"[red]{escape(str(error))}[/]")
-        raise typer.Exit(code=1) from error
+        exit_with_error(error, code=1)
 
     print(f"[bold]{result.action}[/] {escape(str(result.path))}")
     for issue in result.issues:

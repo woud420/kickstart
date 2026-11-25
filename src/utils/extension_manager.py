@@ -218,29 +218,18 @@ class ExtensionManager:
         Returns:
             Tuple of (extensions_added, all_requirements)
         """
-        extensions_added = []
-        all_requirements = []
-
-        # Apply database extension
-        if database and self._has_extension("database", database):
-            extension = self._extensions["database"][database]
-            requirements = extension.apply(writer)
-            extensions_added.append(f"{database.upper()} database")
-            all_requirements.extend(requirements)
-
-        # Apply cache extension
-        if cache and self._has_extension("cache", cache):
-            extension = self._extensions["cache"][cache]
-            requirements = extension.apply(writer)
-            extensions_added.append(f"{cache.upper()} cache")
-            all_requirements.extend(requirements)
-
-        # Apply auth extension
-        if auth and self._has_extension("auth", auth):
-            extension = self._extensions["auth"][auth]
-            requirements = extension.apply(writer)
-            extensions_added.append(f"{auth.upper()} authentication")
-            all_requirements.extend(requirements)
+        extensions_added: list[str] = []
+        all_requirements: list[str] = []
+        # Order matters: database, then cache, then auth.
+        selections = (
+            ("database", database, "database"),
+            ("cache", cache, "cache"),
+            ("auth", auth, "authentication"),
+        )
+        for extension_type, name, label in selections:
+            if name and self._has_extension(extension_type, name):
+                all_requirements.extend(self._extensions[extension_type][name].apply(writer))
+                extensions_added.append(f"{name.upper()} {label}")
 
         return extensions_added, all_requirements
 
