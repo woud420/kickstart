@@ -62,6 +62,7 @@ export default Alchemy.Stack(
       name: workerNameForStage(config.serviceName, stage),
       main: "./src/index.ts",
       compatibility: { date: "2026-05-02" },
+      workersDev: { enabled: true, previewsEnabled: false },
       // www is bound to the same Worker so Cloudflare creates its DNS record;
       // the Worker answers it with a permanent redirect to the apex.
       domain:
@@ -74,6 +75,8 @@ export default Alchemy.Stack(
         SUPPORTED_FROM_VERSION: config.supportedFrom,
         REPOSITORY_URL: config.repositoryUrl,
         RELEASE_URL: config.releaseUrl,
+        DEPLOY_PROBE_SHA256: process.env.DEPLOY_PROBE_SHA256 ?? "",
+        DEPLOY_PROBE_EXPIRES_AT: process.env.DEPLOY_PROBE_EXPIRES_AT ?? "",
       },
     });
 
