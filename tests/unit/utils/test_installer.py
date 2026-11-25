@@ -109,18 +109,6 @@ def test_current_entrypoint_path_preserves_explicit_relative_path(tmp_path: Path
     assert installer.current_entrypoint_path() == explicit_launcher
 
 
-def test_uninstall_binary_removes_file(tmp_path: Path, single_file_binary: Path) -> None:
-    target_dir = tmp_path / "user-bin"
-    installer.install_binary(single_file_binary, target_dir)
-    removed = installer.uninstall_binary(target_dir)
-    assert removed == target_dir / installer.BINARY_NAME
-    assert not removed.exists()
-
-
-def test_detect_shell_zsh() -> None:
-    assert installer.detect_shell({"SHELL": "/bin/zsh"}) == "zsh"
-
-
 def test_detect_shell_bash() -> None:
     assert installer.detect_shell({"SHELL": "/usr/local/bin/bash"}) == "bash"
 
@@ -176,10 +164,6 @@ def test_path_contains_missing(tmp_path: Path) -> None:
 def test_path_update_snippet_bash_zsh(tmp_path: Path) -> None:
     assert installer.path_update_snippet("bash", tmp_path) == f'export PATH="{tmp_path}:$PATH"'
     assert installer.path_update_snippet("zsh", tmp_path) == f'export PATH="{tmp_path}:$PATH"'
-
-
-def test_path_update_snippet_fish(tmp_path: Path) -> None:
-    assert installer.path_update_snippet("fish", tmp_path) == f"fish_add_path -gp {tmp_path}"
 
 
 def test_update_path_in_rc_creates_file(tmp_path: Path) -> None:

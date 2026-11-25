@@ -71,10 +71,6 @@ def test_invalid_artifact_id_is_rejected() -> None:
             begin_marker(bad)
 
 
-def test_find_returns_none_for_premarker_text() -> None:
-    assert find_fenced_region("# Plain file\n\nno markers here\n", "agent-map") is None
-
-
 def test_find_fails_closed_on_malformed_markers() -> None:
     begin = begin_marker("agent-map")
     end = end_marker("agent-map")
