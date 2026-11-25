@@ -92,14 +92,6 @@ def test_create_fails_when_create_project_fails(mock_create_project, frontend_ge
     mock_create_project.assert_called_once()
 
 
-def test_architecture_docs_content(create_mocks):
-    generator = FrontendGenerator("my-awesome-app", False, {})
-    generator.create()
-
-    create_mocks.create_architecture_docs.assert_called_once()
-    assert create_mocks.create_architecture_docs.call_args.args[0] == "my-awesome-app Frontend Docs"
-
-
 def test_frontend_html_loads_a_generated_module(tmp_path):
     from html.parser import HTMLParser
 

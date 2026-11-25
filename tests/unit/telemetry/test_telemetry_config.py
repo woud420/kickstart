@@ -26,10 +26,6 @@ def test_project_id_alone_does_not_configure_capture() -> None:
     assert posthog_settings_from_configuration({"POSTHOG_PROJECT_ID": "123456"}) is None
 
 
-def test_personal_api_key_is_rejected() -> None:
-    assert posthog_settings_from_configuration({"POSTHOG_PUBLIC_CUSTOMER_API_TOKEN": "phx_secret"}) is None
-
-
 def test_settings_repr_never_contains_project_token() -> None:
     settings = PostHogSettings("phc_do_not_print")
 

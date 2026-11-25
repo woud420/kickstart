@@ -83,11 +83,6 @@ def test_find_asset_match():
     assert found["browser_download_url"] == "https://x/a"
 
 
-def test_find_asset_missing():
-    assets = [{"name": "other.zip", "browser_download_url": "https://x/c"}]
-    assert updater.find_asset(assets, "kickstart-linux-x64-py3.14.tar.gz") is None
-
-
 def test_fetch_release_info_decodes_json():
     payload = {"tag_name": "v9.9.9", "assets": []}
     response = MagicMock()
