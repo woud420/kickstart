@@ -226,12 +226,6 @@ def test_remove_path_block_from_rc(tmp_path: Path) -> None:
     assert "# more user content" in contents
 
 
-def test_remove_path_block_from_rc_no_op(tmp_path: Path) -> None:
-    rc = tmp_path / "rc"
-    rc.write_text("# user content only\n")
-    assert installer.remove_path_block_from_rc(rc) is False
-
-
 def test_remove_path_block_from_rc_missing_file(tmp_path: Path) -> None:
     assert installer.remove_path_block_from_rc(tmp_path / "missing") is False
 

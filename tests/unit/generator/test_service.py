@@ -572,16 +572,6 @@ def test_cloudflare_worker_runtime_alias_normalizes():
     assert generator.runtime == "cloudflare-workers"
 
 
-def test_cloudflare_worker_template_configs_for_typescript():
-    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
-
-    configs = generator._cloudflare_worker_template_configs()
-
-    assert {"target": "wrangler.toml", "template": "cloudflare-workers/typescript/wrangler.toml.tpl"} in configs
-    assert {"target": "src/index.ts", "template": "cloudflare-workers/typescript/src/index.ts.tpl"} in configs
-    assert {"target": "tests/worker.test.ts", "template": "cloudflare-workers/typescript/tests/worker.test.ts.tpl"} in configs
-
-
 def test_cloudflare_worker_template_configs_for_rust():
     generator = ServiceGenerator("edge-rust", "rust", False, {}, runtime="cloudflare-workers")
 

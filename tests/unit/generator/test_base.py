@@ -122,3 +122,14 @@ def test_write_template_rejects_missing_absolute_filename(tmp_path):
 
     assert generator.write_template("greeting.txt", str(missing)) is False
     assert not (generator.project / "greeting.txt").exists()
+
+
+def test_replace_template_preserves_output_when_absolute_source_is_invalid_utf8(tmp_path):
+    generator = BaseGenerator("demo", {}, root=str(tmp_path))
+    template = tmp_path / "greeting.tpl"
+    template.write_text("Hello {{ service_name }}", encoding="utf-8")
+    assert generator.write_template("greeting.txt", str(template))
+
+    template.write_bytes(b"broken\xff")
+    assert generator.replace_template("greeting.txt", str(template)) is False
+    assert (generator.project / "greeting.txt").read_text(encoding="utf-8") == "Hello demo"
