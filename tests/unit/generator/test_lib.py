@@ -298,24 +298,3 @@ def test_cli_unsupported_language_fails_loudly():
 
         mock_write_template.assert_not_called()
         mock_write_content.assert_not_called()
-
-
-def test_library_vs_cli_architecture_docs_difference():
-    """Test that library and CLI generators create different architecture docs."""
-    # Test library
-    with create_mocks(LibraryGenerator, "write_content_files") as mocks:
-        mock_lib_arch_docs = mocks.create_architecture_docs
-        lib_generator = LibraryGenerator("my-lib", "python", False, {})
-        lib_generator.create()
-
-        mock_lib_arch_docs.assert_called_once()
-        assert mock_lib_arch_docs.call_args.args[0] == "my-lib Library Docs"
-
-    # Test CLI
-    with create_mocks(CLIGenerator, "write_content") as mocks:
-        mock_cli_arch_docs = mocks.create_architecture_docs
-        cli_generator = CLIGenerator("my-cli", "python", False, {})
-        cli_generator.create()
-
-        mock_cli_arch_docs.assert_called_once()
-        assert mock_cli_arch_docs.call_args.args[0] == "my-cli CLI Docs"

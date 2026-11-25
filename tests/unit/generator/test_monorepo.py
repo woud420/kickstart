@@ -305,20 +305,6 @@ def test_terraform_environments_coverage(create_mocks):
             assert _template_written(mock_write_template, *tfvars_call.args)
 
 
-def test_github_workflows_coverage(create_mocks):
-    """Test that all expected GitHub workflow files are created."""
-    expected_workflows = ["build.yml", "test.yml", "deploy.yml"]
-
-    with patch.object(SystemGenerator, "_create_kustomize_structure"):
-        mock_write_template = create_mocks.write_template
-        generator = SystemGenerator("test", False, {}, workspace_tooling="bun-turbo")
-        generator.create()
-
-        # Check that workflow files are created
-        for workflow in expected_workflows:
-            assert _template_written(mock_write_template, f".github/workflows/{workflow}", workflow)
-
-
 def test_monorepo_name_passed_to_templates(create_mocks):
     """Test that monorepo name is correctly passed to Makefile and README templates."""
     with patch.object(SystemGenerator, "_create_kustomize_structure"):

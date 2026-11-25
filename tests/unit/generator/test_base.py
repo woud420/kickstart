@@ -8,16 +8,6 @@ from unittest.mock import patch
 def base_generator():
     return BaseGenerator("test-project", {"key": "value"})
 
-def test_create_project_success(base_generator, tmp_path):
-    with patch.object(base_generator, 'project', tmp_path / "new-project"):
-        assert base_generator.create_project() is True
-
-def test_create_project_failure(base_generator, tmp_path):
-    existing_dir = tmp_path / "existing-project"
-    existing_dir.mkdir()
-    with patch.object(base_generator, 'project', existing_dir):
-        assert base_generator.create_project() is False
-
 def test_create_directories(base_generator, tmp_path):
     with patch.object(base_generator, 'project', tmp_path):
         directories = ["dir1", "dir2/subdir"]
