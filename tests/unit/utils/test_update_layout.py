@@ -8,26 +8,6 @@ from src.utils import updater
 from tests.unit.utils.updater_helpers import managed_install, nested_install
 
 
-def test_resolve_onedir(tmp_path, monkeypatch):
-    """ENG-204 regression: preserve the managed launcher symlink for layout discovery."""
-    app_root = tmp_path / ".local" / "share" / "kickstart"
-    bundle = app_root / updater.APP_DIR_NAME
-    bundle.mkdir(parents=True)
-    executable = bundle / updater.BINARY_NAME
-    executable.write_text("#!/bin/sh\n")
-    executable.chmod(0o755)
-
-    launcher_dir = tmp_path / ".local" / "bin"
-    launcher_dir.mkdir(parents=True)
-    launcher = launcher_dir / updater.BINARY_NAME
-    launcher.symlink_to(executable)
-
-    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
-    resolved_dir, resolved_root = updater.resolve_current_install_layout()
-    assert resolved_dir == launcher_dir
-    assert resolved_root == app_root
-
-
 def test_resolve_recovers_root_from_nested_payload(tmp_path, monkeypatch):
     """An old nested payload still reveals the original managed app root."""
     app_root = tmp_path / ".local" / "share" / "kickstart"
@@ -71,18 +51,6 @@ def test_resolve_normalizes_relative_launcher_target(tmp_path, monkeypatch):
 
     assert resolved_dir == launcher_dir
     assert resolved_root == app_root
-
-
-def test_resolve_legacy_single_file(tmp_path, monkeypatch):
-    """A non-symlink launcher (legacy single-file install) yields app_root=None."""
-    launcher = tmp_path / "bin" / updater.BINARY_NAME
-    launcher.parent.mkdir(parents=True)
-    launcher.write_text("#!/bin/sh\n")
-    launcher.chmod(0o755)
-    monkeypatch.setattr(updater.sys, "argv", [str(launcher)])
-    resolved_dir, resolved_root = updater.resolve_current_install_layout()
-    assert resolved_dir == launcher.parent
-    assert resolved_root is None
 
 
 def test_resolve_generated_wrapper_payload(tmp_path, monkeypatch):

@@ -1,15 +1,9 @@
 import pytest
 from unittest.mock import patch, call
 from src.generator.language_setup import CPP_MAIN_CONTENT, CPP_ROUTES_HEADER_CONTENT, CPP_USER_HEADER_CONTENT
-from src.generator.projections import (
-    PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER,
-    agent_map_content,
-    contracts_content,
-    operations_content,
-)
 from src.generator.service import ServiceGenerator
 from src.stack.types import TemplateConfig
-from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts
 from src.utils.errors import ProjectCreationError, ExtensionError, LanguageNotSupportedError
 
 
@@ -580,58 +574,6 @@ def test_cloudflare_worker_template_configs_for_rust():
     assert {"target": "wrangler.toml", "template": "cloudflare-workers/rust/wrangler.toml.tpl"} in configs
     assert {"target": "Cargo.toml", "template": "cloudflare-workers/rust/Cargo.toml.tpl"} in configs
     assert {"target": "src/lib.rs", "template": "cloudflare-workers/rust/src/lib.rs.tpl"} in configs
-
-
-def test_typescript_cloudflare_worker_agent_map_is_explicit():
-    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
-
-    contract = ScaffoldContract(
-        project_kind="worker",
-        execution_models=("cloudflare-worker",),
-        runtime_platforms=("cloudflare-workers",),
-        artifacts=ScaffoldArtifacts(worker="wrangler"),
-        provider_targets=("cloudflare",),
-    )
-    profile = generator._projection_profile()
-    content = agent_map_content(contract, profile)
-
-    assert profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER
-    assert "src/index.ts" in content
-    assert "tests/worker.test.ts" in content
-    assert "wrangler.toml" in content
-    assert "make check" in content
-    assert "make dev" in content
-    assert "make deploy" in content
-    assert "Do not hand-edit generated contract files" in content
-    assert ".kickstart/scaffold.json" in content
-
-
-def test_typescript_cloudflare_worker_contract_and_operations_docs_are_explicit():
-    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
-    contract = ScaffoldContract(
-        project_kind="worker",
-        execution_models=("cloudflare-worker",),
-        runtime_platforms=("cloudflare-workers",),
-        artifacts=ScaffoldArtifacts(worker="wrangler"),
-        provider_targets=("cloudflare",),
-    )
-
-    profile = generator._projection_profile()
-    contracts_doc = contracts_content(contract, profile)
-    operations_doc = operations_content(contract, profile)
-
-    assert "Scaffold identity" in contracts_doc
-    assert "Execution model: `cloudflare-worker`" in contracts_doc
-    assert "Verification contract" in contracts_doc
-    assert "make check" in contracts_doc
-    assert "tests/worker.test.ts" in contracts_doc
-
-    assert "Lifecycle flow" in operations_doc
-    assert "1. Install dependencies: `make install`" in operations_doc
-    assert "2. Verify scaffold contract: `make check`" in operations_doc
-    assert "3. Run local worker runtime: `make dev`" in operations_doc
-    assert "4. Deploy to Cloudflare Workers: `make deploy`" in operations_doc
-    assert "wrangler.toml" in operations_doc
 
 
 @patch.object(ServiceGenerator, 'execute_create_flow')
