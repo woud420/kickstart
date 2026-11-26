@@ -15,6 +15,7 @@ def service_templates(language: str, runtime: str) -> tuple[TemplateConfig, ...]
         TemplateConfig("Dockerfile", f"{language}/Dockerfile.tpl"),
         TemplateConfig("Makefile", f"{language}/Makefile.tpl", {"has_docker": True}),
         *language_ci_workflow(language),
+        *dependabot_config(*language_package_ecosystems(language), docker=True),
     )
     language_specific = {
         # requirements.txt depends on the framework and extensions, so the
@@ -88,6 +89,7 @@ def system_templates(
             TemplateConfig(".github/workflows/build.yml", "build.yml"),
             TemplateConfig(".github/workflows/test.yml", "test.yml"),
             TemplateConfig(".github/workflows/deploy.yml", "deploy.yml"),
+            TemplateConfig(".github/dependabot.yml", "dependabot.yml"),
         ]
     )
 
@@ -162,6 +164,35 @@ def language_ci_workflow(language: str) -> tuple[TemplateConfig, ...]:
     )
 
 
+# Dependabot `package-ecosystem` values per scaffold language; C++ (CMake) has none.
+_PACKAGE_ECOSYSTEMS: dict[str, tuple[str, ...]] = {
+    "python": ("pip",),
+    "rust": ("cargo",),
+    "typescript": ("bun",),
+    "go": ("gomod",),
+}
+
+
+def language_package_ecosystems(language: str) -> tuple[str, ...]:
+    """Return the Dependabot package ecosystems for a scaffold language."""
+    return _PACKAGE_ECOSYSTEMS.get(language, ())
+
+
+def dependabot_config(*package_ecosystems: str, docker: bool = False) -> tuple[TemplateConfig, ...]:
+    """Return the Dependabot config for a single-project scaffold.
+
+    Every config also updates GitHub Actions, since every scaffold ships a CI
+    workflow; ``docker`` adds Dockerfile base-image updates.
+    """
+    return (
+        TemplateConfig(
+            ".github/dependabot.yml",
+            "_shared/github/dependabot.yml.tpl",
+            {"dependabot_package_ecosystems": list(package_ecosystems), "dependabot_docker": docker},
+        ),
+    )
+
+
 def typescript_tooling_templates() -> tuple[TemplateConfig, ...]:
     """Return the build, Bun, lint and format templates shared by TypeScript services and CLIs."""
     return (
@@ -204,6 +235,7 @@ def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig,
             TemplateConfig("src/index.ts", f"{base}/src/index.ts.tpl"),
             TemplateConfig("tests/worker.test.ts", f"{base}/tests/worker.test.ts.tpl"),
             *typescript_lint_format_templates(),
+            *dependabot_config("bun"),
         ),
         "rust": (
             TemplateConfig("Cargo.toml", f"{base}/Cargo.toml.tpl"),
@@ -211,6 +243,8 @@ def _cloudflare_worker_service_templates(language: str) -> tuple[TemplateConfig,
             TemplateConfig("package.json", f"{base}/package.json.tpl"),
             TemplateConfig("src/lib.rs", f"{base}/src/lib.rs.tpl"),
             TemplateConfig("tests/README.md", f"{base}/tests/README.md.tpl"),
+            # Wrangler tooling lives in package.json and is installed with Bun.
+            *dependabot_config("cargo", "bun"),
         ),
     }
     return common + worker_specific[language]

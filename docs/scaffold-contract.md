@@ -27,6 +27,7 @@ Every project type gets:
 - `docs/decisions/`: durable architecture and implementation decisions.
 - `.kickstart/scaffold.json`: kickstart's machine-readable scaffold state (tooling input; not part of the orientation surface).
 - `.github/workflows/ci.yml`: per-language GitHub Actions workflow that runs `make check` (lint + typecheck + tests) on push and pull requests. The workflow is emitted for every service, CLI, library, and frontend; system scaffolds emit `build.yml`, `test.yml`, and `deploy.yml` at the same path instead.
+- `.github/dependabot.yml` configures weekly updates for GitHub Actions and the dependency ecosystems used by the scaffold. You own this file after generation. For a system, add any contained projects you want Dependabot to scan to the root configuration.
 
 This list describes generation guarantees. Adoption checks a smaller, tiered
 interface (`src/generator/adoption.py`), rather than requiring every generated

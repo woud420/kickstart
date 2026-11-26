@@ -2,7 +2,9 @@
 
 from src.generator.template_plan import TemplatePlan
 from src.stack.templates import (
+    dependabot_config,
     language_ci_workflow,
+    language_package_ecosystems,
     rust_toolchain_template,
     typescript_lint_format_templates,
     typescript_tooling_templates,
@@ -27,6 +29,7 @@ def frontend_template_plan() -> TemplatePlan:
             TemplateConfig("tests/App.test.tsx", "tests/App.test.tsx.tpl"),
             *typescript_lint_format_templates("_shared/typescript/eslint.config.react.mjs.tpl"),
             *language_ci_workflow("typescript"),
+            *dependabot_config("bun", docker=True),
         ]
     )
 
@@ -43,6 +46,7 @@ def cli_template_plan(language: str) -> TemplatePlan:
         TemplateConfig("Makefile", f"cli/{language}/Makefile.tpl"),
         TemplateConfig("README.md", f"cli/{language}/README.md.tpl"),
         *language_ci_workflow(language),
+        *dependabot_config(*language_package_ecosystems(language)),
     ]
     language_specific = {
         "python": (
@@ -99,5 +103,6 @@ def _package_template_plan(language: str) -> TemplatePlan:
             TemplateConfig("Makefile", f"{language}/Makefile.tpl"),
             TemplateConfig("README.md", f"{language}/README.md.tpl"),
             *language_ci_workflow(language),
+            *dependabot_config(*language_package_ecosystems(language)),
         ]
     )

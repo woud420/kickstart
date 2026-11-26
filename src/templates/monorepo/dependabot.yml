@@ -1,0 +1,41 @@
+# Weekly dependency update PRs for the system root. Minor and patch updates
+# are grouped per ecosystem; major updates arrive one per PR.
+#
+# GitHub reads only this root file, so a contained project's own
+# .github/dependabot.yml is ignored here: add its directory below instead.
+version: 2
+updates:
+{% if uses_bun_turbo %}
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      bun-minor-and-patch:
+        update-types: [minor, patch]
+
+{% endif %}
+{% if provider_targets %}
+  - package-ecosystem: terraform
+    directories:
+      - /infra/terraform
+      - /infra/terraform/env/*
+    schedule:
+      interval: weekly
+    groups:
+      terraform-minor-and-patch:
+        update-types: [minor, patch]
+
+{% endif %}
+  - package-ecosystem: docker-compose
+    directory: /infra/docker
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]

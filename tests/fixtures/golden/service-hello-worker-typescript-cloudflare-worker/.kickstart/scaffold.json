@@ -24,6 +24,7 @@
     ".agents/skills/README.md": "agents-skills-readme",
     ".claude/skills": "seed",
     ".dev.vars.example": "seed",
+    ".github/dependabot.yml": "seed",
     ".github/workflows/ci.yml": "workflow-presence",
     ".gitignore": "seed",
     ".kickstart/scaffold.json": "manifest-shape",
