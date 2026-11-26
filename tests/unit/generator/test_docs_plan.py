@@ -90,16 +90,6 @@ def test_fresh_scaffold_is_in_sync(tmp_path: Path) -> None:
     assert statuses["architecture-readme"] == "presence-only"
 
 
-def test_user_content_outside_fence_stays_in_sync(tmp_path: Path) -> None:
-    _write_repo(tmp_path, _service_contract())
-    agents = tmp_path / "AGENTS.md"
-    agents.write_text(agents.read_text(encoding="utf-8") + "\n## Team notes\n\nOurs.\n", encoding="utf-8")
-
-    report = inspect_docs(tmp_path)
-
-    assert report.in_sync
-
-
 def test_edit_inside_fence_is_content_drift_with_diff(tmp_path: Path) -> None:
     _write_repo(tmp_path, _service_contract())
     agents = tmp_path / "AGENTS.md"

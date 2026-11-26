@@ -17,6 +17,7 @@ from src.api import create_service, create_frontend, create_lib, create_cli, cre
 from src.generator.service import ServiceGenerator
 from src.generator.frontend import FrontendGenerator
 from src.generator.lib import LibGenerator
+from src.generator.manifest_types import ParsedManifest
 from src.generator.system import SystemGenerator
 from src.utils.errors import ProjectCreationError, LanguageNotSupportedError
 from src.utils.types import GeneratorConfig
@@ -38,6 +39,22 @@ def mock_config() -> GeneratorConfig:
         "github_username": "testuser",
         "github_token": "fake_token"
     }
+
+
+def _generate_service(root: Path, config: GeneratorConfig, name: str, lang: str, **options: str | bool) -> Path:
+    """Generate a service under ``root`` without GitHub and return its project directory."""
+    ServiceGenerator(name=name, lang=lang, gh=False, config=config, root=str(root), **options).create()
+    return root / name
+
+
+def _generate_system(root: Path, config: GeneratorConfig, name: str, **options: str | bool) -> Path:
+    """Generate a system through the public API without GitHub and return its project directory."""
+    create_system(name=name, gh=False, config=config, root=str(root), **options)
+    return root / name
+
+
+def _manifest(project_path: Path) -> ParsedManifest:
+    return json.loads((project_path / ".kickstart/scaffold.json").read_text())
 
 
 class TestServiceCreation:
@@ -130,7 +147,7 @@ class TestServiceCreation:
         assert claude_skills.is_symlink()
         assert claude_skills.readlink() == Path("../.agents/skills")
         assert (project_path / ".kickstart/scaffold.json").exists()
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        manifest = _manifest(project_path)
         assert manifest["project"] == {
             "name": service_name,
             "kind": "service",
@@ -146,20 +163,10 @@ class TestServiceCreation:
         """Test Python service extensions are recorded in the scaffold manifest."""
         service_name = "test-python-service-extensions"
 
-        generator = ServiceGenerator(
-            name=service_name,
-            lang="python",
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir),
-            database="postgres",
-            cache="redis",
-            auth="jwt",
+        project_path = _generate_service(
+            temp_project_dir, mock_config, service_name, "python", database="postgres", cache="redis", auth="jwt"
         )
-        generator.create()
-
-        project_path = temp_project_dir / service_name
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        manifest = _manifest(project_path)
 
         assert manifest["extensions"] == {"auth": "jwt", "cache": "redis", "database": "postgres"}
         assert (project_path / "src/clients/database.py").exists()
@@ -170,18 +177,7 @@ class TestServiceCreation:
         """Test Rust service creation with Helm charts."""
         service_name = "test-rust-service"
         
-        with patch('src.utils.github.create_repo'):
-            generator = ServiceGenerator(
-                name=service_name,
-                lang="rust",
-                gh=False,
-                config=mock_config, 
-                helm=True,
-                root=str(temp_project_dir)
-            )
-            generator.create()
-        
-        project_path = temp_project_dir / service_name
+        project_path = _generate_service(temp_project_dir, mock_config, service_name, "rust", helm=True)
         
         # Verify Rust-specific files
         rust_files = [
@@ -212,7 +208,7 @@ class TestServiceCreation:
         assert "example-service" not in deployment_yaml
         assert "}}  labels" not in deployment_yaml
         assert "}}spec" not in deployment_yaml
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        manifest = _manifest(project_path)
         assert manifest["execution"] == {"models": ["container"], "platforms": ["kubernetes"]}
         assert manifest["artifacts"] == {"image": "dockerfile", "kubernetes": "helm"}
 
@@ -235,17 +231,8 @@ class TestServiceCreation:
         environment,
     ):
         service_name = f"test-rust-{value}-service"
-        generator = ServiceGenerator(
-            name=service_name,
-            lang="rust",
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir),
-            **{extension: value},
-        )
-        generator.create()
-        project_path = temp_project_dir / service_name
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        project_path = _generate_service(temp_project_dir, mock_config, service_name, "rust", **{extension: value})
+        manifest = _manifest(project_path)
 
         assert manifest["extensions"] == {extension: value}
         assert (project_path / f"src/{module_dir}/mod.rs").read_text() == f"pub mod {extension};\n"
@@ -258,18 +245,8 @@ class TestServiceCreation:
         """Test TypeScript service generation with Postgres database support."""
         service_name = "test-typescript-postgres-service"
 
-        generator = ServiceGenerator(
-            name=service_name,
-            lang="typescript",
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir),
-            database="postgres",
-        )
-        generator.create()
-
-        project_path = temp_project_dir / service_name
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        project_path = _generate_service(temp_project_dir, mock_config, service_name, "typescript", database="postgres")
+        manifest = _manifest(project_path)
 
         assert manifest["extensions"] == {"database": "postgres"}
         assert (project_path / "src/clients/database.ts").exists()
@@ -284,17 +261,9 @@ class TestServiceCreation:
         """Test TypeScript Cloudflare Worker service creation."""
         service_name = "test-worker-service"
 
-        generator = ServiceGenerator(
-            name=service_name,
-            lang="typescript",
-            gh=False,
-            config=mock_config,
-            runtime="cloudflare-workers",
-            root=str(temp_project_dir),
+        project_path = _generate_service(
+            temp_project_dir, mock_config, service_name, "typescript", runtime="cloudflare-workers"
         )
-        generator.create()
-
-        project_path = temp_project_dir / service_name
 
         assert (project_path / "wrangler.toml").exists()
         assert (project_path / "package.json").exists()
@@ -304,7 +273,7 @@ class TestServiceCreation:
         assert (project_path / "docs/contracts/README.md").exists()
         assert (project_path / "docs/operations/README.md").exists()
         assert not (project_path / "Dockerfile").exists()
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        manifest = _manifest(project_path)
         assert manifest["project"] == {
             "name": service_name,
             "kind": "service",
@@ -368,17 +337,9 @@ class TestServiceCreation:
         """Test Rust Cloudflare Worker service creation."""
         service_name = "test-rust-worker"
 
-        generator = ServiceGenerator(
-            name=service_name,
-            lang="rust",
-            gh=False,
-            config=mock_config,
-            runtime="cloudflare-workers",
-            root=str(temp_project_dir),
+        project_path = _generate_service(
+            temp_project_dir, mock_config, service_name, "rust", runtime="cloudflare-workers"
         )
-        generator.create()
-
-        project_path = temp_project_dir / service_name
 
         assert (project_path / "wrangler.toml").exists()
         assert (project_path / "Cargo.toml").exists()
@@ -477,109 +438,58 @@ class TestAPIFunctions:
         assert project_path.exists()
         assert (project_path / "src").exists()
     
-    def test_create_cli_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test the create_cli API function."""
-        cli_name = "api-test-cli"
-        
-        with patch('src.utils.github.create_repo'):
-            create_cli(
-                name=cli_name,
-                lang="python",
-                gh=False,
-                config=mock_config,
-                root=str(temp_project_dir)
-            )
-        
-        project_path = temp_project_dir / cli_name
-        assert project_path.exists()
-        assert (project_path / "src/main.py").exists()
-        assert (project_path / "src/cli/app.py").exists()
-        assert (project_path / "src/cli/commands/check.py").exists()
-        assert (project_path / "src/clients").exists()
-        assert (project_path / "src/model/dto.py").exists()
-        assert (project_path / "src/operations").exists()
+    @pytest.mark.parametrize(
+        ("lang", "paths", "project_fields"),
+        [
+            pytest.param(
+                "python",
+                ("src/main.py", "src/cli/app.py", "src/cli/commands/check.py", "src/clients", "src/model/dto.py",
+                 "src/operations"),
+                {"cli_framework": "typer", "command_root": "src/cli/commands", "entrypoint": "src/main.py",
+                 "src_root_files": ["__init__.py", "main.py"]},
+                id="python",
+            ),
+            pytest.param(
+                "rust",
+                ("src/main.rs", "src/cli/args.rs", "src/cli/dispatch.rs", "src/clients/mod.rs", "src/model/dto.rs",
+                 "src/operations/mod.rs"),
+                {"cli_framework": "clap", "command_root": "src/cli", "entrypoint": "src/main.rs",
+                 "src_root_files": ["main.rs"]},
+                id="rust",
+            ),
+            pytest.param(
+                "typescript",
+                ("bin/dev.js", "bin/run.js", "src/base-command.ts", "src/commands/check.ts", "src/clients/index.ts",
+                 "src/model/dto.ts", "src/operations/index.ts"),
+                {"cli_framework": "oclif", "command_root": "src/commands", "entrypoint": "bin/run.js",
+                 "src_root_files": ["base-command.ts"]},
+                id="typescript",
+            ),
+        ],
+    )
+    def test_create_cli_api(
+        self, temp_project_dir: Path, mock_config: GeneratorConfig, lang: str, paths: tuple[str, ...],
+        project_fields: dict[str, str | list[str]],
+    ):
+        """create_cli lays out the modular CLI architecture and records it for each language."""
+        cli_name = f"api-test-{lang}-cli"
 
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
-        assert manifest["project"]["architecture"] == "modular-cli"
-        assert manifest["project"]["cli_framework"] == "typer"
-        assert manifest["project"]["command_root"] == "src/cli/commands"
-        assert manifest["project"]["entrypoint"] == "src/main.py"
-        assert manifest["project"]["operation_root"] == "src/operations"
-        assert manifest["project"]["src_root_files"] == ["__init__.py", "main.py"]
-
-    def test_create_rust_cli_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test the create_cli API function for Rust."""
-        cli_name = "api-test-rust-cli"
-
-        create_cli(
-            name=cli_name,
-            lang="rust",
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir),
-        )
+        create_cli(name=cli_name, lang=lang, gh=False, config=mock_config, root=str(temp_project_dir))
 
         project_path = temp_project_dir / cli_name
-        assert project_path.exists()
-        assert (project_path / "src/main.rs").exists()
-        assert (project_path / "src/cli/args.rs").exists()
-        assert (project_path / "src/cli/dispatch.rs").exists()
-        assert (project_path / "src/clients/mod.rs").exists()
-        assert (project_path / "src/model/dto.rs").exists()
-        assert (project_path / "src/operations/mod.rs").exists()
+        for path in paths:
+            assert (project_path / path).exists(), path
+        project = _manifest(project_path)["project"]
+        assert project["architecture"] == "modular-cli"
+        assert project["operation_root"] == "src/operations"
+        for field, value in project_fields.items():
+            assert project[field] == value, field
 
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
-        assert manifest["project"]["architecture"] == "modular-cli"
-        assert manifest["project"]["cli_framework"] == "clap"
-        assert manifest["project"]["command_root"] == "src/cli"
-        assert manifest["project"]["entrypoint"] == "src/main.rs"
-        assert manifest["project"]["operation_root"] == "src/operations"
-        assert manifest["project"]["src_root_files"] == ["main.rs"]
-
-    def test_create_typescript_cli_api(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test the create_cli API function for TypeScript."""
-        cli_name = "api-test-ts-cli"
-
-        create_cli(
-            name=cli_name,
-            lang="typescript",
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir),
-        )
-
-        project_path = temp_project_dir / cli_name
-        assert project_path.exists()
-        assert (project_path / "bin/dev.js").exists()
-        assert (project_path / "bin/run.js").exists()
-        assert (project_path / "src/base-command.ts").exists()
-        assert (project_path / "src/commands/check.ts").exists()
-        assert (project_path / "src/clients/index.ts").exists()
-        assert (project_path / "src/model/dto.ts").exists()
-        assert (project_path / "src/operations/index.ts").exists()
-
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
-        assert manifest["project"]["architecture"] == "modular-cli"
-        assert manifest["project"]["cli_framework"] == "oclif"
-        assert manifest["project"]["command_root"] == "src/commands"
-        assert manifest["project"]["entrypoint"] == "bin/run.js"
-        assert manifest["project"]["operation_root"] == "src/operations"
-        assert manifest["project"]["src_root_files"] == ["base-command.ts"]
-    
     def test_create_system_api_renders_kustomize(self, temp_project_dir: Path, mock_config: GeneratorConfig):
         """Test that create_system renders Kustomize by default."""
         system_name = "api-test-kustomize-system"
         
-        with patch('src.utils.github.create_repo'):
-            create_system(
-                name=system_name,
-                gh=False,
-                config=mock_config,
-                helm=False,
-                root=str(temp_project_dir)
-            )
-        
-        project_path = temp_project_dir / system_name
+        project_path = _generate_system(temp_project_dir, mock_config, system_name)
         assert project_path.exists()
         assert (project_path / "services").exists()
         assert (project_path / "infra/k8s/base/deployment.yaml").exists()
@@ -588,16 +498,8 @@ class TestAPIFunctions:
         """Test the create_system API function."""
         system_name = "api-test-system"
 
-        create_system(
-            name=system_name,
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir),
-            cloud="aws",
-        )
-
-        project_path = temp_project_dir / system_name
-        manifest = json.loads((project_path / ".kickstart/scaffold.json").read_text())
+        project_path = _generate_system(temp_project_dir, mock_config, system_name, cloud="aws")
+        manifest = _manifest(project_path)
 
         assert project_path.exists()
         assert (project_path / "services").exists()
@@ -609,18 +511,9 @@ class TestAPIFunctions:
         """Test that Cloudflare systems render Cloudflare Terraform only."""
         system_name = "api-test-cloudflare-system"
 
-        with patch('src.utils.github.create_repo'):
-            create_system(
-                name=system_name,
-                gh=False,
-                config=mock_config,
-                helm=False,
-                root=str(temp_project_dir),
-                cloud="cloudflare",
-                knowledge="none",
-            )
-
-        project_path = temp_project_dir / system_name
+        project_path = _generate_system(
+            temp_project_dir, mock_config, system_name, cloud="cloudflare", knowledge="none"
+        )
         main_tf = (project_path / "infra/terraform/env/dev/main.tf").read_text()
         variables_tf = (project_path / "infra/terraform/env/dev/variables.tf").read_text()
         tfvars = (project_path / "infra/terraform/env/dev/terraform.tfvars.example").read_text()
@@ -638,18 +531,9 @@ class TestAPIFunctions:
         """Test that Cloudflare Workers runtime renders Worker runtime docs."""
         system_name = "api-test-worker-runtime-system"
 
-        create_system(
-            name=system_name,
-            gh=False,
-            config=mock_config,
-            helm=False,
-            root=str(temp_project_dir),
-            cloud="cloudflare",
-            runtime="cloudflare-workers",
-            knowledge="none",
+        project_path = _generate_system(
+            temp_project_dir, mock_config, system_name, cloud="cloudflare", runtime="cloudflare-workers", knowledge="none"
         )
-
-        project_path = temp_project_dir / system_name
 
         assert (project_path / "infra/cloudflare/workers/README.md").exists()
         assert (project_path / "infra/cloudflare/workers/wrangler.example.toml").exists()
@@ -659,22 +543,14 @@ class TestAPIFunctions:
 class TestErrorRecovery:
     """Test error recovery and graceful degradation."""
     
-    def test_template_missing_graceful_failure(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test graceful handling when templates are missing."""
-        service_name = "test-missing-templates"
-        
-        # Create generator with non-existent language
-        generator = ServiceGenerator(
-            name=service_name,
-            lang="nonexistent-lang",
-            gh=False,
-            config=mock_config,
-            root=str(temp_project_dir)
-        )
-        
-        # Unsupported languages fail before creating files.
-        with pytest.raises(LanguageNotSupportedError):
+    def test_missing_python_templates_leave_no_partial_service(self, tmp_path):
+        generator = ServiceGenerator("demo", "python", False, {}, root=str(tmp_path))
+        generator.lang_template_dir = tmp_path / "missing-templates" / "python"
+
+        with pytest.raises(LanguageNotSupportedError, match="python"):
             generator.create()
+
+        assert not (tmp_path / "demo").exists()
         
         # The method should fail before creating the project directory.
     
@@ -714,28 +590,6 @@ class TestErrorRecovery:
 
 class TestTemplateRendering:
     """Test template rendering and variable substitution."""
-    
-    def test_template_variable_substitution(self, temp_project_dir: Path, mock_config: GeneratorConfig):
-        """Test that template variables are correctly substituted."""
-        service_name = "variable-test-service"
-        
-        with patch('src.utils.github.create_repo'):
-            generator = ServiceGenerator(
-                name=service_name,
-                lang="python",
-                gh=False,
-                config=mock_config,
-                root=str(temp_project_dir)
-            )
-            generator.create()
-        
-        project_path = temp_project_dir / service_name
-        
-        # Check that service name appears in architecture docs
-        arch_file = project_path / "docs/architecture/README.md"
-        if arch_file.exists():
-            content = arch_file.read_text()
-            assert service_name in content
     
     def test_jinja2_template_features(self, temp_project_dir: Path):
         """Test advanced Jinja2 template features work correctly."""

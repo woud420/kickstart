@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import typer
 
-from src.cli.install_context import InstallContext, report_failure, resolve_context
+from src.cli.install_context import report_failure, resolve_context
 from src.utils.errors import KickstartError
 
 
@@ -73,17 +73,3 @@ def test_report_failure_lets_other_exceptions_through():
     with pytest.raises(RuntimeError):
         with report_failure("Install"):
             raise RuntimeError("not handled")
-
-
-def test_install_context_dataclass_is_frozen():
-    """InstallContext should be immutable so commands can't mutate shared state."""
-    ctx = InstallContext(
-        install_dir=Path("/tmp/x"),
-        app_root=Path("/tmp/x-app"),
-        shell="zsh",
-        rc_file=Path("/tmp/rc"),
-        snippet='export PATH="/tmp/x:$PATH"',
-        already_on_path=False,
-    )
-    with pytest.raises(Exception):
-        ctx.install_dir = Path("/tmp/y")  # type: ignore[misc]

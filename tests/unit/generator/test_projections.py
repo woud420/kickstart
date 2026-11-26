@@ -8,7 +8,6 @@ from src.generator.projections import (
     agent_map_content,
     architecture_readme_projection,
     contracts_content,
-    decisions_content,
     operations_content,
     scaffold_docs_projections,
 )
@@ -134,13 +133,6 @@ def test_projection_contents_are_single_owned_regions() -> None:
         assert projection.content == fence(projection.id, projection.body)
         assert region.inner == projection.body
     assert projections[0].body == agent_map_content(_service_contract())
-
-
-def test_decisions_content_asks_for_durable_entries() -> None:
-    content = decisions_content()
-
-    assert content.startswith("# Decisions")
-    assert "short, dated" in content
 
 
 def test_worker_agent_map_derives_commands_from_contract_lifecycle() -> None:

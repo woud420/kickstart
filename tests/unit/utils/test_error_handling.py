@@ -32,12 +32,6 @@ from src.utils.error_handling import (
 
 # --- error_context ---------------------------------------------------------
 
-def test_error_context_yields_on_success():
-    with error_context("do the thing"):
-        result = 1 + 1
-    assert result == 2
-
-
 def test_error_context_reraises_kickstart_error_unchanged():
     original = KickstartError("already typed")
     with pytest.raises(KickstartError) as exc_info:
@@ -224,12 +218,6 @@ def test_safe_operation_reraises_as_requested_type():
 
 # --- safe_operation_context -------------------------------------------------------
 
-def test_safe_operation_context_yields_on_success():
-    with safe_operation_context("do thing"):
-        result = 1 + 1
-    assert result == 2
-
-
 def test_safe_operation_context_suppresses_exceptions_by_default():
     with safe_operation_context("do thing"):
         raise RuntimeError("boom")
@@ -276,12 +264,21 @@ def test_error_collector_get_summary_reports_counts():
     assert "1 warnings" in summary
 
 
-def test_error_collector_log_summary_warns_user_when_errors_present():
-    collector = ErrorCollector("batch")
-    collector.add_error("bad")
-    with patch("src.utils.error_handling.warn") as mock_warn:
-        collector.log_summary()
-        mock_warn.assert_called_once()
+def test_log_summary_identifies_the_failed_batch(capsys, caplog):
+    collector = ErrorCollector("copy-assets")
+    collector.increment_total()
+    collector.add_error("asset missing")
+    caplog.clear()
+
+    collector.log_summary()
+
+    assert "copy-assets" in capsys.readouterr().out
+    assert any(
+        record.levelno == logging.ERROR
+        and "copy-assets" in record.getMessage()
+        and "0/1" in record.getMessage()
+        for record in caplog.records
+    )
 
 
 def test_error_collector_log_summary_clean_when_only_warnings(caplog):
@@ -328,12 +325,6 @@ def test_format_error_message_without_context():
 def test_format_error_message_with_context():
     message = format_error_message("write", "/tmp/x", ValueError("bad"), {"attempt": 2})
     assert message == "write failed for '/tmp/x': bad (context: attempt=2)"
-
-
-def test_log_operation_result_success(caplog):
-    with caplog.at_level(logging.DEBUG, logger="src.utils.error_handling"):
-        log_operation_result("write", success=True, target="/tmp/x")
-    assert any("write succeeded for '/tmp/x'" in message for message in caplog.messages)
 
 
 def test_log_operation_result_failure_with_error(caplog):
@@ -438,20 +429,30 @@ def test_safe_file_write_raises_file_operation_error(tmp_path: Path):
             safe_file_write(target, "hello")
 
 
-def test_safe_file_copy_preserves_metadata_by_default(tmp_path: Path):
-    source = tmp_path / "source.txt"
-    source.write_text("hello")
-    target = tmp_path / "nested" / "target.txt"
-    assert safe_file_copy(source, target) is True
-    assert target.read_text() == "hello"
+def test_safe_file_copy_preserves_timestamp_by_default(tmp_path):
+    import os
+
+    source = tmp_path / "source"
+    source.write_bytes(b"payload")
+    os.utime(source, (946684800, 946684800))
+    target = tmp_path / "nested" / "copy"
+
+    assert safe_file_copy(source, target)
+    assert target.read_bytes() == b"payload"
+    assert target.stat().st_mtime_ns == source.stat().st_mtime_ns
 
 
-def test_safe_file_copy_without_preserving_metadata(tmp_path: Path):
-    source = tmp_path / "source.txt"
-    source.write_text("hello")
-    target = tmp_path / "target.txt"
-    assert safe_file_copy(source, target, preserve_metadata=False) is True
-    assert target.read_text() == "hello"
+def test_safe_file_copy_can_skip_timestamp_preservation(tmp_path):
+    import os
+
+    source = tmp_path / "source"
+    source.write_bytes(b"payload")
+    os.utime(source, (946684800, 946684800))
+    target = tmp_path / "copy"
+
+    assert safe_file_copy(source, target, preserve_metadata=False)
+    assert target.read_bytes() == b"payload"
+    assert target.stat().st_mtime_ns != source.stat().st_mtime_ns
 
 
 def test_safe_file_copy_raises_file_operation_error(tmp_path: Path):

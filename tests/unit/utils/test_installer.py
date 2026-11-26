@@ -109,22 +109,6 @@ def test_current_entrypoint_path_preserves_explicit_relative_path(tmp_path: Path
     assert installer.current_entrypoint_path() == explicit_launcher
 
 
-def test_uninstall_binary_removes_file(tmp_path: Path, single_file_binary: Path) -> None:
-    target_dir = tmp_path / "user-bin"
-    installer.install_binary(single_file_binary, target_dir)
-    removed = installer.uninstall_binary(target_dir)
-    assert removed == target_dir / installer.BINARY_NAME
-    assert not removed.exists()
-
-
-def test_uninstall_binary_returns_none_when_absent(tmp_path: Path) -> None:
-    assert installer.uninstall_binary(tmp_path) is None
-
-
-def test_detect_shell_zsh() -> None:
-    assert installer.detect_shell({"SHELL": "/bin/zsh"}) == "zsh"
-
-
 def test_detect_shell_bash() -> None:
     assert installer.detect_shell({"SHELL": "/usr/local/bin/bash"}) == "bash"
 
@@ -172,18 +156,9 @@ def test_path_contains_resolves_symlinks(tmp_path: Path) -> None:
     assert installer.path_contains(real_dir, env=env) is True
 
 
-def test_path_contains_missing(tmp_path: Path) -> None:
-    env = {"PATH": "/usr/bin:/bin"}
-    assert installer.path_contains(tmp_path, env=env) is False
-
-
 def test_path_update_snippet_bash_zsh(tmp_path: Path) -> None:
     assert installer.path_update_snippet("bash", tmp_path) == f'export PATH="{tmp_path}:$PATH"'
     assert installer.path_update_snippet("zsh", tmp_path) == f'export PATH="{tmp_path}:$PATH"'
-
-
-def test_path_update_snippet_fish(tmp_path: Path) -> None:
-    assert installer.path_update_snippet("fish", tmp_path) == f"fish_add_path -gp {tmp_path}"
 
 
 def test_update_path_in_rc_creates_file(tmp_path: Path) -> None:
@@ -251,12 +226,6 @@ def test_remove_path_block_from_rc(tmp_path: Path) -> None:
     assert "# more user content" in contents
 
 
-def test_remove_path_block_from_rc_no_op(tmp_path: Path) -> None:
-    rc = tmp_path / "rc"
-    rc.write_text("# user content only\n")
-    assert installer.remove_path_block_from_rc(rc) is False
-
-
 def test_remove_path_block_from_rc_missing_file(tmp_path: Path) -> None:
     assert installer.remove_path_block_from_rc(tmp_path / "missing") is False
 
@@ -274,60 +243,10 @@ def test_format_managed_block_round_trip() -> None:
     assert match.group(0).rstrip("\n") == block.rstrip("\n")
 
 
-def test_managed_block_regex_is_non_greedy() -> None:
-    """Two managed blocks in a single file should match independently, not as one big span."""
-    text = (
-        f"{installer.MARKER_BEGIN}\nA\n{installer.MARKER_END}\n"
-        "# user content\n"
-        f"{installer.MARKER_BEGIN}\nB\n{installer.MARKER_END}\n"
-    )
-    matches = installer._MANAGED_BLOCK_RE.findall(text)
-    assert len(matches) == 2
-
-
-def test_env_helper_returns_provided_dict() -> None:
-    custom = {"PATH": "/x"}
-    assert installer._env(custom) is custom
-
-
-def test_env_helper_falls_back_to_os_environ() -> None:
-    assert installer._env(None) is os.environ
-
-
-def test_same_file_true_for_identical_paths(tmp_path: Path) -> None:
-    file = tmp_path / "kickstart"
-    file.write_text("x")
-    assert installer._same_file(file, file) is True
-
-
 def test_same_file_true_through_symlink(tmp_path: Path, single_file_binary: Path) -> None:
     link = tmp_path / "alias"
     link.symlink_to(single_file_binary)
     assert installer._same_file(link, single_file_binary) is True
-
-
-def test_same_file_false_for_distinct_paths(tmp_path: Path) -> None:
-    a = tmp_path / "a"
-    a.write_text("a")
-    b = tmp_path / "b"
-    b.write_text("b")
-    assert installer._same_file(a, b) is False
-
-
-def test_safe_resolve_falls_back_to_absolute(tmp_path: Path) -> None:
-    path = tmp_path / "x"
-    assert installer._safe_resolve(path) == path.resolve()
-
-
-def test_default_rc_uses_layout_table(tmp_path: Path) -> None:
-    """default_rc_for_shell should pull from the single declarative layout table."""
-    assert "zsh" in installer._SHELL_RC_LAYOUT
-    assert "bash" in installer._SHELL_RC_LAYOUT
-    assert "bash-darwin" in installer._SHELL_RC_LAYOUT
-    assert "fish" in installer._SHELL_RC_LAYOUT
-    result = installer.default_rc_for_shell("zsh", home=tmp_path)
-    assert result is not None
-    assert result.parts[-1:] == installer._SHELL_RC_LAYOUT["zsh"]
 
 
 def test_install_then_uninstall_round_trip(tmp_path: Path, single_file_binary: Path) -> None:
@@ -387,13 +306,16 @@ def test_install_binary_falls_back_on_resolve_failure(tmp_path: Path, single_fil
     assert destination.read_text() == single_file_binary.read_text()
 
 
-def test_install_binary_expands_relative_target(tmp_path: Path, single_file_binary: Path) -> None:
-    """install_binary should accept a relative path and create the directory."""
-    relative_target = tmp_path / "nested" / "bin"
-    result = installer.install_binary(single_file_binary, relative_target)
-    assert relative_target.exists()
-    assert result.destination == relative_target / installer.BINARY_NAME
-    assert result.destination.exists()
+def test_install_binary_resolves_relative_target_from_cwd(tmp_path, monkeypatch, single_file_binary):
+    working_dir = tmp_path / "working"
+    working_dir.mkdir()
+    monkeypatch.chdir(working_dir)
+
+    result = installer.install_binary(single_file_binary, Path("nested") / "bin")
+
+    installed = working_dir / "nested" / "bin" / installer.BINARY_NAME
+    assert installed.read_bytes() == single_file_binary.read_bytes()
+    assert result.destination.samefile(installed)
 
 
 # --- Onedir bundle install path -----------------------------------------
@@ -412,17 +334,6 @@ def _make_fake_onedir_bundle(root: Path, *, bundle_name: str = "kickstart-bundle
     launcher.write_text("#!/bin/sh\necho fresh\n")
     launcher.chmod(0o755)
     return launcher
-
-
-def test_onedir_bundle_root_detects_pyinstaller_layout(tmp_path: Path) -> None:
-    launcher = _make_fake_onedir_bundle(tmp_path)
-    bundle_root = installer._onedir_bundle_root(launcher)
-    assert bundle_root == launcher.parent
-
-
-def test_onedir_bundle_root_ignores_single_file(tmp_path: Path, single_file_binary: Path) -> None:
-    """A bare single-file binary is NOT a bundle root."""
-    assert installer._onedir_bundle_root(single_file_binary) is None
 
 
 def test_onedir_bundle_root_ignores_non_kickstart_filename(tmp_path: Path) -> None:

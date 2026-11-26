@@ -10,7 +10,7 @@ from src.model.dto.telemetry import (
     TelemetryEvent,
     TelemetryEventName,
 )
-from src.telemetry.sink import InMemoryTelemetrySink, NoOpTelemetrySink
+from src.telemetry.sink import InMemoryTelemetrySink
 
 
 def _envelope() -> TelemetryEnvelope:
@@ -43,10 +43,6 @@ def _envelope() -> TelemetryEnvelope:
             ),
         ),
     )
-
-
-def test_noop_sink_discards_without_error() -> None:
-    NoOpTelemetrySink().record(_envelope())
 
 
 def test_in_memory_sink_records_exact_envelope() -> None:

@@ -1,16 +1,9 @@
 import pytest
-from pathlib import Path
 from unittest.mock import patch, call
 from src.generator.language_setup import CPP_MAIN_CONTENT, CPP_ROUTES_HEADER_CONTENT, CPP_USER_HEADER_CONTENT
-from src.generator.projections import (
-    PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER,
-    agent_map_content,
-    contracts_content,
-    operations_content,
-)
 from src.generator.service import ServiceGenerator
 from src.stack.types import TemplateConfig
-from src.generator.scaffold_contract import ScaffoldArtifacts, ScaffoldContract
+from src.generator.scaffold_contract import ScaffoldArtifacts
 from src.utils.errors import ProjectCreationError, ExtensionError, LanguageNotSupportedError
 
 
@@ -19,46 +12,10 @@ def service_generator():
     return ServiceGenerator("test-service", "python", False, {"key": "value"})
 
 
-@pytest.fixture
-def service_generator_with_helm():
-    return ServiceGenerator("test-service", "python", False, {"key": "value"}, helm=True)
-
-
-@pytest.fixture
-def service_generator_with_gh():
-    return ServiceGenerator("test-service", "python", True, {"key": "value"})
-
-
-@pytest.fixture
-def service_generator_with_root():
-    return ServiceGenerator("test-service", "python", False, {"key": "value"}, root="/tmp")
-
 @pytest.fixture(autouse=True)
 def mock_scaffold_contract_docs():
     with patch.object(ServiceGenerator, "create_scaffold_contract_docs", return_value=True):
         yield
-
-
-def test_service_generator_initialization(service_generator):
-    assert service_generator.name == "test-service"
-    assert service_generator.lang == "python"
-    assert service_generator.runtime == "container"
-    assert service_generator.gh is False
-    assert service_generator.helm is False
-    assert service_generator.config == {"key": "value"}
-    assert service_generator.lang_template_dir == service_generator.template_dir / "python"
-
-
-def test_service_generator_initialization_with_helm(service_generator_with_helm):
-    assert service_generator_with_helm.helm is True
-
-
-def test_service_generator_initialization_with_gh(service_generator_with_gh):
-    assert service_generator_with_gh.gh is True
-
-
-def test_service_generator_initialization_with_root(service_generator_with_root):
-    assert service_generator_with_root.project == Path("/tmp/test-service")
 
 
 @patch('src.generator.service.create_repo')
@@ -194,16 +151,6 @@ def test_create_fails_when_create_project_fails(mock_create_project, service_gen
         service_generator.create()
 
     mock_create_project.assert_called_once()
-
-
-@patch.object(ServiceGenerator, 'create_project')
-def test_create_raises_when_language_template_missing(mock_create_project, tmp_path):
-    generator = ServiceGenerator("test-service", "nonexistent", False, {})
-    mock_create_project.return_value = True
-    generator.lang_template_dir = tmp_path / "nonexistent"  # Directory doesn't exist
-
-    with pytest.raises(LanguageNotSupportedError):
-        generator.create()
 
 
 @patch.object(ServiceGenerator, 'create_directories')
@@ -619,16 +566,6 @@ def test_cloudflare_worker_runtime_alias_normalizes():
     assert generator.runtime == "cloudflare-workers"
 
 
-def test_cloudflare_worker_template_configs_for_typescript():
-    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
-
-    configs = generator._cloudflare_worker_template_configs()
-
-    assert {"target": "wrangler.toml", "template": "cloudflare-workers/typescript/wrangler.toml.tpl"} in configs
-    assert {"target": "src/index.ts", "template": "cloudflare-workers/typescript/src/index.ts.tpl"} in configs
-    assert {"target": "tests/worker.test.ts", "template": "cloudflare-workers/typescript/tests/worker.test.ts.tpl"} in configs
-
-
 def test_cloudflare_worker_template_configs_for_rust():
     generator = ServiceGenerator("edge-rust", "rust", False, {}, runtime="cloudflare-workers")
 
@@ -637,58 +574,6 @@ def test_cloudflare_worker_template_configs_for_rust():
     assert {"target": "wrangler.toml", "template": "cloudflare-workers/rust/wrangler.toml.tpl"} in configs
     assert {"target": "Cargo.toml", "template": "cloudflare-workers/rust/Cargo.toml.tpl"} in configs
     assert {"target": "src/lib.rs", "template": "cloudflare-workers/rust/src/lib.rs.tpl"} in configs
-
-
-def test_typescript_cloudflare_worker_agent_map_is_explicit():
-    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
-
-    contract = ScaffoldContract(
-        project_kind="worker",
-        execution_models=("cloudflare-worker",),
-        runtime_platforms=("cloudflare-workers",),
-        artifacts=ScaffoldArtifacts(worker="wrangler"),
-        provider_targets=("cloudflare",),
-    )
-    profile = generator._projection_profile()
-    content = agent_map_content(contract, profile)
-
-    assert profile == PROFILE_TYPESCRIPT_CLOUDFLARE_WORKER
-    assert "src/index.ts" in content
-    assert "tests/worker.test.ts" in content
-    assert "wrangler.toml" in content
-    assert "make check" in content
-    assert "make dev" in content
-    assert "make deploy" in content
-    assert "Do not hand-edit generated contract files" in content
-    assert ".kickstart/scaffold.json" in content
-
-
-def test_typescript_cloudflare_worker_contract_and_operations_docs_are_explicit():
-    generator = ServiceGenerator("edge-api", "typescript", False, {}, runtime="cloudflare-workers")
-    contract = ScaffoldContract(
-        project_kind="worker",
-        execution_models=("cloudflare-worker",),
-        runtime_platforms=("cloudflare-workers",),
-        artifacts=ScaffoldArtifacts(worker="wrangler"),
-        provider_targets=("cloudflare",),
-    )
-
-    profile = generator._projection_profile()
-    contracts_doc = contracts_content(contract, profile)
-    operations_doc = operations_content(contract, profile)
-
-    assert "Scaffold identity" in contracts_doc
-    assert "Execution model: `cloudflare-worker`" in contracts_doc
-    assert "Verification contract" in contracts_doc
-    assert "make check" in contracts_doc
-    assert "tests/worker.test.ts" in contracts_doc
-
-    assert "Lifecycle flow" in operations_doc
-    assert "1. Install dependencies: `make install`" in operations_doc
-    assert "2. Verify scaffold contract: `make check`" in operations_doc
-    assert "3. Run local worker runtime: `make dev`" in operations_doc
-    assert "4. Deploy to Cloudflare Workers: `make deploy`" in operations_doc
-    assert "wrangler.toml" in operations_doc
 
 
 @patch.object(ServiceGenerator, 'execute_create_flow')

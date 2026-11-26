@@ -30,11 +30,15 @@ class PackageSetupPlan:
 
 PYTHON_LIBRARY_TEST_CONTENT = '''"""Smoke tests: the generated library package must import."""
 
+from pathlib import Path
+
 import src
 
 
-def test_package_imports() -> None:
-    assert src is not None
+def test_import_loads_this_library_package() -> None:
+    expected = Path(__file__).resolve().parents[1] / "src" / "__init__.py"
+    assert src.__file__ is not None
+    assert Path(src.__file__).samefile(expected)
 '''
 RUST_LIBRARY_CONTENT = "pub fn generated_scaffold_ready() -> bool {\n    true\n}\n"
 LIBRARY_LANGUAGE_SETUP: dict[str, PackageSetupPlan] = {

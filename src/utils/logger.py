@@ -1,17 +1,18 @@
 from rich import print
+from rich.text import Text
 
 
 def info(msg: str) -> None:
-    print(f"[cyan]➤ {msg}")
+    print(Text(f"➤ {msg}", style="cyan"))
 
 
 def success(msg: str) -> None:
-    print(f"[green]✔ {msg}")
+    print(Text(f"✔ {msg}", style="green"))
 
 
 def warn(msg: str) -> None:
-    print(f"[yellow]⚠ {msg}")
+    print(Text(f"⚠ {msg}", style="yellow"))
 
 
 def error(msg: str) -> None:
-    print(f"[red]✖ {msg}")
+    print(Text(f"✖ {msg}", style="red"))
